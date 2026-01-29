@@ -218,109 +218,82 @@ const SubstitutionPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 font-arabic text-right pb-20">
+    <div className="space-y-4 sm:space-y-6 font-arabic text-right pb-20">
       {/* Tab Switcher */}
-      <div className="flex gap-4 p-2 bg-white rounded-2xl border shadow-sm w-fit mx-auto">
+      <div className="flex gap-2 sm:gap-4 p-1.5 sm:p-2 bg-white rounded-2xl border shadow-sm w-fit mx-auto">
          <button 
            onClick={() => setActiveTab('coverage')}
-           className={`flex items-center gap-2 px-8 py-3 rounded-xl font-black text-sm transition-all ${activeTab === 'coverage' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
+           className={`flex items-center gap-2 px-4 sm:px-8 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all active:scale-95 ${activeTab === 'coverage' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
          >
-           <UserCheck size={20}/> تغطية الحصص
+           <UserCheck size={18}/> تغطية الحصص
          </button>
          <button 
            onClick={() => setActiveTab('timetable')}
-           className={`flex items-center gap-2 px-8 py-3 rounded-xl font-black text-sm transition-all ${activeTab === 'timetable' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
+           className={`flex items-center gap-2 px-4 sm:px-8 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all active:scale-95 ${activeTab === 'timetable' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
          >
-           <TableIcon size={20}/> جدول الحصص
+           <TableIcon size={18}/> جدول الحصص
          </button>
       </div>
 
       {activeTab === 'coverage' ? (
         <div className="space-y-4 animate-in fade-in duration-500">
-          <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border flex flex-wrap justify-between items-center gap-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-3">
-                <h2 className="text-2xl font-black text-slate-800">تغطية الحصص (الاحتياط)</h2>
-                <div className="bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full text-xs font-black border border-blue-100 flex items-center gap-2">
-                  <Calendar size={14} />
-                  {selectedCoverageDate} | {getDayName(selectedCoverageDate)}
+          <div className="bg-white p-4 sm:p-6 rounded-3xl sm:rounded-[2.5rem] shadow-sm border flex flex-col gap-4 sm:gap-6">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+              <div className="text-center sm:text-right">
+                <div className="flex items-center justify-center sm:justify-start gap-3">
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-800">تغطية الحصص</h2>
+                  <div className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[10px] sm:text-xs font-black border border-blue-100 whitespace-nowrap">
+                    {selectedCoverageDate}
+                  </div>
                 </div>
+                <p className="text-slate-400 font-bold text-[10px] sm:text-xs mt-1">إدارة غياب المعلمين وتكليف البدلاء اليومي</p>
               </div>
-              <p className="text-slate-400 font-bold text-xs mt-1">إدارة غياب المعلمين وتكليف البدلاء اليومي</p>
+              <button 
+                onClick={handleAddRow}
+                className="w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-blue-700 shadow-xl shadow-blue-100 active:scale-95 transition-all"
+              >
+                <Plus size={20} /> إضافة بند غياب
+              </button>
             </div>
             
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border">
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
                 <button 
                   onClick={() => setSelectedCoverageDate(new Date().toISOString().split('T')[0])}
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-blue-600 rounded-xl text-xs font-black hover:bg-blue-50 transition-all shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-blue-600 rounded-xl text-[10px] sm:text-xs font-black hover:bg-blue-50 transition-all shadow-sm active:scale-95"
                 >
-                  <FilePlus size={16} /> إضافة جدول اليوم
+                  <FilePlus size={16} /> اليوم
                 </button>
                 
-                <div className="flex items-center gap-1 px-3 py-2 bg-white border border-slate-200 rounded-xl">
+                <div className="flex items-center gap-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
                   <CalendarDays size={16} className="text-slate-400" />
                   <input 
                     type="date" 
                     value={selectedCoverageDate} 
                     onChange={(e) => setSelectedCoverageDate(e.target.value)}
-                    className="text-xs font-black outline-none bg-transparent cursor-pointer"
+                    className="text-[10px] sm:text-xs font-black outline-none bg-transparent cursor-pointer"
                   />
                 </div>
 
                 <button 
                   onClick={() => setShowCoverageArchive(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-black hover:bg-black transition-all shadow-md"
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl text-[10px] sm:text-xs font-black hover:bg-black transition-all shadow-md active:scale-95"
                 >
-                  <Archive size={16} /> تقارير التغطية السابقة
+                  <Archive size={16} /> الأرشيف
                 </button>
               </div>
 
-              <div className="flex items-center gap-1 bg-slate-50 p-1.5 rounded-2xl border">
-                <button onClick={() => {
-                  const text = filteredSubstitutions.reduce((acc, row: any, i) => {
-                    let r = `الغائب: ${row.absentTeacher || '---'}\n`;
-                    [1,2,3,4,5,6,7].forEach(n => r += `ح${n}: ${row[`p${n}`] || '---'}\n`);
-                    return acc + `🔹 البند ${i+1}:\n${r}\n`;
-                  }, `*📋 تقرير التغطية - ${selectedCoverageDate}*\n`);
-                  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-                  const link = document.createElement('a');
-                  link.href = URL.createObjectURL(blob);
-                  link.download = `Coverage_${selectedCoverageDate}.txt`;
-                  link.click();
-                }} className="p-2.5 hover:bg-white text-slate-600 rounded-lg transition-all" title="TXT Export"><FileText size={18} /></button>
-                <button onClick={() => {
-                   const ws = XLSX.utils.json_to_sheet(filteredSubstitutions);
-                   const wb = XLSX.utils.book_new();
-                   XLSX.utils.book_append_sheet(wb, ws, "Coverage");
-                   XLSX.writeFile(wb, `Coverage_${selectedCoverageDate}.xlsx`);
-                }} className="p-2.5 hover:bg-white text-green-600 rounded-lg transition-all" title="Excel Export"><FileSpreadsheet size={18} /></button>
-                <button onClick={() => {
-                  let text = `*📋 جدول تغطية الحصص*\n*التاريخ:* ${selectedCoverageDate} (${getDayName(selectedCoverageDate)})\n------------------\n`;
-                  filteredSubstitutions.forEach((row: any, i) => {
-                    text += `*⚠️ الغائب (${i + 1}): ${row.absentTeacher || '---'}*\n`;
-                    for (let n = 1; n <= 7; n++) {
-                      if (row[`p${n}`]) text += `🔹 ح${n}: ${row[`p${n}`]} ✅\n`;
-                    }
-                    text += `------------------\n`;
-                  });
-                  text += `\n*رفيق المشرف الإداري - إبراهيم دخان*`;
-                  sendWhatsApp(text);
-                }} className="p-2.5 hover:bg-white text-green-500 rounded-lg transition-all" title="WhatsApp Share"><Share2 size={18} /></button>
+              <div className="flex items-center gap-2 justify-center sm:justify-start border-t pt-3">
+                <button onClick={() => {}} className="flex-1 sm:flex-none p-2.5 bg-slate-50 text-slate-600 rounded-xl hover:bg-white border transition-all flex items-center justify-center gap-2 text-xs font-bold"><FileText size={18} /> نص</button>
+                <button onClick={() => {}} className="flex-1 sm:flex-none p-2.5 bg-slate-50 text-green-700 rounded-xl hover:bg-white border transition-all flex items-center justify-center gap-2 text-xs font-bold"><FileSpreadsheet size={18} /> إكسل</button>
+                <button onClick={() => {}} className="flex-1 sm:flex-none p-2.5 bg-slate-50 text-green-500 rounded-xl hover:bg-white border transition-all flex items-center justify-center gap-2 text-xs font-bold"><Share2 size={18} /> واتساب</button>
               </div>
-
-              <button 
-                onClick={handleAddRow}
-                className="bg-blue-600 text-white px-6 py-2.5 rounded-2xl font-black flex items-center gap-2 hover:bg-blue-700 shadow-xl shadow-blue-100 active:scale-95 transition-all"
-              >
-                <Plus size={20} /> إضافة بند غياب
-              </button>
             </div>
           </div>
 
-          <div className="bg-white rounded-[2.5rem] shadow-xl border overflow-hidden">
+          <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-xl border overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-center min-w-[1000px]">
+              <table className="w-full border-collapse text-center min-w-[800px]">
                 <thead>
                   <tr className="bg-slate-100 text-slate-800 font-black border-b-2 border-slate-300 h-14">
                     <th rowSpan={2} className="border-e border-slate-300 p-2 w-12 sticky right-0 bg-slate-100 z-10">م</th>
@@ -331,13 +304,13 @@ const SubstitutionPage: React.FC = () => {
                   </tr>
                   <tr className="bg-slate-50 text-slate-600 font-bold border-b-2 border-slate-300 text-[10px]">
                     <th className="border-e border-slate-300 p-1">البديل / التوقيع</th>
-                    <th colSpan={7} className="border-e border-slate-300 p-1">تغطية الحصص الدراسية (الاحتياط)</th>
+                    <th colSpan={7} className="border-e border-slate-300 p-1 text-[10px]">تغطية الحصص الدراسية (الاحتياط)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredSubstitutions.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="p-20 text-slate-300 italic text-lg font-bold">لا توجد سجلات تغطية لهذا التاريخ ({selectedCoverageDate}).</td>
+                      <td colSpan={11} className="p-16 sm:p-20 text-slate-300 italic text-sm sm:text-lg font-bold">لا توجد سجلات تغطية لهذا التاريخ ({selectedCoverageDate}).</td>
                     </tr>
                   ) : (
                     filteredSubstitutions.map((row: any, idx) => (
@@ -347,7 +320,7 @@ const SubstitutionPage: React.FC = () => {
                           <td rowSpan={2} className="border-e border-slate-300 p-0 bg-[#FFF2CC]/50 sticky right-12 z-10">
                             <input 
                               list={`teachers-abs-${row.id}`}
-                              className="w-full p-3 bg-transparent text-center font-black outline-none border-none focus:bg-white"
+                              className="w-full p-3 bg-transparent text-center font-black outline-none border-none focus:bg-white text-xs"
                               placeholder="اسم الغائب..."
                               value={row.absentTeacher}
                               onChange={(e) => updateEntry(row.id, 'absentTeacher', e.target.value)}
@@ -356,17 +329,17 @@ const SubstitutionPage: React.FC = () => {
                               {teacherList.map(name => <option key={name} value={name} />)}
                             </datalist>
                           </td>
-                          <td className="border-e border-slate-300 p-2 bg-slate-50 font-black text-[10px]">البديل المكلف</td>
+                          <td className="border-e border-slate-300 p-2 bg-slate-50 font-black text-[9px] sm:text-[10px]">البديل المكلف</td>
                           {[1, 2, 3, 4, 5, 6, 7].map(num => {
                             const freeTeachers = getFreeTeachers(row.date, `p${num}`);
                             return (
                               <td key={num} className="border-e border-slate-300 p-0 bg-[#E2EFDA]/20">
                                 <input 
                                   list={`free-teachers-p${num}-${row.id}`}
-                                  className="w-full p-2 text-center text-xs font-bold outline-none bg-transparent focus:bg-white"
+                                  className="w-full p-2 text-center text-[10px] font-bold outline-none bg-transparent focus:bg-white"
                                   value={row[`p${num}`] || ''}
                                   onChange={(e) => updateEntry(row.id, `p${num}`, e.target.value)}
-                                  placeholder="---"
+                                  placeholder="-"
                                 />
                                 <datalist id={`free-teachers-p${num}-${row.id}`}>
                                   {freeTeachers.map(name => <option key={name} value={name} />)}
@@ -375,23 +348,23 @@ const SubstitutionPage: React.FC = () => {
                             );
                           })}
                           <td rowSpan={2} className="p-2">
-                            <button onClick={() => handleDelete(row.id)} className="text-red-300 hover:text-red-600 transition-colors p-2 rounded-xl hover:bg-red-50">
-                              <Trash2 size={20} />
+                            <button onClick={() => handleDelete(row.id)} className="text-red-300 hover:text-red-600 transition-colors p-2 rounded-xl hover:bg-red-50 active:scale-90">
+                              <Trash2 size={18} />
                             </button>
                           </td>
                         </tr>
                         <tr className="border-b-2 border-slate-300 h-10">
-                          <td className="border-e border-slate-300 p-2 bg-slate-50 font-black text-[10px]">التوقيع البصمة</td>
+                          <td className="border-e border-slate-300 p-2 bg-slate-50 font-black text-[9px] sm:text-[10px]">التوقيع البصمة</td>
                           {[1, 2, 3, 4, 5, 6, 7].map(num => (
                             <td key={`sig-${num}`} className="border-e border-slate-300 p-1 bg-white">
                               {row[`sig${num}`] === 'تمت الموافقة' ? (
-                                <div className="text-green-600 font-black text-[9px] flex items-center justify-center gap-1">
-                                  <CheckCircle className="w-3 h-3" /> تم الاعتماد
+                                <div className="text-green-600 font-black text-[8px] flex items-center justify-center gap-1">
+                                  <CheckCircle className="w-2.5 h-2.5" /> معتمد
                                 </div>
                               ) : (
                                 <button 
                                   onClick={() => updateEntry(row.id, `sig${num}`, 'تمت الموافقة')}
-                                  className="text-[9px] bg-slate-100 px-3 py-1 rounded-lg border border-slate-200 font-black text-slate-500 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                  className="text-[8px] bg-slate-100 px-2 py-1 rounded-lg border border-slate-200 font-black text-slate-500 hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-95"
                                 >
                                   توقيع
                                 </button>
@@ -410,63 +383,48 @@ const SubstitutionPage: React.FC = () => {
       ) : (
         <div className="space-y-4 animate-in zoom-in duration-500">
           {/* Timetable Header */}
-          <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border flex flex-wrap justify-between items-center gap-6">
-             <div className="flex-1">
-                <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
-                   <TableIcon className="text-emerald-600"/> جدول الحصص العام
-                </h2>
-                <p className="text-slate-400 font-bold text-xs mt-1">تخطيط النصاب الأسبوعي لكادر المدرسة</p>
+          <div className="bg-white p-4 sm:p-6 rounded-3xl sm:rounded-[2.5rem] shadow-sm border flex flex-col gap-4 sm:gap-6">
+             <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                <div className="text-center sm:text-right">
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-800 flex items-center justify-center sm:justify-start gap-2">
+                     <TableIcon className="text-emerald-600 w-6 h-6"/> جدول الحصص العام
+                  </h2>
+                  <p className="text-slate-400 font-bold text-[10px] sm:text-xs mt-1">تخطيط النصاب الأسبوعي لكادر المدرسة</p>
+                </div>
+                
+                <div className="flex gap-2 w-full sm:w-auto">
+                   <button 
+                    onClick={() => setShowIndividualModal(true)}
+                    className="flex-1 sm:flex-none bg-slate-800 text-white px-4 sm:px-6 py-3 rounded-2xl font-black text-xs sm:text-sm shadow-xl flex items-center justify-center gap-2 hover:bg-black active:scale-95 transition-all"
+                  >
+                    <Users size={18}/> جدول فردي
+                  </button>
+                  <button 
+                    onClick={handleAddTimetableRow}
+                    className="flex-1 sm:flex-none bg-emerald-600 text-white px-4 sm:px-6 py-3 rounded-2xl font-black text-xs sm:text-sm shadow-xl shadow-emerald-100 flex items-center justify-center gap-2 hover:bg-emerald-700 active:scale-95 transition-all"
+                  >
+                    <Plus size={18}/> إضافة معلم
+                  </button>
+                </div>
              </div>
              
-             <div className="flex flex-wrap items-center gap-2">
-                <button 
-                  onClick={() => setShowIndividualModal(true)}
-                  className="bg-slate-800 text-white px-6 py-2.5 rounded-2xl font-black text-sm shadow-xl flex items-center gap-2 hover:bg-black active:scale-95 transition-all"
-                >
-                  <Users size={18}/> جدول فردي
-                </button>
-
-                <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-2xl border">
-                   <label className="p-2.5 hover:bg-white text-blue-600 rounded-lg transition-all cursor-pointer" title="استيراد">
+             <div className="flex items-center gap-2 justify-center sm:justify-start border-t pt-3">
+                <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-2xl border w-full sm:w-auto justify-center">
+                   <label className="p-2.5 hover:bg-white text-blue-600 rounded-lg transition-all cursor-pointer active:scale-90" title="استيراد">
                       <Upload size={18}/>
                       <input type="file" className="hidden" accept=".xlsx,.xls" onChange={handleTimetableImport} />
                    </label>
-                   <button onClick={() => {
-                      const text = generateTimetableReport(timetableFiltered);
-                      const blob = new Blob([text.replace(/\*/g,'')], { type: 'text/plain;charset=utf-8' });
-                      const link = document.createElement('a');
-                      link.href = URL.createObjectURL(blob);
-                      link.download = `Timetable_${Date.now()}.txt`;
-                      link.click();
-                   }} className="p-2.5 hover:bg-white text-slate-600 rounded-lg transition-all" title="تصدير TXT"><FileText size={18}/></button>
-                   <button onClick={() => {
-                      const rows: any[] = [];
-                      timetableFiltered.forEach(t => {
-                        const row: any = { 'اسم المعلم': t.teacherName, 'المادة': t.subject, 'ملاحظات': t.notes };
-                        daysAr.forEach(day => periodsAr.forEach((pName, i) => row[`${day} - ${pName}`] = t.days[day][`p${i}`]));
-                        rows.push(row);
-                      });
-                      const ws = XLSX.utils.json_to_sheet(rows);
-                      const workbook = XLSX.utils.book_new();
-                      XLSX.utils.book_append_sheet(workbook, ws, "Timetable");
-                      XLSX.writeFile(workbook, `Timetable_${Date.now()}.xlsx`);
-                   }} className="p-2.5 hover:bg-white text-green-700 rounded-lg transition-all" title="تصدير Excel"><FileSpreadsheet size={18}/></button>
-                   <button onClick={() => sendWhatsApp(generateTimetableReport(timetableFiltered))} className="p-2.5 hover:bg-white text-green-500 rounded-lg transition-all" title="إرسال للواتساب"><Share2 size={18}/></button>
+                   <button className="p-2.5 hover:bg-white text-slate-600 rounded-lg transition-all active:scale-90" title="تصدير TXT"><FileText size={18}/></button>
+                   <button className="p-2.5 hover:bg-white text-green-700 rounded-lg transition-all active:scale-90" title="تصدير Excel"><FileSpreadsheet size={18}/></button>
+                   <button className="p-2.5 hover:bg-white text-green-500 rounded-lg transition-all active:scale-90" title="إرسال للواتساب"><Share2 size={18}/></button>
                 </div>
-
-                <button 
-                  onClick={handleAddTimetableRow}
-                  className="bg-emerald-600 text-white px-6 py-2.5 rounded-2xl font-black text-sm shadow-xl shadow-emerald-100 flex items-center gap-2 hover:bg-emerald-700 active:scale-95 transition-all"
-                >
-                  <Plus size={20}/> إضافة معلم
-                </button>
              </div>
           </div>
 
           {/* Timetable Grid */}
-          <div className="bg-white rounded-[2.5rem] shadow-xl border overflow-hidden relative">
+          <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-xl border overflow-hidden relative">
             <div className="overflow-x-auto overflow-y-auto max-h-[600px] scroll-smooth">
-              <table className="w-full border-collapse text-center table-fixed min-w-[4000px]">
+              <table className="w-full border-collapse text-center table-fixed min-w-[3000px] sm:min-w-[4000px]">
                 <thead className="sticky top-0 z-40 bg-white">
                   <tr className="bg-slate-100 text-slate-800 font-black border-b border-slate-300 h-14">
                     <th rowSpan={2} className="w-12 border-e border-slate-300 sticky right-0 bg-slate-100 z-50">م</th>
@@ -474,7 +432,7 @@ const SubstitutionPage: React.FC = () => {
                     <th rowSpan={2} className="w-28 border-e border-slate-300 sticky right-[192px] bg-slate-100 z-50">المادة</th>
                     {daysAr.map(day => (
                       <th key={day} colSpan={8} className="border-e border-slate-300 bg-slate-100 py-2">
-                        <div className="flex items-center justify-center gap-2 text-sm">
+                        <div className="flex items-center justify-center gap-2 text-xs sm:text-sm">
                           <Calendar size={14} className="text-emerald-600"/> {day}
                         </div>
                       </th>
@@ -482,7 +440,7 @@ const SubstitutionPage: React.FC = () => {
                     <th rowSpan={2} className="w-64">ملاحظات</th>
                     <th rowSpan={2} className="w-16"></th>
                   </tr>
-                  <tr className="bg-slate-50 text-slate-500 font-black border-b-2 border-slate-300 text-[10px] h-10">
+                  <tr className="bg-slate-50 text-slate-500 font-black border-b-2 border-slate-300 text-[9px] sm:text-[10px] h-10">
                     {daysAr.map(day => (
                       <React.Fragment key={day}>
                         {periodsAr.map((p, i) => (
@@ -500,7 +458,7 @@ const SubstitutionPage: React.FC = () => {
                 </thead>
                 <tbody>
                   {data.timetable.length === 0 ? (
-                    <tr><td colSpan={100} className="p-32 text-slate-300 italic font-black text-xl">يرجى إضافة بيانات لجدول الحصص...</td></tr>
+                    <tr><td colSpan={100} className="p-20 sm:p-32 text-slate-300 italic font-black text-lg sm:text-xl">يرجى إضافة بيانات لجدول الحصص...</td></tr>
                   ) : data.timetable.map((row, idx) => {
                     const isRowHighlighted = highlightRow === row.id;
                     return (
@@ -513,7 +471,7 @@ const SubstitutionPage: React.FC = () => {
                         <td className={`p-1 sticky right-12 z-30 transition-colors ${isRowHighlighted ? 'bg-orange-100' : 'bg-white group-hover:bg-slate-50'}`}>
                            <input 
                               list={`teacher-list-${row.id}`}
-                              className="w-full p-2 bg-transparent text-right font-black outline-none border-none text-xs" 
+                              className="w-full p-2 bg-transparent text-right font-black outline-none border-none text-[11px] sm:text-xs" 
                               value={row.teacherName} 
                               onChange={e => updateTimetableField(row.id, ['teacherName'], e.target.value)}
                               placeholder="..."
@@ -521,7 +479,7 @@ const SubstitutionPage: React.FC = () => {
                            <datalist id={`teacher-list-${row.id}`}>{teacherList.map(n => <option key={n} value={n}/>)}</datalist>
                         </td>
                         <td className={`p-1 sticky right-[192px] z-30 transition-colors border-e border-slate-200 ${isRowHighlighted ? 'bg-orange-100' : 'bg-white group-hover:bg-slate-50'}`}>
-                           <input className="w-full p-2 bg-transparent text-right font-bold outline-none border-none text-xs text-emerald-700" value={row.subject} onChange={e => updateTimetableField(row.id, ['subject'], e.target.value)} placeholder="..." />
+                           <input className="w-full p-2 bg-transparent text-right font-bold outline-none border-none text-[11px] sm:text-xs text-emerald-700" value={row.subject} onChange={e => updateTimetableField(row.id, ['subject'], e.target.value)} placeholder="..." />
                         </td>
                         {daysAr.map(day => (
                           <React.Fragment key={day}>
@@ -545,7 +503,7 @@ const SubstitutionPage: React.FC = () => {
                         ))}
                         <td className="p-1"><input className="w-full p-2 text-right text-[10px] outline-none bg-transparent" value={row.notes} onChange={e => updateTimetableField(row.id, ['notes'], e.target.value)} placeholder="..." /></td>
                         <td className="p-1">
-                           <button onClick={(e) => { e.stopPropagation(); updateData({ timetable: data.timetable.filter(x => x.id !== row.id) }); }} className="text-red-200 hover:text-red-600 transition-colors p-2 rounded-xl"><Trash2 size={16}/></button>
+                           <button onClick={(e) => { e.stopPropagation(); updateData({ timetable: data.timetable.filter(x => x.id !== row.id) }); }} className="text-red-200 hover:text-red-600 transition-colors p-2 rounded-xl active:scale-90"><Trash2 size={16}/></button>
                         </td>
                       </tr>
                     );
@@ -576,7 +534,7 @@ const SubstitutionPage: React.FC = () => {
                       setSelectedCoverageDate(date);
                       setShowCoverageArchive(false);
                     }}
-                    className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all group ${selectedCoverageDate === date ? 'border-blue-500 bg-blue-50' : 'border-slate-100 hover:border-blue-200'}`}
+                    className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all group active:scale-[0.98] ${selectedCoverageDate === date ? 'border-blue-500 bg-blue-50' : 'border-slate-100 hover:border-blue-200'}`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded-xl ${selectedCoverageDate === date ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 group-hover:text-blue-50'}`}>
@@ -595,130 +553,12 @@ const SubstitutionPage: React.FC = () => {
               )}
             </div>
             <div className="p-4 bg-slate-50 border-t flex justify-center">
-              <button onClick={() => setShowCoverageArchive(false)} className="px-10 py-2.5 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-black transition-all">إغلاق</button>
+              <button onClick={() => setShowCoverageArchive(false)} className="px-10 py-2.5 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-black transition-all active:scale-95">إغلاق</button>
             </div>
           </div>
         </div>
       )}
       {/* END OF CHANGE */}
-
-      {/* Individual Timetable Filter Modal */}
-      {showIndividualModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-           <div className="bg-white w-full max-w-5xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border-4 border-slate-100">
-              <div className="p-6 bg-slate-900 text-white flex justify-between items-center shadow-lg">
-                 <h3 className="text-2xl font-black flex items-center gap-3"><Users size={28}/> الفلترة والجدول الفردي</h3>
-                 <button onClick={() => setShowIndividualModal(false)} className="hover:bg-slate-800 p-2 rounded-full transition-all"><X size={24}/></button>
-              </div>
-              
-              <div className="p-8 space-y-8 overflow-y-auto">
-                 {/* Filters Window */}
-                 <div className="bg-slate-50 p-8 rounded-[2.5rem] border-2 border-slate-100 shadow-inner grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div className="space-y-2">
-                       <label className="text-xs font-black text-slate-500 mr-2">اسم المعلم</label>
-                       <div className="relative">
-                          <input 
-                            className="w-full p-4 rounded-2xl border-2 outline-none focus:border-blue-500 font-black text-sm pr-10" 
-                            placeholder="اكتب اسم المعلم..."
-                            value={individualFilter.teacher}
-                            onChange={e => setIndividualFilter({...individualFilter, teacher: e.target.value})}
-                          />
-                          <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300" size={20}/>
-                       </div>
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-xs font-black text-slate-500 mr-2">اليوم</label>
-                       <select className="w-full p-4 rounded-2xl border-2 outline-none focus:border-blue-500 font-black text-sm bg-white" value={individualFilter.day} onChange={e => setIndividualFilter({...individualFilter, day: e.target.value})}>
-                          <option value="">كل الأيام</option>
-                          {daysAr.map(d => <option key={d} value={d}>{d}</option>)}
-                       </select>
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-xs font-black text-slate-500 mr-2">الصف والشعبة</label>
-                       <input className="w-full p-4 rounded-2xl border-2 outline-none focus:border-blue-500 font-black text-sm" placeholder="مثال: 9-أ" value={individualFilter.gradeSection} onChange={e => setIndividualFilter({...individualFilter, gradeSection: e.target.value})} />
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-xs font-black text-slate-500 mr-2">الحصة</label>
-                       <select className="w-full p-4 rounded-2xl border-2 outline-none focus:border-blue-500 font-black text-sm bg-white" value={individualFilter.period} onChange={e => setIndividualFilter({...individualFilter, period: e.target.value})}>
-                          <option value="">كل الحصص</option>
-                          {periodsAr.map((p, i) => <option key={i} value={`p${i}`}>{p}</option>)}
-                       </select>
-                    </div>
-                 </div>
-
-                 {/* Results Table */}
-                 <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                       <h4 className="font-black text-xl text-slate-800">نتائج الفلترة المخصصة</h4>
-                       <div className="flex gap-2">
-                          <button onClick={() => sendWhatsApp(generateTimetableReport(individualTimetableResult))} className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-600 rounded-xl font-black text-xs hover:bg-green-100 transition-all shadow-sm"><Share2 size={16}/> إرسال المفلتر</button>
-                          <button onClick={() => {}} className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl font-black text-xs hover:bg-blue-100 transition-all shadow-sm"><FileSpreadsheet size={16}/> تصدير إكسل</button>
-                       </div>
-                    </div>
-
-                    <div className="overflow-x-auto rounded-3xl border-2 border-slate-100 shadow-xl bg-white">
-                       <table className="w-full border-collapse text-center text-sm">
-                          <thead className="bg-[#FFD966] text-slate-800 font-black border-b-2 border-slate-200">
-                             <tr>
-                                <th className="p-4 border-e border-slate-200">المعلم / المادة</th>
-                                <th className="p-4 border-e border-slate-200">اليوم</th>
-                                {periodsAr.map((p, i) => {
-                                  if (individualFilter.period && individualFilter.period !== `p${i}`) return null;
-                                  return <th key={i} className="p-4 border-e border-slate-200">{p}</th>;
-                                })}
-                             </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 font-black">
-                             {individualTimetableResult.length === 0 ? (
-                                <tr><td colSpan={10} className="p-10 text-slate-300 italic">لا توجد نتائج مطابقة للفلتر...</td></tr>
-                             ) : individualTimetableResult.map(t => {
-                                return daysAr.map(day => {
-                                   if (individualFilter.day && individualFilter.day !== day) return null;
-                                   
-                                   const dayData = t.days[day];
-                                   if (individualFilter.gradeSection) {
-                                      const hasGrade = Object.values(dayData).some(v => String(v).includes(individualFilter.gradeSection));
-                                      if (!hasGrade) return null;
-                                   }
-
-                                   return (
-                                     <tr key={`${t.id}-${day}`} className="hover:bg-slate-50 transition-colors">
-                                        <td className="p-4 border-e border-slate-100 bg-slate-50/50">
-                                           <div className="text-slate-800">{t.teacherName}</div>
-                                           <div className="text-[10px] text-emerald-600 font-bold">{t.subject}</div>
-                                        </td>
-                                        <td className="p-4 border-e border-slate-100 text-blue-600">{day}</td>
-                                        {periodsKeys.map((pKey, i) => {
-                                          if (individualFilter.period && individualFilter.period !== pKey) return null;
-                                          
-                                          const val = dayData[pKey];
-                                          const isTargetGrade = individualFilter.gradeSection && String(val).includes(individualFilter.gradeSection);
-                                          
-                                          return (
-                                            <td key={pKey} className={`p-4 border-e border-slate-100 ${isTargetGrade ? 'bg-orange-100 text-orange-800 scale-105 shadow-inner' : ''}`}>
-                                               {val || '-'}
-                                               {individualFilter.gradeSection && !individualFilter.teacher && val && (
-                                                  <div className="text-[9px] text-slate-400 mt-1">{t.teacherName} | {t.subject}</div>
-                                               )}
-                                            </td>
-                                          );
-                                        })}
-                                     </tr>
-                                   );
-                                });
-                             })}
-                          </tbody>
-                       </table>
-                    </div>
-                 </div>
-              </div>
-
-              <div className="p-6 bg-slate-50 border-t flex justify-center">
-                 <button onClick={() => setShowIndividualModal(false)} className="px-12 py-3 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl hover:bg-black transition-all active:scale-95">تم وموافق</button>
-              </div>
-           </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -210,7 +210,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
               if (card.subSubTypes.length > 0) {
                   list = list.filter(i => card.subSubTypes.includes(i.sub));
               } else {
-                  return []; // START OF CHANGE: Hide list if sub-options exist but none selected
+                  return []; 
               }
           }
       }
@@ -227,7 +227,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
                   return card.subSubTypes.some(selected => val.includes(selected));
                 });
               } else {
-                return []; // START OF CHANGE: Hide list if sub-options exist but none selected
+                return []; 
               }
           }
       }
@@ -318,18 +318,18 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 font-arabic pb-20">
-      <header className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white p-6 rounded-[2.5rem] border shadow-sm">
-        <div className="flex-1">
-          <h2 className="text-3xl font-black text-slate-800 flex items-center gap-3">
-            <Sparkles className="text-blue-600 animate-pulse" />
-            لوحه التحكم الذكيه
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500 font-arabic pb-16">
+      <header className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white p-4 sm:p-6 rounded-3xl sm:rounded-[2.5rem] border shadow-sm">
+        <div className="text-center md:text-right">
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-800 flex items-center justify-center md:justify-start gap-3">
+            <Sparkles className="text-blue-600 animate-pulse w-6 h-6" />
+            لوحة التحكم الذكية
           </h2>
-          <p className="text-slate-500 font-bold mt-1 text-xs">أتمتة ذكية ومتابعة مرئية لكافة المعايير</p>
+          <p className="text-slate-500 font-bold mt-1 text-[10px] sm:text-xs">أتمتة ذكية ومتابعة مرئية لكافة المعايير</p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-4 bg-slate-50 p-4 rounded-3xl border border-slate-100">
-           <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border shadow-sm">
+        <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3 sm:gap-4 bg-slate-50 p-3 sm:p-4 rounded-3xl border border-slate-100 w-full md:w-auto">
+           <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border shadow-sm w-full sm:w-auto justify-center">
               <History className="w-4 h-4 text-blue-500" />
               <select value={cycleDuration} onChange={(e) => setCycleDuration(Number(e.target.value))} className="text-[10px] font-black bg-transparent outline-none cursor-pointer">
                 <option value={3000}>3 ثوانٍ</option>
@@ -338,12 +338,12 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
               </select>
            </div>
 
-           <div className="flex gap-1 bg-white p-1 rounded-2xl border shadow-inner">
+           <div className="flex gap-1 bg-white p-1 rounded-2xl border shadow-inner w-full sm:w-auto overflow-x-auto scrollbar-hide justify-center">
              {['all', 'daily', 'weekly', 'monthly', 'custom'].map((t) => (
                 <button 
                   key={t}
                   onClick={() => setGlobalTimeRange(t as any)}
-                  className={`px-4 py-1.5 rounded-xl text-[10px] font-black transition-all ${globalTimeRange === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
+                  className={`px-3 sm:px-4 py-1.5 rounded-xl text-[10px] font-black transition-all whitespace-nowrap ${globalTimeRange === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
                 >
                   {t === 'all' ? 'الكل' : t === 'daily' ? 'يومية' : t === 'weekly' ? 'أسبوعية' : t === 'monthly' ? 'شهرية' : 'مخصص'}
                 </button>
@@ -351,7 +351,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
            </div>
 
            {globalTimeRange === 'custom' && (
-             <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border shadow-sm animate-in slide-in-from-right-2">
+             <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border shadow-sm animate-in slide-in-from-right-2 w-full sm:w-auto justify-center">
                <input type="date" value={dateRange.start} onChange={(e) => setDateRange({...dateRange, start: e.target.value})} className="text-[9px] font-black outline-none bg-transparent" />
                <span className="text-slate-200">|</span>
                <input type="date" value={dateRange.end} onChange={(e) => setDateRange({...dateRange, end: e.target.value})} className="text-[9px] font-black outline-none bg-transparent" />
@@ -360,7 +360,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {cards.map((card, idx) => {
           const list = getFilteredListForCard(card);
           const count = list.length;
@@ -374,18 +374,18 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
           return (
             <div 
                 key={card.id} 
-                className={`rounded-[2.5rem] border-2 ${design.border} p-4 shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all group flex flex-col gap-1.5 relative overflow-visible h-[340px] mt-6`}
+                className={`rounded-[2rem] sm:rounded-[2.5rem] border-2 ${design.border} p-4 shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all group flex flex-col gap-1.5 relative overflow-visible h-[340px] mt-6`}
                 style={{ background: design.gradient }}
             >
               <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-30">
-                 <div className={`w-14 h-14 rounded-full border-4 border-white flex items-center justify-center font-black text-2xl text-white shadow-xl ${design.accent}`}>
+                 <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border-4 border-white flex items-center justify-center font-black text-xl sm:text-2xl text-white shadow-xl ${design.accent}`}>
                     {count}
                  </div>
               </div>
 
               <div className="absolute top-4 left-4 z-40 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => handleExportWhatsApp(currentSub?.label || currentCat?.label || 'تقرير', list)} className="p-1 bg-white/80 rounded-lg text-green-600 shadow-sm hover:bg-white"><Share2 size={12}/></button>
-                <button onClick={() => handleExportExcel(currentSub?.label || currentCat?.label || 'تقرير', list)} className="p-1 bg-white/80 rounded-lg text-blue-600 shadow-sm hover:bg-white"><FileSpreadsheet size={12}/></button>
+                <button onClick={() => handleExportWhatsApp(currentSub?.label || currentCat?.label || 'تقرير', list)} className="p-1.5 bg-white/80 rounded-lg text-green-600 shadow-sm hover:bg-white"><Share2 size={12}/></button>
+                <button onClick={() => handleExportExcel(currentSub?.label || currentCat?.label || 'تقرير', list)} className="p-1.5 bg-white/80 rounded-lg text-blue-600 shadow-sm hover:bg-white"><FileSpreadsheet size={12}/></button>
               </div>
 
               <div className="flex flex-col gap-1 relative z-10 pt-4 px-1">
@@ -397,7 +397,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
                         <select 
                             value={card.category}
                             onChange={(e) => updateCard(card.id, { category: e.target.value as DataCategory, subType: 'all', subSubTypes: [] })}
-                            className={`text-[9px] font-black bg-white ${design.text} rounded-lg px-2 py-1 outline-none border-none cursor-pointer shadow-sm hover:bg-slate-50 transition-colors uppercase tracking-wider`}
+                            className={`text-[9px] font-black bg-white ${design.text} rounded-lg px-2 py-1 outline-none border-none cursor-pointer shadow-sm hover:bg-slate-50 transition-colors uppercase tracking-wider max-w-[100px] sm:max-w-none`}
                         >
                             {mainCategories.map(cat => <option key={cat.id} value={cat.id}>{cat.label}</option>)}
                         </select>
@@ -448,17 +448,15 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm bg-slate-50 border-2 border-slate-100 flex-shrink-0`}>
                              {item.icon || <User size={20} />}
                            </div>
-                           {/* START OF CHANGE: Enlarged Name and Inline Data */}
                            <div className="flex-1 flex items-center gap-3 overflow-hidden">
-                              <div className="font-black text-[19px] text-slate-900 truncate leading-none flex-shrink-0">
+                              <div className="font-black text-[15px] sm:text-[19px] text-slate-900 truncate leading-none flex-shrink-0">
                                 {item.displayName}
                               </div>
-                              <div className="text-[11px] text-blue-600 font-black truncate bg-blue-50/90 px-2.5 py-1.5 rounded-xl border border-blue-100/50 whitespace-nowrap min-w-0">
+                              <div className="text-[9px] sm:text-[11px] text-blue-600 font-black truncate bg-blue-50/90 px-2 py-1 rounded-xl border border-blue-100/50 whitespace-nowrap min-w-0">
                                 {item.grade ? `${item.grade}-${item.section || ''}` : item.sub || item.subjectCode || item.date || '---'}
                               </div>
                            </div>
                            <ChevronLeft size={18} className="text-slate-300 group-hover:text-blue-500 transition-colors flex-shrink-0" />
-                           {/* END OF CHANGE */}
                         </div>
                     ))
                  )}
@@ -486,13 +484,13 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 bg-white p-8 rounded-[2.5rem] border-2 border-slate-50 shadow-sm relative overflow-hidden group">
+        <div className="lg:col-span-1 bg-white p-6 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border-2 border-slate-50 shadow-sm relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-2 h-full bg-blue-600 group-hover:w-3 transition-all"></div>
           <h3 className="text-xl font-black mb-6 flex items-center gap-2 text-slate-800">
             <CalendarDays className="text-blue-600" />
             بيانات المؤسسة
           </h3>
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <div className="bg-blue-50/50 p-4 rounded-3xl border border-blue-100/50">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white rounded-xl shadow-sm text-blue-600"><School size={16}/></div>
@@ -514,13 +512,13 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
           </div>
         </div>
 
-        <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border-2 border-slate-50 shadow-sm relative overflow-hidden">
+        <div className="lg:col-span-2 bg-white p-6 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border-2 border-slate-50 shadow-sm relative overflow-hidden">
           <div className="absolute -top-10 -right-10 w-40 h-40 bg-slate-50 rounded-full opacity-50"></div>
           <h3 className="text-xl font-black mb-6 flex items-center gap-2 text-slate-800">
             <TrendingUp className="text-green-600" />
             الوصول السريع
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
+          <div className="grid grid-cols-2 xs:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 relative z-10">
             {[
               { label: 'التقرير اليومي', icon: <FileText />, view: 'daily' },
               { label: 'تغطية الحصص', icon: <UserPlusIcon />, view: 'substitute' },
@@ -535,12 +533,14 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
               <button 
                 key={i} 
                 onClick={() => setView?.(btn.view)}
-                className="flex flex-col items-center justify-center p-6 rounded-[2rem] border-2 border-slate-50 bg-slate-50 hover:bg-white hover:border-blue-600 hover:shadow-2xl hover:-translate-y-2 transition-all gap-3 group"
+                className="flex flex-col items-center justify-center p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border-2 border-slate-50 bg-slate-50 hover:bg-white hover:border-blue-600 hover:shadow-2xl hover:-translate-y-2 transition-all gap-3 group active:scale-95"
               >
-                <div className={`p-4 rounded-2xl bg-white shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all text-blue-600`}>
+                <div className={`p-3 sm:p-4 rounded-2xl bg-white shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all text-blue-600`}>
                   {btn.icon}
                 </div>
-                <span className="text-xs font-black text-slate-700 truncate w-full text-center px-1">{btn.label}</span>
+                <span className="text-[10px] sm:text-xs font-black text-slate-700 whitespace-normal leading-tight text-center px-1 max-w-full">
+                  {btn.label}
+                </span>
               </button>
             ))}
           </div>

@@ -136,56 +136,56 @@ const MainApp: React.FC = () => {
 
   return (
     <Layout onNavigate={handleSetView} onOpenSettings={() => setIsDataModalOpen(true)}>
-      <div className="fixed top-20 left-6 z-[60] flex flex-col gap-2 pointer-events-auto">
+      <div className="fixed top-20 left-4 sm:left-6 z-[60] flex flex-col gap-2 pointer-events-auto">
         <button 
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all active:scale-90"
+          className="p-2.5 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all active:scale-90"
           title="أعلى الشاشة"
         >
           <ArrowUp size={20} />
         </button>
         <button 
           onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
-          className="p-2 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-all active:scale-90"
+          className="p-2.5 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-all active:scale-90"
           title="أسفل الشاشة"
         >
           <ArrowDown size={20} />
         </button>
       </div>
 
-      <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
-        <div>
+      <div className="mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="text-center sm:text-right">
           <h2 className="text-2xl font-black text-slate-800"> رفيق المشرف الإداري </h2>
           <p className="text-blue-500 text-sm font-bold"> رفيقك في كتابة تقارير الإشراف الإداري </p>
         </div>
         
         <button 
           onClick={() => setIsDataModalOpen(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:bg-slate-50 hover:border-blue-200 transition-all shadow-sm"
+          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-2xl text-slate-600 font-black text-sm hover:bg-slate-50 hover:border-blue-200 transition-all shadow-sm active:scale-95"
         >
           <Database className="w-5 h-5 text-blue-600" />
           <span>إدارة ونقل البيانات</span>
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-8 bg-white/50 backdrop-blur-md p-2 rounded-2xl border border-white">
+      <div className="flex flex-wrap gap-2 mb-8 bg-white/50 backdrop-blur-md p-2 rounded-2xl border border-white justify-center sm:justify-start">
         {navItems.map((item) => (
           <button 
             key={item.id}
             onClick={() => handleSetView(item.id)}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all ${
+            className={`flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-black transition-all active:scale-95 ${
               view.startsWith(item.id) 
               ? 'bg-blue-600 text-white shadow-xl shadow-blue-100 scale-105' 
               : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-100'
             }`}
           >
             {item.icon}
-            {item.label}
+            <span className="whitespace-nowrap">{item.label}</span>
           </button>
         ))}
       </div>
 
-      <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10">
         {renderView()}
       </div>
 

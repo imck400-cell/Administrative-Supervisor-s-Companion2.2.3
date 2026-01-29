@@ -392,8 +392,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                         <div className={`p-1.5 rounded-xl bg-white shadow-md transform group-hover:rotate-12 transition-transform`}>
-                            {/* FIX: Add generic type to React.ReactElement to allow passing 'size' prop in cloneElement */}
-                            {currentCat?.icon && React.cloneElement(currentCat.icon as React.ReactElement<any>, { size: 14 })}
+                            {currentCat?.icon && React.cloneElement(currentCat.icon as React.ReactElement, { size: 14 })}
                         </div>
                         <select 
                             value={card.category}

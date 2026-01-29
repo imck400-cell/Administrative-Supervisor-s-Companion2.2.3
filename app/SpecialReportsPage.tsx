@@ -590,7 +590,7 @@ const SpecialReportsPage: React.FC<{ initialSubTab?: string, onSubTabOpen?: (id:
               </thead>
               <tbody>
                  {filteredLogs.length === 0 ? (
-                    <tr><td colSpan={currentSubjects.length * 2 + 4} className="p-20 text-slate-300 italic text-xl font-bold">لا توجد بيانات مسجلة مطابقة للبحث حالياً. تأكد من صحة الفلتر أو وجود طلاب في "تقارير الطلاب".</td></tr>
+                    <tr><td colSpan={currentSubjects.length * 2 + 4} className="p-20 text-slate-300 italic text-xl font-bold">لا توجد بيانات مسجلة مطابقة للبحث حالياً.</td></tr>
                  ) : (
                     filteredLogs.map((log, idx) => (
                         <tr key={log.id} className="border-b-[2px] border-[#7030A0]/10 hover:bg-[#FDF6E3] transition-colors h-14 group">
@@ -1938,8 +1938,7 @@ const SpecialReportsPage: React.FC<{ initialSubTab?: string, onSubTabOpen?: (id:
           <div className="flex flex-wrap gap-2 md:gap-4 justify-center md:justify-start">
             {Object.entries(structure).map(([key, cat]) => (
               <button key={key} onClick={() => setActiveTab(key as MainTab)} className={`flex items-center gap-2 md:gap-3 px-4 md:px-8 py-3 md:py-5 rounded-[1.5rem] md:rounded-[2rem] font-black text-sm md:text-lg transition-all shadow-sm ${activeTab === key ? 'bg-blue-600 text-white shadow-xl scale-105' : 'bg-white text-slate-600 border border-slate-100 hover:bg-blue-50'}`}>
-                {/* FIX: Add generic type to React.ReactElement to allow passing 'size' prop in cloneElement */}
-                {React.cloneElement(cat.icon as React.ReactElement<any>, { size: 20 })} {cat.title}
+                {React.cloneElement(cat.icon as React.ReactElement, { size: 20 })} {cat.title}
               </button>
             ))}
           </div>

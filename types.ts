@@ -60,7 +60,6 @@ export interface TeacherFollowUp {
   teacherName: string;
   subjectCode: string;
   className: string;
-  gender: string; // الحقل المضاف حديثاً
   attendance: number;
   appearance: number;
   preparation: number;
@@ -223,7 +222,6 @@ export interface ParentVisitLog {
   actions: string;
   followUpStatus: string[];
   prevVisitCount: number;
-  notes: string;
 }
 
 export interface GenericSpecialReport {

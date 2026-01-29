@@ -1,4 +1,3 @@
-
 export type Language = 'ar' | 'en';
 
 export interface SchoolProfile {
@@ -60,6 +59,7 @@ export interface TeacherFollowUp {
   teacherName: string;
   subjectCode: string;
   className: string;
+  gender: string; // الحقل المضاف حديثاً
   attendance: number;
   appearance: number;
   preparation: number;

@@ -110,7 +110,8 @@ const MainApp: React.FC = () => {
         }
         return navItems.find(item => item.id === id);
       })
-      .filter((item): item is { id: string; label: string; icon: React.ReactNode } => !!item);
+      // FIX: Use React.ReactElement instead of React.ReactNode for type predicate narrowing to satisfy assignment to JSX.Element
+      .filter((item): item is { id: string; label: string; icon: React.ReactElement } => !!item);
   }, [recentActionIds, navItems]);
 
   const handleSetView = (v: string) => {

@@ -1,3 +1,4 @@
+
 export type Language = 'ar' | 'en';
 
 export interface SchoolProfile {
@@ -222,6 +223,7 @@ export interface ParentVisitLog {
   actions: string;
   followUpStatus: string[];
   prevVisitCount: number;
+  notes: string;
 }
 
 export interface GenericSpecialReport {

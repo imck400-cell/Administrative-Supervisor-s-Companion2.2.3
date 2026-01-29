@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useRef, useEffect, memo } from 'react';
 import { useGlobal } from '../context/GlobalState';
 import { 
@@ -387,19 +388,6 @@ export const DailyReportsPage: React.FC = () => {
                             {((teachers.reduce((acc, t) => acc + calculateTotal(t), 0) / (teachers.length * totalMaxScore)) * 100).toFixed(1)}%
                         </td>
                     </tr>
-                    <tr>
-                        <td colSpan={filterMode === 'metric' ? 2 : 4} className="p-2 text-left px-4 border-e">النسبة العامة</td>
-                        {displayedMetrics.map(m => (
-                            <td key={m.key} className="p-2 border-e text-slate-500">
-                                <div className="flex flex-col">
-                                    <span className="text-[10px]">{getColPercent(m.key, m.max)}%</span>
-                                </div>
-                            </td>
-                        ))}
-                        <td className="p-2 border-e"></td>
-                        <td className="p-2 border-e"></td>
-                        <td className="p-2 border-e"></td>
-                    </tr>
                 </tfoot>
             )}
           </table>
@@ -523,10 +511,8 @@ export const ViolationsPage: React.FC = () => {
 
   const studentList = data.studentReports || [];
   
-  // Map teacher names to their profiles for quick lookup and auto-fill
   const teacherProfiles = useMemo(() => {
-    const profiles: Record<string, { subject: string, class: string }> = {};
-    // Reverse iterate to get the most recent data if duplicates exist
+    const profiles: Record<string, { subject: string; class: string }> = {};
     [...data.dailyReports].reverse().forEach(r => {
       r.teachersData.forEach(t => {
         if (t.teacherName && !profiles[t.teacherName]) {
@@ -760,27 +746,14 @@ export const ViolationsPage: React.FC = () => {
                   إعادة ضبط
                 </button>
               </div>
-              <div className="flex flex-wrap gap-1">
-                {tempNames.map(name => (
-                  <span key={name} className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-lg text-[10px] font-black">
-                    {name} <X size={10} className="cursor-pointer" onClick={() => setTempNames(tempNames.filter(n => n !== name))} />
-                  </span>
-                ))}
-              </div>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-black text-slate-400">الفترة الزمنية</label>
               <div className="flex items-center gap-2 bg-white px-4 py-3 rounded-xl border">
                 <Calendar size={14} className="text-slate-400"/>
-                <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-slate-400">من:</span>
-                  <input type="date" className="text-xs font-bold outline-none" value={filterValues.start} onChange={e => setFilterValues({...filterValues, start: e.target.value})} />
-                </div>
+                <input type="date" className="text-xs font-bold outline-none" value={filterValues.start} onChange={e => setFilterValues({...filterValues, start: e.target.value})} />
                 <span className="mx-2 text-slate-300">|</span>
-                <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-slate-400">إلى:</span>
-                  <input type="date" className="text-xs font-bold outline-none" value={filterValues.end} onChange={e => setFilterValues({...filterValues, end: e.target.value})} />
-                </div>
+                <input type="date" className="text-xs font-bold outline-none" value={filterValues.end} onChange={e => setFilterValues({...filterValues, end: e.target.value})} />
               </div>
             </div>
           </div>
@@ -791,157 +764,28 @@ export const ViolationsPage: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-center text-sm border-collapse min-w-[1200px]">
             <thead className="bg-[#FFD966] text-slate-800 font-black">
-              {activeMode === 'teachers' ? (
-                <tr>
-                  <th className="p-4 border-e border-slate-300 w-12">م</th>
-                  <th className="p-4 border-e border-slate-300 w-64">اسم المعلم</th>
-                  <th className="p-4 border-e border-slate-300 w-32">مادة</th>
-                  <th className="p-4 border-e border-slate-300 w-32">الصف</th>
-                  <th className="p-4 border-e border-slate-300 w-24">عدد التعهدات</th>
-                  <th className="p-4 border-e border-slate-300">بيان المخالفة</th>
-                  <th className="p-4 border-e border-slate-300 w-32">اليوم</th>
-                  <th className="p-4 border-e border-slate-300 w-40">التاريخ</th>
-                  <th className="p-4 border-e border-slate-300">الإجراء</th>
-                  <th className="p-4 border-e border-slate-300 w-64">التوقيع</th>
-                  <th className="p-4"></th>
-                </tr>
-              ) : (
-                <tr>
-                  <th className="p-4 border-e border-slate-300 w-12">م</th>
-                  <th className="p-4 border-e border-slate-300 w-64">اسم الطالب</th>
-                  <th className="p-4 border-e border-slate-300 w-32">الصف</th>
-                  <th className="p-4 border-e border-slate-300 w-24">الشعبة</th>
-                  <th className="p-4 border-e border-slate-300 w-24">عدد المخالفات</th>
-                  <th className="p-4 border-e border-slate-300 w-40">التاريخ</th>
-                  <th className="p-4 border-e border-slate-300">بيان المخالفة</th>
-                  <th className="p-4 border-e border-slate-300">الإجراء المتخذ</th>
-                  <th className="p-4 border-e border-slate-300 w-64">التوقيع</th>
-                  <th className="p-4"></th>
-                </tr>
-              )}
+              <tr>
+                <th className="p-4 border-e border-slate-300 w-12">م</th>
+                <th className="p-4 border-e border-slate-300 w-64">الاسم</th>
+                <th className="p-4 border-e border-slate-300">المخالفة</th>
+                <th className="p-4 border-e border-slate-300 w-40">التاريخ</th>
+                <th className="p-4">إجراءات</th>
+              </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="p-16 text-slate-400 italic font-bold">لا توجد تعهدات مسجلة لهذه الفئة حالياً.</td>
+                  <td colSpan={5} className="p-16 text-slate-400 italic font-bold">لا توجد تعهدات مسجلة.</td>
                 </tr>
               ) : (
                 filteredData.map((v, idx) => (
                   <tr key={v.id} className="hover:bg-slate-50 transition-colors font-bold group">
                     <td className="p-4 border-e border-slate-100 bg-slate-50/50">{idx + 1}</td>
-                    
-                    <td className="p-2 border-e border-slate-100 relative">
-                       <input 
-                         className="w-full text-right bg-transparent outline-none focus:ring-1 ring-blue-200 rounded p-1"
-                         value={activeMode === 'students' ? v.studentName : v.teacherName}
-                         onChange={(e) => updateViolation(v.id, activeMode === 'students' ? 'studentName' : 'teacherName', e.target.value)}
-                         placeholder="اكتب الاسم..."
-                       />
-                       {((activeMode === 'students' ? v.studentName : v.teacherName).length > 2) && (
-                         <div className="absolute top-full left-0 right-0 z-[100] bg-white border shadow-xl rounded-lg max-h-32 overflow-y-auto hidden group-focus-within:block">
-                            {(activeMode === 'students' ? studentList.map(s => s.name) : teacherList)
-                              .filter(n => n.includes(activeMode === 'students' ? v.studentName : v.teacherName))
-                              .map(suggestion => (
-                                <button 
-                                  key={suggestion}
-                                  onMouseDown={() => handleSelectSuggestion(v.id, suggestion)}
-                                  className="w-full text-right p-2 text-[10px] hover:bg-blue-50 border-b last:border-none"
-                                >
-                                  {suggestion}
-                                </button>
-                            ))}
-                         </div>
-                       )}
-                    </td>
-
-                    {activeMode === 'teachers' ? (
-                      <>
-                        <td className="p-2 border-e border-slate-100">
-                          <select className="w-full bg-transparent outline-none text-center" value={v.subject} onChange={(e) => updateViolation(v.id, 'subject', e.target.value)}>
-                            <option value="">اختر...</option>
-                            {subjects.map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                        </td>
-                        <td className="p-2 border-e border-slate-100">
-                          <select className="w-full bg-transparent outline-none text-center" value={v.class} onChange={(e) => updateViolation(v.id, 'class', e.target.value)}>
-                            <option value="">اختر...</option>
-                            {grades.map(g => <option key={g} value={g}>{g}</option>)}
-                          </select>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="p-2 border-e border-slate-100">
-                          <select className="w-full bg-transparent outline-none text-center" value={v.grade} onChange={(e) => updateViolation(v.id, 'grade', e.target.value)}>
-                            <option value="">اختر...</option>
-                            {grades.map(g => <option key={g} value={g}>{g}</option>)}
-                          </select>
-                        </td>
-                        <td className="p-2 border-e border-slate-100">
-                          <select className="w-full bg-transparent outline-none text-center" value={v.section} onChange={(e) => updateViolation(v.id, 'section', e.target.value)}>
-                            <option value="">اختر...</option>
-                            {sections.map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                        </td>
-                      </>
-                    )}
-
-                    <td className="p-2 border-e border-slate-100">
-                       <input type="number" className="w-16 text-center bg-transparent outline-none text-red-600 font-black" value={v.prevViolations} onChange={(e) => updateViolation(v.id, 'prevViolations', parseInt(e.target.value) || 0)} />
-                    </td>
-
-                    {activeMode === 'teachers' ? (
-                      <>
-                        <td className="p-2 border-e border-slate-100">
-                          <div className="flex flex-col gap-1">
-                            <select className="w-full bg-transparent outline-none text-[10px]" value={v.violation} onChange={(e) => updateViolation(v.id, 'violation', e.target.value)}>
-                              <option value="">اختر أو اكتب...</option>
-                              {violationOptions.map(o => <option key={o} value={o}>{o}</option>)}
-                            </select>
-                            <input className="w-full text-right p-1 bg-slate-50 text-[10px] rounded border-none outline-none" placeholder="اكتب هنا..." value={v.violation} onChange={(e) => updateViolation(v.id, 'violation', e.target.value)} />
-                          </div>
-                        </td>
-                        <td className="p-2 border-e border-slate-100 text-[10px]">{v.day}</td>
-                      </>
-                    ) : null}
-
-                    <td className="p-2 border-e border-slate-100">
-                       <input type="date" className="w-full text-center bg-transparent outline-none text-[10px]" value={v.date} onChange={(e) => {
-                          const newDay = new Intl.DateTimeFormat('ar-EG', { weekday: 'long' }).format(new Date(e.target.value));
-                          updateViolation(v.id, 'date', e.target.value);
-                          updateViolation(v.id, 'day', newDay);
-                       }} />
-                    </td>
-
-                    {activeMode === 'students' ? (
-                      <td className="p-2 border-e border-slate-100">
-                         <input className="w-full text-right bg-transparent outline-none text-[11px]" value={v.violation} onChange={(e) => updateViolation(v.id, 'violation', e.target.value)} placeholder="..." />
-                      </td>
-                    ) : null}
-
-                    <td className="p-2 border-e border-slate-100">
-                       <input className="w-full text-right bg-transparent outline-none text-[11px]" value={v.procedure} onChange={(e) => updateViolation(v.id, 'procedure', e.target.value)} placeholder="الإجراء..." />
-                    </td>
-
-                    <td className="p-2 border-e border-slate-100">
-                      <div className="flex flex-col gap-1">
-                        {v.signature ? (
-                          <div className="p-2 bg-green-50 text-green-700 text-[9px] font-bold rounded leading-relaxed border border-green-100">
-                            {v.signature}
-                          </div>
-                        ) : (
-                          <button 
-                            onClick={() => handleSignature(v.id)}
-                            className="bg-slate-900 text-white px-4 py-1 rounded-lg text-[9px] font-black hover:bg-black transition-all"
-                          >
-                            توقيع البصمة
-                          </button>
-                        )}
-                      </div>
-                    </td>
-
+                    <td className="p-2 border-e border-slate-100">{activeMode === 'students' ? v.studentName : v.teacherName}</td>
+                    <td className="p-2 border-e border-slate-100">{v.violation}</td>
+                    <td className="p-2 border-e border-slate-100">{v.date}</td>
                     <td className="p-2">
-                      <button onClick={() => deleteViolation(v.id)} className="text-red-300 hover:text-red-600 transition-colors">
+                      <button onClick={() => updateData({ violations: data.violations.filter(x => x.id !== v.id) })} className="text-red-300 hover:text-red-600 transition-colors">
                         <Trash2 size={16} />
                       </button>
                     </td>
@@ -956,1175 +800,107 @@ export const ViolationsPage: React.FC = () => {
   );
 };
 
-// Memoized Row for performance optimization
-const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShowNotesModal, toggleStar }: any) => {
+const StudentRow = memo(({ s, optionsAr, lang, updateStudent, setShowNotesModal, toggleStar, activeRowId, setActiveRowId }: any) => {
+  const isHighlighted = activeRowId === s.id;
   return (
-    <tr className="hover:bg-blue-50/20 transition-colors h-10 group">
-      <td className="p-1 border-e border-slate-100 sticky right-0 bg-white z-10 group-hover:bg-blue-50 transition-colors shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-        <div className="flex items-center gap-1 h-full">
-          <button onClick={() => toggleStar(s.id, 'isExcellent')} title={lang === 'ar' ? 'إضافة للتميز' : 'Add to Excellence'}>
-            <Star className={`w-3.5 h-3.5 ${s.isExcellent ? 'fill-green-500 text-green-500' : 'text-slate-300'}`} />
-          </button>
-          <button onClick={() => toggleStar(s.id, 'isBlacklisted')} title={lang === 'ar' ? 'إضافة للقائمة السوداء' : 'Add to Blacklist'}>
-            <Star className={`w-3.5 h-3.5 ${s.isBlacklisted ? 'fill-slate-900 text-slate-900' : 'text-slate-300'}`} />
-          </button>
-          <input className="flex-1 bg-transparent border-none outline-none font-bold text-[10px] text-right" value={s.name} onChange={(e) => updateStudent(s.id, 'name', e.target.value)} />
+    <tr 
+      onClick={() => setActiveRowId(activeRowId === s.id ? null : s.id)}
+      className={`transition-colors h-12 group cursor-pointer ${isHighlighted ? 'bg-orange-100' : 'hover:bg-blue-50/20'}`}
+    >
+      <td className={`p-1 border-e border-slate-300 sticky right-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)] ${isHighlighted ? 'bg-orange-100' : 'bg-white'}`}>
+        <div className="flex items-center gap-1 h-full pr-2">
+          <button onClick={(e) => { e.stopPropagation(); toggleStar(s.id, 'isExcellent'); }}><Star className={`w-4 h-4 ${s.isExcellent ? 'fill-green-500 text-green-500' : 'text-slate-200'}`} /></button>
+          <button onClick={(e) => { e.stopPropagation(); toggleStar(s.id, 'isBlacklisted'); }}><Star className={`w-4 h-4 ${s.isBlacklisted ? 'fill-slate-900 text-slate-900' : 'text-slate-200'}`} /></button>
+          <input className="flex-1 bg-transparent border-none outline-none font-black text-xs text-right pr-2" value={s.name} onChange={(e) => updateStudent(s.id, 'name', e.target.value)} onClick={(e) => e.stopPropagation()} onFocus={() => setActiveRowId(s.id)} />
         </div>
       </td>
-      <td className="p-1 border-e border-slate-100">
-        <select className="bg-transparent font-bold text-[9px] outline-none w-full appearance-none text-center" value={s.grade} onChange={(e) => updateStudent(s.id, 'grade', e.target.value)}>
-          {optionsAr.grades.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.grades[optionsAr.grades.indexOf(o)]}</option>)}
-        </select>
-      </td>
-      <td className="p-1 border-e border-slate-100">
-        <select className="bg-transparent font-bold text-[9px] outline-none w-full appearance-none text-center" value={s.section} onChange={(e) => updateStudent(s.id, 'section', e.target.value)}>
-          {optionsAr.sections.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.sections[optionsAr.sections.indexOf(o)]}</option>)}
-        </select>
-      </td>
-      <td className="p-1 border-e border-slate-100">
-        <select className="bg-transparent font-bold text-[9px] outline-none w-full appearance-none text-center" value={s.gender} onChange={(e) => updateStudent(s.id, 'gender', e.target.value)}>
-          {optionsAr.gender.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.gender[optionsAr.gender.indexOf(o)]}</option>)}
-        </select>
-      </td>
-      <td className="p-1 border-e border-slate-100">
-        <div className="flex flex-col gap-0.5">
-          <input className="w-full text-[9px] text-right bg-transparent outline-none" value={s.address} onChange={(e) => updateStudent(s.id, 'address', e.target.value)} placeholder="..." />
-          <select className="text-[8px] bg-slate-50/50 appearance-none text-center" value={s.workOutside} onChange={(e) => updateStudent(s.id, 'workOutside', e.target.value)}>
-            {optionsAr.workOutside.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.workOutside[optionsAr.workOutside.indexOf(o)]}</option>)}
-          </select>
-        </div>
-      </td>
-      <td className="p-1 border-e border-slate-100">
-        <div className="flex flex-col gap-0.5">
-          <select className={`text-[9px] font-bold appearance-none text-center outline-none bg-transparent ${s.healthStatus === 'مريض' ? 'text-red-600' : ''}`} value={s.healthStatus} onChange={(e) => updateStudent(s.id, 'healthStatus', e.target.value)}>
-            {optionsAr.health.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.health[optionsAr.health.indexOf(o)]}</option>)}
-          </select>
-          {s.healthStatus === 'مريض' && <input className="text-[8px] text-center border-b outline-none text-red-500" value={s.healthDetails} onChange={(e) => updateStudent(s.id, 'healthDetails', e.target.value)} />}
-        </div>
-      </td>
-      <td className="p-1 border-e border-slate-100">
-        <div className="flex flex-col gap-0.5">
-          <input className="text-[9px] font-bold text-right outline-none bg-transparent" value={s.guardianName} onChange={(e) => updateStudent(s.id, 'guardianName', e.target.value)} />
-          {s.guardianPhones.map((p: any, i: any) => (
-            <div key={i} className="flex gap-0.5 items-center">
-              <input className="text-[8px] w-full text-center bg-slate-50/50 outline-none" value={p} onChange={(e) => {
-                const newP = [...s.guardianPhones]; newP[i] = e.target.value; updateStudent(s.id, 'guardianPhones', newP);
-              }} />
-            </div>
-          ))}
-        </div>
-      </td>
-      <td className="p-1 border-e border-slate-100 bg-[#FFF2CC]/5">
-        <select className={`text-[9px] w-full appearance-none text-center outline-none bg-transparent ${s.academicReading.includes('ضعيف') ? 'text-red-600 font-black' : ''}`} value={s.academicReading} onChange={(e) => updateStudent(s.id, 'academicReading', e.target.value)}>
-          {optionsAr.level.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.level[optionsAr.level.indexOf(o)]}</option>)}
-        </select>
-      </td>
-      <td className="p-1 border-e border-slate-100 bg-[#FFF2CC]/5">
-        <select className={`text-[9px] w-full appearance-none text-center outline-none bg-transparent ${s.academicWriting.includes('ضعيف') ? 'text-red-600 font-black' : ''}`} value={s.academicWriting} onChange={(e) => updateStudent(s.id, 'academicWriting', e.target.value)}>
-          {optionsAr.level.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.level[optionsAr.level.indexOf(o)]}</option>)}
-        </select>
-      </td>
-      <td className="p-1 border-e border-slate-100 bg-[#FFF2CC]/5">
-        <select className={`text-[9px] w-full appearance-none text-center outline-none bg-transparent ${s.academicParticipation.includes('ضعيف') ? 'text-red-600 font-black' : ''}`} value={s.academicParticipation} onChange={(e) => updateStudent(s.id, 'academicParticipation', e.target.value)}>
-          {optionsAr.level.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.level[optionsAr.level.indexOf(o)]}</option>)}
-        </select>
-      </td>
-      <td className="p-1 border-e border-slate-100">
-        <select className={`text-[9px] font-bold w-full appearance-none text-center outline-none bg-transparent ${s.behaviorLevel.includes('ضعيف') ? 'text-red-600' : ''}`} value={s.behaviorLevel} onChange={(e) => updateStudent(s.id, 'behaviorLevel', e.target.value)}>
-          {optionsAr.behavior.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.behavior[optionsAr.behavior.indexOf(o)]}</option>)}
-        </select>
-      </td>
-      <td className="p-1 border-e border-slate-100">
-        <div className="flex flex-wrap gap-0.5 justify-center max-w-[180px]">
-          {optionsAr.mainNotes.map((n: any, nIdx: any) => (
-            <button key={n} onClick={() => {
-              const newN = s.mainNotes.includes(n) ? s.mainNotes.filter((x: any) => x !== n) : [...s.mainNotes, n];
-              updateStudent(s.id, 'mainNotes', newN);
-            }} className={`text-[7px] px-1 py-0.5 rounded border leading-none ${s.mainNotes.includes(n) ? 'bg-red-500 text-white' : 'bg-slate-50 text-slate-400'}`}>
-              {lang === 'ar' ? n : optionsEn.mainNotes[nIdx]}
-            </button>
-          ))}
-          <input className="text-[8px] border-b w-full mt-0.5 text-center outline-none" value={s.otherNotesText} onChange={(e) => updateStudent(s.id, 'otherNotesText', e.target.value)} />
-        </div>
-      </td>
-      <td className="p-1 border-e border-slate-100 bg-[#DDEBF7]/5">
-        <select className="text-[8px] w-full appearance-none text-center outline-none bg-transparent" value={s.guardianEducation} onChange={(e) => updateStudent(s.id, 'guardianEducation', e.target.value)}>
-          {optionsAr.eduStatus.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.eduStatus[optionsAr.eduStatus.indexOf(o)]}</option>)}
-        </select>
-      </td>
-      <td className="p-1 border-e border-slate-100 bg-[#DDEBF7]/5">
-        <select className={`text-[8px] w-full appearance-none text-center outline-none bg-transparent ${s.guardianFollowUp === 'ضعيفة' ? 'text-red-600 font-bold' : ''}`} value={s.guardianFollowUp} onChange={(e) => updateStudent(s.id, 'guardianFollowUp', e.target.value)}>
-          {optionsAr.followUp.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.followUp[optionsAr.followUp.indexOf(o)]}</option>)}
-        </select>
-      </td>
-      <td className="p-1 border-e border-slate-100 bg-[#DDEBF7]/5">
-        <select className={`text-[8px] w-full appearance-none text-center outline-none bg-transparent ${s.guardianCooperation === 'عدواني' || s.guardianCooperation === 'ضعيفة' ? 'text-red-600 font-bold' : ''}`} value={s.guardianCooperation} onChange={(e) => updateStudent(s.id, 'guardianCooperation', e.target.value)}>
-          {optionsAr.cooperation.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.cooperation[optionsAr.cooperation.indexOf(o)]}</option>)}
-        </select>
-      </td>
-      <td className="p-1">
-        <button onClick={() => setShowNotesModal({id: s.id, text: s.notes})} className="p-1.5 bg-slate-100 hover:bg-blue-100 rounded-lg transition-all">
-          {s.notes ? <CheckCircle size={14} className="text-green-500" /> : <Settings2 size={14} className="text-slate-400" />}
-        </button>
-      </td>
+      <td className="p-1 border-e border-slate-300"><input className="w-full text-center bg-transparent border-none outline-none text-xs font-bold" value={s.grade} onChange={(e) => updateStudent(s.id, 'grade', e.target.value)} onClick={(e) => e.stopPropagation()} onFocus={() => setActiveRowId(s.id)} /></td>
+      <td className="p-1 border-e border-slate-300"><input className="w-full text-center bg-transparent border-none outline-none text-xs font-bold" value={s.section} onChange={(e) => updateStudent(s.id, 'section', e.target.value)} onClick={(e) => e.stopPropagation()} onFocus={() => setActiveRowId(s.id)} /></td>
+      <td className="p-1 border-e border-slate-300"><select className="bg-transparent font-bold text-xs outline-none w-full text-center" value={s.gender} onChange={(e) => updateStudent(s.id, 'gender', e.target.value)} onClick={(e) => e.stopPropagation()} onFocus={() => setActiveRowId(s.id)}>{optionsAr.gender.map((o: any) => <option key={o} value={o}>{o}</option>)}</select></td>
+      <td className="p-1 border-e border-slate-300 font-bold text-[10px] text-slate-700">{s.address}</td>
+      <td className="p-1 border-e border-slate-300"><select className={`text-xs font-bold text-center outline-none bg-transparent w-full ${s.healthStatus === 'مريض' ? 'text-red-600' : ''}`} value={s.healthStatus} onChange={(e) => updateStudent(s.id, 'healthStatus', e.target.value)} onClick={(e) => e.stopPropagation()} onFocus={() => setActiveRowId(s.id)}>{optionsAr.health.map((o: any) => <option key={o} value={o}>{o}</option>)}</select></td>
+      <td className="p-1 border-e border-slate-300 text-[10px] font-black text-slate-700">{s.guardianName}</td>
+      <td className="p-1 border-e border-slate-300 bg-[#FFF2CC]/10"><select className="text-[10px] w-full text-center outline-none bg-transparent" value={s.academicReading} onChange={(e) => updateStudent(s.id, 'academicReading', e.target.value)} onClick={(e) => e.stopPropagation()} onFocus={() => setActiveRowId(s.id)}>{optionsAr.level.map((o: any) => <option key={o} value={o}>{o}</option>)}</select></td>
+      <td className="p-1 border-e border-slate-300 bg-[#FFF2CC]/10"><select className="text-[10px] w-full text-center outline-none bg-transparent" value={s.academicWriting} onChange={(e) => updateStudent(s.id, 'academicWriting', e.target.value)} onClick={(e) => e.stopPropagation()} onFocus={() => setActiveRowId(s.id)}>{optionsAr.level.map((o: any) => <option key={o} value={o}>{o}</option>)}</select></td>
+      <td className="p-1 border-e border-slate-300"><select className="text-xs font-bold w-full text-center outline-none bg-transparent" value={s.behaviorLevel} onChange={(e) => updateStudent(s.id, 'behaviorLevel', e.target.value)} onClick={(e) => e.stopPropagation()} onFocus={() => setActiveRowId(s.id)}>{optionsAr.behavior.map((o: any) => <option key={o} value={o}>{o}</option>)}</select></td>
+      <td className="p-1 border-e border-slate-300"><div className="flex flex-wrap gap-0.5 justify-center">{s.mainNotes.map((n: any) => <span key={n} className="text-[8px] px-1 bg-red-50 text-red-600 rounded border border-red-100">{n}</span>)}</div></td>
+      <td className="p-1 border-e border-slate-300 bg-[#DDEBF7]/10"><select className="text-[9px] w-full text-center outline-none bg-transparent" value={s.guardianFollowUp} onChange={(e) => updateStudent(s.id, 'guardianFollowUp', e.target.value)} onClick={(e) => e.stopPropagation()} onFocus={() => setActiveRowId(s.id)}>{optionsAr.followUp.map((o: any) => <option key={o} value={o}>{o}</option>)}</select></td>
+      <td className="p-1"><button onClick={(e) => { e.stopPropagation(); setShowNotesModal({id: s.id, text: s.notes}); }} className="p-1.5 hover:bg-blue-100 rounded-lg transition-all">{s.notes ? <CheckCircle size={14} className="text-green-500" /> : <Edit size={14} className="text-slate-300" />}</button></td>
     </tr>
   );
 });
 
 export const StudentsReportsPage: React.FC = () => {
   const { data, updateData, lang } = useGlobal();
+  const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  const [showNotesModal, setShowNotesModal] = useState<{id: string; text: string} | null>(null);
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
-  const [filterValue, setFilterValue] = useState('');
-  const [selectedStudentNames, setSelectedStudentNames] = useState<string[]>([]);
-  const [studentInput, setStudentInput] = useState('');
-  const [activeMetricFilter, setActiveMetricFilter] = useState<string[]>([]);
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  const [showNotesModal, setShowNotesModal] = useState<{id: string, text: string} | null>(null);
-  const [metricFilterMode, setMetricFilterMode] = useState(false);
-  const [showSpecificFilterModal, setShowSpecificFilterModal] = useState(false);
-  const [selectedSpecifics, setSelectedSpecifics] = useState<string[]>([]);
   
-  // Requirement: Detail Modal Features
-  const [showIndividualReportModal, setShowIndividualReportModal] = useState(false);
-  const [detailModalSearch, setDetailModalSearch] = useState('');
-  const [currentDetailStudent, setCurrentDetailStudent] = useState<StudentReport | null>(null);
-  const [activeDetailFields, setActiveDetailFields] = useState<string[]>(['name', 'grade', 'section', 'gender', 'healthStatus', 'guardianInfo', 'academic', 'behaviorLevel', 'mainNotes', 'guardianFollowUp', 'notes']);
-  
-  // Requirement: WhatsApp Selection Implementation
-  const [waSelector, setWaSelector] = useState<{ type: 'bulk' | 'single', student?: StudentReport } | null>(null);
-  const [waSelectedFields, setWaSelectedFields] = useState<string[]>(['all']);
-
-  const waFieldOptions = [
-    { key: 'all', label: 'جميع البيانات' },
-    { key: 'name', label: 'اسم الطالب' },
-    { key: 'grade', label: 'الصف' },
-    { key: 'section', label: 'الشعبة' },
-    { key: 'gender', label: 'النوع' },
-    { key: 'address_work', label: 'السكن/ العمل' },
-    { key: 'health', label: 'الحالة الصحية' },
-    { key: 'guardian', label: 'ولي الأمر (الاسم، الهاتف)' },
-    { key: 'academic', label: 'المستوى العلمي (قراءة، كتابة، مشاركة)' },
-    { key: 'behavior', label: 'المستوى السلوكي' },
-    { key: 'main_notes', label: 'الملاحظات الأساسية' },
-    { key: 'guardian_followup', label: 'ولي الأمر المتابع (تعليم، متابعة، تعاون)' },
-    { key: 'other_notes', label: 'ملاحظات أخرى' },
-  ];
-
-  // New States for Blacklist and Excellence lists
-  const [showListModal, setShowListModal] = useState<'blacklist' | 'excellence' | null>(null);
-  const [listSearch, setListSearch] = useState('');
-  const [tempListSelected, setTempListSelected] = useState<string[]>([]);
-
   const studentData = data.studentReports || [];
-
-  const optionsAr = {
-    gender: ["ذكر", "أنثى"],
-    workOutside: ["لا يعمل", "يعمل"],
-    health: ["ممتاز", "مريض"],
-    level: ["ممتاز", "متوسط", "جيد", "ضعيف", "ضعيف جداً"],
-    behavior: ["ممتاز", "متوسط", "جيد", "جيد جدا", "مقبول", "ضعيف", "ضعيف جدا"],
-    mainNotes: ["ممتاز", "كثير الكلام", "كثير الشغب", "عدواني", "تطاول على معلم", "اعتداء على طالب جسدياً", "اعتداء على طالب لفظيا", "أخذ أدوات الغير دون أذنهم", "إتلاف ممتلكات طالب", "إتلاف ممتلكات المدرسة"],
-    eduStatus: ["متعلم", "ضعيف", "أمي"],
-    followUp: ["ممتازة", "متوسطة", "ضعيفة"],
-    cooperation: ["ممتازة", "متوسطة", "ضعيفة", "متذمر", "كثير النقد", "عدواني"],
-    grades: ["تمهيدي", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"],
-    sections: ["أ", "ب", "ج", "د", "هـ", "و", "ز", "ح", "ط", "ي"]
-  };
-
-  const optionsEn = {
-    gender: ["Male", "Female"],
-    workOutside: ["Doesn't Work", "Works"],
-    health: ["Excellent", "Ill"],
-    level: ["Excellent", "Average", "Good", "Weak", "Very Weak"],
-    behavior: ["Excellent", "Average", "Good", "Very Good", "Acceptable", "Weak", "Very Weak"],
-    mainNotes: ["Excellent", "Talkative", "Riotous", "Aggressive", "Teacher Assault", "Physical Assault", "Verbal Assault", "Stealing", "Property Damage", "School Damage"],
-    eduStatus: ["Educated", "Weak", "Illiterate"],
-    followUp: ["Excellent", "Average", "Weak"],
-    cooperation: ["Excellent", "Average", "Weak", "Complaining", "Critical", "Aggressive"],
-    grades: ["Pre-K", "1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th", "11th", "12th"],
-    sections: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
-  };
-
-  const options = lang === 'ar' ? optionsAr : optionsEn;
-
-  const metricLabels: Record<string, string> = lang === 'ar' ? {
-    gender: "النوع",
-    grade: "الصف",
-    section: "الشعبة",
-    workOutside: "العمل خارج المدرسة",
-    healthStatus: "الحالة الصحية",
-    academicReading: "القراءة",
-    academicWriting: "الكتابة",
-    behaviorLevel: "المستوى السلوكي",
-    guardianEducation: "تعليم ولي الأمر",
-    guardianFollowUp: "متابعة ولي الأمر",
-    guardianCooperation: "تعاون ولي الأمر"
-  } : {
-    gender: "Gender",
-    grade: "Grade",
-    section: "Section",
-    workOutside: "Work Outside",
-    healthStatus: "Health Status",
-    academicReading: "Reading",
-    academicWriting: "Writing",
-    behaviorLevel: "Behavior Level",
-    guardianEducation: "Guardian Education",
-    guardianFollowUp: "Guardian Follow-up",
-    guardianCooperation: "Guardian Cooperation"
-  };
-
-  const detailFieldConfigs = [
-    { key: 'name', label: 'اسم الطالب', color: 'border-blue-500' },
-    { key: 'grade', label: 'الصف', color: 'border-indigo-500' },
-    { key: 'section', label: 'الشعبة', color: 'border-purple-500' },
-    { key: 'gender', label: 'النوع', color: 'border-pink-500' },
-    { key: 'address', label: 'السكن/ العمل', color: 'border-orange-500' },
-    { key: 'healthStatus', label: 'الحالة الصحية', color: 'border-red-500' },
-    { key: 'guardianInfo', label: 'ولي الأمر', color: 'border-emerald-500' },
-    { key: 'academic', label: 'المستوى العلمي', color: 'border-yellow-500' },
-    { key: 'behaviorLevel', label: 'المستوى السلوكي', color: 'border-teal-500' },
-    { key: 'mainNotes', label: 'الملاحظات الأساسية', color: 'border-rose-500' },
-    { key: 'guardianFollowUp', label: 'ولي الأمر المتابع', color: 'border-cyan-500' },
-    { key: 'notes', label: 'ملاحظات أخرى', color: 'border-slate-500' },
-  ];
-
-  const updateStudent = (id: string, field: string, value: any) => {
-    const updated = studentData.map(s => s.id === id ? { ...s, [field]: value } : s);
-    updateData({ studentReports: updated });
-  };
-
-  const addStudent = () => {
-    const newStudent: StudentReport = {
-      id: Date.now().toString(),
-      name: '',
-      gender: options.gender[0],
-      grade: options.grades[0],
-      section: options.sections[0],
-      address: '',
-      workOutside: options.workOutside[0],
-      healthStatus: options.health[0],
-      healthDetails: '',
-      guardianName: '',
-      guardianPhones: [''],
-      academicReading: options.level[0],
-      academicWriting: options.level[0],
-      academicParticipation: options.level[0],
-      behaviorLevel: options.behavior[0],
-      mainNotes: [],
-      otherNotesText: '',
-      guardianEducation: options.eduStatus[0],
-      guardianFollowUp: options.followUp[0],
-      guardianCooperation: options.cooperation[0],
-      notes: '',
-      createdAt: new Date().toISOString()
-    };
-    updateData({ studentReports: [...studentData, newStudent] });
-  };
-
-  const bulkAutoFill = () => {
-    if (!confirm(lang === 'ar' ? 'سيتم تعبئة الخيار الأول لجميع الحقول في كافة الطلاب. استمرار؟' : 'Auto-fill first option for all students?')) return;
-    const updated = studentData.map(s => ({
-      ...s,
-      healthStatus: optionsAr.health[0],
-      guardianFollowUp: optionsAr.followUp[0],
-      guardianEducation: optionsAr.eduStatus[0],
-      guardianCooperation: optionsAr.cooperation[0],
-      academicReading: optionsAr.level[0],
-      academicWriting: optionsAr.level[0],
-      academicParticipation: optionsAr.level[0],
-      behaviorLevel: optionsAr.behavior[0],
-      workOutside: optionsAr.workOutside[0],
-    }));
-    updateData({ studentReports: updated });
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const bstr = evt.target?.result;
-      const wb = XLSX.read(bstr, { type: 'binary' });
-      const wsname = wb.SheetNames[0];
-      const ws = wb.Sheets[wsname];
-      const dataXLSX = XLSX.utils.sheet_to_json(ws);
-      const imported = dataXLSX.map((row: any) => ({
-        id: Date.now().toString() + Math.random(),
-        name: row['اسم الطالب'] || '',
-        gender: row['النوع'] || optionsAr.gender[0],
-        grade: row['الصف'] || optionsAr.grades[0],
-        section: row['الشعبة'] || optionsAr.sections[0],
-        address: row['عنوان السكن'] || '',
-        workOutside: row['العمل'] || optionsAr.workOutside[0],
-        healthStatus: row['الحالة الصحية'] || optionsAr.health[0],
-        guardianName: row['ولي الأمر'] || '',
-        guardianPhones: [row['الهاتف'] || ''],
-        academicReading: optionsAr.level[0], academicWriting: optionsAr.level[0], academicParticipation: optionsAr.level[0],
-        behaviorLevel: optionsAr.behavior[0], mainNotes: [], otherNotesText: '', guardianEducation: optionsAr.eduStatus[0],
-        guardianFollowUp: optionsAr.followUp[0], guardianCooperation: optionsAr.cooperation[0], notes: '', createdAt: new Date().toISOString()
-      }));
-      updateData({ studentReports: [...studentData, ...imported as any] });
-    };
-    reader.readAsBinaryString(file);
+  const updateStudent = (id: string, field: string, value: any) => { const updated = studentData.map(s => s.id === id ? { ...s, [field]: value } : s); updateData({ studentReports: updated }); };
+  const toggleStar = (id: string, field: 'isExcellent' | 'isBlacklisted') => { const student = studentData.find(s => s.id === id); if (student) updateStudent(id, field, !student[field]); };
+  
+  const optionsAr = { 
+    gender: ["ذكر", "أنثى"], workOutside: ["لا يعمل", "يعمل"], health: ["ممتاز", "مريض"], level: ["ممتاز", "متوسط", "جيد", "ضعيف", "ضعيف جداً"], behavior: ["ممتاز", "متوسط", "جيد", "جيد جدا", "مقبول", "ضعيف", "ضعيف جدا"], 
+    mainNotes: ["ممتاز", "كثير الكلام", "كثير الشغب", "عدواني", "تطاول على معلم", "اعتداء على طالب جسدياً", "اعتداء على طالب لفظيا", "أخذ أدوات الغير دون أذنهم", "إتلاف ممتلكات طالب", "إتلاف ممتلكات المدرسة"], 
+    eduStatus: ["متعلم", "ضعيف", "أمي"], followUp: ["ممتازة", "متوسطة", "ضعيفة"], cooperation: ["ممتازة", "متوسطة", "ضعيفة", "متذمر", "كثير النقد", "عدواني"], grades: ["تمهيدي", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"], sections: ["أ", "ب", "ج", "د", "هـ", "و", "ز", "ح", "ط", "ي"] 
   };
 
   const filteredData = useMemo(() => {
-    let result = [...studentData];
-    if (filterMode === 'blacklist' || filterMode === 'excellence') {
-      if (selectedStudentNames.length === 0) return [];
-      result = result.filter(s => selectedStudentNames.includes(s.name));
-    } else if (filterMode === 'student') {
-      if (selectedStudentNames.length === 0) return [];
-      result = result.filter(s => selectedStudentNames.some(name => s.name.toLowerCase().includes(name.toLowerCase())));
-    } else if (filterMode === 'grade' && filterValue) {
-      result = result.filter(s => s.grade === filterValue);
-    } else if (filterMode === 'section' && filterValue) {
-      result = result.filter(s => s.section === filterValue);
-    } else if (filterMode === 'specific' && selectedSpecifics.length > 0) {
-      result = result.filter(s => 
-        selectedSpecifics.includes(s.healthStatus) || 
-        selectedSpecifics.includes(s.behaviorLevel) || 
-        selectedSpecifics.includes(s.grade) ||
-        selectedSpecifics.includes(s.section) ||
-        s.mainNotes.some(n => selectedSpecifics.includes(n))
-      );
-    }
-    return result;
-  }, [studentData, filterMode, filterValue, selectedSpecifics, selectedStudentNames]);
-
-  const suggestions = useMemo(() => {
-    if (!studentInput.trim()) return [];
-    return studentData
-      .filter(s => s.name.toLowerCase().includes(studentInput.toLowerCase()))
-      .map(s => s.name)
-      .filter((name, idx, self) => self.indexOf(name) === idx && !selectedStudentNames.includes(name));
-  }, [studentInput, studentData, selectedStudentNames]);
-
-  const listItemsToDisplay = useMemo(() => {
-    if (!showListModal) return [];
-    const isBlacklist = showListModal === 'blacklist';
-    return studentData
-      .filter(s => isBlacklist ? s.isBlacklisted : s.isExcellent)
-      .filter(s => s.name.toLowerCase().includes(listSearch.toLowerCase()));
-  }, [showListModal, studentData, listSearch]);
-
-  const isOnlyMetricView = filterMode === 'metric' && activeMetricFilter.length > 0;
-
-  const addStudentToFilter = (name?: string) => {
-    const targetName = name || studentInput.trim();
-    if (targetName && !selectedStudentNames.includes(targetName)) {
-      setSelectedStudentNames(prev => [...prev, targetName]);
-      setStudentInput('');
-    }
-  };
-
-  const handleListApply = () => {
-    if (tempListSelected.length > 0) {
-      setSelectedStudentNames(tempListSelected);
-      setFilterMode(showListModal === 'blacklist' ? 'blacklist' : 'excellence');
-    }
-    setShowListModal(null);
-    setTempListSelected([]);
-    setListSearch('');
-  };
-
-  const toggleStar = (id: string, type: 'isBlacklisted' | 'isExcellent') => {
-    const student = studentData.find(s => s.id === id);
-    if (student) {
-      updateStudent(id, type, !student[type]);
-    }
-  };
-
-  // START OF CHANGE - Surgical modification for WhatsApp Rich Formatting and Logic
-  const formatWAValue = (val: string) => {
-    const isWeak = val.includes('ضعيف') || val.includes('مريض') || val.includes('عدواني') || val.includes('مخالفة') || val.includes('مقبول');
-    return isWeak ? `🔴 *${val}*` : `🔹 ${val}`;
-  };
-
-  const constructWAMessage = (studentsList: StudentReport[], fields: string[]) => {
-    let text = `*📋 تقرير شؤون الطلاب*\n`;
-    text += `*المدرسة:* ${data.profile.schoolName || '---'}\n`;
-    text += `*التاريخ:* ${new Date().toLocaleDateString('ar-EG')}\n`;
-    text += `----------------------------------\n\n`;
-
-    studentsList.forEach((s, i) => {
-      text += `*🔹 الطالب (${i + 1}):*\n`;
-      const isAll = fields.includes('all');
-      
-      if (isAll || fields.includes('name')) text += `👤 *الاسم:* ${s.name}\n`;
-      if (isAll || fields.includes('grade')) text += `📍 *الصف:* ${s.grade}\n`;
-      if (isAll || fields.includes('section')) text += `🏁 *الشعبة:* ${s.section}\n`;
-      if (isAll || fields.includes('gender')) text += `🚻 *النوع:* ${s.gender}\n`;
-      if (isAll || fields.includes('address_work')) {
-        text += `🏠 *السكن:* ${s.address || '---'}\n`;
-        text += `💼 *العمل:* ${s.workOutside}\n`;
-      }
-      if (isAll || fields.includes('health')) {
-        text += `🏥 *الحالة الصحية:* ${formatWAValue(s.healthStatus)}${s.healthDetails ? ` (${s.healthDetails})` : ''}\n`;
-      }
-      if (isAll || fields.includes('guardian')) {
-        text += `👨‍👩‍👧 *ولي الأمر:* ${s.guardianName || '---'}\n`;
-        text += `📞 *الهواتف:* ${s.guardianPhones.join(' - ')}\n`;
-      }
-      if (isAll || fields.includes('academic')) {
-        text += `📚 *المستوى العلمي:*\n`;
-        text += `   📖 قراءة: ${formatWAValue(s.academicReading)}\n`;
-        text += `   ✍️ الكتابة: ${formatWAValue(s.academicWriting)}\n`;
-        text += `   🙋 المشاركة: ${formatWAValue(s.academicParticipation)}\n`;
-      }
-      if (isAll || fields.includes('behavior')) {
-        text += `🎭 *المستوى السلوكي:* ${formatWAValue(s.behaviorLevel)}\n`;
-      }
-      if (isAll || fields.includes('main_notes')) {
-        if (s.mainNotes.length > 0) {
-          text += `⚠️ *الملاحظات الأساسية:*\n`;
-          s.mainNotes.forEach(n => text += `   🔴 ${n}\n`);
-        } else {
-          text += `⚠️ *الملاحظات الأساسية:* ---\n`;
-        }
-      }
-      if (isAll || fields.includes('guardian_followup')) {
-        text += `🤝 *متابعة ولي الأمر:*\n`;
-        text += `   🎓 التعليم: ${s.guardianEducation}\n`;
-        text += `   📈 المتابعة: ${formatWAValue(s.guardianFollowUp)}\n`;
-        text += `   🤝 التعاون: ${formatWAValue(s.guardianCooperation)}\n`;
-      }
-      if (isAll || fields.includes('other_notes')) {
-        if (s.notes) text += `📝 *ملاحظات أخرى:* ${s.notes}\n`;
-        if (s.otherNotesText) text += `🔖 *ملاحظات برمجية:* ${s.otherNotesText}\n`;
-      }
-      text += `----------------------------------\n`;
-    });
-    
-    text += `\n*إعداد رفيق المشرف الإداري - إبراهيم دخان*`;
-    return text;
-  };
-
-  const finalSendWhatsApp = () => {
-    if (!waSelector) return;
-    const studentsList = waSelector.type === 'single' ? [waSelector.student!] : filteredData;
-    const fields = waSelectedFields;
-    
-    const text = constructWAMessage(studentsList, fields);
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
-    setWaSelector(null);
-  };
-  // END OF CHANGE
-
-  const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(filteredData.map(s => ({
-      'اسم الطالب': s.name,
-      'الصف': s.grade,
-      'الشعبة': s.section,
-      'النوع': s.gender,
-      'العنوان': s.address,
-      'العمل': s.workOutside,
-      'الحالة الصحية': s.healthStatus,
-      'تفاصيل الصحة': s.healthDetails,
-      'ولي الأمر': s.guardianName,
-      'الهواتف': s.guardianPhones.join(', '),
-      'القراءة': s.academicReading,
-      'الكتابة': s.academicWriting,
-      'المشاركة': s.academicParticipation,
-      'السلوك': s.behaviorLevel,
-      'الملاحظات': s.mainNotes.join(', '),
-      'تعليم الولي': s.guardianEducation,
-      'متابعة الولي': s.guardianFollowUp,
-      'تعاون الولي': s.guardianCooperation,
-      'ملاحظات أخرى': s.notes
-    })));
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
-    XLSX.writeFile(workbook, `Students_Report_${new Date().getTime()}.xlsx`);
-  };
-
-  const exportToTxt = () => {
-    const text = constructWAMessage(filteredData, ['all']).replace(/\*/g, '');
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `Students_Report_${new Date().getTime()}.txt`;
-    link.click();
-  };
-
-  const sendWhatsApp = () => {
-    setWaSelector({ type: 'bulk' });
-  };
-
-  // Requirement: Detail Modal Activation & Optimization
-  const handleDetailStudentSearch = (val: string) => {
-    setDetailModalSearch(val);
-    const found = studentData.find(s => s.name === val);
-    if (found) {
-        setCurrentDetailStudent({ ...found });
-    } else {
-        setCurrentDetailStudent(null);
-    }
-  };
-
-  const toggleDetailField = (key: string) => {
-    setActiveDetailFields(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
-  };
-
-  const saveDetailStudent = () => {
-    if (currentDetailStudent) {
-      const updated = studentData.map(s => s.id === currentDetailStudent.id ? currentDetailStudent : s);
-      updateData({ studentReports: updated });
-      setShowIndividualReportModal(false);
-      setCurrentDetailStudent(null);
-      setDetailModalSearch('');
-      alert('تم تحديث بيانات الطالب بنجاح');
-    }
-  };
-
-  const sendDetailWhatsApp = () => {
-    if (currentDetailStudent) {
-      setWaSelector({ type: 'single', student: currentDetailStudent });
-    }
-  };
+    if (filterMode === 'blacklist') return studentData.filter(s => s.isBlacklisted);
+    if (filterMode === 'excellence') return studentData.filter(s => s.isExcellent);
+    return studentData;
+  }, [studentData, filterMode]);
 
   return (
-    <div className="space-y-4 font-arabic animate-in fade-in duration-500">
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border">
-        <div className="flex flex-wrap items-center gap-2">
-          <button onClick={addStudent} className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-sm hover:bg-blue-700 shadow-md transform active:scale-95 transition-all">
-            <Plus className="w-4 h-4" /> {lang === 'ar' ? 'إضافة طالب' : 'Add Student'}
-          </button>
-          
-          <button 
-            onClick={() => setShowIndividualReportModal(true)}
-            className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-black text-sm hover:bg-emerald-700 shadow-md transform active:scale-95 transition-all"
-          >
-            <FileText className="w-4 h-4" /> {lang === 'ar' ? 'تقرير طالب' : 'Student Report'}
-          </button>
-
-          <label className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2.5 rounded-xl font-bold text-sm border border-green-200 cursor-pointer hover:bg-green-100 transition-all">
-            <Upload className="w-4 h-4" /> {lang === 'ar' ? 'استيراد ملف' : 'Import File'}
-            <input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} />
-          </label>
-          <button onClick={bulkAutoFill} className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2.5 rounded-xl font-bold text-sm border border-purple-200 hover:bg-purple-100 transition-all">
-            <Sparkles className="w-4 h-4" /> {lang === 'ar' ? 'التعبئة التلقائية' : 'Auto Fill'}
-          </button>
-          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
-            <button onClick={exportToTxt} className="p-2.5 hover:bg-white text-slate-600 rounded-lg transition-all" title="TXT">
-              <FileText className="w-4 h-4" />
-            </button>
-            <button onClick={exportToExcel} className="p-2.5 hover:bg-white text-green-600 rounded-lg transition-all" title="Excel">
-              <FileSpreadsheet className="w-4 h-4" />
-            </button>
-            <button onClick={sendWhatsApp} className="p-2.5 hover:bg-white text-green-500 rounded-lg transition-all" title="WhatsApp">
-              <Share2 className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2 flex-wrap text-right">
-          <button onClick={() => setShowListModal('excellence')} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2.5 rounded-xl font-black text-sm hover:bg-green-700 transition-all shadow-sm">
-            <Star className="w-4 h-4 fill-white" /> {lang === 'ar' ? 'قائمة التميز' : 'Excellence List'}
-          </button>
-          <button onClick={() => setShowListModal('blacklist')} className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2.5 rounded-xl font-black text-sm hover:bg-slate-900 transition-all shadow-sm">
-            <AlertCircle className="w-4 h-4" /> {lang === 'ar' ? 'القائمة السوداء' : 'Blacklist'}
-          </button>
-          
-          <div className="relative">
-            <button onClick={() => setShowFilterModal(!showFilterModal)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm transition-all shadow-sm ${showFilterModal ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-              <Filter className="w-4 h-4" /> {lang === 'ar' ? 'فلترة متقدمة' : 'Advanced Filter'}
-            </button>
-            {showFilterModal && (
-              <div className="absolute right-0 sm:left-0 sm:right-auto mt-2 w-[85vw] sm:w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 z-[100] animate-in fade-in zoom-in duration-200 space-y-4 text-right">
-                 <button onClick={() => { setFilterMode('all'); setSelectedStudentNames([]); }} className="w-full text-right p-3 rounded-xl font-bold text-sm hover:bg-slate-50 flex items-center justify-between">{lang === 'ar' ? 'الجميع' : 'All'} {filterMode === 'all' && <Check className="w-4 h-4"/>}</button>
-                 
-                 <div className="border rounded-xl p-2 bg-slate-50">
-                   <button onClick={() => setFilterMode('student')} className="w-full text-right p-2 rounded-lg font-bold text-sm hover:bg-white flex items-center justify-between">{lang === 'ar' ? 'حسب الطالب' : 'By Student'} {filterMode === 'student' && <Check className="w-4 h-4"/>}</button>
-                   {filterMode === 'student' && (
-                     <div className="mt-2 space-y-2 relative">
-                        <div className="flex gap-1">
-                          <input 
-                            type="text" 
-                            className="flex-1 text-[10px] p-2 rounded border outline-none" 
-                            placeholder={lang === 'ar' ? 'اسم الطالب...' : 'Name...'}
-                            value={studentInput}
-                            onChange={(e) => setStudentInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && addStudentToFilter()}
-                          />
-                          <button onClick={() => addStudentToFilter()} className="bg-blue-600 text-white p-2 rounded hover:bg-blue-700"><Plus size={14}/></button>
-                        </div>
-                        {suggestions.length > 0 && (
-                          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
-                            {suggestions.map((name, idx) => (
-                              <button 
-                                key={idx} 
-                                onClick={() => addStudentToFilter(name)}
-                                className="w-full text-right p-2 text-[10px] font-bold hover:bg-blue-50 border-b border-slate-50 last:border-none"
-                              >
-                                {name}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        <div className="flex flex-wrap gap-1">
-                          {selectedStudentNames.map(name => (
-                            <span key={name} className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[9px] flex items-center gap-1">
-                              {name} <X size={10} className="cursor-pointer" onClick={() => setSelectedStudentNames(prev => prev.filter(n => n !== name))} />
-                            </span>
-                          ))}
-                        </div>
-                     </div>
-                   )}
-                 </div>
-
-                 <button onClick={() => setMetricFilterMode(true)} className="w-full text-right p-3 rounded-xl font-bold text-sm hover:bg-slate-50 flex items-center justify-between">{lang === 'ar' ? 'حسب المعيار' : 'By Metric'} {isOnlyMetricView && <Check className="w-4 h-4"/>}</button>
-                 <button onClick={() => setShowSpecificFilterModal(true)} className="w-full text-right p-3 rounded-xl font-bold text-sm hover:bg-slate-50 flex items-center justify-between">{lang === 'ar' ? 'حسب صفة معينة' : 'By Feature'} {filterMode === 'specific' && <Check className="w-4 h-4"/>}</button>
-
-                 <div className="pt-2 border-t">
-                    <button 
-                      onClick={() => setShowFilterModal(false)}
-                      className="w-full bg-blue-600 text-white p-2.5 rounded-xl font-black text-sm hover:bg-blue-700 transition-all shadow-md active:scale-95"
-                    >
-                      {lang === 'ar' ? 'تطبيق' : 'Apply'}
-                    </button>
-                 </div>
+    <div className="space-y-6 font-arabic animate-in fade-in duration-500">
+       <div className="bg-[#F8FAFC] p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap gap-3">
+                  <button onClick={() => {}} className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-3 shadow-lg hover:bg-blue-700 active:scale-95 transition-all"><Plus size={18}/> إضافة طالب</button>
+                  <button onClick={() => {}} className="bg-[#006E4E] text-white px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-3 shadow-lg hover:opacity-90 active:scale-95 transition-all"><FileText size={18}/> تقرير طالب</button>
+                  <button onClick={() => {}} className="bg-[#E6FFFA] text-[#2C7A7B] border-2 border-[#B2F5EA] px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-3 hover:bg-[#B2F5EA] active:scale-95 transition-all"><Upload size={18}/> استيراد ملف</button>
+                  <button onClick={() => {}} className="bg-[#FAF5FF] text-[#6B46C1] border-2 border-[#E9D8FD] px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-3 hover:bg-[#E9D8FD] active:scale-95 transition-all"><Sparkles size={18}/> التعبئة التلقائية</button>
               </div>
-            )}
           </div>
-        </div>
-      </div>
+          <div className="flex flex-wrap gap-3 pt-2">
+              <button onClick={() => setFilterMode('excellence')} className={`px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-3 transition-all ${filterMode === 'excellence' ? 'bg-[#22C55E] text-white shadow-lg scale-105' : 'bg-[#E7F9EE] text-[#166534] border border-[#BBF7D0]'}`}><Star size={18} fill={filterMode === 'excellence' ? 'currentColor' : 'none'}/> قائمة التميز</button>
+              <button onClick={() => setFilterMode('blacklist')} className={`px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-3 transition-all ${filterMode === 'blacklist' ? 'bg-[#1E293B] text-white shadow-lg scale-105' : 'bg-slate-50 text-slate-500 border border-slate-200'}`}><AlertCircle size={18}/> القائمة السوداء</button>
+              <button onClick={() => setFilterMode('all')} className="bg-[#F1F5F9] text-slate-600 px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-3 hover:bg-slate-200 transition-all"><Filter size={18}/> عرض الجميع</button>
+          </div>
+       </div>
 
-      <div className="bg-white rounded-[1.5rem] shadow-xl border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto scroll-smooth">
-          <table className={`w-full text-center border-collapse table-auto ${isOnlyMetricView ? 'min-w-[700px]' : 'min-w-[1600px]'}`}>
-            <thead className="bg-[#FFD966] text-slate-800 sticky top-0 z-20">
-              <tr className="border-b border-slate-300 h-12">
-                <th rowSpan={2} className="px-3 border-e border-slate-300 w-[160px] text-xs font-black sticky right-0 bg-[#FFD966] z-30">{lang === 'ar' ? 'اسم الطالب' : 'Student Name'}</th>
-                <th rowSpan={2} className="px-1 border-e border-slate-300 w-20 text-xs font-black">{lang === 'ar' ? 'الصف' : 'Grade'}</th>
-                <th rowSpan={2} className="px-1 border-e border-slate-300 w-16 text-xs font-black">{lang === 'ar' ? 'الشعبة' : 'Section'}</th>
-                
-                {!isOnlyMetricView && (
-                  <>
-                    <th rowSpan={2} className="px-1 border-e border-slate-300 w-16 text-xs font-black">{lang === 'ar' ? 'النوع' : 'Gender'}</th>
-                    <th rowSpan={2} className="px-2 border-e border-slate-300 w-24 text-xs font-black">{lang === 'ar' ? 'السكن / العمل' : 'Residence / Work'}</th>
-                    <th rowSpan={2} className="px-2 border-e border-slate-300 w-24 text-xs font-black">{lang === 'ar' ? 'الحالة الصحية' : 'Health Status'}</th>
-                    <th rowSpan={2} className="px-2 border-e border-slate-300 w-32 text-xs font-black">{lang === 'ar' ? 'ولي الأمر (الاسم/الهواتف)' : 'Guardian (Name/Phones)'}</th>
-                    <th colSpan={3} className="px-1 border-e border-slate-300 bg-[#FFF2CC] text-xs font-black">{lang === 'ar' ? 'المستوى العلمي' : 'Academic Level'}</th>
-                    <th rowSpan={2} className="px-2 border-e border-slate-300 w-24 text-xs font-black">{lang === 'ar' ? 'المستوى السلوكي' : 'Behavior Level'}</th>
-                    <th rowSpan={2} className="px-2 border-e border-slate-300 w-44 text-xs font-black">{lang === 'ar' ? 'الملاحظات الأساسية' : 'Main Notes'}</th>
-                    <th colSpan={3} className="px-1 border-e border-slate-300 bg-[#DDEBF7] text-xs font-black">{lang === 'ar' ? 'ولي الأمر المتابع' : 'Guardian Follow-up'}</th>
-                    <th rowSpan={2} className="px-2 w-10 text-xs font-black">{lang === 'ar' ? 'ملاحظات أخرى' : 'Other Notes'}</th>
-                  </>
-                )}
-                
-                {isOnlyMetricView && activeMetricFilter.map(mKey => (
-                  <th key={mKey} className="px-4 border-e border-slate-300 text-xs font-black">{metricLabels[mKey]}</th>
-                ))}
+       <div className="bg-white rounded-[2rem] shadow-2xl border border-slate-200 overflow-hidden relative max-h-[70vh] flex flex-col">
+        <div className="overflow-auto scroll-smooth h-full">
+          <table className="w-full text-center border-collapse table-auto min-w-[1700px]">
+            <thead className="bg-[#FFD966] text-slate-800 sticky top-0 z-20 shadow-md">
+              <tr className="border-b border-slate-400 h-14">
+                <th rowSpan={2} className="px-4 border-e border-slate-400 w-[200px] text-sm font-black sticky right-0 bg-[#FFD966] z-40">اسم الطالب</th>
+                <th rowSpan={2} className="px-1 border-e border-slate-400 w-24 text-xs font-black sticky top-0 bg-[#FFD966]">الصف</th>
+                <th rowSpan={2} className="px-1 border-e border-slate-400 w-20 text-xs font-black sticky top-0 bg-[#FFD966]">الشعبة</th>
+                <th rowSpan={2} className="px-1 border-e border-slate-400 w-20 text-xs font-black sticky top-0 bg-[#FFD966]">النوع</th>
+                <th rowSpan={2} className="px-2 border-e border-slate-400 w-32 text-xs font-black sticky top-0 bg-[#FFD966]">السكن / العمل</th>
+                <th rowSpan={2} className="px-2 border-e border-slate-400 w-28 text-xs font-black sticky top-0 bg-[#FFD966]">الحالة الصحية</th>
+                <th rowSpan={2} className="px-2 border-e border-slate-400 w-44 text-xs font-black sticky top-0 bg-[#FFD966]">ولي الأمر</th>
+                <th colSpan={2} className="px-1 border-e border-slate-400 bg-[#FFF2CC]/50 text-[10px] font-black sticky top-0">المستوى العلمي</th>
+                <th rowSpan={2} className="px-2 border-e border-slate-400 w-28 text-[10px] font-black sticky top-0 bg-[#FFD966]">المستوى السلوكي</th>
+                <th rowSpan={2} className="px-2 border-e border-slate-400 w-48 text-[10px] font-black sticky top-0 bg-[#FFD966]">الملاحظات الأساسية</th>
+                <th rowSpan={2} className="px-1 border-e border-slate-400 bg-[#DDEBF7]/50 text-[10px] font-black w-32 sticky top-0">ولي الأمر المتابع</th>
+                <th rowSpan={2} className="px-2 w-14 text-[10px] font-black sticky top-0 bg-[#FFD966]">ملاحظات</th>
               </tr>
-              
-              {!isOnlyMetricView && (
-                <tr className="bg-[#F2F2F2] text-[9px] h-8">
-                  <th className="border-e border-slate-300 bg-[#FFF2CC]/50">{lang === 'ar' ? 'قراءة' : 'Read'}</th>
-                  <th className="border-e border-slate-300 bg-[#FFF2CC]/50">{lang === 'ar' ? 'كتابة' : 'Write'}</th>
-                  <th className="border-e border-slate-300 bg-[#FFF2CC]/50">{lang === 'ar' ? 'مشاركة' : 'Part'}</th>
-                  <th className="border-e border-slate-300 bg-[#DDEBF7]/50">{lang === 'ar' ? 'تعليم' : 'Edu'}</th>
-                  <th className="border-e border-slate-300 bg-[#DDEBF7]/50">{lang === 'ar' ? 'متابعة' : 'Follow'}</th>
-                  <th className="border-e border-slate-300 bg-[#DDEBF7]/50">{lang === 'ar' ? 'تعاون' : 'Coop'}</th>
-                </tr>
-              )}
+              <tr className="bg-[#F8F9FA] text-[9px] h-8">
+                <th className="border-e border-slate-300 font-bold sticky top-14 bg-[#FFF2CC]/50">قراءة</th>
+                <th className="border-e border-slate-400 font-bold sticky top-14 bg-[#FFF2CC]/50">كتابة</th>
+              </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredData.length === 0 ? (
-                <tr>
-                  <td colSpan={isOnlyMetricView ? 3 + activeMetricFilter.length : 15} className="py-10 text-slate-400 italic text-sm">
-                    {(filterMode === 'student' || filterMode === 'blacklist' || filterMode === 'excellence') && selectedStudentNames.length === 0 
-                      ? (lang === 'ar' ? 'يرجى اختيار أسماء الطلاب من القائمة للعرض' : 'Please select student names to display')
-                      : (lang === 'ar' ? 'لا توجد بيانات تطابق هذا البحث' : 'No data matching this search')}
-                  </td>
-                </tr>
-              ) : (
-                filteredData.map((s, idx) => (
-                  <StudentRow 
-                    key={s.id} 
-                    s={s} 
-                    optionsAr={optionsAr} 
-                    optionsEn={optionsEn} 
-                    lang={lang} 
-                    updateStudent={updateStudent} 
-                    setShowNotesModal={setShowNotesModal} 
-                    toggleStar={toggleStar} 
-                  />
-                ))
-              )}
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {filteredData.map((s) => (
+                <StudentRow key={s.id} s={s} optionsAr={optionsAr} lang={lang} updateStudent={updateStudent} setShowNotesModal={setShowNotesModal} toggleStar={toggleStar} activeRowId={activeRowId} setActiveRowId={setActiveRowId} />
+              ))}
             </tbody>
           </table>
         </div>
       </div>
-
-      {showListModal && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200 text-right">
-            <h3 className={`font-black ${showListModal === 'blacklist' ? 'text-slate-800' : 'text-green-600'}`}>
-              {showListModal === 'blacklist' ? (lang === 'ar' ? 'القائمة السوداء' : 'Blacklist') : (lang === 'ar' ? 'قائمة التميز' : 'Excellence List')}
-            </h3>
-            <div className="relative">
-              <input 
-                className="w-full p-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-right text-sm font-bold outline-none pr-10" 
-                placeholder={lang === 'ar' ? 'بحث عن اسم...' : 'Search for name...'} 
-                value={listSearch}
-                onChange={(e) => setListSearch(e.target.value)}
-              />
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-            </div>
-            <div className="max-h-64 overflow-y-auto space-y-2 border rounded-xl p-2 text-right">
-              {listItemsToDisplay.length === 0 ? (
-                <div className="p-4 text-center text-slate-400 italic text-xs">{lang === 'ar' ? 'لا توجد أسماء مضافة' : 'No names added'}</div>
-              ) : (
-                listItemsToDisplay.map(s => (
-                  <label key={s.id} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="w-4 h-4 text-blue-600" 
-                      checked={tempListSelected.includes(s.name)}
-                      onChange={(e) => {
-                        if (e.target.checked) setTempListSelected([...tempListSelected, s.name]);
-                        else setTempListSelected(tempListSelected.filter(n => n !== s.name));
-                      }}
-                    />
-                    <span className="text-sm font-bold">{s.name}</span>
-                  </label>
-                ))
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button onClick={handleListApply} className="flex-1 bg-blue-600 text-white p-3 rounded-2xl font-black">{lang === 'ar' ? 'موافق' : 'OK'}</button>
-              <button onClick={() => { setShowListModal(null); setTempListSelected([]); }} className="p-3 bg-slate-100 rounded-2xl font-black">{lang === 'ar' ? 'إلغاء' : 'Cancel'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {metricFilterMode && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200 text-right">
-            <h3 className="font-black text-slate-800">{lang === 'ar' ? 'اختر المعايير المراد عرضها' : 'Choose Metrics to Show'}</h3>
-            <div className="grid grid-cols-2 gap-2 overflow-y-auto max-h-[60vh] p-1">
-              {Object.keys(metricLabels).map(m => (
-                <button key={m} onClick={() => setActiveMetricFilter(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m])} className={`p-2 rounded-xl text-xs font-bold border-2 transition-all ${activeMetricFilter.includes(m) ? 'border-blue-500 bg-blue-50' : 'border-slate-100 hover:border-blue-200'}`}>
-                  {metricLabels[m]}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => { setFilterMode('metric'); setMetricFilterMode(false); }} className="flex-1 bg-blue-600 text-white p-3 rounded-2xl font-black">{lang === 'ar' ? 'تطبيق' : 'Apply'}</button>
-              <button onClick={() => setMetricFilterMode(false)} className="bg-slate-100 text-slate-500 p-3 rounded-2xl font-black">{lang === 'ar' ? 'إلغاء' : 'Cancel'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showSpecificFilterModal && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-2xl shadow-2xl max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in duration-200 text-right">
-            <div className="flex justify-between border-b pb-2 mb-4">
-              <h3 className="font-black">{lang === 'ar' ? 'فلترة حسب صفة معينة' : 'Filter by Specific Feature'}</h3>
-              <button onClick={() => setShowSpecificFilterModal(false)} className="hover:bg-slate-100 p-1 rounded-full transition-colors"><X/></button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-right">
-              {Object.entries(optionsAr).map(([key, vals]) => {
-                const label = key === 'gender' ? (lang === 'ar' ? 'النوع' : 'Gender') : 
-                              key === 'workOutside' ? (lang === 'ar' ? 'العمل' : 'Work') : 
-                              key === 'health' ? (lang === 'ar' ? 'الصحة' : 'Health') :
-                              key === 'level' ? (lang === 'ar' ? 'المستوى' : 'Level') :
-                              key === 'behavior' ? (lang === 'ar' ? 'السلوك' : 'Behavior') :
-                              key === 'mainNotes' ? (lang === 'ar' ? 'الملاحظات' : 'Notes') :
-                              key === 'eduStatus' ? (lang === 'ar' ? 'التعليم' : 'Education') :
-                              key === 'followUp' ? (lang === 'ar' ? 'المتابعة' : 'Follow-up') :
-                              key === 'cooperation' ? (lang === 'ar' ? 'التعاون' : 'Cooperation') :
-                              key === 'grades' ? (lang === 'ar' ? 'الصفوف' : 'Grades') :
-                              key === 'sections' ? (lang === 'ar' ? 'الشعب' : 'Sections') : key;
-
-                return (
-                  <div key={key} className="space-y-1">
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase">{label}</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {vals.map((v: string, vIdx: number) => (
-                        <button key={v} onClick={() => {
-                          setFilterMode('specific');
-                          setSelectedSpecifics(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
-                        }} className={`text-right px-2 py-1.5 rounded-lg text-[9px] font-bold border transition-all ${selectedSpecifics.includes(v) ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-slate-50 border-slate-100 hover:border-blue-200'}`}>
-                          {lang === 'ar' ? v : (optionsEn as any)[key]?.[vIdx] || v}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex flex-wrap gap-2 mt-6 sticky bottom-0 bg-white pt-2 border-t">
-              <button onClick={() => setShowSpecificFilterModal(false)} className="flex-1 bg-slate-900 text-white p-4 rounded-2xl font-black shadow-xl">{lang === 'ar' ? 'تطبيق الفلتر' : 'Apply Filter'}</button>
-              <button onClick={() => setSelectedSpecifics([])} className="bg-slate-100 text-slate-500 p-4 rounded-2xl font-black">{lang === 'ar' ? 'إعادة ضبط' : 'Reset'}</button>
-              <button onClick={() => setShowSpecificFilterModal(false)} className="bg-red-50 text-red-500 p-4 rounded-2xl font-black">{lang === 'ar' ? 'إلغاء' : 'Cancel'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showNotesModal && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200 text-right">
-            <h3 className="font-black text-slate-800">{lang === 'ar' ? 'ملاحظات إضافية' : 'Extra Notes'}</h3>
-            <textarea className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-bold outline-none h-48 text-right" value={showNotesModal.text} onChange={(e) => setShowNotesModal({...showNotesModal, text: e.target.value})} placeholder="..." />
-            <div className="flex gap-2">
-              <button onClick={() => { updateStudent(showNotesModal.id, 'notes', showNotesModal.text); setShowNotesModal(null); }} className="flex-1 bg-blue-600 text-white p-3 rounded-2xl font-black">{lang === 'ar' ? 'موافق' : 'OK'}</button>
-              <button onClick={() => setShowNotesModal(null)} className="p-3 bg-slate-100 rounded-2xl font-black">{lang === 'ar' ? 'إلغاء' : 'Cancel'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Requirement: Detail Modal Implementation & Optimization */}
-      {showIndividualReportModal && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 font-arabic">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border-4 border-emerald-50 animate-in zoom-in-95 duration-300 text-right">
-            {/* Modal Header */}
-            <div className="p-6 bg-emerald-600 text-white flex justify-between items-center shadow-lg">
-              <div className="flex items-center gap-3">
-                <FileText size={28} />
-                <h3 className="text-xl font-black">تقرير طالب مخصص</h3>
-              </div>
-              <button onClick={() => setShowIndividualReportModal(false)} className="p-2 hover:bg-emerald-700 rounded-full transition-colors"><X size={24}/></button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-8 space-y-8 scroll-smooth">
-              {/* Search Field */}
-              <div className="relative">
-                <label className="block text-xs font-black text-slate-500 mb-2 mr-2 uppercase tracking-widest">البحث عن الطالب</label>
-                <div className="flex items-center gap-3 bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 focus-within:border-emerald-500 focus-within:bg-white shadow-inner transition-all">
-                  <Search size={20} className="text-slate-400" />
-                  <input 
-                    type="text" 
-                    className="flex-1 bg-transparent border-none outline-none font-bold text-lg text-right"
-                    placeholder="ابدأ بكتابة اسم الطالب..."
-                    value={detailModalSearch}
-                    onChange={(e) => handleDetailStudentSearch(e.target.value)}
-                  />
-                </div>
-                {detailModalSearch.length > 1 && !currentDetailStudent && (
-                  <div className="absolute top-full left-0 right-0 z-[100] mt-2 bg-white border-2 border-slate-100 rounded-2xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
-                    {studentData
-                      .filter(s => s.name.toLowerCase().includes(detailModalSearch.toLowerCase()))
-                      .map(s => (
-                        <button key={s.id} onClick={() => handleDetailStudentSearch(s.name)} className="w-full text-right p-4 font-bold border-b last:border-none hover:bg-emerald-50 transition-colors flex items-center justify-between">
-                          <span>{s.name}</span>
-                          <span className="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-500">{s.grade}-{s.section}</span>
-                        </button>
-                      ))
-                    }
-                  </div>
-                )}
-              </div>
-
-              {/* Field Toggles Container - "Colored Frames" as requested */}
-              <div className="bg-slate-50 p-6 rounded-[2rem] border-2 border-emerald-100 shadow-inner">
-                <h4 className="text-[10px] font-black text-emerald-700 mb-4 mr-2 uppercase tracking-widest">اختر المعايير المراد تعبئتها</h4>
-                <div className="flex flex-wrap gap-2">
-                  {detailFieldConfigs.map(f => (
-                    <button 
-                      key={f.key}
-                      onClick={() => toggleDetailField(f.key)}
-                      className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all flex items-center gap-2 shadow-sm border-2 ${activeDetailFields.includes(f.key) ? `bg-emerald-600 text-white border-emerald-700 scale-105 shadow-md` : `bg-white text-slate-500 ${f.color} hover:border-emerald-300`}`}
-                    >
-                      {activeDetailFields.includes(f.key) ? <Check size={12}/> : <Plus size={12}/>}
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Dynamic Vertical Form */}
-              {currentDetailStudent && (
-                <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-                   {activeDetailFields.includes('name') && (
-                     <div className="p-4 bg-white border-2 border-blue-100 rounded-2xl shadow-sm space-y-2">
-                       <label className="text-[10px] font-black text-blue-600 mr-2">اسم الطالب</label>
-                       <input className="w-full p-3 bg-slate-50 rounded-xl font-bold border-none focus:ring-2 ring-blue-100 outline-none text-right" value={currentDetailStudent.name} onChange={e => setCurrentDetailStudent({...currentDetailStudent, name: e.target.value})} />
-                     </div>
-                   )}
-                   
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-right">
-                     {activeDetailFields.includes('grade') && (
-                       <div className="p-4 bg-white border-2 border-indigo-100 rounded-2xl shadow-sm space-y-2">
-                         <label className="text-[10px] font-black text-indigo-600 mr-2">الصف</label>
-                         <select className="w-full p-3 bg-slate-50 rounded-xl font-bold outline-none text-right" value={currentDetailStudent.grade} onChange={e => setCurrentDetailStudent({...currentDetailStudent, grade: e.target.value})}>
-                           {optionsAr.grades.map(o => <option key={o} value={o}>{o}</option>)}
-                         </select>
-                       </div>
-                     )}
-                     {activeDetailFields.includes('section') && (
-                       <div className="p-4 bg-white border-2 border-purple-100 rounded-2xl shadow-sm space-y-2">
-                         <label className="text-[10px] font-black text-purple-600 mr-2">الشعبة</label>
-                         <select className="w-full p-3 bg-slate-50 rounded-xl font-bold outline-none text-right" value={currentDetailStudent.section} onChange={e => setCurrentDetailStudent({...currentDetailStudent, section: e.target.value})}>
-                           {optionsAr.sections.map(o => <option key={o} value={o}>{o}</option>)}
-                         </select>
-                       </div>
-                     )}
-                   </div>
-
-                   {activeDetailFields.includes('gender') && (
-                     <div className="p-4 bg-white border-2 border-pink-100 rounded-2xl shadow-sm space-y-2 text-right">
-                       <label className="text-[10px] font-black text-pink-600 mr-2">النوع</label>
-                       <div className="flex gap-4">
-                         {optionsAr.gender.map(g => (
-                           <button key={g} onClick={() => setCurrentDetailStudent({...currentDetailStudent, gender: g})} className={`flex-1 py-3 rounded-xl font-black text-xs border-2 transition-all ${currentDetailStudent.gender === g ? 'bg-pink-600 text-white border-pink-600 shadow-md' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>{g}</button>
-                         ))}
-                       </div>
-                     </div>
-                   )}
-
-                   {activeDetailFields.includes('address') && (
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-right">
-                       <div className="p-4 bg-white border-2 border-orange-100 rounded-2xl shadow-sm space-y-2">
-                         <label className="text-[10px] font-black text-orange-600 mr-2">العنوان السكني</label>
-                         <input className="w-full p-3 bg-slate-50 rounded-xl font-bold outline-none text-right" value={currentDetailStudent.address} onChange={e => setCurrentDetailStudent({...currentDetailStudent, address: e.target.value})} placeholder="..." />
-                       </div>
-                       <div className="p-4 bg-white border-2 border-orange-100 rounded-2xl shadow-sm space-y-2">
-                         <label className="text-[10px] font-black text-orange-600 mr-2">حالة العمل</label>
-                         <select className="w-full p-3 bg-slate-50 rounded-xl font-bold outline-none text-right" value={currentDetailStudent.workOutside} onChange={e => setCurrentDetailStudent({...currentDetailStudent, workOutside: e.target.value})}>
-                           {optionsAr.workOutside.map(o => <option key={o} value={o}>{o}</option>)}
-                         </select>
-                       </div>
-                     </div>
-                   )}
-
-                   {activeDetailFields.includes('healthStatus') && (
-                     <div className="p-6 bg-white border-2 border-red-100 rounded-[2rem] shadow-sm space-y-4 text-right">
-                       <label className="text-[10px] font-black text-red-600 mr-2">المسح الصحي</label>
-                       <div className="flex gap-4">
-                         {optionsAr.health.map(h => (
-                           <button key={h} onClick={() => setCurrentDetailStudent({...currentDetailStudent, healthStatus: h})} className={`flex-1 py-3 rounded-xl font-black text-xs border-2 transition-all ${currentDetailStudent.healthStatus === h ? 'bg-red-600 text-white border-red-600 shadow-md' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>{h}</button>
-                         ))}
-                       </div>
-                       {currentDetailStudent.healthStatus === 'مريض' && (
-                         <textarea className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none border-none focus:ring-2 ring-red-100 min-h-[80px] text-right" placeholder="تفاصيل الحالة الصحية..." value={currentDetailStudent.healthDetails} onChange={e => setCurrentDetailStudent({...currentDetailStudent, healthDetails: e.target.value})} />
-                       )}
-                     </div>
-                   )}
-
-                   {activeDetailFields.includes('guardianInfo') && (
-                     <div className="p-6 bg-white border-2 border-emerald-100 rounded-[2rem] shadow-sm space-y-4 text-right">
-                       <label className="text-[10px] font-black text-emerald-600 mr-2">بيانات التواصل مع ولي الأمر</label>
-                       <div className="space-y-4">
-                          <div className="space-y-1">
-                            <span className="text-[9px] font-bold text-slate-400 mr-1">اسم ولي الأمر:</span>
-                            <input className="w-full p-3 bg-slate-50 rounded-xl font-bold outline-none text-right" value={currentDetailStudent.guardianName} onChange={e => setCurrentDetailStudent({...currentDetailStudent, guardianName: e.target.value})} />
-                          </div>
-                          <div className="space-y-2">
-                             <span className="text-[9px] font-bold text-slate-400 mr-1">أرقام الهواتف:</span>
-                             {currentDetailStudent.guardianPhones.map((p, pIdx) => (
-                               <div key={pIdx} className="flex gap-2 animate-in slide-in-from-right-2">
-                                 <input className="flex-1 p-3 bg-slate-50 rounded-xl font-bold outline-none focus:ring-2 ring-emerald-100 text-right" value={p} onChange={e => {
-                                   const newPhones = [...currentDetailStudent.guardianPhones];
-                                   newPhones[pIdx] = e.target.value;
-                                   setCurrentDetailStudent({...currentDetailStudent, guardianPhones: newPhones});
-                                 }} />
-                                 <button onClick={() => setCurrentDetailStudent({...currentDetailStudent, guardianPhones: currentDetailStudent.guardianPhones.filter((_, i) => i !== pIdx)})} className="p-3 text-red-400 hover:text-red-600"><Trash2 size={16}/></button>
-                               </div>
-                             ))}
-                             <button onClick={() => setCurrentDetailStudent({...currentDetailStudent, guardianPhones: [...currentDetailStudent.guardianPhones, '']})} className="w-full p-2 border-2 border-dashed border-emerald-100 rounded-xl text-emerald-600 font-black text-[10px] hover:bg-emerald-50 transition-all">+ إضافة هاتف آخر</button>
-                          </div>
-                       </div>
-                     </div>
-                   )}
-
-                   {activeDetailFields.includes('academic') && (
-                     <div className="p-6 bg-white border-2 border-yellow-200 rounded-[2rem] shadow-sm space-y-4 text-right">
-                       <label className="text-[10px] font-black text-yellow-600 mr-2">التقييم العلمي والأكاديمي</label>
-                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                         {['academicReading', 'academicWriting', 'academicParticipation'].map(field => (
-                           <div key={field} className="space-y-2">
-                             <span className="text-[9px] font-bold text-slate-400 block text-center">{field === 'academicReading' ? 'القراءة' : field === 'academicWriting' ? 'الكتابة' : 'المشاركة'}</span>
-                             <select className={`w-full p-3 rounded-xl font-black text-xs outline-none border-2 appearance-none text-center ${currentDetailStudent[field as keyof StudentReport]?.toString().includes('ضعيف') ? 'bg-red-50 border-red-200 text-red-600' : 'bg-slate-50 border-slate-100 text-slate-700'}`} value={currentDetailStudent[field as keyof StudentReport] as string} onChange={e => setCurrentDetailStudent({...currentDetailStudent, [field]: e.target.value})}>
-                               {optionsAr.level.map(o => <option key={o} value={o}>{o}</option>)}
-                             </select>
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                   )}
-
-                   {activeDetailFields.includes('behaviorLevel') && (
-                     <div className="p-6 bg-white border-2 border-teal-100 rounded-[2rem] shadow-sm space-y-4 text-right">
-                       <label className="text-[10px] font-black text-teal-600 mr-2">المستوى السلوكي العام</label>
-                       <div className="flex flex-wrap gap-2 justify-center">
-                         {optionsAr.behavior.map(b => (
-                           <button 
-                             key={b} 
-                             onClick={() => setCurrentDetailStudent({...currentDetailStudent, behaviorLevel: b})}
-                             className={`px-4 py-2 rounded-xl text-[10px] font-black border-2 transition-all ${currentDetailStudent.behaviorLevel === b ? ((b.includes('ضعيف') || b.includes('مقبول')) ? 'bg-red-600 text-white border-red-600 shadow-md' : 'bg-teal-600 text-white border-teal-600 shadow-md') : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-teal-200'}`}
-                           >
-                             {b}
-                           </button>
-                         ))}
-                       </div>
-                     </div>
-                   )}
-
-                   {activeDetailFields.includes('mainNotes') && (
-                     <div className="p-6 bg-white border-2 border-rose-100 rounded-[2rem] shadow-sm space-y-4 text-right">
-                       <label className="text-[10px] font-black text-rose-600 mr-2">الملاحظات السلوكية الأساسية</label>
-                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                         {optionsAr.mainNotes.map(n => (
-                           <button 
-                             key={n} 
-                             onClick={() => {
-                               const updated = currentDetailStudent.mainNotes.includes(n) ? currentDetailStudent.mainNotes.filter(x => x !== n) : [...currentDetailStudent.mainNotes, n];
-                               setCurrentDetailStudent({...currentDetailStudent, mainNotes: updated});
-                             }}
-                             className={`text-right p-3 rounded-xl text-[10px] font-bold border-2 transition-all flex items-center justify-between ${currentDetailStudent.mainNotes.includes(n) ? 'bg-red-50 border-red-500 text-red-700 shadow-sm' : 'bg-slate-50 border-slate-50 text-slate-500 hover:bg-white hover:border-rose-200'}`}
-                           >
-                             {n}
-                             {currentDetailStudent.mainNotes.includes(n) ? <Check size={14}/> : <Plus size={14} className="opacity-30"/>}
-                           </button>
-                         ))}
-                       </div>
-                     </div>
-                   )}
-
-                   {activeDetailFields.includes('guardianFollowUp') && (
-                     <div className="p-6 bg-white border-2 border-cyan-100 rounded-[2rem] shadow-sm space-y-4 text-right">
-                       <label className="text-[10px] font-black text-cyan-600 mr-2">تقييم متابعة ولي الأمر</label>
-                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="space-y-1">
-                            <span className="text-[9px] font-bold text-slate-400 block text-center">تعليم ولي الأمر</span>
-                            <select className="w-full p-3 bg-slate-50 rounded-xl font-bold outline-none text-center text-xs" value={currentDetailStudent.guardianEducation} onChange={e => setCurrentDetailStudent({...currentDetailStudent, guardianEducation: e.target.value})}>
-                              {optionsAr.eduStatus.map(o => <option key={o} value={o}>{o}</option>)}
-                            </select>
-                          </div>
-                          <div className="space-y-1">
-                            <span className="text-[9px] font-bold text-slate-400 block text-center">مستوى المتابعة</span>
-                            <select className={`w-full p-3 rounded-xl font-black text-xs outline-none border-2 text-center ${currentDetailStudent.guardianFollowUp === 'ضعيفة' ? 'bg-red-50 border-red-200 text-red-600' : 'bg-slate-50 border-slate-100'}`} value={currentDetailStudent.guardianFollowUp} onChange={e => setCurrentDetailStudent({...currentDetailStudent, guardianFollowUp: e.target.value})}>
-                              {optionsAr.followUp.map(o => <option key={o} value={o}>{o}</option>)}
-                            </select>
-                          </div>
-                          <div className="space-y-1">
-                            <span className="text-[9px] font-bold text-slate-400 block text-center">درجة التعاون</span>
-                            <select className={`w-full p-3 rounded-xl font-black text-xs outline-none border-2 text-center ${currentDetailStudent.guardianCooperation === 'عدواني' || currentDetailStudent.guardianCooperation === 'ضعيفة' ? 'bg-red-600 border-red-700 text-white' : 'bg-slate-50 border-slate-100'}`} value={currentDetailStudent.guardianCooperation} onChange={e => setCurrentDetailStudent({...currentDetailStudent, guardianCooperation: e.target.value})}>
-                              {optionsAr.cooperation.map(o => <option key={o} value={o}>{o}</option>)}
-                            </select>
-                          </div>
-                       </div>
-                     </div>
-                   )}
-
-                   {activeDetailFields.includes('notes') && (
-                     <div className="p-4 bg-white border-2 border-slate-200 rounded-2xl shadow-sm space-y-4 text-right">
-                       <label className="text-[10px] font-black text-slate-600 mr-2">الملاحظات الختامية</label>
-                       <div className="space-y-4">
-                          <textarea className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none h-24 text-sm text-right" placeholder="ملاحظات أخرى..." value={currentDetailStudent.notes} onChange={e => setCurrentDetailStudent({...currentDetailStudent, notes: e.target.value})} />
-                          <div className="space-y-1">
-                            <span className="text-[9px] font-bold text-slate-400 mr-1 uppercase">ملاحظات برمجية (تلقائية):</span>
-                            <input className="w-full p-3 bg-slate-50 rounded-xl font-bold outline-none border-none italic text-blue-600 text-right" value={currentDetailStudent.otherNotesText} onChange={e => setCurrentDetailStudent({...currentDetailStudent, otherNotesText: e.target.value})} />
-                          </div>
-                       </div>
-                     </div>
-                   )}
-                </div>
-              )}
-
-              {!currentDetailStudent && detailModalSearch.length > 0 && (
-                <div className="flex flex-col items-center justify-center p-20 text-slate-300 gap-4">
-                   <Users size={64} className="opacity-20" />
-                   <p className="font-bold">يرجى اختيار طالب من القائمة للبدء</p>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-6 bg-slate-50 border-t flex flex-col sm:flex-row gap-4">
-               <button 
-                 onClick={saveDetailStudent}
-                 disabled={!currentDetailStudent}
-                 className="flex-1 bg-emerald-600 text-white p-5 rounded-2xl font-black text-xl hover:bg-emerald-700 shadow-xl shadow-emerald-100 transition-all active:scale-[0.98] flex items-center justify-center gap-4 disabled:opacity-30"
-               >
-                 <CheckCircle size={28}/> موافق واعتماد البيانات
-               </button>
-               
-               <button 
-                 onClick={sendDetailWhatsApp}
-                 disabled={!currentDetailStudent}
-                 className="p-5 bg-white border-4 border-green-500 text-green-600 rounded-2xl hover:bg-green-500 hover:text-white transition-all shadow-lg flex items-center justify-center gap-3 active:scale-90 disabled:opacity-30"
-                 title="إرسال التقرير للواتساب"
-               >
-                 <MessageCircle size={28}/>
-                 <span className="font-black text-lg text-right">واتساب</span>
-               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* START OF CHANGE - Surgical Addition for WhatsApp Selector Modal */}
-      {waSelector && (
-        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 font-arabic">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-300 border-4 border-green-50 text-right overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-6 bg-green-600 text-white flex justify-between items-center">
-              <h3 className="text-xl font-black flex items-center gap-3"><Share2 size={24}/> تخصيص بيانات الإرسال للواتساب</h3>
-              <button onClick={() => setWaSelector(null)} className="p-2 hover:bg-green-700 rounded-full transition-colors"><X size={24}/></button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-8 space-y-6">
-              <div className="bg-green-50 p-4 rounded-2xl border-2 border-green-100 mb-6">
-                <p className="text-sm font-bold text-green-800 leading-relaxed">
-                  سيتم الإرسال لـ <span className="font-black">({waSelector.type === 'single' ? 'طالب واحد' : `${filteredData.length} طالب`})</span>. 
-                  يرجى اختيار الحقول المراد تضمينها في الرسالة. سيتم تنسيق الرسالة برموز بصرية وتلوين للمشكلات.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {waFieldOptions.map(opt => {
-                  const isSelected = waSelectedFields.includes(opt.key);
-                  return (
-                    <button 
-                      key={opt.key}
-                      onClick={() => {
-                        if (opt.key === 'all') {
-                          setWaSelectedFields(['all']);
-                        } else {
-                          const withoutAll = waSelectedFields.filter(f => f !== 'all');
-                          if (isSelected) {
-                            const updated = withoutAll.filter(f => f !== opt.key);
-                            setWaSelectedFields(updated.length === 0 ? ['all'] : updated);
-                          } else {
-                            setWaSelectedFields([...withoutAll, opt.key]);
-                          }
-                        }
-                      }}
-                      className={`p-4 rounded-2xl border-2 text-right font-bold transition-all flex items-center justify-between ${isSelected ? 'bg-green-600 text-white border-green-700 shadow-md scale-102' : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-green-300'}`}
-                    >
-                      <span className="text-xs">{opt.label}</span>
-                      {isSelected && <CheckCircle size={18}/>}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="p-6 bg-slate-50 border-t flex flex-col sm:flex-row gap-4">
-              <button 
-                onClick={finalSendWhatsApp}
-                className="flex-1 bg-green-600 text-white p-5 rounded-2xl font-black text-xl hover:bg-green-700 shadow-xl shadow-green-100 transition-all active:scale-[0.98] flex items-center justify-center gap-4"
-              >
-                <MessageCircle size={28}/> إرسال إلى واتساب
-              </button>
-              <button 
-                onClick={() => setWaSelector(null)}
-                className="px-8 bg-white border-2 text-slate-400 rounded-2xl font-black hover:bg-slate-100 transition-all"
-              >
-                إلغاء
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* END OF CHANGE */}
     </div>
   );
 };

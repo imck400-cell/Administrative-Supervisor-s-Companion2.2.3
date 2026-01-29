@@ -110,7 +110,7 @@ const MainApp: React.FC = () => {
         }
         return navItems.find(item => item.id === id);
       })
-      .filter((item): item is { id: string; label: string; icon: React.ReactNode } => !!item);
+      .filter((item): item is { id: string; label: string; icon: React.ReactElement } => !!item);
   }, [recentActionIds, navItems]);
 
   const handleSetView = (v: string) => {
@@ -128,9 +128,7 @@ const MainApp: React.FC = () => {
       case 'daily': return <DailyReportsPage />;
       case 'violations': return <ViolationsPage />;
       case 'studentReports': return <StudentsReportsPage />;
-      // START OF CHANGE
       case 'specialReports': return <SpecialReportsPage initialSubTab={subView} onSubTabOpen={(subId) => trackAction(`specialReports:${subId}`)} onNavigate={handleSetView} />;
-      // END OF CHANGE
       case 'profile': return <ProfilePage />;
       default: return <Dashboard setView={handleSetView} recentActions={recentActions} />;
     }

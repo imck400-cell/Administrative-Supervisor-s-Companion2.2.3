@@ -44,7 +44,6 @@ const SubstitutionPage: React.FC = () => {
 
   const uniqueCoverageDates = useMemo(() => {
     const dates = (data.substitutions || []).map(s => s.date);
-    // Fix: Cast a and b to string as they are inferred as unknown
     return Array.from(new Set(dates)).sort((a: any, b: any) => b.localeCompare(a));
   }, [data.substitutions]);
   // END OF CHANGE
@@ -169,7 +168,6 @@ const SubstitutionPage: React.FC = () => {
   };
 
   // --- Coverage Logic ---
-  // START OF CHANGE - Using selectedCoverageDate
   const handleAddRow = () => {
     const newEntry = {
       id: Date.now().toString(),
@@ -184,7 +182,6 @@ const SubstitutionPage: React.FC = () => {
     };
     updateData({ substitutions: [...data.substitutions, newEntry as any] });
   };
-  // END OF CHANGE
 
   const updateEntry = (id: string, field: string, value: string) => {
     const newList = data.substitutions.map(s => 
@@ -240,7 +237,6 @@ const SubstitutionPage: React.FC = () => {
 
       {activeTab === 'coverage' ? (
         <div className="space-y-4 animate-in fade-in duration-500">
-          {/* START OF CHANGE - Enhanced Coverage Header Controls */}
           <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border flex flex-wrap justify-between items-center gap-6">
             <div className="flex-1">
               <div className="flex items-center gap-3">
@@ -254,7 +250,6 @@ const SubstitutionPage: React.FC = () => {
             </div>
             
             <div className="flex flex-wrap items-center gap-2">
-              {/* Report Controls */}
               <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border">
                 <button 
                   onClick={() => setSelectedCoverageDate(new Date().toISOString().split('T')[0])}
@@ -281,7 +276,6 @@ const SubstitutionPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex items-center gap-1 bg-slate-50 p-1.5 rounded-2xl border">
                 <button onClick={() => {
                   const text = filteredSubstitutions.reduce((acc, row: any, i) => {
@@ -323,7 +317,6 @@ const SubstitutionPage: React.FC = () => {
               </button>
             </div>
           </div>
-          {/* END OF CHANGE */}
 
           <div className="bg-white rounded-[2.5rem] shadow-xl border overflow-hidden">
             <div className="overflow-x-auto">
@@ -473,12 +466,12 @@ const SubstitutionPage: React.FC = () => {
           {/* Timetable Grid */}
           <div className="bg-white rounded-[2.5rem] shadow-xl border overflow-hidden relative">
             <div className="overflow-x-auto overflow-y-auto max-h-[600px] scroll-smooth">
-              <table className="w-full border-collapse text-center table-fixed min-w-[2000px]">
+              <table className="w-full border-collapse text-center table-fixed min-w-[4000px]">
                 <thead className="sticky top-0 z-40 bg-white">
                   <tr className="bg-slate-100 text-slate-800 font-black border-b border-slate-300 h-14">
                     <th rowSpan={2} className="w-12 border-e border-slate-300 sticky right-0 bg-slate-100 z-50">م</th>
-                    <th rowSpan={2} className="w-64 border-e border-slate-300 sticky right-12 bg-slate-100 z-50">اسم المعلم</th>
-                    <th rowSpan={2} className="w-40 border-e border-slate-300 sticky right-[304px] bg-slate-100 z-50">المادة</th>
+                    <th rowSpan={2} className="w-36 border-e border-slate-300 sticky right-12 bg-slate-100 z-50">اسم المعلم</th>
+                    <th rowSpan={2} className="w-28 border-e border-slate-300 sticky right-[192px] bg-slate-100 z-50">المادة</th>
                     {daysAr.map(day => (
                       <th key={day} colSpan={8} className="border-e border-slate-300 bg-slate-100 py-2">
                         <div className="flex items-center justify-center gap-2 text-sm">
@@ -495,7 +488,7 @@ const SubstitutionPage: React.FC = () => {
                         {periodsAr.map((p, i) => (
                           <th 
                             key={`${day}-p${i}`} 
-                            className={`border-e border-slate-200 w-24 cursor-pointer hover:bg-orange-100 transition-colors ${highlightDayPeriod === `${day}-p${i}` ? 'bg-orange-200 text-orange-800' : ''}`}
+                            className={`border-e border-slate-200 w-64 cursor-pointer hover:bg-orange-100 transition-colors ${highlightDayPeriod === `${day}-p${i}` ? 'bg-orange-200 text-orange-800' : ''}`}
                             onClick={() => setHighlightDayPeriod(prev => prev === `${day}-p${i}` ? null : `${day}-p${i}`)}
                           >
                             {p}
@@ -527,7 +520,7 @@ const SubstitutionPage: React.FC = () => {
                            />
                            <datalist id={`teacher-list-${row.id}`}>{teacherList.map(n => <option key={n} value={n}/>)}</datalist>
                         </td>
-                        <td className={`p-1 sticky right-[304px] z-30 transition-colors border-e border-slate-200 ${isRowHighlighted ? 'bg-orange-100' : 'bg-white group-hover:bg-slate-50'}`}>
+                        <td className={`p-1 sticky right-[192px] z-30 transition-colors border-e border-slate-200 ${isRowHighlighted ? 'bg-orange-100' : 'bg-white group-hover:bg-slate-50'}`}>
                            <input className="w-full p-2 bg-transparent text-right font-bold outline-none border-none text-xs text-emerald-700" value={row.subject} onChange={e => updateTimetableField(row.id, ['subject'], e.target.value)} placeholder="..." />
                         </td>
                         {daysAr.map(day => (
@@ -583,10 +576,10 @@ const SubstitutionPage: React.FC = () => {
                       setSelectedCoverageDate(date);
                       setShowCoverageArchive(false);
                     }}
-                    className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all group ${selectedCoverageDate === date ? 'border-blue-500 bg-blue-50' : 'border-slate-100 hover:border-blue-200 bg-slate-50'}`}
+                    className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all group ${selectedCoverageDate === date ? 'border-blue-500 bg-blue-50' : 'border-slate-100 hover:border-blue-200'}`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-xl ${selectedCoverageDate === date ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 group-hover:text-blue-500'}`}>
+                      <div className={`p-2 rounded-xl ${selectedCoverageDate === date ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 group-hover:text-blue-50'}`}>
                         <Calendar size={18} />
                       </div>
                       <div className="text-right">

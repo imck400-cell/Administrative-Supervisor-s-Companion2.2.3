@@ -10,7 +10,7 @@ export interface SchoolProfile {
   semester: string;
   branchManager: string;
   generalManager: string;
-  customFields?: { label: string, value: string }[];
+  customFields?: { label: string; value: string }[];
   // Legacy fields preserved for compatibility
   supervisorName?: string;
   classes?: string;
@@ -222,6 +222,7 @@ export interface ParentVisitLog {
   actions: string;
   followUpStatus: string[];
   prevVisitCount: number;
+  notes: string;
 }
 
 export interface GenericSpecialReport {

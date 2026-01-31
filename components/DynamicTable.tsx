@@ -1,7 +1,7 @@
 import React from 'react';
 import { useGlobal } from '../context/GlobalState';
-import { 
-  Download, FileSpreadsheet, FileIcon as FilePdf, 
+import {
+  Download, FileSpreadsheet, FileIcon as FilePdf,
   Copy, Share2, Plus, Trash2, Edit, FileText
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -14,16 +14,16 @@ interface Column {
 interface DynamicTableProps {
   title: string;
   columns: Column[];
-  data: any[];
+  data: Record<string, any>[];
   onAdd: () => void;
-  onEdit: (item: any) => void;
+  onEdit: (item: Record<string, any>) => void;
   onDelete: (id: string) => void;
 }
 
 const DynamicTable: React.FC<DynamicTableProps> = ({ title, columns, data, onAdd, onEdit, onDelete }) => {
-  const { lang } = useGlobal();
+  const { lang, data: globalData } = useGlobal();
 
-  const generateRichTextReport = (item?: any) => {
+  const generateRichTextReport = (item?: Record<string, any>) => {
     const targetData = item ? [item] : data;
     let text = `*📋 تقرير: ${title}*\n`;
     text += `*التاريخ:* ${new Date().toLocaleDateString('ar-EG')}\n`;
@@ -34,14 +34,14 @@ const DynamicTable: React.FC<DynamicTableProps> = ({ title, columns, data, onAdd
       columns.forEach(col => {
         const val = row[col.key] || '---';
         let symbol = '▪️';
-        
+
         // Logical formatting with symbols based on values (for WhatsApp visuals)
         if (typeof val === 'number') {
-           if (val < 5) symbol = '⚠️'; // Highlight low scores
-           else symbol = '⭐';
+          if (val < 5) symbol = '⚠️'; // Highlight low scores
+          else symbol = '⭐';
         } else if (typeof val === 'string') {
-           if (val.includes('ضعيف') || val.includes('مخالفة') || val.includes('pending')) symbol = '🔴';
-           if (val.includes('ممتاز') || val.includes('تمت') || val.includes('paid')) symbol = '🟢';
+          if (val.includes('ضعيف') || val.includes('مخالفة') || val.includes('pending')) symbol = '🔴';
+          if (val.includes('ممتاز') || val.includes('تمت') || val.includes('paid')) symbol = '🟢';
         }
 
         text += `${symbol} *${col.label}:* ${val}\n`;
@@ -52,8 +52,18 @@ const DynamicTable: React.FC<DynamicTableProps> = ({ title, columns, data, onAdd
     return text;
   };
 
-  const handleShareWhatsApp = (item?: any) => {
-    const text = generateRichTextReport(item);
+  const handleShareWhatsApp = (item?: Record<string, any>) => {
+    let text = generateRichTextReport(item);
+
+    // START OF CHANGE - Requirement: Footer with School Name and Branch
+    const profile = globalData.profile;
+    if (profile.schoolName || profile.branch) {
+      text += `\n----------------------------------\n`;
+      text += `🏫 *${profile.schoolName || ''}${profile.branch ? `، فرع ${profile.branch}` : ''}*\n`;
+    }
+
+    // END OF CHANGE
+
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
@@ -81,7 +91,7 @@ const DynamicTable: React.FC<DynamicTableProps> = ({ title, columns, data, onAdd
   };
 
   const handleCopyToClipboard = () => {
-    const text = data.map(row => 
+    const text = data.map(row =>
       columns.map(col => `${col.label}: ${row[col.key]}`).join(' | ')
     ).join('\n');
     navigator.clipboard.writeText(text);
@@ -97,7 +107,7 @@ const DynamicTable: React.FC<DynamicTableProps> = ({ title, columns, data, onAdd
             <Plus className="w-4 h-4" />
             <span>{lang === 'ar' ? 'إضافة' : 'Add'}</span>
           </button>
-          
+
           <div className="flex items-center border rounded-lg p-1 bg-slate-50">
             <button onClick={handleCopyToClipboard} className="p-2 hover:bg-white rounded text-blue-600 transition-colors" title="Copy">
               <Copy className="w-4 h-4" />
@@ -136,34 +146,34 @@ const DynamicTable: React.FC<DynamicTableProps> = ({ title, columns, data, onAdd
               data.map((row, idx) => (
                 <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                   {columns.map(col => {
-                     const val = row[col.key];
-                     let className = "px-6 py-4 text-sm text-slate-700";
-                     if (typeof val === 'string' && (val.includes('ضعيف') || val.includes('مخالفة'))) {
-                        className += " text-red-600 font-bold";
-                     }
-                     return (
-                        <td key={col.key} className={className}>
-                          {val}
-                        </td>
-                     );
+                    const val = row[col.key];
+                    let className = "px-6 py-4 text-sm text-slate-700";
+                    if (typeof val === 'string' && (val.includes('ضعيف') || val.includes('مخالفة'))) {
+                      className += " text-red-600 font-bold";
+                    }
+                    return (
+                      <td key={col.key} className={className}>
+                        {val}
+                      </td>
+                    );
                   })}
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-2">
-                      <button 
+                      <button
                         onClick={() => onEdit(row)}
                         className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition-colors"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button 
-                         onClick={() => onDelete(row.id)}
-                         className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                      <button
+                        onClick={() => onDelete(row.id)}
+                        className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
-                      <button 
-                         onClick={() => handleShareWhatsApp(row)}
-                         className="p-1.5 text-green-500 hover:bg-green-50 rounded transition-colors"
+                      <button
+                        onClick={() => handleShareWhatsApp(row)}
+                        className="p-1.5 text-green-500 hover:bg-green-50 rounded transition-colors"
                       >
                         <Share2 className="w-4 h-4" />
                       </button>

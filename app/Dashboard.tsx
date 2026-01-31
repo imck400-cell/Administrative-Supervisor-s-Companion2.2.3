@@ -1,11 +1,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useGlobal } from '../context/GlobalState';
-import { 
-  Users, CheckCircle2, AlertCircle, FileText, 
-  TrendingUp, Calendar, Clock, Filter, ChevronDown, 
+import {
+  Users, CheckCircle2, AlertCircle, FileText,
+  TrendingUp, Calendar, Clock, Filter, ChevronDown,
   UserCheck, UserX, BookOpen, Star, AlertTriangle, Search,
-  ClipboardCheck, Sparkles, GraduationCap, ShieldAlert, 
+  ClipboardCheck, Sparkles, GraduationCap, ShieldAlert,
   UserCheck as UserPlusIcon, CalendarDays, Activity, Medal, School, User,
   FileSpreadsheet, Share2, ChevronLeft, ChevronRight, Triangle,
   ArrowLeftRight, History, Home, MapPin, Briefcase, HeartPulse, UserPlus, Hammer, MessageSquare,
@@ -29,7 +29,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
   const today = new Date().toISOString().split('T')[0];
   const [globalTimeRange, setGlobalTimeRange] = useState<TimeRange>('all');
   const [dateRange, setDateRange] = useState({ start: today, end: today });
-  
+
   const [cycleIndex, setCycleIndex] = useState(0);
   const [cycleDuration, setCycleDuration] = useState(5000);
   const [cardOffsets, setCardOffsets] = useState<Record<number, number>>({});
@@ -52,6 +52,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
           { id: 'healthStatus', label: 'الحالة الصحية', icon: <HeartPulse size={12} /> },
           { id: 'academicReading', label: 'القراءة', icon: <BookOpen size={12} /> },
           { id: 'academicWriting', label: 'الكتابة', icon: <FileText size={12} /> },
+          { id: 'academicParticipation', label: 'المشاركة الأكاديمية', icon: <Star size={12} /> },
           { id: 'behaviorLevel', label: 'المستوى السلوكي', icon: <Activity size={12} /> },
           { id: 'mainNotes', label: 'الملاحظات الأساسية', icon: <AlertTriangle size={12} /> },
           { id: 'guardianFollowUp', label: 'متابعة ولي الأمر', icon: <UserPlus size={12} /> },
@@ -62,9 +63,16 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
         return [
           { id: 'all', label: 'الكل', icon: <Users size={12} /> },
           { id: 'attendance', label: 'الحضور', icon: <Clock size={12} /> },
+          { id: 'appearance', label: 'المظهر الشخصي', icon: <User size={12} /> },
           { id: 'preparation', label: 'التحضير', icon: <CheckCircle2 size={12} /> },
           { id: 'supervision_queue', label: 'طابور الصباح', icon: <UserCheck size={12} /> },
           { id: 'supervision_rest', label: 'إشراف الراحة', icon: <UserCheck size={12} /> },
+          { id: 'supervision_end', label: 'إشراف نهاية الدوام', icon: <UserCheck size={12} /> },
+          { id: 'correction_books', label: 'تصحيح الكتب', icon: <BookOpen size={12} /> },
+          { id: 'correction_notebooks', label: 'تصحيح الدفاتر', icon: <BookOpen size={12} /> },
+          { id: 'correction_followup', label: 'تصحيح المتابعة', icon: <ClipboardCheck size={12} /> },
+          { id: 'teaching_aids', label: 'وسيلة تعلمية', icon: <Sparkles size={12} /> },
+          { id: 'extra_activities', label: 'أنشطة لا صفية', icon: <Activity size={12} /> },
           { id: 'violations_score', label: 'المخالفات', icon: <AlertCircle size={12} /> },
         ];
       case 'special_reports':
@@ -100,20 +108,20 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
     if (['behaviorLevel', 'academicReading', 'academicWriting', 'academicParticipation'].includes(subType)) {
       return commonRatings;
     }
-    
+
     if (subType === 'healthStatus') {
-        return [{ id: 'ممتاز', label: 'ممتاز' }, { id: 'مريض', label: 'مريض' }];
+      return [{ id: 'ممتاز', label: 'ممتاز' }, { id: 'مريض', label: 'مريض' }];
     }
     if (subType === 'workOutside') {
-        return [{ id: 'لا يعمل', label: 'لا يعمل' }, { id: 'يعمل', label: 'يعمل' }];
+      return [{ id: 'لا يعمل', label: 'لا يعمل' }, { id: 'يعمل', label: 'يعمل' }];
     }
     if (['guardianFollowUp', 'guardianCooperation'].includes(subType)) {
-        return [
-            { id: 'ممتازة', label: 'ممتازة' },
-            { id: 'متوسطة', label: 'متوسطة' },
-            { id: 'ضعيفة', label: 'ضعيفة' },
-            { id: 'عدواني', label: 'عدواني' }
-        ];
+      return [
+        { id: 'ممتازة', label: 'ممتازة' },
+        { id: 'متوسطة', label: 'متوسطة' },
+        { id: 'ضعيفة', label: 'ضعيفة' },
+        { id: 'عدواني', label: 'عدواني' }
+      ];
     }
 
     switch (subType) {
@@ -139,6 +147,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
           { id: 'خروج طالب أثناء الدراسة', label: 'خروج طالب أثناء الدراسة' },
           { id: 'المخالفات الطلابية', label: 'المخالفات الطلابية' },
           { id: 'سجل الإتلاف المدرسي', label: 'سجل الإتلاف المدرسي' },
+          { id: 'سجل زيارة أولياء الأمور والتواصل بهم', label: 'زيارات أولياء الأمور' },
         ];
       case 'tests':
         return [
@@ -157,13 +166,13 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
       violations: (data.violations || []).map(v => ({ ...v, displayName: v.studentName || v.teacherName, type: 'violation' })),
       substitutions: (data.substitutions || []).map(s => ({ ...s, displayName: s.absentTeacher, type: 'substitution' })),
       special_reports: [
-        ...(data.absenceLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'الغياب اليومي', icon: <UserX size={12}/> })),
-        ...(data.latenessLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'التأخر', icon: <Clock size={12}/> })),
-        ...(data.exitLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'خروج طالب أثناء الدراسة', icon: <UserPlusIcon size={12}/> })),
-        ...(data.damageLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل الإتلاف المدرسي', icon: <Hammer size={12}/> })),
-        ...(data.studentViolationLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'المخالفات الطلابية', icon: <ShieldAlert size={12}/> })),
-        ...(data.parentVisitLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل زيارة أولياء الأمور والتواصل بهم', icon: <Users size={12}/> })),
-        ...(data.genericSpecialReports || []).map(l => ({ ...l, displayName: l.title, cat: l.category === 'supervisor' ? 'supervisor' : l.category === 'staff' ? 'staff' : l.category === 'tests' ? 'tests' : 'supervisor', sub: l.subCategory, icon: <FileText size={12}/> })),
+        ...(data.absenceLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'الغياب اليومي', icon: <UserX size={12} /> })),
+        ...(data.latenessLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'التأخر', icon: <Clock size={12} /> })),
+        ...(data.exitLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'خروج طالب أثناء الدراسة', icon: <UserPlusIcon size={12} /> })),
+        ...(data.damageLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل الإتلاف المدرسي', icon: <Hammer size={12} /> })),
+        ...(data.studentViolationLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'المخالفات الطلابية', icon: <ShieldAlert size={12} /> })),
+        ...(data.parentVisitLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل زيارة أولياء الأمور والتواصل بهم', icon: <Users size={12} /> })),
+        ...(data.genericSpecialReports || []).map(l => ({ ...l, displayName: l.title, cat: l.category === 'supervisor' ? 'supervisor' : l.category === 'staff' ? 'staff' : l.category === 'tests' ? 'tests' : 'supervisor', sub: l.subCategory, icon: <FileText size={12} /> })),
       ]
     };
 
@@ -202,34 +211,34 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
   const getFilteredListForCard = (card: CardConfig) => {
     let list = processedData[card.category] || [];
     const subSubOptions = getSubSubTypes(card.subType);
-    
+
     if (card.category === 'special_reports') {
       if (card.subType !== 'all') {
-          list = list.filter(i => i.cat === card.subType);
-          if (subSubOptions.length > 0) {
-              if (card.subSubTypes.length > 0) {
-                  list = list.filter(i => card.subSubTypes.includes(i.sub));
-              } else {
-                  return []; 
-              }
-          }
+        list = list.filter(i => i.cat === card.subType);
+
+        // Filter by specific sub-report title if subSubTypes selected
+        if (card.subSubTypes.length > 0) {
+          list = list.filter(i => card.subSubTypes.includes(i.sub));
+        }
       }
     } else if (card.subType !== 'all') {
       if (card.category === 'substitutions') {
-          list = list.filter(i => i.paymentStatus === card.subType);
+        list = list.filter(i => i.paymentStatus === card.subType);
       } else if (card.category === 'students' || card.category === 'teachers') {
-          list = list.filter(i => (i as any)[card.subType] !== undefined && (i as any)[card.subType] !== '');
-          
-          if (subSubOptions.length > 0) {
-              if (card.subSubTypes.length > 0) {
-                list = list.filter(i => {
-                  const val = String((i as any)[card.subType]);
-                  return card.subSubTypes.some(selected => val.includes(selected));
-                });
-              } else {
-                return []; 
-              }
-          }
+        // Only show items where this specific metric has data
+        list = list.filter(i => {
+          const val = (i as any)[card.subType];
+          return val !== undefined && val !== null && val !== '' && val !== '0' && val !== 0;
+        });
+
+        if (subSubOptions.length > 0 && card.subSubTypes.length > 0) {
+          list = list.filter(i => {
+            const val = String((i as any)[card.subType]);
+            return card.subSubTypes.some(selected => val.includes(selected));
+          });
+        }
+      } else if (card.category === 'violations') {
+        // If needed, add specific violation filters here
       }
     }
     return list;
@@ -257,12 +266,12 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
 
   const toggleSubSubValue = (cardId: number, value: string) => {
     setCards(prev => prev.map(c => {
-        if (c.id === cardId) {
-            const current = c.subSubTypes;
-            const updated = current.includes(value) ? current.filter(v => v !== value) : [...current, value];
-            return { ...c, subSubTypes: updated };
-        }
-        return c;
+      if (c.id === cardId) {
+        const current = c.subSubTypes;
+        const updated = current.includes(value) ? current.filter(v => v !== value) : [...current, value];
+        return { ...c, subSubTypes: updated };
+      }
+      return c;
     }));
   };
 
@@ -289,10 +298,10 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
     msg += `----------------------------------\n\n`;
 
     list.slice(0, 15).forEach((item, idx) => {
-      const isBad = (item.behaviorLevel && (item.behaviorLevel.includes('ضعيف') || item.behaviorLevel.includes('مخالفة'))) || 
-                    (item.academicReading && item.academicReading.includes('ضعيف')) || 
-                    (item.stype === 'absences') || (item.violations_score > 0);
-      
+      const isBad = (item.behaviorLevel && (item.behaviorLevel.includes('ضعيف') || item.behaviorLevel.includes('مخالفة'))) ||
+        (item.academicReading && item.academicReading.includes('ضعيف')) ||
+        (item.stype === 'absences') || (item.violations_score > 0);
+
       const emoji = isBad ? '🔴' : '🔹';
       msg += `*${emoji} (${idx + 1}) الاسم:* ${item.displayName}\n`;
       if (item.grade) msg += `📍 *الصف:* ${item.grade} / ${item.section || ''}\n`;
@@ -301,7 +310,11 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
       msg += `\n`;
     });
     msg += `----------------------------------\n`;
-    msg += `*رفيق المشرف الإداري - إبراهيم دخان*`;
+    const profile = data.profile;
+    if (profile.schoolName || profile.branch) {
+      msg += `🏫 *${profile.schoolName || ''}${profile.branch ? `، فرع ${profile.branch}` : ''}*\n`;
+    }
+
     const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
   };
@@ -318,49 +331,49 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
   ];
 
   return (
-    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500 font-arabic pb-16">
-      <header className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white p-4 sm:p-6 rounded-3xl sm:rounded-[2.5rem] border shadow-sm">
-        <div className="text-center md:text-right">
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-800 flex items-center justify-center md:justify-start gap-3">
-            <Sparkles className="text-blue-600 animate-pulse w-6 h-6" />
-            لوحة التحكم الذكية
+    <div className="space-y-8 animate-in fade-in duration-500 font-arabic pb-20">
+      <header className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white p-6 rounded-[2.5rem] border shadow-sm">
+        <div className="flex-1">
+          <h2 className="text-3xl font-black text-slate-800 flex items-center gap-3">
+            <Sparkles className="text-blue-600 animate-pulse" />
+            لوحه التحكم الذكيه
           </h2>
-          <p className="text-slate-500 font-bold mt-1 text-[10px] sm:text-xs">أتمتة ذكية ومتابعة مرئية لكافة المعايير</p>
+          <p className="text-slate-500 font-bold mt-1 text-xs">أتمتة ذكية ومتابعة مرئية لكافة المعايير</p>
         </div>
-        
-        <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3 sm:gap-4 bg-slate-50 p-3 sm:p-4 rounded-3xl border border-slate-100 w-full md:w-auto">
-           <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border shadow-sm w-full sm:w-auto justify-center">
-              <History className="w-4 h-4 text-blue-500" />
-              <select value={cycleDuration} onChange={(e) => setCycleDuration(Number(e.target.value))} className="text-[10px] font-black bg-transparent outline-none cursor-pointer">
-                <option value={3000}>3 ثوانٍ</option>
-                <option value={5000}>5 ثوانٍ</option>
-                <option value={10000}>10 ثوانٍ</option>
-              </select>
-           </div>
 
-           <div className="flex gap-1 bg-white p-1 rounded-2xl border shadow-inner w-full sm:w-auto overflow-x-auto scrollbar-hide justify-center">
-             {['all', 'daily', 'weekly', 'monthly', 'custom'].map((t) => (
-                <button 
-                  key={t}
-                  onClick={() => setGlobalTimeRange(t as any)}
-                  className={`px-3 sm:px-4 py-1.5 rounded-xl text-[10px] font-black transition-all whitespace-nowrap ${globalTimeRange === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
-                >
-                  {t === 'all' ? 'الكل' : t === 'daily' ? 'يومية' : t === 'weekly' ? 'أسبوعية' : t === 'monthly' ? 'شهرية' : 'مخصص'}
-                </button>
-             ))}
-           </div>
+        <div className="flex flex-wrap items-center gap-4 bg-slate-50 p-4 rounded-3xl border border-slate-100">
+          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border shadow-sm">
+            <History className="w-4 h-4 text-blue-500" />
+            <select value={cycleDuration} onChange={(e) => setCycleDuration(Number(e.target.value))} className="text-[10px] font-black bg-transparent outline-none cursor-pointer">
+              <option value={3000}>3 ثوانٍ</option>
+              <option value={5000}>5 ثوانٍ</option>
+              <option value={10000}>10 ثوانٍ</option>
+            </select>
+          </div>
 
-           {globalTimeRange === 'custom' && (
-             <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border shadow-sm animate-in slide-in-from-right-2 w-full sm:w-auto justify-center">
-               <input type="date" value={dateRange.start} onChange={(e) => setDateRange({...dateRange, start: e.target.value})} className="text-[9px] font-black outline-none bg-transparent" />
-               <span className="text-slate-200">|</span>
-               <input type="date" value={dateRange.end} onChange={(e) => setDateRange({...dateRange, end: e.target.value})} className="text-[9px] font-black outline-none bg-transparent" />
-             </div>
-           )}
+          <div className="flex gap-1 bg-white p-1 rounded-2xl border shadow-inner">
+            {['all', 'daily', 'weekly', 'monthly', 'custom'].map((t) => (
+              <button
+                key={t}
+                onClick={() => setGlobalTimeRange(t as any)}
+                className={`px-4 py-1.5 rounded-xl text-[10px] font-black transition-all ${globalTimeRange === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
+              >
+                {t === 'all' ? 'الكل' : t === 'daily' ? 'يومية' : t === 'weekly' ? 'أسبوعية' : t === 'monthly' ? 'شهرية' : 'مخصص'}
+              </button>
+            ))}
+          </div>
+
+          {globalTimeRange === 'custom' && (
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border shadow-sm animate-in slide-in-from-right-2">
+              <input type="date" value={dateRange.start} onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })} className="text-[9px] font-black outline-none bg-transparent" />
+              <span className="text-slate-200">|</span>
+              <input type="date" value={dateRange.end} onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })} className="text-[9px] font-black outline-none bg-transparent" />
+            </div>
+          )}
         </div>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {cards.map((card, idx) => {
           const list = getFilteredListForCard(card);
           const count = list.length;
@@ -372,59 +385,59 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
           const visibleItems = list.slice(offset, offset + 3);
 
           return (
-            <div 
-                key={card.id} 
-                className={`rounded-[2rem] sm:rounded-[2.5rem] border-2 ${design.border} p-4 shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all group flex flex-col gap-1.5 relative overflow-visible h-[340px] mt-6`}
-                style={{ background: design.gradient }}
+            <div
+              key={card.id}
+              className={`rounded-[2.5rem] border-2 ${design.border} p-4 shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all group flex flex-col gap-1.5 relative overflow-visible h-[340px] mt-6`}
+              style={{ background: design.gradient }}
             >
               <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-30">
-                 <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border-4 border-white flex items-center justify-center font-black text-xl sm:text-2xl text-white shadow-xl ${design.accent}`}>
-                    {count}
-                 </div>
+                <div className={`w-14 h-14 rounded-full border-4 border-white flex items-center justify-center font-black text-2xl text-white shadow-xl ${design.accent}`}>
+                  {count}
+                </div>
               </div>
 
               <div className="absolute top-4 left-4 z-40 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => handleExportWhatsApp(currentSub?.label || currentCat?.label || 'تقرير', list)} className="p-1.5 bg-white/80 rounded-lg text-green-600 shadow-sm hover:bg-white"><Share2 size={12}/></button>
-                <button onClick={() => handleExportExcel(currentSub?.label || currentCat?.label || 'تقرير', list)} className="p-1.5 bg-white/80 rounded-lg text-blue-600 shadow-sm hover:bg-white"><FileSpreadsheet size={12}/></button>
+                <button onClick={() => handleExportWhatsApp(currentSub?.label || currentCat?.label || 'تقرير', list)} className="p-1 bg-white/80 rounded-lg text-green-600 shadow-sm hover:bg-white"><Share2 size={12} /></button>
+                <button onClick={() => handleExportExcel(currentSub?.label || currentCat?.label || 'تقرير', list)} className="p-1 bg-white/80 rounded-lg text-blue-600 shadow-sm hover:bg-white"><FileSpreadsheet size={12} /></button>
               </div>
 
               <div className="flex flex-col gap-1 relative z-10 pt-4 px-1">
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                        <div className={`p-1.5 rounded-xl bg-white shadow-md transform group-hover:rotate-12 transition-transform`}>
-                            {currentCat?.icon && React.cloneElement(currentCat.icon as React.ReactElement, { size: 14 })}
-                        </div>
-                        <select 
-                            value={card.category}
-                            onChange={(e) => updateCard(card.id, { category: e.target.value as DataCategory, subType: 'all', subSubTypes: [] })}
-                            className={`text-[9px] font-black bg-white ${design.text} rounded-lg px-2 py-1 outline-none border-none cursor-pointer shadow-sm hover:bg-slate-50 transition-colors uppercase tracking-wider max-w-[100px] sm:max-w-none`}
-                        >
-                            {mainCategories.map(cat => <option key={cat.id} value={cat.id}>{cat.label}</option>)}
-                        </select>
+                  <div className="flex items-center gap-1.5">
+                    <div className={`p-1.5 rounded-xl bg-white shadow-md transform group-hover:rotate-12 transition-transform`}>
+                      {currentCat?.icon && React.cloneElement(currentCat.icon as React.ReactElement<any>, { size: 14 })}
                     </div>
+                    <select
+                      value={card.category}
+                      onChange={(e) => updateCard(card.id, { category: e.target.value as DataCategory, subType: 'all', subSubTypes: [] })}
+                      className={`text-[9px] font-black bg-white ${design.text} rounded-lg px-2 py-1 outline-none border-none cursor-pointer shadow-sm hover:bg-slate-50 transition-colors uppercase tracking-wider`}
+                    >
+                      {mainCategories.map(cat => <option key={cat.id} value={cat.id}>{cat.label}</option>)}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-1.5 bg-white/60 backdrop-blur-md p-0.5 rounded-lg border border-white/40 shadow-inner">
-                      <div className={`p-1 rounded bg-white shadow-sm`}>{currentSub?.icon}</div>
-                      <select 
-                          value={card.subType}
-                          onChange={(e) => updateCard(card.id, { subType: e.target.value, subSubTypes: [] })}
-                          className={`text-[9px] font-bold ${design.text} bg-transparent outline-none w-full cursor-pointer`}
-                      >
-                          {getSubTypes(card.category).map(sub => <option key={sub.id} value={sub.id}>{sub.label}</option>)}
-                      </select>
+                    <div className={`p-1 rounded bg-white shadow-sm`}>{currentSub?.icon}</div>
+                    <select
+                      value={card.subType}
+                      onChange={(e) => updateCard(card.id, { subType: e.target.value, subSubTypes: [] })}
+                      className={`text-[9px] font-bold ${design.text} bg-transparent outline-none w-full cursor-pointer`}
+                    >
+                      {getSubTypes(card.category).map(sub => <option key={sub.id} value={sub.id}>{sub.label}</option>)}
+                    </select>
                   </div>
-                  
+
                   {subSubOptions.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1 p-1 bg-white/30 rounded-xl max-h-12 overflow-y-auto scrollbar-hide">
                       {subSubOptions.map(ss => (
-                        <button 
-                            key={ss.id} 
-                            onClick={() => toggleSubSubValue(card.id, ss.id)}
-                            className={`px-2 py-0.5 rounded-full text-[7px] font-black transition-all border ${card.subSubTypes.includes(ss.id) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white/50 text-slate-500 border-white/20 hover:bg-white'}`}
+                        <button
+                          key={ss.id}
+                          onClick={() => toggleSubSubValue(card.id, ss.id)}
+                          className={`px-2 py-0.5 rounded-full text-[7px] font-black transition-all border ${card.subSubTypes.includes(ss.id) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white/50 text-slate-500 border-white/20 hover:bg-white'}`}
                         >
-                            {ss.label}
+                          {ss.label}
                         </button>
                       ))}
                     </div>
@@ -433,49 +446,51 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
               </div>
 
               <div className="flex-1 flex flex-col gap-1.5 py-1.5 relative z-10 overflow-hidden">
-                 {count === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-1">
-                      <History size={20} className="opacity-20" />
-                      <span className="italic text-[8px] font-bold">لا توجد بيانات</span>
-                    </div>
-                 ) : (
-                    visibleItems.map((item, i) => (
-                        <div 
-                          key={`${card.id}-${offset}-${i}`}
-                          onClick={() => setView?.(currentCat?.view || 'dashboard')}
-                          className="bg-white/95 backdrop-blur-sm px-3 rounded-2xl border border-white shadow-sm flex items-center gap-3 hover:bg-white hover:shadow-xl hover:-translate-x-1 cursor-pointer transition-all animate-in slide-in-from-right-2 fade-in duration-300 h-[60px]"
-                        >
-                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm bg-slate-50 border-2 border-slate-100 flex-shrink-0`}>
-                             {item.icon || <User size={20} />}
-                           </div>
-                           <div className="flex-1 flex items-center gap-3 overflow-hidden">
-                              <div className="font-black text-[15px] sm:text-[19px] text-slate-900 truncate leading-none flex-shrink-0">
-                                {item.displayName}
-                              </div>
-                              <div className="text-[9px] sm:text-[11px] text-blue-600 font-black truncate bg-blue-50/90 px-2 py-1 rounded-xl border border-blue-100/50 whitespace-nowrap min-w-0">
-                                {item.grade ? `${item.grade}-${item.section || ''}` : item.sub || item.subjectCode || item.date || '---'}
-                              </div>
-                           </div>
-                           <ChevronLeft size={18} className="text-slate-300 group-hover:text-blue-500 transition-colors flex-shrink-0" />
+                {count === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-1">
+                    <History size={20} className="opacity-20" />
+                    <span className="italic text-[8px] font-bold">لا توجد بيانات</span>
+                  </div>
+                ) : (
+                  visibleItems.map((item, i) => (
+                    <div
+                      key={`${card.id}-${offset}-${i}`}
+                      onClick={() => setView?.(currentCat?.view || 'dashboard')}
+                      className="bg-white/95 backdrop-blur-sm px-3 rounded-2xl border border-white shadow-sm flex items-center gap-3 hover:bg-white hover:shadow-xl hover:-translate-x-1 cursor-pointer transition-all animate-in slide-in-from-right-2 fade-in duration-300 h-[60px]"
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm bg-slate-50 border-2 border-slate-100 flex-shrink-0`}>
+                        {item.icon || <User size={20} />}
+                      </div>
+                      {/* START OF CHANGE: Enlarged Name and Inline Data */}
+                      <div className="flex-1 flex items-center gap-3 overflow-hidden">
+                        <div className="font-black text-[19px] text-slate-900 truncate leading-none flex-shrink-0">
+                          {item.displayName}
                         </div>
-                    ))
-                 )}
+                        <div className="text-[11px] text-blue-600 font-black truncate bg-blue-50/90 px-2.5 py-1.5 rounded-xl border border-blue-100/50 whitespace-nowrap min-w-0">
+                          {item.grade ? `${item.grade}-${item.section || ''}` : item.sub || item.subjectCode || item.date || '---'}
+                        </div>
+                      </div>
+                      <ChevronLeft size={18} className="text-slate-300 group-hover:text-blue-500 transition-colors flex-shrink-0" />
+                      {/* END OF CHANGE */}
+                    </div>
+                  ))
+                )}
               </div>
 
               {count > 3 && (
                 <div className="flex justify-center items-center gap-10 relative z-20 pt-1 border-t border-white/40 mt-auto">
-                   <button 
-                     onClick={() => shiftCardData(card.id, 'prev', count)}
-                     className={`p-1.5 rounded-full bg-white/80 hover:bg-white ${design.text} transition-all shadow-md active:scale-90`}
-                   >
-                     <ChevronRight size={16} />
-                   </button>
-                   <button 
-                     onClick={() => shiftCardData(card.id, 'next', count)}
-                     className={`p-1.5 rounded-full bg-white/80 hover:bg-white ${design.text} transition-all shadow-md active:scale-90`}
-                   >
-                     <ChevronLeft size={16} />
-                   </button>
+                  <button
+                    onClick={() => shiftCardData(card.id, 'prev', count)}
+                    className={`p-1.5 rounded-full bg-white/80 hover:bg-white ${design.text} transition-all shadow-md active:scale-90`}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                  <button
+                    onClick={() => shiftCardData(card.id, 'next', count)}
+                    className={`p-1.5 rounded-full bg-white/80 hover:bg-white ${design.text} transition-all shadow-md active:scale-90`}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
                 </div>
               )}
             </div>
@@ -484,16 +499,16 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 bg-white p-6 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border-2 border-slate-50 shadow-sm relative overflow-hidden group">
+        <div className="lg:col-span-1 bg-white p-8 rounded-[2.5rem] border-2 border-slate-50 shadow-sm relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-2 h-full bg-blue-600 group-hover:w-3 transition-all"></div>
           <h3 className="text-xl font-black mb-6 flex items-center gap-2 text-slate-800">
             <CalendarDays className="text-blue-600" />
             بيانات المؤسسة
           </h3>
-          <div className="space-y-4 sm:space-y-6">
+          <div className="space-y-6">
             <div className="bg-blue-50/50 p-4 rounded-3xl border border-blue-100/50">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-white rounded-xl shadow-sm text-blue-600"><School size={16}/></div>
+                <div className="p-2 bg-white rounded-xl shadow-sm text-blue-600"><School size={16} /></div>
                 <div>
                   <label className="text-[10px] text-slate-400 font-black uppercase mb-1 block">اسم المدرسة</label>
                   <div className="text-slate-800 font-black text-sm">{data.profile.schoolName || '---'}</div>
@@ -502,7 +517,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
             </div>
             <div className="bg-emerald-50/50 p-4 rounded-3xl border border-emerald-100/50">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-white rounded-xl shadow-sm text-emerald-600"><User size={16}/></div>
+                <div className="p-2 bg-white rounded-xl shadow-sm text-emerald-600"><User size={16} /></div>
                 <div>
                   <label className="text-[10px] text-slate-400 font-black uppercase mb-1 block">المشرف المسؤول</label>
                   <div className="text-slate-800 font-black text-sm">{data.profile.supervisorName || '---'}</div>
@@ -512,13 +527,13 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
           </div>
         </div>
 
-        <div className="lg:col-span-2 bg-white p-6 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border-2 border-slate-50 shadow-sm relative overflow-hidden">
+        <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border-2 border-slate-50 shadow-sm relative overflow-hidden">
           <div className="absolute -top-10 -right-10 w-40 h-40 bg-slate-50 rounded-full opacity-50"></div>
           <h3 className="text-xl font-black mb-6 flex items-center gap-2 text-slate-800">
             <TrendingUp className="text-green-600" />
             الوصول السريع
           </h3>
-          <div className="grid grid-cols-2 xs:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 relative z-10">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
             {[
               { label: 'التقرير اليومي', icon: <FileText />, view: 'daily' },
               { label: 'تغطية الحصص', icon: <UserPlusIcon />, view: 'substitute' },
@@ -530,17 +545,15 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
                 view: action.id
               }))
             ].slice(0, 12).map((btn, i) => (
-              <button 
-                key={i} 
+              <button
+                key={i}
                 onClick={() => setView?.(btn.view)}
-                className="flex flex-col items-center justify-center p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border-2 border-slate-50 bg-slate-50 hover:bg-white hover:border-blue-600 hover:shadow-2xl hover:-translate-y-2 transition-all gap-3 group active:scale-95"
+                className="flex flex-col items-center justify-center p-6 rounded-[2rem] border-2 border-slate-50 bg-slate-50 hover:bg-white hover:border-blue-600 hover:shadow-2xl hover:-translate-y-2 transition-all gap-3 group"
               >
-                <div className={`p-3 sm:p-4 rounded-2xl bg-white shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all text-blue-600`}>
+                <div className={`p-4 rounded-2xl bg-white shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all text-blue-600`}>
                   {btn.icon}
                 </div>
-                <span className="text-[10px] sm:text-xs font-black text-slate-700 whitespace-normal leading-tight text-center px-1 max-w-full">
-                  {btn.label}
-                </span>
+                <span className="text-xs font-black text-slate-700 truncate w-full text-center px-1">{btn.label}</span>
               </button>
             ))}
           </div>

@@ -26,12 +26,18 @@ export const DailyReportsPage: React.FC = () => {
   const [activeTeacherFilter, setActiveTeacherFilter] = useState<string>('');
   const [highlightedRowId, setHighlightedRowId] = useState<string | null>(null);
 
+  // Import Teachers Modal State
+  const [showImportModal, setShowImportModal] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFileType, setSelectedFileType] = useState<'excel' | 'xml' | 'pdf' | 'txt' | null>(null);
+
   // Teacher Report Modal State
   const [showTeacherReport, setShowTeacherReport] = useState(false);
   const [reportTeacherId, setReportTeacherId] = useState<string>('');
   const [reportTeacherSearch, setReportTeacherSearch] = useState('');
   const [reportSelectedFields, setReportSelectedFields] = useState<string[]>([]);
   const [showWhatsAppSelect, setShowWhatsAppSelect] = useState(false);
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
 
 
   const reports = data.dailyReports || [];
@@ -46,7 +52,7 @@ export const DailyReportsPage: React.FC = () => {
   const currentReport = reports.find(r => r.id === activeReportId);
 
   // Subjects Ordering
-  const subjectOrder = ["القرآن الكريم", "التربية الإسلامية", "اللغة العربية", "اللغة الإنجليزية", "الرياضيات", "العلوم", "الكيمياء", "الفيزياء", "الأحياء", "الاجتماعيات", "الحاسوب", "المكتبة", "الفنية", "المختص الاجتماعي", "الأنشطة", "غيرها"];
+  const subjectOrder = ["مربية", "القرآن الكريم", "التربية الإسلامية", "اللغة العربية", "اللغة الإنجليزية", "الرياضيات", "العلوم", "الكيمياء", "الفيزياء", "الأحياء", "الاجتماعيات", "الحاسوب", "المكتبة", "الفنية", "المختص الاجتماعي", "الأنشطة", "غيرها"];
 
   const teachers = useMemo(() => {
     let list = currentReport ? [...currentReport.teachersData] : [];
@@ -101,7 +107,7 @@ export const DailyReportsPage: React.FC = () => {
     { key: 'violations_score', label: 'المخالفات', max: 0 }, // Added for Report selectability
   ];
 
-  const subjects = ["القرآن الكريم", "التربية الإسلامية", "اللغة العربية", "اللغة الإنجليزية", "الرياضيات", "العلوم", "الكيمياء", "الفيزياء", "الأحياء", "الاجتماعيات", "الحاسوب", "المكتبة", "الفنية", "المختص الاجتماعي", "الأنشطة", "غيرها"];
+  const subjects = ["مربية", "القرآن الكريم", "التربية الإسلامية", "اللغة العربية", "اللغة الإنجليزية", "الرياضيات", "العلوم", "الكيمياء", "الفيزياء", "الأحياء", "الاجتماعيات", "الحاسوب", "المكتبة", "الفنية", "المختص الاجتماعي", "الأنشطة", "غيرها"];
   const grades = ["تمهيدي", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
   const violationTypes = ["تأخر عن طابور", "تأخر عن حصة", "خروج من الحصة", "الإفراط في العقاب", "رفض القرارات الإدارية", "عدم تسليم ما كلف به"];
 
@@ -117,6 +123,12 @@ export const DailyReportsPage: React.FC = () => {
   };
 
   const handleCreateReport = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const exists = reports.some(r => r.dateStr === today);
+    if (exists) {
+      if (!confirm(lang === 'ar' ? 'الجدول لهذا اليوم موجود بالفعل، فهل أنت متأكد من تكرار الجدول لهذا اليوم؟' : 'The schedule for today already exists, are you sure you want to duplicate it?')) return;
+    }
+
     const lastReport = reports[reports.length - 1];
     const newTeachers = lastReport ? lastReport.teachersData.map(t => ({
       ...t,
@@ -128,7 +140,7 @@ export const DailyReportsPage: React.FC = () => {
     const newReport: DailyReportContainer = {
       id: Date.now().toString(),
       dayName: new Intl.DateTimeFormat('ar-EG', { weekday: 'long' }).format(new Date()),
-      dateStr: new Date().toISOString().split('T')[0],
+      dateStr: today,
       teachersData: newTeachers as TeacherFollowUp[]
     };
     updateData({ dailyReports: [...reports, newReport] });
@@ -149,19 +161,80 @@ export const DailyReportsPage: React.FC = () => {
     updateData({ dailyReports: updatedReports });
   };
 
-  const updateTeacher = (teacherId: string, field: string, value: any) => {
+  const updateTeacher = (teacherId: string, updates: Record<string, any>) => {
     if (!activeReportId) return;
     const updatedReports = reports.map(r => {
       if (r.id === activeReportId) {
         return {
           ...r,
-          teachersData: r.teachersData.map(t => t.id === teacherId ? { ...t, [field]: value } : t)
+          teachersData: r.teachersData.map(t => t.id === teacherId ? { ...t, ...updates } : t)
         };
       }
       return r;
     });
     updateData({ dailyReports: updatedReports });
   };
+
+  const deleteTeacher = (teacherId: string) => {
+    if (!activeReportId) return;
+    if (!confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذا المعلم؟' : 'Are you sure you want to delete this teacher?')) return;
+    const updatedReports = reports.map(r => {
+      if (r.id === activeReportId) {
+        return {
+          ...r,
+          teachersData: r.teachersData.filter(t => t.id !== teacherId)
+        };
+      }
+      return r;
+    });
+    updateData({ dailyReports: updatedReports });
+    setSelectedTeacherIds(prev => prev.filter(id => id !== teacherId));
+  };
+
+  const deleteSelectedTeachers = () => {
+    if (!activeReportId || selectedTeacherIds.length === 0) return;
+    if (!confirm(lang === 'ar' ? `هل أنت متأكد من حذف ${selectedTeacherIds.length} معلم؟` : `Are you sure you want to delete ${selectedTeacherIds.length} teachers?`)) return;
+    const updatedReports = reports.map(r => {
+      if (r.id === activeReportId) {
+        return {
+          ...r,
+          teachersData: r.teachersData.filter(t => !selectedTeacherIds.includes(t.id))
+        };
+      }
+      return r;
+    });
+    updateData({ dailyReports: updatedReports });
+    setSelectedTeacherIds([]);
+  };
+
+  // Map teacher names to their profiles for quick lookup and auto-fill
+  const teacherProfiles = useMemo(() => {
+    const profiles: Record<string, { subject: string, class: string }> = {};
+
+    // 1. Get from timetable (base list)
+    (data.timetable || []).forEach(t => {
+      if (t.teacherName) {
+        const name = t.teacherName.trim();
+        profiles[name] = { subject: t.subject || '', class: '' };
+      }
+    });
+
+    // 2. Supplement from dailyReports (natural order: newest at end will win)
+    (data.dailyReports || []).forEach(r => {
+      r.teachersData.forEach(t => {
+        if (t.teacherName) {
+          const name = t.teacherName.trim();
+          profiles[name] = {
+            subject: t.subjectCode || profiles[name]?.subject || '',
+            class: t.className || profiles[name]?.class || ''
+          };
+        }
+      });
+    });
+    return profiles;
+  }, [data.dailyReports, data.timetable]);
+
+  const allTeacherNames = useMemo(() => Object.keys(teacherProfiles).sort(), [teacherProfiles]);
 
   const fillAllMax = () => {
     if (!activeReportId) return;
@@ -390,7 +463,20 @@ export const DailyReportsPage: React.FC = () => {
             val = mTotal > 0 ? ((calculateTotal(teacher) / mTotal) * 100).toFixed(1) + '%' : '0%';
           }
 
-          if (val !== undefined && val !== null && val !== '') {
+          // Special handling for violations with detailed notes
+          if (f.key === 'violations_score') {
+            if (val !== undefined && val !== null && val !== '') {
+              msg += `⚠️ *${f.label}:* ${val}\n`;
+              // Add detailed violation notes if available
+              if (teacher.violations_notes && teacher.violations_notes.length > 0) {
+                msg += `━━━━━━━━━━━━━━━━\n`;
+                teacher.violations_notes.forEach((note, noteIdx) => {
+                  msg += `  ${noteIdx + 1}. 🚫 ${note}\n`;
+                });
+                msg += `━━━━━━━━━━━━━━━━\n`;
+              }
+            }
+          } else if (val !== undefined && val !== null && val !== '') {
             const isUnaccredited = (teacher.unaccreditedMetrics || []).includes(f.key);
             msg += `${f.emoji} *${f.label}:* ${isUnaccredited ? '_غير معتمد_' : val}\n`;
           }
@@ -412,6 +498,162 @@ export const DailyReportsPage: React.FC = () => {
     setShowWhatsAppSelect(false);
   };
 
+  // Import Teachers Handler
+  const handleImportTeachers = async (fileType: 'excel' | 'xml' | 'pdf' | 'txt') => {
+    setSelectedFileType(fileType);
+    if (fileInputRef.current) {
+      // Set accept attribute based on file type
+      switch (fileType) {
+        case 'excel':
+          fileInputRef.current.accept = '.xlsx,.xls,.csv';
+          break;
+        case 'xml':
+          fileInputRef.current.accept = '.xml';
+          break;
+        case 'pdf':
+          fileInputRef.current.accept = '.pdf';
+          break;
+        case 'txt':
+          fileInputRef.current.accept = '.txt';
+          break;
+      }
+      fileInputRef.current.click();
+    }
+  };
+
+  const processImportedFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeReportId) return;
+
+    try {
+      let teacherNames: string[] = [];
+
+      if (selectedFileType === 'excel') {
+        // Process Excel/CSV file
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[][];
+
+        // Extract names from first column (skip header if exists)
+        teacherNames = jsonData
+          .flat()
+          .filter((cell: any) => typeof cell === 'string' && cell.trim().length > 0)
+          .map((name: string) => name.trim());
+      } else if (selectedFileType === 'xml') {
+        // Process XML file
+        const text = await file.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, 'text/xml');
+
+        // Try to find teacher names in various XML structures
+        const possibleTags = ['teacher', 'name', 'teacherName', 'معلم', 'اسم', 'اسم_المعلم'];
+        for (const tag of possibleTags) {
+          const elements = xmlDoc.getElementsByTagName(tag);
+          if (elements.length > 0) {
+            for (let i = 0; i < elements.length; i++) {
+              const text = elements[i].textContent?.trim();
+              if (text) teacherNames.push(text);
+            }
+            break;
+          }
+        }
+
+        // If no specific tags found, try to extract all text content
+        if (teacherNames.length === 0) {
+          const allText = xmlDoc.documentElement.textContent || '';
+          teacherNames = allText.split(/[\n\r,;]+/).filter(s => s.trim().length > 0).map(s => s.trim());
+        }
+      } else if (selectedFileType === 'pdf') {
+        // For PDF, we'll try to extract text (basic approach)
+        // Note: Full PDF parsing requires additional libraries
+        alert('لاستيراد ملفات PDF، يرجى تحويلها إلى Excel أو TXT أولاً');
+        setShowImportModal(false);
+        return;
+      } else if (selectedFileType === 'txt') {
+        // Process TXT file
+        const text = await file.text();
+        teacherNames = text
+          .split(/[\n\r,;]+/)
+          .map(line => line.trim())
+          .filter(line => line.length > 0 && !line.match(/^\d+$/)); // Filter out empty lines and pure numbers
+      }
+
+      // Remove duplicates and filter valid names
+      teacherNames = [...new Set(teacherNames)].filter(name =>
+        name.length > 1 &&
+        !name.match(/^\d+$/) &&
+        !name.toLowerCase().includes('name') &&
+        !name.includes('اسم المعلم') &&
+        !name.includes('الاسم')
+      );
+
+      if (teacherNames.length === 0) {
+        alert('لم يتم العثور على أسماء معلمين في الملف');
+        setShowImportModal(false);
+        return;
+      }
+
+      // Create new teachers from imported names
+      const existingNames = new Set(teachers.map(t => t.teacherName.trim()));
+      const newTeachers: TeacherFollowUp[] = teacherNames
+        .filter(name => !existingNames.has(name))
+        .map((name, idx) => ({
+          id: `${Date.now()}-${idx}`,
+          teacherName: name,
+          subjectCode: teacherProfiles[name]?.subject || '',
+          className: teacherProfiles[name]?.class || '',
+          attendance: 0,
+          appearance: 0,
+          preparation: 0,
+          supervision_queue: 0,
+          supervision_rest: 0,
+          supervision_end: 0,
+          correction_books: 0,
+          correction_notebooks: 0,
+          correction_followup: 0,
+          teaching_aids: 0,
+          extra_activities: 0,
+          radio: 0,
+          creativity: 0,
+          zero_period: 0,
+          violations_score: 0,
+          violations_notes: [],
+          order: teachers.length + idx + 1,
+          gender: 'ذكر'
+        }));
+
+      if (newTeachers.length === 0) {
+        alert('جميع الأسماء موجودة بالفعل في الجدول');
+        setShowImportModal(false);
+        return;
+      }
+
+      // Update the report with new teachers
+      const updatedReports = reports.map(r => {
+        if (r.id === activeReportId) {
+          return {
+            ...r,
+            teachersData: [...r.teachersData, ...newTeachers]
+          };
+        }
+        return r;
+      });
+
+      updateData({ dailyReports: updatedReports });
+      alert(`تم استيراد ${newTeachers.length} معلم بنجاح`);
+      setShowImportModal(false);
+    } catch (error) {
+      console.error('Error importing file:', error);
+      alert('حدث خطأ أثناء استيراد الملف');
+    }
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
 
   return (
     <div className="space-y-4 font-arabic">
@@ -420,7 +662,8 @@ export const DailyReportsPage: React.FC = () => {
           <button onClick={handleCreateReport} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-blue-700 transition-all text-xs sm:text-sm"><FilePlus size={16} /> إضافة جدول جديد</button>
           <button onClick={() => setShowArchive(true)} className="flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-xl font-bold hover:bg-slate-200 transition-all text-xs sm:text-sm"><FolderOpen size={16} /> فتح تقرير</button>
           <button onClick={addNewTeacher} className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-xl font-bold border border-purple-200 hover:bg-purple-100 transition-all text-xs sm:text-sm"><UserCircle size={16} /> إضافة معلم</button>
-          <button onClick={() => { setShowTeacherReport(true); setReportTeacherSearch(''); setReportTeacherId(''); setReportSelectedFields([]); }} className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-xl font-bold border border-green-200 hover:bg-green-100 transition-all text-xs sm:text-sm"><FileText size={16} /> تقرير معلم</button>
+          <button onClick={() => setShowImportModal(true)} className="flex items-center gap-2 bg-orange-50 text-orange-700 px-4 py-2 rounded-xl font-bold border border-orange-200 hover:bg-orange-100 transition-all text-xs sm:text-sm"><Upload size={16} /> استيراد أسماء المعلمين</button>
+          <button onClick={() => setShowTeacherReport(true)} className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-xl font-bold border border-green-200 hover:bg-green-100 transition-all text-xs sm:text-sm"><FileText size={16} /> تقرير معلم</button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -449,8 +692,32 @@ export const DailyReportsPage: React.FC = () => {
           <table className={`w-full text-center border-collapse ${filterMode === 'metric' ? '' : 'min-w-[1400px]'}`}>
             <thead>
               <tr className="border-b border-slate-300">
-                <th rowSpan={2} className="p-2 border-e border-slate-300 w-10 sticky right-0 bg-[#FFD966] z-20 font-sans">م</th>
-                <th rowSpan={2} className="p-2 border-e border-slate-300 w-44 sticky right-10 bg-[#FFD966] z-20">اسم المعلم</th>
+                <th rowSpan={2} className="p-2 border-e border-slate-300 w-12 sticky right-0 bg-[#FFD966] z-20">
+                  <div className="flex flex-col items-center gap-1">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      checked={teachers.length > 0 && selectedTeacherIds.length === teachers.length}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedTeacherIds(teachers.map(t => t.id));
+                        else setSelectedTeacherIds([]);
+                      }}
+                    />
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] font-sans">م</span>
+                      {selectedTeacherIds.length > 0 && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteSelectedTeachers(); }}
+                          className="p-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors animate-in zoom-in"
+                          title="حذف المحددين"
+                        >
+                          <Trash2 size={10} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </th>
+                <th rowSpan={2} className="p-2 border-e border-slate-300 w-44 sticky right-12 bg-[#FFD966] z-20">اسم المعلم</th>
                 {!filterMode.includes('metric') && (
                   <>
                     <th rowSpan={2} className="p-2 border-e border-slate-300 w-20 sticky top-0 bg-[#FFD966] z-10">النوع</th>
@@ -566,75 +833,117 @@ export const DailyReportsPage: React.FC = () => {
                 return (
                   <tr
                     key={t.id}
-                    className={`border-b transition-colors h-10 ${highlightedRowId === t.id ? 'bg-orange-100' : 'hover:bg-slate-50'}`}
+                    className={`border-b transition-colors h-10 ${highlightedRowId === t.id ? 'bg-orange-100' : (selectedTeacherIds.includes(t.id) ? 'bg-blue-50' : 'hover:bg-slate-50')}`}
                     onClick={() => setHighlightedRowId(t.id)}
                   >
-                    <td className="p-1 border-e sticky right-0 bg-white group-hover:bg-slate-50 font-bold text-xs font-sans">{idx + 1}</td>
-                    <td className="p-1 border-e sticky right-10 bg-white group-hover:bg-slate-50">
-                      <input className="w-full text-right font-bold outline-none bg-transparent text-xs" value={t.teacherName} onChange={e => updateTeacher(t.id, 'teacherName', e.target.value)} placeholder="اسم المعلم.." />
+                    <td className="p-1 border-e sticky right-0 bg-inherit group-hover:bg-slate-50">
+                      <div className="flex items-center gap-1 justify-center">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          checked={selectedTeacherIds.includes(t.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            if (e.target.checked) setSelectedTeacherIds(prev => [...prev, t.id]);
+                            else setSelectedTeacherIds(prev => prev.filter(id => id !== t.id));
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <span className="font-bold text-xs font-sans">{idx + 1}</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteTeacher(t.id); }}
+                          className="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                          title="حذف الاسم"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                     </td>
-                    {!filterMode.includes('metric') && (
-                      <>
-                        <td className="p-1 border-e">
-                          <select className="w-full bg-transparent outline-none text-[10px] text-center font-bold" value={t.gender || 'ذكر'} onChange={e => updateTeacher(t.id, 'gender', e.target.value)}>
-                            <option value="ذكر">ذكر</option>
-                            <option value="أنثى">أنثى</option>
-                          </select>
-                        </td>
-                        <td className="p-1 border-e">
-                          <MultiSelectDropDown
-                            label="المواد"
-                            options={subjects}
-                            selected={t.subjectCode ? t.subjectCode.split(', ') : []}
-                            onChange={(vals) => updateTeacher(t.id, 'subjectCode', vals.join(', '))}
-                            emoji="📚"
-                          />
-                        </td>
-                        <td className="p-1 border-e">
-                          <MultiSelectDropDown
-                            label="الصفوف"
-                            options={grades}
-                            selected={t.className ? t.className.split(', ') : []}
-                            onChange={(vals) => updateTeacher(t.id, 'className', vals.join(', '))}
-                            emoji="🎓"
-                          />
-                        </td>
-                      </>
-                    )}
-                    {displayedMetrics.filter(m => m.key !== 'violations_score').map(m => {
-                      const isUnaccredited = (t.unaccreditedMetrics || []).includes(m.key);
-                      return (
-                        <td key={m.key} className={`p-1 border-e relative group ${isUnaccredited ? 'bg-red-50/30' : ''}`}>
-                          <div className="flex flex-col items-center gap-0.5 h-full">
-                            <input
-                              id={`input-${t.id}-${m.key}`}
-                              type="number"
-                              disabled={isUnaccredited}
-                              className={`w-full text-center outline-none bg-transparent font-bold text-xs focus:bg-blue-50 focus:ring-1 focus:ring-blue-200 rounded font-sans ${isUnaccredited ? 'opacity-30 pointer-events-none' : ''} ${!isUnaccredited && (Number((t as any)[m.key]) || 0) <= m.max * 0.25 ? 'text-red-600' : 'text-slate-800'}`}
-                              value={(t as any)[m.key]}
-                              onChange={e => {
-                                const val = Math.min(m.max, Math.max(0, parseInt(e.target.value) || 0));
-                                updateTeacher(t.id, m.key as keyof TeacherFollowUp, val);
-                              }}
-                              onKeyDown={(e) => handleKeyDown(e, idx, m.key)}
-                              onFocus={(e) => e.target.select()}
+                    <td className="p-1 border-e sticky right-12 bg-inherit group-hover:bg-slate-50">
+                      <input
+                        list="teacher-names-list"
+                        className="w-full text-right font-bold outline-none bg-transparent text-xs"
+                        value={t.teacherName}
+                        onChange={e => {
+                          const newName = e.target.value;
+                          const trimmed = newName.trim();
+                          const updates: any = { teacherName: newName };
+                          if (trimmed && teacherProfiles[trimmed]) {
+                            const p = teacherProfiles[trimmed];
+                            if (p.subject) updates.subjectCode = p.subject;
+                            if (p.class) updates.className = p.class;
+                          }
+                          updateTeacher(t.id, updates);
+                        }}
+                        placeholder="اسم المعلم.."
+                      />
+                    </td>
+                    {
+                      !filterMode.includes('metric') && (
+                        <>
+                          <td className="p-1 border-e">
+                            <select className="w-full bg-transparent outline-none text-[10px] text-center font-bold" value={t.gender || 'ذكر'} onChange={e => updateTeacher(t.id, { gender: e.target.value })}>
+                              <option value="ذكر">ذكر</option>
+                              <option value="أنثى">أنثى</option>
+                            </select>
+                          </td>
+                          <td className="p-1 border-e">
+                            <MultiSelectDropDown
+                              label="المواد"
+                              options={subjects}
+                              selected={t.subjectCode ? t.subjectCode.split(', ') : []}
+                              onChange={(vals) => updateTeacher(t.id, { subjectCode: vals.join(', ') })}
+                              emoji="📚"
                             />
-                            {/* Toggle Button */}
-                            <button
-                              onClick={(e) => { e.stopPropagation(); toggleAccreditation(t.id, m.key); }}
-                              className={`transition-all flex items-center justify-center p-0.5 rounded ${isUnaccredited ? 'text-red-500 hover:scale-110' : 'text-green-500 hover:scale-110 opacity-20 group-hover:opacity-100'}`}
-                              title={isUnaccredited ? 'اعتماد الدرجة' : 'استبعاد من الحساب'}
-                            >
-                              <Star size={10} className={isUnaccredited ? 'fill-red-500' : 'fill-green-500'} />
-                              {isUnaccredited && <X size={8} className="absolute mb-4 mr-4" />}
-                            </button>
-                            {isUnaccredited && (
-                              <div className="text-[7px] text-red-500 font-bold whitespace-nowrap">غير معتمد</div>
-                            )}
-                          </div>
-                        </td>
-                      );
-                    })}
+                          </td>
+                          <td className="p-1 border-e">
+                            <MultiSelectDropDown
+                              label="الصفوف"
+                              options={grades}
+                              selected={t.className ? t.className.split(', ') : []}
+                              onChange={(vals) => updateTeacher(t.id, { className: vals.join(', ') })}
+                              emoji="🎓"
+                            />
+                          </td>
+                        </>
+                      )
+                    }
+                    {
+                      displayedMetrics.filter(m => m.key !== 'violations_score').map(m => {
+                        const isUnaccredited = (t.unaccreditedMetrics || []).includes(m.key);
+                        return (
+                          <td key={m.key} className={`p-1 border-e relative group ${isUnaccredited ? 'bg-red-50/30' : ''}`}>
+                            <div className="flex flex-col items-center gap-0.5 h-full">
+                              <input
+                                id={`input-${t.id}-${m.key}`}
+                                type="number"
+                                disabled={isUnaccredited}
+                                className={`w-full text-center outline-none bg-transparent font-bold text-xs focus:bg-blue-50 focus:ring-1 focus:ring-blue-200 rounded font-sans ${isUnaccredited ? 'opacity-30 pointer-events-none' : ''} ${!isUnaccredited && (Number((t as any)[m.key]) || 0) <= m.max * 0.25 ? 'text-red-600' : 'text-slate-800'}`}
+                                value={(t as any)[m.key]}
+                                onChange={e => {
+                                  const val = Math.min(m.max, Math.max(0, parseInt(e.target.value) || 0));
+                                  updateTeacher(t.id, { [m.key]: val });
+                                }}
+                                onKeyDown={(e) => handleKeyDown(e, idx, m.key)}
+                                onFocus={(e) => e.target.select()}
+                              />
+                              {/* Toggle Button */}
+                              <button
+                                onClick={(e) => { e.stopPropagation(); toggleAccreditation(t.id, m.key); }}
+                                className={`transition-all flex items-center justify-center p-0.5 rounded ${isUnaccredited ? 'text-red-500 hover:scale-110' : 'text-green-500 hover:scale-110 opacity-20 group-hover:opacity-100'}`}
+                                title={isUnaccredited ? 'اعتماد الدرجة' : 'استبعاد من الحساب'}
+                              >
+                                <Star size={10} className={isUnaccredited ? 'fill-red-500' : 'fill-green-500'} />
+                                {isUnaccredited && <X size={8} className="absolute mb-4 mr-4" />}
+                              </button>
+                              {isUnaccredited && (
+                                <div className="text-[7px] text-red-500 font-bold whitespace-nowrap">غير معتمد</div>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })
+                    }
                     <td
                       className="p-1 border-e cursor-pointer hover:bg-red-50 transition-colors relative group"
                       onClick={() => setViolationModal({ id: t.id, notes: t.violations_notes })}
@@ -644,7 +953,7 @@ export const DailyReportsPage: React.FC = () => {
                           type="number"
                           className="w-full text-center text-red-600 font-bold outline-none bg-transparent text-xs font-sans"
                           value={t.violations_score}
-                          onChange={e => updateTeacher(t.id, 'violations_score', parseInt(e.target.value) || 0)}
+                          onChange={e => updateTeacher(t.id, { violations_score: parseInt(e.target.value) || 0 })}
                           onClick={(e) => e.stopPropagation()}
                           onFocus={(e) => e.target.select()}
                         />
@@ -755,7 +1064,7 @@ export const DailyReportsPage: React.FC = () => {
                 <div className="max-h-40 overflow-y-auto border p-2 rounded-xl bg-slate-50">
                   {teachers.map(t => (
                     <div key={t.id} className="flex items-center gap-2 mb-1">
-                      <input type="number" className="w-12 p-1 text-center rounded border" value={t.order || 0} onChange={(e) => updateTeacher(t.id, 'order', parseInt(e.target.value))} />
+                      <input type="number" className="w-12 p-1 text-center rounded border" value={t.order || 0} onChange={(e) => updateTeacher(t.id, { order: parseInt(e.target.value) })} />
                       <span className="text-xs font-bold">{t.teacherName}</span>
                     </div>
                   ))}
@@ -808,7 +1117,7 @@ export const DailyReportsPage: React.FC = () => {
                       const exists = violationModal.notes.includes(v);
                       const newNotes = exists ? violationModal.notes.filter(n => n !== v) : [...violationModal.notes, v];
                       setViolationModal({ ...violationModal, notes: newNotes });
-                      updateTeacher(violationModal.id, 'violations_notes', newNotes);
+                      updateTeacher(violationModal.id, { violations_notes: newNotes });
                     }}
                     className={`w-full p-3 rounded-xl text-right font-bold border transition-all flex justify-between ${violationModal.notes.includes(v) ? 'bg-red-50 border-red-500 text-red-700' : 'bg-slate-50 border-slate-100'}`}
                   >
@@ -829,225 +1138,226 @@ export const DailyReportsPage: React.FC = () => {
 
       {/* Teacher Report Modal */}
       {/* Teacher Report Modal */}
-      {showTeacherReport && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl border border-slate-100 flex flex-col md:flex-row">
-            {/* Left Panel: Search & Select */}
-            <div className="md:w-1/3 bg-slate-50 p-8 border-e border-slate-100 flex flex-col overflow-hidden">
-              <div className="mb-6">
-                <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-                  <Search size={20} className="text-blue-600" />
-                  <span>البحث عن معلم</span>
-                </h3>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="ابحث بالاسم أو المادة.."
-                    className="w-full p-4 bg-white rounded-2xl border-2 border-slate-100 focus:border-blue-500 outline-none transition-all pr-12 font-bold shadow-sm"
-                    value={reportTeacherSearch}
-                    onChange={e => setReportTeacherSearch(e.target.value)}
-                  />
-                  <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+      {
+        showTeacherReport && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+            <div className="bg-white rounded-[2.5rem] w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl border border-slate-100 flex flex-col md:flex-row">
+              {/* Left Panel: Search & Select */}
+              <div className="md:w-1/3 bg-slate-50 p-8 border-e border-slate-100 flex flex-col overflow-hidden">
+                <div className="mb-6">
+                  <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                    <Search size={20} className="text-blue-600" />
+                    <span>البحث عن معلم</span>
+                  </h3>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="ابحث بالاسم أو المادة.."
+                      className="w-full p-4 bg-white rounded-2xl border-2 border-slate-100 focus:border-blue-500 outline-none transition-all pr-12 font-bold shadow-sm"
+                      value={reportTeacherSearch}
+                      onChange={e => setReportTeacherSearch(e.target.value)}
+                    />
+                    <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                  {teachers.filter(t => t.teacherName.includes(reportTeacherSearch) || t.subjectCode.includes(reportTeacherSearch)).map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => { setReportTeacherId(t.id); setReportSelectedFields(['teacherName', 'subjectCode', 'className', 'gender', 'total', 'percent']); }}
+                      className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all border-2 text-right ${reportTeacherId === t.id
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100'
+                        : 'bg-white border-transparent hover:border-blue-200 text-slate-700 shadow-sm'}`}
+                    >
+                      <div className="text-right">
+                        <div className="font-black text-sm">{t.teacherName || 'معلم جديد'}</div>
+                        <div className={`text-[10px] font-bold truncate ${reportTeacherId === t.id ? 'text-blue-100' : 'text-slate-400'}`}>
+                          {t.subjectCode || 'بدون مادة'} - {t.className || 'بدون صف'}
+                        </div>
+                      </div>
+                      {reportTeacherId === t.id && <Check size={18} />}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                {teachers.filter(t => t.teacherName.includes(reportTeacherSearch) || t.subjectCode.includes(reportTeacherSearch)).map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => { setReportTeacherId(t.id); setReportSelectedFields(['teacherName', 'subjectCode', 'className', 'gender', 'total', 'percent']); }}
-                    className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all border-2 text-right ${reportTeacherId === t.id
-                      ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100'
-                      : 'bg-white border-transparent hover:border-blue-200 text-slate-700 shadow-sm'}`}
-                  >
-                    <div className="text-right">
-                      <div className="font-black text-sm">{t.teacherName || 'معلم جديد'}</div>
-                      <div className={`text-[10px] font-bold truncate ${reportTeacherId === t.id ? 'text-blue-100' : 'text-slate-400'}`}>
-                        {t.subjectCode || 'بدون مادة'} - {t.className || 'بدون صف'}
+              {/* Right Panel: Data Entry & Export */}
+              <div className="md:w-2/3 p-8 flex flex-col bg-white overflow-hidden">
+                {reportTeacherId ? (
+                  <>
+                    <div className="flex items-center justify-between mb-6">
+                      <button
+                        onClick={() => setShowTeacherReport(false)}
+                        className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
+                      >
+                        <X size={24} />
+                      </button>
+                      <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                        <FileText className="text-blue-600" />
+                        <span>تقرير متابعة معلم</span>
+                      </h2>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setShowWhatsAppSelect(true)}
+                          className="p-2.5 bg-green-50 text-green-600 rounded-xl border border-green-200 hover:bg-green-100 transition-all font-bold flex items-center gap-2 text-sm shadow-sm"
+                        >
+                          <MessageCircle size={18} />
+                          <span className="hidden sm:inline">واتساب</span>
+                        </button>
                       </div>
                     </div>
-                    {reportTeacherId === t.id && <Check size={18} />}
-                  </button>
-                ))}
-              </div>
-            </div>
 
-            {/* Right Panel: Data Entry & Export */}
-            <div className="md:w-2/3 p-8 flex flex-col bg-white overflow-hidden">
-              {reportTeacherId ? (
-                <>
-                  <div className="flex items-center justify-between mb-6">
-                    <button
-                      onClick={() => setShowTeacherReport(false)}
-                      className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
-                    >
-                      <X size={24} />
-                    </button>
-                    <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                      <FileText className="text-blue-600" />
-                      <span>تقرير متابعة معلم</span>
-                    </h2>
-                    <div className="flex items-center gap-2">
+                    {/* Field Selection Grid */}
+                    <div className="mb-4 p-3 border-2 border-blue-50 rounded-2xl bg-slate-50/50">
+                      <label className="text-xs font-black text-slate-500 mb-2 block text-center">اختر المجالات المعروضة في التقرير</label>
+                      <div className="flex flex-wrap gap-2 justify-center max-h-32 overflow-y-auto p-1 custom-scrollbar">
+                        {fieldsConfig.map(f => (
+                          <button
+                            key={f.key}
+                            onClick={() => setReportSelectedFields(prev => prev.includes(f.key) ? prev.filter(k => k !== f.key) : [...prev, f.key])}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-1.5 shadow-sm border ${reportSelectedFields.includes(f.key)
+                              ? `${f.color} text-white border-transparent scale-105`
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'}`}
+                          >
+                            <span>{f.emoji}</span>
+                            <span>{f.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Data Entry Form */}
+                    <div className="space-y-2 flex-1 overflow-y-auto px-1 mb-4 custom-scrollbar">
+                      {reportSelectedFields.map(fieldKey => {
+                        const field = fieldsConfig.find(f => f.key === fieldKey);
+                        const teacher = teachers.find(t => t.id === reportTeacherId);
+                        if (!field || !teacher) return null;
+
+                        if (fieldKey === 'total') {
+                          return (
+                            <div key={fieldKey} className="flex items-center gap-4 bg-slate-100 p-3 rounded-xl border border-slate-200 text-right font-sans" dir="rtl">
+                              <span className="font-black text-slate-600 w-1/3 font-arabic">{field.emoji} {field.label}</span>
+                              <span className="font-black text-blue-600 text-lg">{calculateTotal(teacher)} / {calculateMaxTotal(teacher)}</span>
+                            </div>
+                          );
+                        }
+                        if (fieldKey === 'percent') {
+                          const score = calculateTotal(teacher);
+                          const mTotal = calculateMaxTotal(teacher);
+                          const percent = mTotal > 0 ? ((score / mTotal) * 100).toFixed(1) : '0';
+                          return (
+                            <div key={fieldKey} className="flex items-center gap-4 bg-slate-100 p-3 rounded-xl border border-slate-200 text-right font-sans" dir="rtl">
+                              <span className="font-black text-slate-600 w-1/3 font-arabic">{field.emoji} {field.label}</span>
+                              <span className="font-black text-blue-600 text-lg">{percent}%</span>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={fieldKey} className="flex items-center gap-4 bg-white p-2 rounded-xl border hover:border-blue-400 transition-colors shadow-sm text-right" dir="rtl">
+                            <label className="font-bold text-slate-700 w-1/3 flex items-center gap-2">
+                              <span className="p-1.5 bg-slate-50 rounded-lg text-sm">{field.emoji}</span>
+                              <span className="text-sm">{field.label}</span>
+                            </label>
+                            <div className="flex-1">
+                              {fieldKey === 'subjectCode' ? (
+                                <MultiSelectDropDown
+                                  label="المواد"
+                                  options={subjects}
+                                  selected={teacher.subjectCode ? teacher.subjectCode.split(', ') : []}
+                                  onChange={(vals) => updateTeacher(teacher.id, { subjectCode: vals.join(', ') })}
+                                  emoji="📚"
+                                />
+                              ) : fieldKey === 'className' ? (
+                                <MultiSelectDropDown
+                                  label="الصفوف"
+                                  options={grades}
+                                  selected={teacher.className ? teacher.className.split(', ') : []}
+                                  onChange={(vals) => updateTeacher(teacher.id, { className: vals.join(', ') })}
+                                  emoji="🎓"
+                                />
+                              ) : fieldKey === 'gender' ? (
+                                <select className="w-full p-2 bg-slate-50 rounded-lg font-bold text-center outline-none focus:ring-2 ring-blue-100" value={teacher.gender || 'ذكر'} onChange={e => updateTeacher(teacher.id, { gender: e.target.value })}>
+                                  <option value="ذكر">ذكر</option>
+                                  <option value="أنثى">أنثى</option>
+                                </select>
+                              ) : fieldKey === 'teacherName' ? (
+                                <input
+                                  type="text"
+                                  className="w-full p-2 bg-slate-50 rounded-lg font-bold text-center outline-none focus:ring-2 ring-blue-100"
+                                  value={teacher.teacherName}
+                                  onChange={e => updateTeacher(teacher.id, { teacherName: e.target.value })}
+                                />
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    disabled={(teacher.unaccreditedMetrics || []).includes(fieldKey)}
+                                    className={`flex-1 p-2 bg-slate-50 rounded-lg font-bold text-center outline-none focus:ring-2 ring-blue-100 font-sans ${(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'opacity-30' : ''}`}
+                                    value={(teacher as any)[fieldKey]}
+                                    onChange={e => {
+                                      const metric = metricsConfig.find(m => m.key === fieldKey);
+                                      const max = metric ? metric.max : 100;
+                                      const val = Math.min(max, Math.max(0, parseInt(e.target.value) || 0));
+                                      updateTeacher(teacher.id, { [fieldKey]: val });
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => toggleAccreditation(teacher.id, fieldKey)}
+                                    className={`p-2 rounded-lg transition-all flex items-center gap-1 ${(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-500'}`}
+                                    title={(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'اعتماد' : 'استبعاد'}
+                                  >
+                                    <Star size={16} className={(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'fill-red-500' : 'fill-green-500'} />
+                                    {(teacher.unaccreditedMetrics || []).includes(fieldKey) && <X size={12} />}
+                                  </button>
+                                  {metricsConfig.find(m => m.key === fieldKey) && (
+                                    <span className={`text-[10px] font-black font-sans ${(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'text-red-500' : 'text-slate-400'} whitespace-nowrap`}>
+                                      / {metricsConfig.find(m => m.key === fieldKey)?.max}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex gap-4 mt-auto pt-6 border-t border-slate-100">
                       <button
-                        onClick={() => setShowWhatsAppSelect(true)}
-                        className="p-2.5 bg-green-50 text-green-600 rounded-xl border border-green-200 hover:bg-green-100 transition-all font-bold flex items-center gap-2 text-sm shadow-sm"
+                        onClick={() => setShowTeacherReport(false)}
+                        className="flex-1 bg-blue-600 text-white font-black py-4 rounded-2xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2 text-lg text-right"
                       >
-                        <MessageCircle size={18} />
-                        <span className="hidden sm:inline">واتساب</span>
+                        <CheckCircle size={22} />
+                        حفظ وإنهاء
+                      </button>
+                      <button
+                        onClick={() => {
+                          setReportTeacherId('');
+                          setReportTeacherSearch('');
+                          setReportSelectedFields([]);
+                          setShowTeacherReport(false);
+                        }}
+                        className="px-8 bg-slate-50 text-slate-500 font-bold py-4 rounded-2xl border border-slate-200 hover:bg-white transition-all text-lg"
+                      >
+                        إلغاء
                       </button>
                     </div>
-                  </div>
-
-                  {/* Field Selection Grid */}
-                  <div className="mb-4 p-3 border-2 border-blue-50 rounded-2xl bg-slate-50/50">
-                    <label className="text-xs font-black text-slate-500 mb-2 block text-center">اختر المجالات المعروضة في التقرير</label>
-                    <div className="flex flex-wrap gap-2 justify-center max-h-32 overflow-y-auto p-1 custom-scrollbar">
-                      {fieldsConfig.map(f => (
-                        <button
-                          key={f.key}
-                          onClick={() => setReportSelectedFields(prev => prev.includes(f.key) ? prev.filter(k => k !== f.key) : [...prev, f.key])}
-                          className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all flex items-center gap-1.5 shadow-sm border ${reportSelectedFields.includes(f.key)
-                            ? `${f.color} text-white border-transparent scale-105`
-                            : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'}`}
-                        >
-                          <span>{f.emoji}</span>
-                          <span>{f.label}</span>
-                        </button>
-                      ))}
+                  </>
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-4">
+                    <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center">
+                      <UserCircle size={48} className="text-slate-200" />
                     </div>
+                    <p className="font-bold text-lg text-center">يرجى اختيار معلم من القائمة الجانبية لإدارة تقريره</p>
+                    <button onClick={() => setShowTeacherReport(false)} className="text-blue-600 font-black hover:underline">إغلاق النافذة</button>
                   </div>
-
-                  {/* Data Entry Form */}
-                  <div className="space-y-2 flex-1 overflow-y-auto px-1 mb-4 custom-scrollbar">
-                    {reportSelectedFields.map(fieldKey => {
-                      const field = fieldsConfig.find(f => f.key === fieldKey);
-                      const teacher = teachers.find(t => t.id === reportTeacherId);
-                      if (!field || !teacher) return null;
-
-                      if (fieldKey === 'total') {
-                        return (
-                          <div key={fieldKey} className="flex items-center gap-4 bg-slate-100 p-3 rounded-xl border border-slate-200 text-right font-sans" dir="rtl">
-                            <span className="font-black text-slate-600 w-1/3 font-arabic">{field.emoji} {field.label}</span>
-                            <span className="font-black text-blue-600 text-lg">{calculateTotal(teacher)} / {calculateMaxTotal(teacher)}</span>
-                          </div>
-                        );
-                      }
-                      if (fieldKey === 'percent') {
-                        const score = calculateTotal(teacher);
-                        const mTotal = calculateMaxTotal(teacher);
-                        const percent = mTotal > 0 ? ((score / mTotal) * 100).toFixed(1) : '0';
-                        return (
-                          <div key={fieldKey} className="flex items-center gap-4 bg-slate-100 p-3 rounded-xl border border-slate-200 text-right font-sans" dir="rtl">
-                            <span className="font-black text-slate-600 w-1/3 font-arabic">{field.emoji} {field.label}</span>
-                            <span className="font-black text-blue-600 text-lg">{percent}%</span>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div key={fieldKey} className="flex items-center gap-4 bg-white p-2 rounded-xl border hover:border-blue-400 transition-colors shadow-sm text-right" dir="rtl">
-                          <label className="font-bold text-slate-700 w-1/3 flex items-center gap-2">
-                            <span className="p-1.5 bg-slate-50 rounded-lg text-sm">{field.emoji}</span>
-                            <span className="text-sm">{field.label}</span>
-                          </label>
-                          <div className="flex-1">
-                            {fieldKey === 'subjectCode' ? (
-                              <MultiSelectDropDown
-                                label="المواد"
-                                options={subjects}
-                                selected={teacher.subjectCode ? teacher.subjectCode.split(', ') : []}
-                                onChange={(vals) => updateTeacher(teacher.id, 'subjectCode', vals.join(', '))}
-                                emoji="📚"
-                              />
-                            ) : fieldKey === 'className' ? (
-                              <MultiSelectDropDown
-                                label="الصفوف"
-                                options={grades}
-                                selected={teacher.className ? teacher.className.split(', ') : []}
-                                onChange={(vals) => updateTeacher(teacher.id, 'className', vals.join(', '))}
-                                emoji="🎓"
-                              />
-                            ) : fieldKey === 'gender' ? (
-                              <select className="w-full p-2 bg-slate-50 rounded-lg font-bold text-center outline-none focus:ring-2 ring-blue-100" value={teacher.gender || 'ذكر'} onChange={e => updateTeacher(teacher.id, 'gender', e.target.value)}>
-                                <option value="ذكر">ذكر</option>
-                                <option value="أنثى">أنثى</option>
-                              </select>
-                            ) : fieldKey === 'teacherName' ? (
-                              <input
-                                type="text"
-                                className="w-full p-2 bg-slate-50 rounded-lg font-bold text-center outline-none focus:ring-2 ring-blue-100"
-                                value={teacher.teacherName}
-                                onChange={e => updateTeacher(teacher.id, 'teacherName', e.target.value)}
-                              />
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="number"
-                                  disabled={(teacher.unaccreditedMetrics || []).includes(fieldKey)}
-                                  className={`flex-1 p-2 bg-slate-50 rounded-lg font-bold text-center outline-none focus:ring-2 ring-blue-100 font-sans ${(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'opacity-30' : ''}`}
-                                  value={(teacher as any)[fieldKey]}
-                                  onChange={e => {
-                                    const metric = metricsConfig.find(m => m.key === fieldKey);
-                                    const max = metric ? metric.max : 100;
-                                    const val = Math.min(max, Math.max(0, parseInt(e.target.value) || 0));
-                                    updateTeacher(teacher.id, fieldKey, val);
-                                  }}
-                                />
-                                <button
-                                  onClick={() => toggleAccreditation(teacher.id, fieldKey)}
-                                  className={`p-2 rounded-lg transition-all flex items-center gap-1 ${(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-500'}`}
-                                  title={(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'اعتماد' : 'استبعاد'}
-                                >
-                                  <Star size={16} className={(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'fill-red-500' : 'fill-green-500'} />
-                                  {(teacher.unaccreditedMetrics || []).includes(fieldKey) && <X size={12} />}
-                                </button>
-                                {metricsConfig.find(m => m.key === fieldKey) && (
-                                  <span className={`text-[10px] font-black font-sans ${(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'text-red-500' : 'text-slate-400'} whitespace-nowrap`}>
-                                    / {metricsConfig.find(m => m.key === fieldKey)?.max}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="flex gap-4 mt-auto pt-6 border-t border-slate-100">
-                    <button
-                      onClick={() => setShowTeacherReport(false)}
-                      className="flex-1 bg-blue-600 text-white font-black py-4 rounded-2xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2 text-lg text-right"
-                    >
-                      <CheckCircle size={22} />
-                      حفظ وإنهاء
-                    </button>
-                    <button
-                      onClick={() => {
-                        setReportTeacherId('');
-                        setReportTeacherSearch('');
-                        setReportSelectedFields([]);
-                        setShowTeacherReport(false);
-                      }}
-                      className="px-8 bg-slate-50 text-slate-500 font-bold py-4 rounded-2xl border border-slate-200 hover:bg-white transition-all text-lg"
-                    >
-                      إلغاء
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-4">
-                  <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center">
-                    <UserCircle size={48} className="text-slate-200" />
-                  </div>
-                  <p className="font-bold text-lg text-center">يرجى اختيار معلم من القائمة الجانبية لإدارة تقريره</p>
-                  <button onClick={() => setShowTeacherReport(false)} className="text-blue-600 font-black hover:underline">إغلاق النافذة</button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )
+        )
       }
       {/* WhatsApp Selection Modal */}
       {
@@ -1084,6 +1394,86 @@ export const DailyReportsPage: React.FC = () => {
           </div>
         )
       }
+      {/* Import Teachers Modal */}
+      {
+        showImportModal && (
+          <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in duration-200">
+              <h3 className="text-xl font-black text-center mb-2 flex items-center justify-center gap-2">
+                <Upload size={24} className="text-orange-600" />
+                استيراد أسماء المعلمين
+              </h3>
+              <p className="text-center text-slate-500 text-sm mb-6">اختر نوع الملف الذي تريد استيراده</p>
+
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <button
+                  onClick={() => handleImportTeachers('excel')}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-green-200 bg-green-50 hover:bg-green-100 hover:border-green-400 transition-all group"
+                >
+                  <div className="w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <FileSpreadsheet size={24} className="text-white" />
+                  </div>
+                  <span className="font-bold text-green-700">Excel / CSV</span>
+                  <span className="text-[10px] text-slate-400">.xlsx, .xls, .csv</span>
+                </button>
+
+                <button
+                  onClick={() => handleImportTeachers('xml')}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 transition-all group"
+                >
+                  <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <FileText size={24} className="text-white" />
+                  </div>
+                  <span className="font-bold text-blue-700">XML</span>
+                  <span className="text-[10px] text-slate-400">.xml</span>
+                </button>
+
+                <button
+                  onClick={() => handleImportTeachers('pdf')}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-red-200 bg-red-50 hover:bg-red-100 hover:border-red-400 transition-all group"
+                >
+                  <div className="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <FileText size={24} className="text-white" />
+                  </div>
+                  <span className="font-bold text-red-700">PDF</span>
+                  <span className="text-[10px] text-slate-400">.pdf</span>
+                </button>
+
+                <button
+                  onClick={() => handleImportTeachers('txt')}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-400 transition-all group"
+                >
+                  <div className="w-12 h-12 bg-slate-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <FileText size={24} className="text-white" />
+                  </div>
+                  <span className="font-bold text-slate-700">TXT</span>
+                  <span className="text-[10px] text-slate-400">.txt</span>
+                </button>
+              </div>
+
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 mb-4">
+                <p className="text-xs text-orange-700 text-center">
+                  <strong>ملاحظة:</strong> يجب أن يحتوي الملف على أسماء المعلمين فقط، كل اسم في سطر منفصل أو في عمود واحد
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="w-full p-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        )
+      }
+      {/* Hidden File Input for Import */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        onChange={processImportedFile}
+      />
     </div >
   );
 };
@@ -1100,22 +1490,36 @@ export const ViolationsPage: React.FC = () => {
   const [tempNames, setTempNames] = useState<string[]>([]);
   const [nameInput, setNameInput] = useState('');
   const [showFilter, setShowFilter] = useState(false);
+  const [activeSearchId, setActiveSearchId] = useState<string | null>(null);
 
   const studentList = data.studentReports || [];
 
   // Map teacher names to their profiles for quick lookup and auto-fill
   const teacherProfiles = useMemo(() => {
     const profiles: Record<string, { subject: string, class: string }> = {};
-    // Reverse iterate to get the most recent data if duplicates exist
-    [...data.dailyReports].reverse().forEach(r => {
+
+    // 1. Get from timetable (base list)
+    (data.timetable || []).forEach(t => {
+      if (t.teacherName) {
+        const name = t.teacherName.trim();
+        profiles[name] = { subject: t.subject || '', class: '' };
+      }
+    });
+
+    // 2. Supplement from dailyReports (natural order: newest at end will win)
+    (data.dailyReports || []).forEach(r => {
       r.teachersData.forEach(t => {
-        if (t.teacherName && !profiles[t.teacherName]) {
-          profiles[t.teacherName] = { subject: t.subjectCode, class: t.className };
+        if (t.teacherName) {
+          const name = t.teacherName.trim();
+          profiles[name] = {
+            subject: t.subjectCode || profiles[name]?.subject || '',
+            class: t.className || profiles[name]?.class || ''
+          };
         }
       });
     });
     return profiles;
-  }, [data.dailyReports]);
+  }, [data.dailyReports, data.timetable]);
 
   const teacherList = useMemo(() => Object.keys(teacherProfiles), [teacherProfiles]);
 
@@ -1158,26 +1562,31 @@ export const ViolationsPage: React.FC = () => {
     if (activeMode === 'students') {
       const student = studentList.find(s => s.name === suggestionName);
       if (student) {
+        const prevCount = (data.violations || []).filter(v => v.type === 'students' && v.studentName === student.name).length;
         const updated = data.violations.map(v => v.id === rowId ? {
           ...v,
           studentName: student.name,
           grade: student.grade,
-          section: student.section
+          section: student.section,
+          prevViolations: prevCount
         } : v);
         updateData({ violations: updated });
       }
     } else {
       const profile = teacherProfiles[suggestionName];
       if (profile) {
+        const prevCount = (data.violations || []).filter(v => v.type === 'teachers' && v.teacherName === suggestionName).length;
         const updated = data.violations.map(v => v.id === rowId ? {
           ...v,
           teacherName: suggestionName,
           subject: profile.subject,
-          class: profile.class
+          class: profile.class,
+          prevViolations: prevCount
         } : v);
         updateData({ violations: updated });
       }
     }
+    setActiveSearchId(null);
   };
 
   const deleteViolation = (id: string) => {
@@ -1263,6 +1672,24 @@ export const ViolationsPage: React.FC = () => {
 
   const handleWhatsApp = () => {
     const url = `https://wa.me/?text=${encodeURIComponent(generateRichReport())}`;
+    window.open(url, '_blank');
+  };
+
+  const handleWhatsAppIndividual = (row: any) => {
+    let msg = `*📋 إشعار تعهد ومخالفة (${activeMode === 'students' ? 'طلاب' : 'معلمون'})*\n\n`;
+    msg += `👤 *الاسم:* ${activeMode === 'students' ? row.studentName : row.teacherName}\n`;
+    msg += `📍 *الصف:* ${row.grade || row.class || '---'} ${activeMode === 'students' ? `/ ${row.section || '---'}` : ''}\n`;
+    if (activeMode === 'teachers') msg += `📚 *المادة:* ${row.subject || '---'}\n`;
+    msg += `🔢 *عدد المخالفات:* ${row.prevViolations || 0}\n`;
+    msg += `📅 *التاريخ:* ${row.date} (${row.day || '---'})\n`;
+    msg += `⚠️ *بيان المخالفة:* _${row.violation || '---'}_\n`;
+    msg += `🛡️ *الإجراء المتخذ:* _${row.procedure || '---'}_\n`;
+    msg += `✍️ *التوقيع:* _${row.signature || '---'}_\n\n`;
+
+    const profile = data.profile;
+    if (profile.schoolName) msg += `🏫 *${profile.schoolName}*`;
+
+    const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
   };
 
@@ -1371,8 +1798,8 @@ export const ViolationsPage: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-[2.5rem] shadow-xl border overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-[2.5rem] shadow-xl border overflow-visible">
+        <div className="overflow-x-auto overflow-y-visible">
           <table className="w-full text-center text-sm border-collapse min-w-[1200px]">
             <thead className="bg-[#FFD966] text-slate-800 font-black">
               {activeMode === 'teachers' ? (
@@ -1387,7 +1814,8 @@ export const ViolationsPage: React.FC = () => {
                   <th className="p-4 border-e border-slate-300 w-40">التاريخ</th>
                   <th className="p-4 border-e border-slate-300">الإجراء</th>
                   <th className="p-4 border-e border-slate-300 w-64">التوقيع</th>
-                  <th className="p-4"></th>
+                  <th className="p-4 border-e border-slate-300 w-16 text-green-600 bg-green-50/50"><button onClick={handleWhatsApp} title="إرسال الكل للواتساب"><MessageCircle size={18} className="mx-auto" /></button></th>
+                  <th className="p-4 w-12"></th>
                 </tr>
               ) : (
                 <tr>
@@ -1400,7 +1828,8 @@ export const ViolationsPage: React.FC = () => {
                   <th className="p-4 border-e border-slate-300">بيان المخالفة</th>
                   <th className="p-4 border-e border-slate-300">الإجراء المتخذ</th>
                   <th className="p-4 border-e border-slate-300 w-64">التوقيع</th>
-                  <th className="p-4"></th>
+                  <th className="p-4 border-e border-slate-300 w-16 text-green-600 bg-green-50/50"><button onClick={handleWhatsApp} title="إرسال الكل للواتساب"><MessageCircle size={18} className="mx-auto" /></button></th>
+                  <th className="p-4 w-12"></th>
                 </tr>
               )}
             </thead>
@@ -1414,22 +1843,26 @@ export const ViolationsPage: React.FC = () => {
                   <tr key={v.id} className="hover:bg-slate-50 transition-colors font-bold group">
                     <td className="p-4 border-e border-slate-100 bg-slate-50/50">{idx + 1}</td>
 
-                    <td className="p-2 border-e border-slate-100 relative">
+                    <td className="p-2 border-e border-slate-100 relative overflow-visible">
                       <input
                         className="w-full text-right bg-transparent outline-none focus:ring-1 ring-blue-200 rounded p-1"
                         value={activeMode === 'students' ? v.studentName : v.teacherName}
+                        onFocus={() => setActiveSearchId(v.id)}
+                        onBlur={() => setTimeout(() => setActiveSearchId(null), 200)}
                         onChange={(e) => updateViolation(v.id, activeMode === 'students' ? 'studentName' : 'teacherName', e.target.value)}
                         placeholder="اكتب الاسم..."
                       />
-                      {((activeMode === 'students' ? v.studentName : v.teacherName).length > 2) && (
-                        <div className="absolute top-full left-0 right-0 z-[100] bg-white border shadow-xl rounded-lg max-h-32 overflow-y-auto hidden group-focus-within:block">
+                      {activeSearchId === v.id && (activeMode === 'students' ? v.studentName : v.teacherName).trim() !== '' && (
+                        <div className="absolute bottom-full left-0 right-0 z-[9999] bg-white border-2 shadow-2xl rounded-xl max-h-48 overflow-y-auto block mb-1 border-blue-100" style={{ position: 'absolute', zIndex: 9999 }}>
                           {(activeMode === 'students' ? studentList.map(s => s.name) : teacherList)
                             .filter(n => n.includes(activeMode === 'students' ? v.studentName : v.teacherName))
+                            .filter(n => n !== (activeMode === 'students' ? v.studentName : v.teacherName))
+                            .slice(0, 8)
                             .map(suggestion => (
                               <button
                                 key={suggestion}
                                 onMouseDown={() => handleSelectSuggestion(v.id, suggestion)}
-                                className="w-full text-right p-2 text-[10px] hover:bg-blue-50 border-b last:border-none"
+                                className="w-full text-right p-3 text-[11px] hover:bg-blue-50 border-b last:border-none font-black text-slate-700 hover:text-blue-700 transition-colors"
                               >
                                 {suggestion}
                               </button>
@@ -1524,8 +1957,14 @@ export const ViolationsPage: React.FC = () => {
                       </div>
                     </td>
 
+                    <td className="p-2 border-e border-slate-100">
+                      <button onClick={() => handleWhatsAppIndividual(v)} className="text-green-500 hover:text-green-700 transition-colors p-2 hover:bg-green-50 rounded-lg" title="إرسال واتس">
+                        <MessageCircle size={18} />
+                      </button>
+                    </td>
+
                     <td className="p-2">
-                      <button onClick={() => deleteViolation(v.id)} className="text-red-300 hover:text-red-600 transition-colors">
+                      <button onClick={() => deleteViolation(v.id)} className="text-red-300 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-lg">
                         <Trash2 size={16} />
                       </button>
                     </td>
@@ -1541,7 +1980,7 @@ export const ViolationsPage: React.FC = () => {
 };
 
 // Memoized Row for performance optimization
-const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShowNotesModal, toggleStar, isHighlighted, onRowClick }: {
+const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShowNotesModal, toggleStar, isHighlighted, onRowClick, setWaSelector, isSelected, onSelect, onDelete, index, showBulkActions }: {
   s: StudentReport;
   optionsAr: any;
   optionsEn: any;
@@ -1551,10 +1990,31 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
   toggleStar: (id: string, type: any) => void;
   isHighlighted: boolean;
   onRowClick: (id: any) => void;
+  setWaSelector: (val: any) => void;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
+  index: number;
+  showBulkActions: boolean;
 }) => {
   return (
     <tr onClick={() => onRowClick(s.id)} className={`transition-colors h-10 group cursor-pointer ${isHighlighted ? 'bg-cyan-50' : 'hover:bg-blue-50/20'}`}>
-      <td className={`p-1 border-e border-slate-100 sticky right-0 z-10 transition-colors shadow-[2px_0_5px_rgba(0,0,0,0.05)] ${isHighlighted ? 'bg-cyan-50' : 'bg-white group-hover:bg-blue-50'}`}>
+      <td className={`p-1 border-e border-slate-100 sticky right-0 z-10 transition-colors ${isHighlighted ? 'bg-cyan-50' : 'bg-white group-hover:bg-blue-50'} w-20`}>
+        <div className="flex items-center justify-center gap-2">
+          <button onClick={(e) => { e.stopPropagation(); onDelete(s.id); }} className="p-1 text-slate-300 hover:text-red-500 transition-colors" title={lang === 'ar' ? 'حذف الطالب' : 'Delete Student'}>
+            <Trash2 size={12} />
+          </button>
+          <span className="text-[10px] font-black text-slate-400 w-4 text-center">{index + 1}</span>
+          <input
+            type="checkbox"
+            className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            checked={isSelected}
+            onChange={(e) => { e.stopPropagation(); onSelect(s.id); }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      </td>
+      <td className={`p-1 border-e border-slate-100 sticky right-[80px] z-10 transition-colors shadow-[2px_0_5px_rgba(0,0,0,0.05)] ${isHighlighted ? 'bg-cyan-50' : 'bg-white group-hover:bg-blue-50'}`}>
         <div className="flex items-center gap-1 h-full">
           <button onClick={() => toggleStar(s.id, 'isExcellent')} title={lang === 'ar' ? 'إضافة للتميز' : 'Add to Excellence'}>
             <Star className={`w-3.5 h-3.5 ${s.isExcellent ? 'fill-green-500 text-green-500' : 'text-slate-300'}`} />
@@ -1623,6 +2083,21 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
           {optionsAr.level.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.level[optionsAr.level.indexOf(o)]}</option>)}
         </select>
       </td>
+      <td className="p-1 border-e border-slate-100 bg-[#E2F0D9]/10">
+        <input className={`text-[8px] w-full text-center outline-none bg-transparent ${s.absenceSummary?.includes('بدون') ? 'text-red-500 font-bold' : ''}`} value={s.absenceSummary || ''} onChange={(e) => updateStudent(s.id, 'absenceSummary', e.target.value)} placeholder="..." />
+      </td>
+      <td className="p-1 border-e border-slate-100 bg-[#E2F0D9]/10">
+        <input className="text-[8px] w-full text-center outline-none bg-transparent" value={s.latenessSummary || ''} onChange={(e) => updateStudent(s.id, 'latenessSummary', e.target.value)} placeholder="..." />
+      </td>
+      <td className="p-1 border-e border-slate-100 bg-[#E2F0D9]/10">
+        <input className="text-[8px] w-full text-center outline-none bg-transparent" value={s.exitSummary || ''} onChange={(e) => updateStudent(s.id, 'exitSummary', e.target.value)} placeholder="..." />
+      </td>
+      <td className="p-1 border-e border-slate-100 bg-[#E2F0D9]/10">
+        <input className={`text-[8px] w-full text-center outline-none bg-transparent ${s.violationSummary ? 'text-red-600 font-black' : ''}`} value={s.violationSummary || ''} onChange={(e) => updateStudent(s.id, 'violationSummary', e.target.value)} placeholder="..." />
+      </td>
+      <td className="p-1 border-e border-slate-100 bg-[#E2F0D9]/10">
+        <input className="text-[8px] w-full text-center outline-none bg-transparent" value={s.damageSummary || ''} onChange={(e) => updateStudent(s.id, 'damageSummary', e.target.value)} placeholder="..." />
+      </td>
       <td className="p-1 border-e border-slate-100">
         <select className={`text-[9px] font-bold w-full appearance-none text-center outline-none bg-transparent ${s.behaviorLevel.includes('ضعيف') ? 'text-red-600' : ''}`} value={s.behaviorLevel} onChange={(e) => updateStudent(s.id, 'behaviorLevel', e.target.value)}>
           {optionsAr.behavior.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.behavior[optionsAr.behavior.indexOf(o)]}</option>)}
@@ -1656,10 +2131,21 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
           {optionsAr.cooperation.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.cooperation[optionsAr.cooperation.indexOf(o)]}</option>)}
         </select>
       </td>
-      <td className="p-1">
-        <button onClick={() => setShowNotesModal({ id: s.id, text: s.notes })} className="p-1.5 bg-slate-100 hover:bg-blue-100 rounded-lg transition-all">
-          {s.notes ? <CheckCircle size={14} className="text-green-500" /> : <Settings2 size={14} className="text-slate-400" />}
+      <td className="p-1 text-center border-e border-slate-100">
+        <button onClick={(e) => { e.stopPropagation(); setShowNotesModal({ id: s.id, text: s.notes }); }} className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all">
+          <FileText size={14} />
         </button>
+      </td>
+      <td className="p-1 border-e border-slate-100">
+        <div className="flex items-center justify-center">
+          <button
+            onClick={(e) => { e.stopPropagation(); setWaSelector({ type: 'single', student: s }); }}
+            className="p-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-all"
+            title={lang === 'ar' ? 'إرسال واتساب' : 'Send WhatsApp'}
+          >
+            <MessageCircle size={14} />
+          </button>
+        </div>
       </td>
     </tr>
   );
@@ -1693,6 +2179,11 @@ export const StudentsReportsPage: React.FC = () => {
   const [showImportConfirmModal, setShowImportConfirmModal] = useState(false);
   const [pendingImportData, setPendingImportData] = useState<StudentReport[]>([]);
 
+  // Advanced Deletion States
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [showDeleteStudentsModal, setShowDeleteStudentsModal] = useState(false);
+  const [deletionFilters, setDeletionFilters] = useState({ grades: [] as string[], sections: [] as string[], deleteDuplicates: false });
+
   const waFieldOptions = [
     { key: 'all', label: 'جميع البيانات' },
     { key: 'name', label: 'اسم الطالب' },
@@ -1704,6 +2195,11 @@ export const StudentsReportsPage: React.FC = () => {
     { key: 'guardian', label: 'ولي الأمر (الاسم، الهاتف)' },
     { key: 'academic', label: 'المستوى العلمي (قراءة، كتابة، مشاركة)' },
     { key: 'behavior', label: 'المستوى السلوكي' },
+    { key: 'abs', label: 'الغياب اليومي' },
+    { key: 'late', label: 'التأخر' },
+    { key: 'exit', label: 'خروج طالب' },
+    { key: 'viol', label: 'المخالفات الطلابية' },
+    { key: 'damage', label: 'الإتلاف المدرسي' },
     { key: 'main_notes', label: 'الملاحظات الأساسية' },
     { key: 'guardian_followup', label: 'ولي الأمر المتابع (تعليم، متابعة، تعاون)' },
     { key: 'other_notes', label: 'ملاحظات أخرى' },
@@ -1713,6 +2209,15 @@ export const StudentsReportsPage: React.FC = () => {
   const [showListModal, setShowListModal] = useState<'blacklist' | 'excellence' | null>(null);
   const [listSearch, setListSearch] = useState('');
   const [tempListSelected, setTempListSelected] = useState<string[]>([]);
+
+  useEffect(() => {
+    const highlightName = localStorage.getItem('highlight_student_name');
+    if (highlightName) {
+      setFilterMode('student');
+      setSelectedStudentNames([highlightName]);
+      localStorage.removeItem('highlight_student_name');
+    }
+  }, []);
 
   const studentData = data.studentReports || [];
 
@@ -1757,7 +2262,12 @@ export const StudentsReportsPage: React.FC = () => {
     behaviorLevel: "المستوى السلوكي",
     guardianEducation: "تعليم ولي الأمر",
     guardianFollowUp: "متابعة ولي الأمر",
-    guardianCooperation: "تعاون ولي الأمر"
+    guardianCooperation: "تعاون ولي الأمر",
+    absenceSummary: "الغياب اليومي",
+    latenessSummary: "التأخر",
+    exitSummary: "خروج طالب",
+    violationSummary: "المخالفات الطلابية",
+    damageSummary: "الإتلاف المدرسي"
   } : {
     gender: "Gender",
     grade: "Grade",
@@ -1769,7 +2279,12 @@ export const StudentsReportsPage: React.FC = () => {
     behaviorLevel: "Behavior Level",
     guardianEducation: "Guardian Education",
     guardianFollowUp: "Guardian Follow-up",
-    guardianCooperation: "Guardian Cooperation"
+    guardianCooperation: "Guardian Cooperation",
+    absenceSummary: "Absence",
+    latenessSummary: "Lateness",
+    exitSummary: "Exit",
+    violationSummary: "Violations",
+    damageSummary: "Damage"
   };
 
   const detailFieldConfigs = [
@@ -1820,31 +2335,96 @@ export const StudentsReportsPage: React.FC = () => {
     updateData({ studentReports: [...studentData, newStudent] });
   };
 
-  const handleDeleteDuplicates = () => {
-    if (!confirm(lang === 'ar' ? 'سيتم حذف جميع السجلات المكررة (الاسم، الصف، الشعبة) والإبقاء على الأقدم فقط. هل أنت متأكد؟' : 'All duplicate records (Name, Grade, Section) will be deleted, keeping only the oldest. Are you sure?')) return;
+  const deleteStudent = (id: string) => {
+    if (!confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذا الطالب؟' : 'Are you sure you want to delete this student?')) return;
+    updateData({ studentReports: studentData.filter(s => s.id !== id) });
+    // Reset selection if deleted
+    setSelectedStudentIds(prev => prev.filter(sid => sid !== id));
+  };
 
-    const seen = new Map<string, StudentReport>();
-    const toKeep: StudentReport[] = [];
+  const bulkDeleteStudents = () => {
+    if (selectedStudentIds.length === 0) return;
+    if (!confirm(lang === 'ar' ? 'هل أنت متأكد من حذف الأسماء المحددة؟' : 'Are you sure you want to delete the selected names?')) return;
+    updateData({ studentReports: studentData.filter(s => !selectedStudentIds.includes(s.id)) });
+    setSelectedStudentIds([]);
+  };
 
-    const sortedData = [...studentData].sort((a, b) =>
-      new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
-    );
+  const normalizeArabic = (text: any): string => {
+    if (!text) return '';
+    return String(text)
+      .replace(/[أإآ]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .replace(/ى/g, 'ي')
+      .trim();
+  };
 
-    sortedData.forEach(s => {
-      const key = `${s.name.trim()}-${s.grade}-${s.section}`;
-      if (!seen.has(key)) {
-        seen.set(key, s);
-        toKeep.push(s);
-      }
-    });
+  const handleAdvancedDelete = () => {
+    const { grades, sections, deleteDuplicates } = deletionFilters;
+    if (grades.length === 0 && sections.length === 0 && !deleteDuplicates) return;
 
-    if (toKeep.length === studentData.length) {
-      alert(lang === 'ar' ? 'لا يوجد تكرار لحذفه' : 'No duplicates found to delete');
+    // Normalizing filters to ensure matching (including Arabic character normalization)
+    const normalizedGrades = grades.map(g => normalizeArabic(g));
+    const normalizedSections = sections.map(s => normalizeArabic(s));
+
+    let studentsToProcess = [...studentData];
+    let deletedCount = 0;
+
+    // 1. Handle Duplicates if selected
+    if (deleteDuplicates) {
+      const seen = new Map<string, StudentReport>();
+      const toKeep: StudentReport[] = [];
+      const sortedData = [...studentsToProcess].sort((a, b) =>
+        new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+      );
+      sortedData.forEach(s => {
+        const key = `${s.name.trim()}-${normalizeArabic(s.grade)}-${normalizeArabic(s.section)}`;
+        if (!seen.has(key)) {
+          seen.set(key, s);
+          toKeep.push(s);
+        }
+      });
+      deletedCount += (studentsToProcess.length - toKeep.length);
+      studentsToProcess = toKeep;
+    }
+
+    // 2. Handle Grades/Sections filtering
+    let finalData = [...studentsToProcess];
+    if (normalizedGrades.length > 0 || normalizedSections.length > 0) {
+      const afterFiltering = studentsToProcess.filter(s => {
+        const sGrade = normalizeArabic(s.grade);
+        const sSection = normalizeArabic(s.section);
+
+        const gradeMatch = normalizedGrades.length === 0 || normalizedGrades.includes(sGrade);
+        const sectionMatch = normalizedSections.length === 0 || normalizedSections.includes(sSection);
+
+        // Combined logic (Intersection) as per requirement: Grade AND Section must match if both are selected
+        const shouldDelete = gradeMatch && sectionMatch;
+        return !shouldDelete;
+      });
+      deletedCount += (studentsToProcess.length - afterFiltering.length);
+      finalData = afterFiltering;
+    }
+
+    if (deletedCount === 0) {
+      alert(lang === 'ar' ? 'لم يتم العثور على طلاب مطابقين لحذفهم' : 'No matching students found to delete');
       return;
     }
 
-    updateData({ studentReports: toKeep });
-    alert(lang === 'ar' ? `تم حذف ${studentData.length - toKeep.length} سجل مكرر` : `Deleted ${studentData.length - toKeep.length} duplicate records`);
+    const confirmMsg = lang === 'ar'
+      ? `سيتم حذف ${deletedCount} طالب بشكل نهائي. هل أنت متأكد؟`
+      : `Are you sure you want to delete ${deletedCount} students permanently?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    updateData({ studentReports: finalData });
+    setShowDeleteStudentsModal(false);
+    setDeletionFilters({ grades: [], sections: [], deleteDuplicates: false });
+    setSelectedStudentIds([]); // Clear selection to be safe
+    alert(lang === 'ar' ? 'تم الحذف بنجاح' : 'Deleted successfully');
+  };
+
+  const handleDeleteDuplicates = () => {
+    setShowDeleteStudentsModal(true);
   };
 
   const bulkAutoFill = () => {
@@ -1893,9 +2473,9 @@ export const StudentsReportsPage: React.FC = () => {
       // Check for duplicates
       const duplicates = (imported as any[]).filter(imp =>
         studentData.some(existing =>
-          existing.name.trim() === imp.name.trim() &&
-          existing.grade === imp.grade &&
-          existing.section === imp.section
+          normalizeArabic(existing.name) === normalizeArabic(imp.name) &&
+          normalizeArabic(existing.grade) === normalizeArabic(imp.grade) &&
+          normalizeArabic(existing.section) === normalizeArabic(imp.section)
         )
       );
 
@@ -1920,20 +2500,44 @@ export const StudentsReportsPage: React.FC = () => {
       if (selectedStudentNames.length === 0) return [];
       result = result.filter(s => selectedStudentNames.some(name => s.name.toLowerCase().includes(name.toLowerCase())));
     } else if (filterMode === 'grade' && filterValue) {
-      result = result.filter(s => s.grade === filterValue);
+      result = result.filter(s => normalizeArabic(s.grade) === normalizeArabic(filterValue));
     } else if (filterMode === 'section' && filterValue) {
-      result = result.filter(s => s.section === filterValue);
+      result = result.filter(s => normalizeArabic(s.section) === normalizeArabic(filterValue));
     } else if (filterMode === 'specific' && selectedSpecifics.length > 0) {
+      const normalizedSpecifics = selectedSpecifics.map(sx => normalizeArabic(sx));
       result = result.filter(s =>
-        selectedSpecifics.includes(s.healthStatus) ||
-        selectedSpecifics.includes(s.behaviorLevel) ||
-        selectedSpecifics.includes(s.grade) ||
-        selectedSpecifics.includes(s.section) ||
-        s.mainNotes.some(n => selectedSpecifics.includes(n))
+        normalizedSpecifics.includes(normalizeArabic(s.healthStatus)) ||
+        normalizedSpecifics.includes(normalizeArabic(s.behaviorLevel)) ||
+        normalizedSpecifics.includes(normalizeArabic(s.grade)) ||
+        normalizedSpecifics.includes(normalizeArabic(s.section)) ||
+        s.mainNotes.some(n => normalizedSpecifics.includes(normalizeArabic(n)))
       );
     }
-    return result;
-  }, [studentData, filterMode, filterValue, selectedSpecifics, selectedStudentNames]);
+
+    // Auto-sync metrics from special reports
+    return result.map(s => {
+      const absences = (data.absenceLogs || []).filter(l => l.studentId === s.id);
+      const lateness = (data.studentLatenessLogs || []).filter(l => l.studentId === s.id);
+      const exits = (data.exitLogs || []).filter(l => l.studentId === s.id);
+      const violations = (data.studentViolationLogs || []).filter(l => l.studentId === s.id);
+      const damages = (data.damageLogs || []).filter(l => l.studentId === s.id);
+
+      const calculatedAbsence = absences.length > 0 ? `بعذر: ${absences.filter(a => a.reason.includes('بعذر')).length}، بدون: ${absences.filter(a => !a.reason.includes('بعذر')).length}` : '';
+      const calculatedLateness = lateness.length > 0 ? `${lateness.length}` : '';
+      const calculatedExit = exits.length > 0 ? `${exits.length}` : '';
+      const calculatedViolation = violations.length > 0 ? violations.map(v => [...(v.behaviorViolations || []), ...(v.dutiesViolations || []), ...(v.achievementViolations || [])].join('، ')).filter(v => v).join(' | ') : '';
+      const calculatedDamage = damages.length > 0 ? damages.map(d => d.description).join(' | ') : '';
+
+      return {
+        ...s,
+        absenceSummary: s.absenceSummary || calculatedAbsence,
+        latenessSummary: s.latenessSummary || calculatedLateness,
+        exitSummary: s.exitSummary || calculatedExit,
+        violationSummary: s.violationSummary || calculatedViolation,
+        damageSummary: s.damageSummary || calculatedDamage,
+      };
+    });
+  }, [studentData, filterMode, filterValue, selectedSpecifics, selectedStudentNames, data.absenceLogs, data.studentLatenessLogs, data.exitLogs, data.studentViolationLogs, data.damageLogs]);
 
   const suggestions = useMemo(() => {
     if (!studentInput.trim()) return [];
@@ -1991,52 +2595,67 @@ export const StudentsReportsPage: React.FC = () => {
     text += `----------------------------------\n\n`;
 
     studentsList.forEach((s, i) => {
-      text += `*🔹 الطالب (${i + 1}):*\n`;
+      text += `*👤 الطالب (${i + 1}):*\n`;
       const isAll = fields.includes('all');
 
-      if (isAll || fields.includes('name')) text += `👤 *الاسم:* ${s.name}\n`;
-      if (isAll || fields.includes('grade')) text += `📍 *الصف:* ${s.grade}\n`;
-      if (isAll || fields.includes('section')) text += `🏁 *الشعبة:* ${s.section}\n`;
-      if (isAll || fields.includes('gender')) text += `🚻 *النوع:* ${s.gender}\n`;
+      if (isAll || fields.includes('name')) text += `  ▫️ *الاسم:* ${s.name}\n`;
+      if (isAll || fields.includes('grade')) text += `  ▫️ *الصف:* ${s.grade}\n`;
+      if (isAll || fields.includes('section')) text += `  ▫️ *الشعبة:* ${s.section}\n`;
+      if (isAll || fields.includes('gender')) text += `  ▫️ *النوع:* ${s.gender}\n`;
       if (isAll || fields.includes('address_work')) {
-        text += `🏠 *السكن:* ${s.address || '---'}\n`;
-        text += `💼 *العمل:* ${s.workOutside}\n`;
+        text += `  🏠 *السكن:* ${s.address || '---'}\n`;
+        text += `  💼 *العمل:* ${s.workOutside}\n`;
       }
       if (isAll || fields.includes('health')) {
-        text += `🏥 *الحالة الصحية:* ${formatWAValue(s.healthStatus)}${s.healthDetails ? ` (${s.healthDetails})` : ''}\n`;
+        text += `  🏥 *الحالة الصحية:* ${formatWAValue(s.healthStatus)}${s.healthDetails ? ` (${s.healthDetails})` : ''}\n`;
       }
       if (isAll || fields.includes('guardian')) {
-        text += `👨‍👩‍👧 *ولي الأمر:* ${s.guardianName || '---'}\n`;
-        text += `📞 *الهواتف:* ${s.guardianPhones.join(' - ')}\n`;
+        text += `  👨‍👩‍👧 *ولي الأمر:* ${s.guardianName || '---'}\n`;
+        text += `  📞 *الهواتف:* ${s.guardianPhones.join(' - ')}\n`;
       }
       if (isAll || fields.includes('academic')) {
-        text += `📚 *المستوى العلمي:*\n`;
-        text += `   📖 قراءة: ${formatWAValue(s.academicReading)}\n`;
-        text += `   ✍️ الكتابة: ${formatWAValue(s.academicWriting)}\n`;
-        text += `   🙋 المشاركة: ${formatWAValue(s.academicParticipation)}\n`;
+        text += `  📚 *المستوى العلمي:*\n`;
+        text += `     📖 القراءة: ${formatWAValue(s.academicReading)}\n`;
+        text += `     ✍️ الكتابة: ${formatWAValue(s.academicWriting)}\n`;
+        text += `     🙋 المشاركة: ${formatWAValue(s.academicParticipation)}\n`;
       }
       if (isAll || fields.includes('behavior')) {
-        text += `🎭 *المستوى السلوكي:* ${formatWAValue(s.behaviorLevel)}\n`;
+        text += `  🎭 *المستوى السلوكي:* ${formatWAValue(s.behaviorLevel)}\n`;
+      }
+      if (isAll || fields.includes('abs')) {
+        text += `  🕒 *الغياب اليومي:* ${s.absenceSummary ? formatWAValue(s.absenceSummary) : '---'}\n`;
+      }
+      if (isAll || fields.includes('late')) {
+        text += `  ⏱️ *التأخر:* ${s.latenessSummary ? formatWAValue(s.latenessSummary) : '---'}\n`;
+      }
+      if (isAll || fields.includes('exit')) {
+        text += `  🚪 *خروج أثناء الدراسة:* ${s.exitSummary ? formatWAValue(s.exitSummary) : '---'}\n`;
+      }
+      if (isAll || fields.includes('viol')) {
+        text += `  ⚠️ *المخالفات الطلابية:* ${s.violationSummary ? formatWAValue(s.violationSummary) : '---'}\n`;
+      }
+      if (isAll || fields.includes('damage')) {
+        text += `  🔨 *الإتلاف المدرسي:* ${s.damageSummary ? formatWAValue(s.damageSummary) : '---'}\n`;
       }
       if (isAll || fields.includes('main_notes')) {
         if (s.mainNotes.length > 0) {
-          text += `⚠️ *الملاحظات الأساسية:*\n`;
-          s.mainNotes.forEach(n => text += `   🔴 ${n}\n`);
+          text += `  🚨 *الملاحظات الأساسية:*\n`;
+          s.mainNotes.forEach(n => text += `     🔴 ${n}\n`);
         } else {
-          text += `⚠️ *الملاحظات الأساسية:* ---\n`;
+          text += `  🚨 *الملاحظات الأساسية:* ---\n`;
         }
       }
       if (isAll || fields.includes('guardian_followup')) {
-        text += `🤝 *متابعة ولي الأمر:*\n`;
-        text += `   🎓 التعليم: ${s.guardianEducation}\n`;
-        text += `   📈 المتابعة: ${formatWAValue(s.guardianFollowUp)}\n`;
-        text += `   🤝 التعاون: ${formatWAValue(s.guardianCooperation)}\n`;
+        text += `  🤝 *متابعة ولي الأمر:*\n`;
+        text += `     🎓 التعليم: ${s.guardianEducation}\n`;
+        text += `     📈 المتابعة: ${formatWAValue(s.guardianFollowUp)}\n`;
+        text += `     🤝 التعاون: ${formatWAValue(s.guardianCooperation)}\n`;
       }
       if (isAll || fields.includes('other_notes')) {
-        if (s.notes) text += `📝 *ملاحظات أخرى:* ${s.notes}\n`;
-        if (s.otherNotesText) text += `🔖 *ملاحظات برمجية:* ${s.otherNotesText}\n`;
+        if (s.notes) text += `  📝 *ملاحظات أخرى:* ${s.notes}\n`;
+        if (s.otherNotesText) text += `  🔖 *ملاحظات برمجية:* ${s.otherNotesText}\n`;
       }
-      text += `----------------------------------\n`;
+      text += `\n`;
     });
 
     const profile = data.profile;
@@ -2153,9 +2772,9 @@ export const StudentsReportsPage: React.FC = () => {
 
           <button
             onClick={handleDeleteDuplicates}
-            className="flex items-center gap-2 bg-red-50 text-red-700 px-4 py-2.5 rounded-xl font-bold text-sm border border-red-200 hover:bg-red-100 transition-all"
+            className="flex items-center gap-2 bg-red-50 text-red-700 px-4 py-2.5 rounded-xl font-bold text-sm border border-red-200 hover:bg-red-100 transition-all font-black"
           >
-            <Trash2 size={16} /> {lang === 'ar' ? 'حذف التكرار' : 'Delete Duplicates'}
+            <Trash2 size={16} /> {lang === 'ar' ? 'حذف الطلاب' : 'Delete Students'}
           </button>
 
           <button onClick={bulkAutoFill} className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2.5 rounded-xl font-bold text-sm border border-purple-200 hover:bg-purple-100 transition-all">
@@ -2250,8 +2869,33 @@ export const StudentsReportsPage: React.FC = () => {
         <div className="overflow-x-auto scroll-smooth max-h-[75vh]">
           <table className={`w-full text-center border-collapse table-auto ${isOnlyMetricView ? 'min-w-[700px]' : 'min-w-[1600px]'}`}>
             <thead className="bg-[#FFD966] text-slate-800 sticky top-0 z-20">
-              <tr className="border-b border-slate-300 h-12">
-                <th rowSpan={2} className="px-3 border-e border-slate-300 w-[160px] text-xs font-black sticky right-0 bg-[#FFD966] z-30">{lang === 'ar' ? 'اسم الطالب' : 'Student Name'}</th>
+              <tr className="border-b border-slate-300 h-12 text-center">
+                <th rowSpan={2} className="px-2 border-e border-slate-300 w-20 sticky right-0 bg-[#FFD966] z-30 whitespace-nowrap">
+                  <div className="flex flex-col items-center gap-1">
+                    {selectedStudentIds.length > 0 && (
+                      <button
+                        onClick={bulkDeleteStudents}
+                        className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all shadow-sm animate-in fade-in zoom-in duration-200"
+                        title={lang === 'ar' ? 'حذف المحددة' : 'Delete Selected'}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                    <div className="flex items-center gap-2 justify-center">
+                      <span className="text-[10px] font-black">{lang === 'ar' ? 'م' : 'No.'}</span>
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded"
+                        checked={filteredData.length > 0 && selectedStudentIds.length === filteredData.length}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedStudentIds(filteredData.map(s => s.id));
+                          else setSelectedStudentIds([]);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </th>
+                <th rowSpan={2} className="px-3 border-e border-slate-300 w-[160px] text-xs font-black sticky right-[80px] bg-[#FFD966] z-30">{lang === 'ar' ? 'اسم الطالب' : 'Student Name'}</th>
                 <th rowSpan={2} className="px-1 border-e border-slate-300 w-20 text-xs font-black">{lang === 'ar' ? 'الصف' : 'Grade'}</th>
                 <th rowSpan={2} className="px-1 border-e border-slate-300 w-16 text-xs font-black">{lang === 'ar' ? 'الشعبة' : 'Section'}</th>
 
@@ -2262,10 +2906,16 @@ export const StudentsReportsPage: React.FC = () => {
                     <th rowSpan={2} className="px-2 border-e border-slate-300 w-24 text-xs font-black">{lang === 'ar' ? 'الحالة الصحية' : 'Health Status'}</th>
                     <th rowSpan={2} className="px-2 border-e border-slate-300 w-32 text-xs font-black">{lang === 'ar' ? 'ولي الأمر (الاسم/الهواتف)' : 'Guardian (Name/Phones)'}</th>
                     <th colSpan={3} className="px-1 border-e border-slate-300 bg-[#FFF2CC] text-xs font-black">{lang === 'ar' ? 'المستوى العلمي' : 'Academic Level'}</th>
+                    <th colSpan={5} className="px-1 border-e border-slate-300 bg-[#E2F0D9] text-xs font-black">{lang === 'ar' ? 'سجل المتابعة الخاصة' : 'Special Logs'}</th>
                     <th rowSpan={2} className="px-2 border-e border-slate-300 w-24 text-xs font-black">{lang === 'ar' ? 'المستوى السلوكي' : 'Behavior Level'}</th>
                     <th rowSpan={2} className="px-2 border-e border-slate-300 w-44 text-xs font-black">{lang === 'ar' ? 'الملاحظات الأساسية' : 'Main Notes'}</th>
                     <th colSpan={3} className="px-1 border-e border-slate-300 bg-[#DDEBF7] text-xs font-black">{lang === 'ar' ? 'ولي الأمر المتابع' : 'Guardian Follow-up'}</th>
-                    <th rowSpan={2} className="px-2 w-10 text-xs font-black">{lang === 'ar' ? 'ملاحظات أخرى' : 'Other Notes'}</th>
+                    <th rowSpan={2} className="px-2 border-e border-slate-300 w-10 text-xs font-black">{lang === 'ar' ? 'ملاحظات أخرى' : 'Other Notes'}</th>
+                    <th rowSpan={2} className="px-2 border-slate-300 w-16 text-xs font-black">
+                      <button onClick={sendWhatsApp} className="flex items-center gap-1 bg-green-600 text-white px-2 py-1 rounded-lg text-[9px] hover:bg-green-700 mx-auto">
+                        <MessageCircle size={10} /> {lang === 'ar' ? 'إرسال واتس' : 'Send WA'}
+                      </button>
+                    </th>
                   </>
                 )}
 
@@ -2279,6 +2929,11 @@ export const StudentsReportsPage: React.FC = () => {
                   <th className="border-e border-slate-300 bg-[#FFF2CC]/50">{lang === 'ar' ? 'قراءة' : 'Read'}</th>
                   <th className="border-e border-slate-300 bg-[#FFF2CC]/50">{lang === 'ar' ? 'كتابة' : 'Write'}</th>
                   <th className="border-e border-slate-300 bg-[#FFF2CC]/50">{lang === 'ar' ? 'مشاركة' : 'Part'}</th>
+                  <th className="border-e border-slate-300 bg-[#E2F0D9]/50 text-[8px]">{lang === 'ar' ? 'الغياب' : 'Absence'}</th>
+                  <th className="border-e border-slate-300 bg-[#E2F0D9]/50 text-[8px]">{lang === 'ar' ? 'التأخر' : 'Lateness'}</th>
+                  <th className="border-e border-slate-300 bg-[#E2F0D9]/50 text-[8px]">{lang === 'ar' ? 'الخروج' : 'Exit'}</th>
+                  <th className="border-e border-slate-300 bg-[#E2F0D9]/50 text-[8px]">{lang === 'ar' ? 'المخالفات' : 'Violations'}</th>
+                  <th className="border-e border-slate-300 bg-[#E2F0D9]/50 text-[8px]">{lang === 'ar' ? 'الإتلاف' : 'Damage'}</th>
                   <th className="border-e border-slate-300 bg-[#DDEBF7]/50">{lang === 'ar' ? 'تعليم' : 'Edu'}</th>
                   <th className="border-e border-slate-300 bg-[#DDEBF7]/50">{lang === 'ar' ? 'متابعة' : 'Follow'}</th>
                   <th className="border-e border-slate-300 bg-[#DDEBF7]/50">{lang === 'ar' ? 'تعاون' : 'Coop'}</th>
@@ -2288,7 +2943,7 @@ export const StudentsReportsPage: React.FC = () => {
             <tbody className="divide-y divide-slate-100">
               {filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={isOnlyMetricView ? 3 + activeMetricFilter.length : 15} className="py-10 text-slate-400 italic text-sm">
+                  <td colSpan={isOnlyMetricView ? 4 + activeMetricFilter.length : 24} className="py-10 text-slate-400 italic text-sm">
                     {(filterMode === 'student' || filterMode === 'blacklist' || filterMode === 'excellence') && selectedStudentNames.length === 0
                       ? (lang === 'ar' ? 'يرجى اختيار أسماء الطلاب من القائمة للعرض' : 'Please select student names to display')
                       : (lang === 'ar' ? 'لا توجد بيانات تطابق هذا البحث' : 'No data matching this search')}
@@ -2307,6 +2962,12 @@ export const StudentsReportsPage: React.FC = () => {
                     toggleStar={toggleStar}
                     isHighlighted={highlightedRow === s.id}
                     onRowClick={setHighlightedRow}
+                    setWaSelector={setWaSelector}
+                    isSelected={selectedStudentIds.includes(s.id)}
+                    onSelect={(id) => setSelectedStudentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                    onDelete={deleteStudent}
+                    index={idx}
+                    showBulkActions={selectedStudentIds.length > 0}
                   />
                 ))
               )}
@@ -2438,6 +3099,97 @@ export const StudentsReportsPage: React.FC = () => {
       )}
 
       {/* Requirement: Detail Modal Implementation & Optimization */}
+      {showDeleteStudentsModal && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 font-arabic">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-2xl shadow-2xl space-y-6 animate-in fade-in zoom-in duration-200 text-right overflow-y-auto max-h-[90vh]">
+            <div className="flex justify-between items-center border-b pb-4">
+              <h3 className="text-xl font-black text-red-600 flex items-center gap-2">
+                <Trash2 size={24} /> {lang === 'ar' ? 'خيارات حذف الطلاب' : 'Delete Students Options'}
+              </h3>
+              <button onClick={() => setShowDeleteStudentsModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X /></button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Delete Duplicates Choice */}
+              <label className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all border-2 border-transparent has-[:checked]:border-red-200 has-[:checked]:bg-red-50/30">
+                <input
+                  type="checkbox"
+                  className="w-5 h-5 rounded text-red-600"
+                  checked={deletionFilters.deleteDuplicates}
+                  onChange={e => setDeletionFilters({ ...deletionFilters, deleteDuplicates: e.target.checked })}
+                />
+                <div className="flex-1">
+                  <div className="font-black text-sm">{lang === 'ar' ? 'أ / حذف التكرار' : 'A / Delete Duplicates'}</div>
+                  <div className="text-[10px] text-slate-500 font-bold mt-1">
+                    {lang === 'ar' ? 'يتم حذف جميع السجلات المكررة (الاسم، الصف، الشعبة) والإبقاء على الأقدم فقط' : 'Deletes all duplicate records (Name, Grade, Section), keeping only the oldest version.'}
+                  </div>
+                </div>
+              </label>
+
+              {/* Delete by Grade */}
+              <div className="p-4 bg-slate-50 rounded-2xl space-y-3">
+                <div className="font-black text-sm text-slate-600">{lang === 'ar' ? 'ب / حذف صف كامل' : 'B / Delete Full Grade'}</div>
+                <div className="flex flex-wrap gap-1">
+                  {optionsAr.grades.map(g => (
+                    <button
+                      key={g}
+                      onClick={() => setDeletionFilters({
+                        ...deletionFilters,
+                        grades: deletionFilters.grades.includes(g) ? deletionFilters.grades.filter(x => x !== g) : [...deletionFilters.grades, g]
+                      })}
+                      className={`px-3 py-1.5 rounded-xl text-[10px] font-black border-2 transition-all ${deletionFilters.grades.includes(g) ? 'bg-red-600 text-white border-red-700' : 'bg-white text-slate-500 border-slate-100 hover:border-red-200'}`}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Delete by Section */}
+              <div className="p-4 bg-slate-50 rounded-2xl space-y-3">
+                <div className="font-black text-sm text-slate-600">{lang === 'ar' ? 'ج / حذف شعبة كاملة' : 'C / Delete Full Section'}</div>
+                <div className="flex flex-wrap gap-1">
+                  {optionsAr.sections.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setDeletionFilters({
+                        ...deletionFilters,
+                        sections: deletionFilters.sections.includes(s) ? deletionFilters.sections.filter(x => x !== s) : [...deletionFilters.sections, s]
+                      })}
+                      className={`px-4 py-1.5 rounded-xl text-[10px] font-black border-2 transition-all ${deletionFilters.sections.includes(s) ? 'bg-red-600 text-white border-red-700' : 'bg-white text-slate-500 border-slate-100 hover:border-red-200'}`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 flex items-start gap-3">
+                <AlertCircle className="text-amber-600 shrink-0 w-5 h-5" />
+                <p className="text-[10px] font-bold text-amber-800 leading-relaxed">
+                  {lang === 'ar'
+                    ? 'في حال تحديد صف وشعبة معاً، سيتم حذف الطلاب المنتمين لهذا الصف بالشعبة المحددة فقط. يمكن اختيار أكثر من خيار في كل قسم.'
+                    : 'If both a grade and a section are selected, only students in that specific combination will be deleted. Multiple choices are allowed.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t">
+              <button
+                onClick={handleAdvancedDelete}
+                disabled={!deletionFilters.deleteDuplicates && deletionFilters.grades.length === 0 && deletionFilters.sections.length === 0}
+                className="flex-1 bg-red-600 text-white p-4 rounded-2xl font-black text-sm hover:bg-red-700 transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:active:scale-100"
+              >
+                {lang === 'ar' ? 'تنفيذ الحذف' : 'Confirm Deletion'}
+              </button>
+              <button onClick={() => setShowDeleteStudentsModal(false)} className="px-6 bg-slate-100 text-slate-600 rounded-2xl font-black text-sm hover:bg-slate-200 transition-all">
+                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showIndividualReportModal && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 font-arabic">
           <div className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border-4 border-emerald-50 animate-in zoom-in-95 duration-300 text-right">

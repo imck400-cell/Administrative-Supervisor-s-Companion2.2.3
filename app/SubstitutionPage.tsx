@@ -53,6 +53,9 @@ const SubstitutionPage: React.FC = () => {
   const [highlightRow, setHighlightRow] = useState<string | null>(null);
   const [highlightDayPeriod, setHighlightDayPeriod] = useState<string | null>(null); // e.g. "الأحد-p2"
   const [showIndividualModal, setShowIndividualModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [viewMode, setViewMode] = useState<'horizontal' | 'vertical'>('horizontal');
+  const [selectedTeacherRow, setSelectedTeacherRow] = useState<string | null>(null);
   const [individualFilter, setIndividualFilter] = useState({
     teacher: '',
     day: '',
@@ -129,6 +132,111 @@ const SubstitutionPage: React.FC = () => {
     reader.readAsBinaryString(file);
   };
 
+  const handleImportXML = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isMerge = confirm(lang === 'ar' ? 'اضغط "موافق" للإضافة للبيانات الحالية، أو "إلغاء" للمسح والبدء من جديد' : 'OK to merge, Cancel to replace');
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const xmlText = evt.target?.result as string;
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+
+        const teacherNodes = xmlDoc.getElementsByTagName('teacher');
+        const newEntries: TimetableEntry[] = [];
+
+        for (let i = 0; i < teacherNodes.length; i++) {
+          const teacher = teacherNodes[i];
+          const teacherName = teacher.getAttribute('name') || '';
+          const subject = teacher.getAttribute('subject') || '';
+          const notes = teacher.getAttribute('notes') || '';
+
+          const daysMap: Record<string, Record<string, string>> = {};
+          daysAr.forEach(day => {
+            daysMap[day] = {};
+            periodsKeys.forEach(pKey => {
+              const cellValue = teacher.getAttribute(`${day}-${pKey}`) || '';
+              daysMap[day][pKey] = cellValue;
+            });
+          });
+
+          newEntries.push({
+            id: Date.now().toString() + Math.random(),
+            teacherName, subject, notes, days: daysMap
+          });
+        }
+
+        updateData({ timetable: isMerge ? [...(data.timetable || []), ...newEntries] : newEntries });
+      } catch (error) {
+        alert('فشل استيراد ملف XML. يرجى التأكد من صحة التنسيق.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImportTXT = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isMerge = confirm(lang === 'ar' ? 'اضغط "موافق" للإضافة للبيانات الحالية، أو "إلغاء" للمسح والبدء من جديد' : 'OK to merge, Cancel to replace');
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const text = evt.target?.result as string;
+        const lines = text.split('\n').filter(l => l.trim());
+        const newEntries: TimetableEntry[] = [];
+
+        let currentTeacher: any = null;
+
+        lines.forEach(line => {
+          if (line.includes('المعلم:') || line.includes('معلم:')) {
+            if (currentTeacher) newEntries.push(currentTeacher);
+            const teacherName = line.split(':')[1]?.trim() || '';
+            currentTeacher = {
+              id: Date.now().toString() + Math.random(),
+              teacherName,
+              subject: '',
+              notes: '',
+              days: daysAr.reduce((acc, day) => ({
+                ...acc,
+                [day]: periodsKeys.reduce((pAcc, p) => ({ ...pAcc, [p]: '' }), {})
+              }), {})
+            };
+          } else if (line.includes('المادة:') && currentTeacher) {
+            currentTeacher.subject = line.split(':')[1]?.trim() || '';
+          } else if (currentTeacher) {
+            daysAr.forEach((day, dayIdx) => {
+              if (line.includes(day)) {
+                const parts = line.split(':')[1]?.split(',') || [];
+                parts.forEach((part, idx) => {
+                  if (idx < periodsKeys.length) {
+                    currentTeacher.days[day][periodsKeys[idx]] = part.trim();
+                  }
+                });
+              }
+            });
+          }
+        });
+
+        if (currentTeacher) newEntries.push(currentTeacher);
+        updateData({ timetable: isMerge ? [...(data.timetable || []), ...newEntries] : newEntries });
+      } catch (error) {
+        alert('فشل استيراد ملف TXT. يرجى التأكد من صحة التنسيق.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImportPDF = (e: React.ChangeEvent<HTMLInputElement>) => {
+    alert('استيراد PDF يتطلب معالجة متقدمة. يُفضل تحويل PDF إلى Excel أو TXT أولاً.');
+    // ملاحظة: استيراد PDF يتطلب مكتبة خاصة مثل pdf.js
+    // يمكن إضافة هذه الوظيفة لاحقاً
+  };
+
   const timetableFiltered = useMemo(() => {
     return (data.timetable || []).filter(t => true);
   }, [data.timetable]);
@@ -168,6 +276,36 @@ const SubstitutionPage: React.FC = () => {
     return text;
   };
 
+  const sendTeacherWhatsApp = (teacher: TimetableEntry) => {
+    let text = `*📋 جدول حصص المعلم*\\n`;
+    text += `*👤 المعلم:* ${teacher.teacherName}\\n`;
+    text += `*📚 المادة:* ${teacher.subject}\\n`;
+    text += `----------------------------------\\n\\n`;
+
+    daysAr.forEach(day => {
+      const dayPeriods = teacher.days[day];
+      const active = Object.entries(dayPeriods).filter(([_, val]) => val !== '');
+      if (active.length > 0) {
+        text += `*📅 ${day}:*\\n`;
+        active.forEach(([pKey, val]) => {
+          const pName = periodsAr[parseInt(pKey.replace('p', ''))];
+          text += `   🔹 الحصة ${pName}: ${val}\\n`;
+        });
+        text += `\\n`;
+      }
+    });
+
+    if (teacher.notes) text += `*📝 ملاحظات:* ${teacher.notes}\\n`;
+    text += `----------------------------------\\n`;
+
+    sendWhatsApp(text);
+  };
+
+  const sendAllTeachersWhatsApp = () => {
+    const text = generateTimetableReport(timetableFiltered);
+    sendWhatsApp(text);
+  };
+
   // --- Coverage Logic ---
   // START OF CHANGE - Using selectedCoverageDate
   const handleAddRow = () => {
@@ -194,11 +332,16 @@ const SubstitutionPage: React.FC = () => {
 
   const getFreeTeachers = (dateStr: string, periodKey: string) => {
     const dayName = getDayName(dateStr);
+    if (!dayName) return teacherList;
+
     const timetable = data.timetable || [];
     return teacherList.filter(name => {
       const entry = timetable.find(t => t.teacherName === name);
-      if (!entry) return true;
-      return !entry.days[dayName]?.[periodKey];
+      if (!entry) return true; // Teacher not in timetable = free
+
+      // Check if teacher has a class in this day and period
+      const hasClass = entry.days[dayName]?.[periodKey];
+      return !hasClass || hasClass.trim() === ''; // Free if no class or empty
     });
   };
 
@@ -441,11 +584,14 @@ const SubstitutionPage: React.FC = () => {
                 <Users size={18} /> جدول فردي
               </button>
 
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="bg-purple-600 text-white px-6 py-2.5 rounded-2xl font-black text-sm shadow-xl flex items-center gap-2 hover:bg-purple-700 active:scale-95 transition-all"
+              >
+                <Upload size={18} /> استيراد حصص المعلمين
+              </button>
+
               <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-2xl border">
-                <label className="p-2.5 hover:bg-white text-blue-600 rounded-lg transition-all cursor-pointer" title="استيراد">
-                  <Upload size={18} />
-                  <input type="file" className="hidden" accept=".xlsx,.xls" onChange={handleTimetableImport} />
-                </label>
                 <button onClick={() => {
                   const text = generateTimetableReport(timetableFiltered);
                   const blob = new Blob([text.replace(/\*/g, '')], { type: 'text/plain;charset=utf-8' });
@@ -484,9 +630,9 @@ const SubstitutionPage: React.FC = () => {
               <table className="w-full border-collapse text-center table-fixed min-w-[2000px]">
                 <thead className="sticky top-0 z-40 bg-white">
                   <tr className="bg-slate-100 text-slate-800 font-black border-b border-slate-300 h-14">
-                    <th rowSpan={2} className="w-12 border-e border-slate-300 sticky right-0 bg-slate-100 z-50">م</th>
-                    <th rowSpan={2} className="w-40 border-e border-slate-300 sticky right-12 bg-slate-100 z-50">اسم المعلم</th>
-                    <th rowSpan={2} className="w-24 border-e border-slate-300 sticky right-[208px] bg-slate-100 z-50">المادة</th>
+                    <th rowSpan={2} className="w-12 border-e border-slate-300 bg-slate-100">م</th>
+                    <th rowSpan={2} className="w-40 border-e border-slate-300 bg-slate-100">اسم المعلم</th>
+                    <th rowSpan={2} className="w-24 border-e border-slate-300 bg-slate-100">المادة</th>
                     {daysAr.map(day => (
                       <th key={day} colSpan={8} className="border-e border-slate-300 bg-slate-100 py-2">
                         <div className="flex items-center justify-center gap-2 text-sm">
@@ -495,6 +641,15 @@ const SubstitutionPage: React.FC = () => {
                       </th>
                     ))}
                     <th rowSpan={2} className="w-64">ملاحظات</th>
+                    <th rowSpan={2} className="w-16">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); sendAllTeachersWhatsApp(); }}
+                        className="text-green-600 hover:text-green-700 transition-colors p-1"
+                        title="إرسال الجميع لواتساب"
+                      >
+                        <Share2 size={18} />
+                      </button>
+                    </th>
                     <th rowSpan={2} className="w-16"></th>
                   </tr>
                   <tr className="bg-slate-50 text-slate-500 font-black border-b-2 border-slate-300 text-[10px] h-10">
@@ -517,26 +672,33 @@ const SubstitutionPage: React.FC = () => {
                   {data.timetable.length === 0 ? (
                     <tr><td colSpan={100} className="p-32 text-slate-300 italic font-black text-xl">يرجى إضافة بيانات لجدول الحصص...</td></tr>
                   ) : data.timetable.map((row, idx) => {
-                    const isRowHighlighted = highlightRow === row.id;
+                    const isRowHighlighted = selectedTeacherRow === row.id;
                     return (
                       <tr
                         key={row.id}
-                        className={`border-b border-slate-100 h-14 group transition-all ${isRowHighlighted ? 'bg-orange-50' : 'hover:bg-slate-50/50'}`}
-                        onClick={() => setHighlightRow(prev => prev === row.id ? null : row.id)}
+                        className={`border-b border-slate-100 h-14 group transition-all cursor-pointer ${isRowHighlighted ? 'bg-orange-50' : 'hover:bg-slate-50/50'}`}
+                        onClick={() => setSelectedTeacherRow(prev => prev === row.id ? null : row.id)}
                       >
-                        <td className={`font-black text-blue-600 sticky right-0 z-30 transition-colors ${isRowHighlighted ? 'bg-orange-100 border-e-orange-200' : 'bg-white border-e-slate-100 group-hover:bg-slate-50'}`}>{idx + 1}</td>
-                        <td className={`p-1 sticky right-12 z-30 transition-colors ${isRowHighlighted ? 'bg-orange-100' : 'bg-white group-hover:bg-slate-50'}`}>
+                        <td className={`font-black text-blue-600 border-e border-slate-100 transition-colors ${isRowHighlighted ? 'bg-orange-100' : ''}`}>{idx + 1}</td>
+                        <td className={`p-1 border-e border-slate-200 transition-colors ${isRowHighlighted ? 'bg-orange-100' : ''}`}>
                           <input
                             list={`teacher-list-${row.id}`}
-                            className="w-full p-2 bg-transparent text-right font-black outline-none border-none text-xs"
+                            className={`w-full p-2 text-right font-black outline-none border-none text-xs ${isRowHighlighted ? 'bg-orange-50' : 'bg-transparent'}`}
                             value={row.teacherName}
                             onChange={e => updateTimetableField(row.id, ['teacherName'], e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
                             placeholder="..."
                           />
                           <datalist id={`teacher-list-${row.id}`}>{teacherList.map(n => <option key={n} value={n} />)}</datalist>
                         </td>
-                        <td className={`p-1 sticky right-[208px] z-30 transition-colors border-e border-slate-200 ${isRowHighlighted ? 'bg-orange-100' : 'bg-white group-hover:bg-slate-50'}`}>
-                          <input className="w-full p-2 bg-transparent text-right font-bold outline-none border-none text-xs text-emerald-700" value={row.subject} onChange={e => updateTimetableField(row.id, ['subject'], e.target.value)} placeholder="..." />
+                        <td className={`p-1 border-e border-slate-200 transition-colors ${isRowHighlighted ? 'bg-orange-100' : ''}`}>
+                          <input
+                            className={`w-full p-2 text-right font-bold outline-none border-none text-xs text-emerald-700 ${isRowHighlighted ? 'bg-orange-50' : 'bg-transparent'}`}
+                            value={row.subject}
+                            onChange={e => updateTimetableField(row.id, ['subject'], e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            placeholder="..."
+                          />
                         </td>
                         {daysAr.map(day => (
                           <React.Fragment key={day}>
@@ -545,12 +707,13 @@ const SubstitutionPage: React.FC = () => {
                               return (
                                 <td
                                   key={pKey}
-                                  className={`p-0 border-e border-slate-100 transition-colors ${isColHighlighted ? 'bg-orange-100' : ''}`}
+                                  className={`p-0 border-e border-slate-100 transition-colors ${isRowHighlighted ? 'bg-orange-50' : ''} ${isColHighlighted ? 'bg-orange-100' : ''}`}
                                 >
                                   <input
-                                    className="w-full h-full p-2 text-center text-[11px] font-black outline-none bg-transparent focus:bg-white"
+                                    className={`w-full h-full p-2 text-center text-[11px] font-black outline-none bg-transparent focus:bg-white`}
                                     value={row.days[day][pKey] || ''}
                                     onChange={e => updateTimetableField(row.id, ['days', day, pKey], e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
                                     placeholder="-"
                                   />
                                 </td>
@@ -558,9 +721,31 @@ const SubstitutionPage: React.FC = () => {
                             })}
                           </React.Fragment>
                         ))}
-                        <td className="p-1"><input className="w-full p-2 text-right text-[10px] outline-none bg-transparent" value={row.notes} onChange={e => updateTimetableField(row.id, ['notes'], e.target.value)} placeholder="..." /></td>
-                        <td className="p-1">
-                          <button onClick={(e) => { e.stopPropagation(); updateData({ timetable: data.timetable.filter(x => x.id !== row.id) }); }} className="text-red-200 hover:text-red-600 transition-colors p-2 rounded-xl"><Trash2 size={16} /></button>
+                        <td className={`p-1 ${isRowHighlighted ? 'bg-orange-50' : ''}`}>
+                          <input
+                            className={`w-full p-2 text-right text-[10px] outline-none ${isRowHighlighted ? 'bg-orange-50' : 'bg-transparent'}`}
+                            value={row.notes}
+                            onChange={e => updateTimetableField(row.id, ['notes'], e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            placeholder="..."
+                          />
+                        </td>
+                        <td className={`p-1 ${isRowHighlighted ? 'bg-orange-50' : ''}`}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); sendTeacherWhatsApp(row); }}
+                            className="text-green-500 hover:text-green-700 transition-colors p-2 rounded-xl"
+                            title="إرسال لواتساب"
+                          >
+                            <Share2 size={16} />
+                          </button>
+                        </td>
+                        <td className={`p-1 ${isRowHighlighted ? 'bg-orange-50' : ''}`}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); updateData({ timetable: data.timetable.filter(x => x.id !== row.id) }); }}
+                            className="text-red-200 hover:text-red-600 transition-colors p-2 rounded-xl"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </td>
                       </tr>
                     );
@@ -710,8 +895,13 @@ const SubstitutionPage: React.FC = () => {
                                 const isTargetGrade = individualFilter.gradeSection && String(val).includes(individualFilter.gradeSection);
 
                                 return (
-                                  <td key={pKey} className={`p-4 border-e border-slate-100 ${isTargetGrade ? 'bg-orange-100 text-orange-800 scale-105 shadow-inner' : ''}`}>
-                                    {val || '-'}
+                                  <td key={pKey} className={`p-2 border-e border-slate-100 ${isTargetGrade ? 'bg-orange-100 text-orange-800' : ''}`}>
+                                    <input
+                                      className={`w-full p-2 text-center text-xs font-black outline-none border rounded ${isTargetGrade ? 'bg-orange-50 border-orange-300' : 'bg-white border-slate-200'} focus:border-blue-500`}
+                                      value={val || ''}
+                                      onChange={(e) => updateTimetableField(t.id, ['days', day, pKey], e.target.value)}
+                                      placeholder="-"
+                                    />
                                     {individualFilter.gradeSection && !individualFilter.teacher && val && (
                                       <div className="text-[9px] text-slate-400 mt-1">{t.teacherName} | {t.subject}</div>
                                     )}
@@ -730,6 +920,122 @@ const SubstitutionPage: React.FC = () => {
 
             <div className="p-6 bg-slate-50 border-t flex justify-center">
               <button onClick={() => setShowIndividualModal(false)} className="px-12 py-3 bg-slate-900 text-white rounded-2xl font-black text-lg shadow-xl hover:bg-black transition-all active:scale-95">تم وموافق</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border-4 border-purple-100">
+            <div className="p-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white flex justify-between items-center shadow-lg">
+              <h3 className="text-2xl font-black flex items-center gap-3"><Upload size={28} /> استيراد حصص المعلمين</h3>
+              <button onClick={() => setShowImportModal(false)} className="hover:bg-purple-800 p-2 rounded-full transition-all"><X size={24} /></button>
+            </div>
+
+            <div className="p-8">
+              <p className="text-slate-600 font-bold text-center mb-8">اختر نوع الملف الذي تريد استيراده:</p>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Excel Import */}
+                <label className="group cursor-pointer">
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => {
+                      handleTimetableImport(e);
+                      setShowImportModal(false);
+                    }}
+                  />
+                  <div className="border-2 border-green-200 rounded-2xl p-6 hover:border-green-500 hover:bg-green-50 transition-all group-hover:scale-105 group-hover:shadow-xl">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="bg-green-100 p-4 rounded-xl group-hover:bg-green-200 transition-all">
+                        <FileSpreadsheet size={40} className="text-green-600" />
+                      </div>
+                      <h4 className="font-black text-lg text-slate-800">ملف Excel</h4>
+                      <p className="text-xs text-slate-500 text-center">(.xlsx, .xls)</p>
+                    </div>
+                  </div>
+                </label>
+
+                {/* XML Import */}
+                <label className="group cursor-pointer">
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept=".xml"
+                    onChange={(e) => {
+                      handleImportXML(e);
+                      setShowImportModal(false);
+                    }}
+                  />
+                  <div className="border-2 border-orange-200 rounded-2xl p-6 hover:border-orange-500 hover:bg-orange-50 transition-all group-hover:scale-105 group-hover:shadow-xl">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="bg-orange-100 p-4 rounded-xl group-hover:bg-orange-200 transition-all">
+                        <FileText size={40} className="text-orange-600" />
+                      </div>
+                      <h4 className="font-black text-lg text-slate-800">ملف XML</h4>
+                      <p className="text-xs text-slate-500 text-center">(.xml)</p>
+                    </div>
+                  </div>
+                </label>
+
+                {/* TXT Import */}
+                <label className="group cursor-pointer">
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept=".txt"
+                    onChange={(e) => {
+                      handleImportTXT(e);
+                      setShowImportModal(false);
+                    }}
+                  />
+                  <div className="border-2 border-blue-200 rounded-2xl p-6 hover:border-blue-500 hover:bg-blue-50 transition-all group-hover:scale-105 group-hover:shadow-xl">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="bg-blue-100 p-4 rounded-xl group-hover:bg-blue-200 transition-all">
+                        <FileText size={40} className="text-blue-600" />
+                      </div>
+                      <h4 className="font-black text-lg text-slate-800">ملف نصي</h4>
+                      <p className="text-xs text-slate-500 text-center">(.txt)</p>
+                    </div>
+                  </div>
+                </label>
+
+                {/* PDF Import */}
+                <label className="group cursor-pointer">
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept=".pdf"
+                    onChange={(e) => {
+                      handleImportPDF(e);
+                      setShowImportModal(false);
+                    }}
+                  />
+                  <div className="border-2 border-red-200 rounded-2xl p-6 hover:border-red-500 hover:bg-red-50 transition-all group-hover:scale-105 group-hover:shadow-xl">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="bg-red-100 p-4 rounded-xl group-hover:bg-red-200 transition-all">
+                        <FileText size={40} className="text-red-600" />
+                      </div>
+                      <h4 className="font-black text-lg text-slate-800">ملف PDF</h4>
+                      <p className="text-xs text-slate-500 text-center">(.pdf)</p>
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              <div className="mt-6 p-4 bg-slate-50 rounded-xl border-2 border-slate-100">
+                <p className="text-xs text-slate-600 text-center font-bold">
+                  💡 <span className="font-black">نصيحة:</span> للحصول على أفضل النتائج، تأكد من تنسيق ملفاتك بشكل صحيح قبل الاستيراد.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t flex justify-center">
+              <button onClick={() => setShowImportModal(false)} className="px-10 py-2.5 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-black transition-all">إلغاء</button>
             </div>
           </div>
         </div>

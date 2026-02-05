@@ -207,6 +207,15 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
   const [selectedSemester, setSelectedSemester] = useState<'الأول' | 'الثاني'>('الأول');
   const [contactMethodMap, setContactMethodMap] = useState<Record<string, 'هاتف' | 'رسالة' | 'واتساب' | 'أخرى'>>({});
 
+  // START OF CHANGE - New states for "Open Previous Record" functionality
+  const [showPreviousAbsence, setShowPreviousAbsence] = useState(false);
+  const [showPreviousLateness, setShowPreviousLateness] = useState(false);
+  const [showPreviousViolation, setShowPreviousViolation] = useState(false);
+  const [previousRecordSearch, setPreviousRecordSearch] = useState('');
+  const [selectedStudentHistory, setSelectedStudentHistory] = useState<any[]>([]);
+  const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<StudentReport | null>(null);
+  // END OF CHANGE
+
   const students = data.studentReports || [];
 
   // FIXED TypeError: ensures field conversion to string before .trim()
@@ -258,7 +267,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
   });
 
   const [damageForm, setDamageForm] = useState<Partial<DamageLog>>({
-    date: today, semester: 'الفصلين', description: '', statusTags: [], action: 'تنبيه', pledge: '', notes: '', prevDamageCount: 0
+    date: today, semester: 'الفصلين', description: '', participants: '', followUpStatus: 'قيد المتابعة', statusTags: [], action: 'تنبيه', pledge: '', notes: '', prevDamageCount: 0
   });
 
   const [visitForm, setVisitForm] = useState<Partial<ParentVisitLog>>({
@@ -1115,8 +1124,9 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                     return (
                       <tr
                         key={s.id}
+                        id={`student-row-${s.id}`}
                         onClick={() => setHighlightedRowId(s.id)}
-                        className={`transition-colors h-14 cursor-pointer ${isHighlighted ? 'bg-sky-100' : 'hover:bg-slate-50/50'}`}
+                        className={`transition-all duration-500 h-14 cursor-pointer ${isHighlighted ? 'bg-sky-100 ring-4 ring-sky-200 ring-inset shadow-inner z-10 relative' : 'hover:bg-slate-50/50'}`}
                       >
                         <td className="p-2 border-e border-slate-50 font-black text-blue-600">{idx + 1}</td>
                         <td className="p-2 border-e border-slate-50">
@@ -1163,6 +1173,27 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                             >
                               <PhoneCall size={18} />
                             </a>
+                            <button
+                              onClick={() => {
+                                const statusEmoji = status === 'present' ? '✅' : status === 'absent_excused' ? '🟠' : '❌';
+                                const statusText = status === 'present' ? 'حاضر' : status === 'absent_excused' ? 'غائب بعذر' : 'غائب بدون عذر';
+                                let msg = `*📋 تنبيه غياب/حضور*\\n\\n`;
+                                msg += `👤 *الطالب:* ${s.name}\\n`;
+                                msg += `📍 *الصف:* ${s.grade} / ${s.section}\\n`;
+                                msg += `🏷️ *الحالة:* ${statusEmoji} ${statusText}\\n`;
+                                msg += `📅 *التاريخ:* ${presenceDate} (${getDayName(presenceDate)})\\n`;
+                                msg += `━━━━━━━━━━━━━━━━\\n`;
+                                const profile = data.profile;
+                                if (profile.schoolName || profile.branch) {
+                                  msg += `🏫 *${profile.schoolName || ''}${profile.branch ? `، فرع ${profile.branch}` : ''}*\\n`;
+                                }
+                                window.open(`https://wa.me/${s.guardianPhones[0]}?text=${encodeURIComponent(msg)}`, '_blank');
+                                setContactMethodMap(prev => ({ ...prev, [s.id]: 'واتساب' }));
+                              }}
+                              className={`p-2 rounded-xl transition-all ${contactMethodMap[s.id] === 'واتساب' ? 'bg-emerald-600 text-white shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
+                            >
+                              <MessageCircle size={18} />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -1203,13 +1234,39 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                     </button>
 
                     {/* Popover List for each status */}
-                    <div className="hidden group-hover:block absolute top-full left-0 z-[110] mt-2 w-64 bg-white border-2 rounded-2xl shadow-2xl p-4 animate-in slide-in-from-top-2">
-                      <h4 className="text-[10px] font-black text-blue-600 mb-2 border-b pb-1">قائمة: {opt.label}</h4>
+                    <div className="hidden group-hover:block absolute top-full left-0 z-[110] mt-2 w-72 bg-white border-2 rounded-2xl shadow-2xl p-4 animate-in slide-in-from-top-2">
+                      <div className="flex justify-between items-center mb-2 border-b pb-1">
+                        <h4 className="text-[10px] font-black text-blue-600">قائمة: {opt.label}</h4>
+                        <button
+                          onClick={() => {
+                            const list = getSmartList(opt.id);
+                            if (list.length === 0) return;
+                            let msg = `*📋 قائمة ${opt.label}*\n\n`;
+                            list.forEach((m, i) => {
+                              msg += `${i + 1}. 👤 *${m.name}* (${m.grade}-${m.section})\n`;
+                            });
+                            msg += `\n📅 التاريخ: ${today}\n`;
+                            const profile = data.profile;
+                            if (profile.schoolName || profile.branch) {
+                              msg += `🏫 *${profile.schoolName || ''}${profile.branch ? `، فرع ${profile.branch}` : ''}*\n`;
+                            }
+                            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                          }}
+                          className="bg-emerald-50 text-emerald-600 p-1.5 rounded-lg hover:bg-emerald-100 transition-colors"
+                          title="إرسال القائمة بالكامل للواتساب"
+                        >
+                          <MessageCircle size={14} />
+                        </button>
+                      </div>
                       <div className="max-h-48 overflow-y-auto space-y-1 mb-2">
                         {getSmartList(opt.id).map(m => (
                           <div key={m.id} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg group/item border-b border-slate-50 last:border-none">
                             <button
-                              onClick={() => onNavigate?.('studentReports')} // Simplified navigation as we can't scroll easily across views
+                              onClick={() => {
+                                // Navigation and Highlighting
+                                localStorage.setItem('highlight_student_name', m.name);
+                                onNavigate?.('studentReports');
+                              }}
                               className="text-[10px] font-bold text-slate-700 hover:text-blue-600 truncate flex-1 text-right"
                               title="انتقل إلى شؤون الطلاب"
                             >
@@ -1217,6 +1274,23 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                             </button>
                             <div className="flex items-center gap-1">
                               <span className="text-[8px] text-slate-400 bg-slate-100 px-1 rounded">{m.grade}-{m.section}</span>
+                              <button
+                                onClick={() => {
+                                  let msg = `*📋 تنبيه: ${opt.label}*\n\n`;
+                                  msg += `👤 *الطالب:* ${m.name}\n`;
+                                  msg += `📍 *الصف:* ${m.grade}-${m.section}\n`;
+                                  msg += `📅 التاريخ: ${today}\n`;
+                                  const profile = data.profile;
+                                  if (profile.schoolName || profile.branch) {
+                                    msg += `🏫 *${profile.schoolName || ''}${profile.branch ? `، فرع ${profile.branch}` : ''}*\n`;
+                                  }
+                                  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                                }}
+                                className="p-1 text-emerald-500 hover:text-emerald-700 rounded transition-colors"
+                                title="إرسال للواتساب"
+                              >
+                                <MessageCircle size={12} />
+                              </button>
                               <button
                                 onClick={() => toggleExclusion(opt.id, m.id)}
                                 className="p-1 text-red-400 hover:text-red-600 rounded transition-colors"
@@ -1316,9 +1390,17 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                 <label className="text-[9px] md:text-[10px] font-black text-slate-400 mr-2">ملاحظات أخرى...</label>
                 <textarea className="w-full p-3 md:p-4 border-2 rounded-2xl outline-none font-black text-xs md:text-sm bg-slate-50 min-h-[100px] md:min-h-[120px] focus:border-blue-400 shadow-inner" placeholder="ملاحظات إضافية..." value={absenceForm.notes} onChange={e => setAbsenceForm({ ...absenceForm, notes: e.target.value })} />
               </div>
-              <button onClick={saveLog} className="w-full bg-blue-600 text-white p-5 md:p-6 rounded-[2rem] font-black text-lg md:text-xl hover:bg-blue-700 shadow-2xl flex items-center justify-center gap-4 active:scale-[0.98] transition-all mt-4">
-                <Save size={24} /> حفظ بيانات الغياب
-              </button>
+              <div className="flex gap-4">
+                <button onClick={saveLog} className="flex-1 bg-blue-600 text-white p-5 md:p-6 rounded-[2rem] font-black text-lg md:text-xl hover:bg-blue-700 shadow-2xl flex items-center justify-center gap-4 active:scale-[0.98] transition-all mt-4">
+                  <Save size={24} /> حفظ بيانات الغياب
+                </button>
+                <button
+                  onClick={() => setShowPreviousAbsence(true)}
+                  className="bg-slate-800 text-white px-8 md:px-10 rounded-[2rem] font-black text-lg hover:bg-black shadow-2xl transition-all mt-4"
+                >
+                  فتح غياب سابق
+                </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -1352,9 +1434,9 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
   };
 
   const renderLatenessModule = () => {
-    const suggestions = searchQuery.trim() ? students.filter(s => s.name.includes(searchQuery)) : [];
+    const suggestions = (searchQuery.trim() && searchQuery !== latenessForm.studentName) ? students.filter(s => s.name.includes(searchQuery)) : [];
     const nameSugg = nameInput.trim() ? students.filter(s => s.name.includes(nameInput) && !tempNames.includes(s.name)) : [];
-    const filtered = (data.latenessLogs || []).filter(l => {
+    const filtered = (data.studentLatenessLogs || []).filter(l => {
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
       if (filterValues.start && l.date < filterValues.start) return false;
       if (filterValues.end && l.date > filterValues.end) return false;
@@ -1378,7 +1460,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
         studentName: s.name,
         grade: s.grade,
         section: s.section,
-        prevLatenessCount: (data.latenessLogs || []).filter(l => l.studentId === s.id).length
+        prevLatenessCount: (data.studentLatenessLogs || []).filter(l => l.studentId === s.id).length
       });
       setSearchQuery(s.name);
     };
@@ -1390,7 +1472,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
         id: Date.now().toString(),
         day: getDayName(latenessForm.date || today)
       };
-      updateData({ latenessLogs: [newLog, ...(data.latenessLogs || [])] });
+      updateData({ studentLatenessLogs: [newLog, ...(data.studentLatenessLogs || [])] });
       setLatenessForm({ ...latenessForm, studentName: '', studentId: '', reason: '', pledge: '', notes: '' });
       setSearchQuery('');
       alert('تم حفظ البيانات بنجاح');
@@ -1405,7 +1487,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       <div className="bg-white p-4 md:p-8 rounded-[2.5rem] border shadow-2xl animate-in fade-in zoom-in duration-300 font-arabic text-right relative overflow-hidden">
         {/* Pass state and handlers to Picker component */}
         <FrequentNamesPicker
-          logs={data.latenessLogs || []}
+          logs={data.studentLatenessLogs || []}
           onSelectQuery={(q) => setSearchQuery(q)}
           isOpen={showFrequentNames}
           onClose={() => setShowFrequentNames(false)}
@@ -1504,7 +1586,13 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                   {latenessForm.pledge || 'توقيع البصمة'}
                 </button>
               </div>
-              <button onClick={saveLog} className="w-full bg-[#1e293b] text-white p-5 md:p-6 rounded-[2rem] font-black text-lg md:text-xl hover:bg-black shadow-2xl flex items-center justify-center gap-4 active:scale-[0.98] transition-all mt-4">حفظ البيانات</button>
+              <button onClick={saveLog} className="flex-1 bg-[#1e293b] text-white p-5 md:p-6 rounded-[2rem] font-black text-lg md:text-xl hover:bg-black shadow-2xl flex items-center justify-center gap-4 active:scale-[0.98] transition-all mt-4">حفظ البيانات</button>
+              <button
+                onClick={() => setShowPreviousLateness(true)}
+                className="bg-orange-600 text-white px-8 md:px-10 rounded-[2rem] font-black text-lg hover:bg-orange-700 shadow-2xl transition-all mt-4"
+              >
+                فتح تأخر سابق
+              </button>
             </div>
           </div>
         ) : (
@@ -1535,7 +1623,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
   };
 
   const renderViolationModule = () => {
-    const suggestions = searchQuery.trim() ? students.filter(s => s.name.includes(searchQuery)) : [];
+    const suggestions = (searchQuery.trim() && searchQuery !== violationForm.studentName) ? students.filter(s => s.name.includes(searchQuery)) : [];
     const nameSugg = nameInput.trim() ? students.filter(s => s.name.includes(nameInput) && !tempNames.includes(s.name)) : [];
     const filtered = (data.studentViolationLogs || []).filter(l => {
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
@@ -1553,7 +1641,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       { id: 'achievement', label: 'التحصيل العلمي', color: 'border-green-500', iconColor: 'text-green-500', items: ["عدم حفظ الدرس", "عدم المشاركة", "كثير النوم", "كثير الشرود", "امتناع عن اختبار"] }
     ];
 
-    const toggleItem = (cat: string, item: string) => {
+    const toggleViolation = (cat: string, item: string) => {
       const field = cat === 'behavior' ? 'behaviorViolations' : cat === 'duties' ? 'dutiesViolations' : 'achievementViolations';
       const current = (violationForm as any)[field] || [];
       const updated = current.includes(item) ? current.filter((i: string) => i !== item) : [...current, item];
@@ -1659,11 +1747,16 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                 <div key={cat.id} className="bg-white p-4 md:p-6 rounded-[2rem] border-2 shadow-sm space-y-3 md:space-y-4 hover:border-slate-300 transition-colors">
                   <div className="flex items-center justify-between border-r-4 pr-3 py-1 mb-2" style={{ borderColor: cat.color.split('-')[1] }}>
                     <h3 className="font-black text-xs md:text-sm text-slate-800">{cat.label}</h3>
-                    <button className={`p-1 rounded-lg bg-slate-50 hover:bg-slate-100 transition-all ${cat.iconColor}`}><Plus size={14} /></button>
+                    <button
+                      onClick={() => setCustomViolation({ cat: cat.id, item: '' })}
+                      className={`p-1 rounded-lg bg-slate-50 hover:bg-slate-100 transition-all ${cat.iconColor}`}
+                    >
+                      <Plus size={14} />
+                    </button>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-1 gap-1.5 md:space-y-2">
-                    {cat.items.map(item => (
-                      <button key={item} onClick={() => toggleItem(cat.id, item)} className={`text-right p-2 md:p-3 rounded-xl text-[9px] md:text-[10px] font-black border transition-all ${((violationForm as any)[cat.id === 'behavior' ? 'behaviorViolations' : cat.id === 'duties' ? 'dutiesViolations' : 'achievementViolations'] || []).includes(item) ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-slate-50 text-slate-500 border-slate-50 hover:bg-slate-100'}`}>{item}</button>
+                    {[...cat.items, ...(data.customViolationElements?.[cat.id as keyof typeof data.customViolationElements] || [])].map(item => (
+                      <button key={item} onClick={() => toggleViolation(cat.id, item)} className={`text-right p-2 md:p-3 rounded-xl text-[9px] md:text-[10px] font-black border transition-all ${((violationForm as any)[cat.id === 'behavior' ? 'behaviorViolations' : cat.id === 'duties' ? 'dutiesViolations' : 'achievementViolations'] || []).includes(item) ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-slate-50 text-slate-500 border-slate-50 hover:bg-slate-100'}`}>{item}</button>
                     ))}
                   </div>
                 </div>
@@ -1692,7 +1785,15 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                 </button>
               </div>
             </div>
-            <button onClick={saveLog} className="w-full bg-red-600 text-white p-5 md:p-7 rounded-[2rem] md:rounded-[2.5rem] font-black text-xl md:text-2xl hover:bg-red-700 shadow-2xl active:scale-[0.98] transition-all">حفظ السجل</button>
+            <div className="flex gap-4">
+              <button onClick={saveLog} className="flex-1 bg-red-600 text-white p-5 md:p-7 rounded-[2rem] md:rounded-[2.5rem] font-black text-xl md:text-2xl hover:bg-red-700 shadow-2xl active:scale-[0.98] transition-all">حفظ السجل</button>
+              <button
+                onClick={() => setShowPreviousViolation(true)}
+                className="bg-slate-800 text-white px-8 md:px-10 rounded-[2rem] font-black text-lg hover:bg-black shadow-2xl transition-all mt-4"
+              >
+                فتح مخالفة سابقة
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-6">
@@ -1723,7 +1824,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
   };
 
   const renderExitModule = () => {
-    const suggestions = searchQuery.trim() ? students.filter(s => s.name.includes(searchQuery)) : [];
+    const suggestions = (searchQuery.trim() && searchQuery !== exitForm.studentName) ? students.filter(s => s.name.includes(searchQuery)) : [];
     const nameSugg = nameInput.trim() ? students.filter(s => s.name.includes(nameInput) && !tempNames.includes(s.name)) : [];
     const filtered = (data.exitLogs || []).filter(l => {
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
@@ -1840,7 +1941,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
   };
 
   const renderDamageModule = () => {
-    const suggestions = searchQuery.trim() ? students.filter(s => s.name.includes(searchQuery)) : [];
+    const suggestions = (searchQuery.trim() && searchQuery !== damageForm.studentName) ? students.filter(s => s.name.includes(searchQuery)) : [];
     const nameSugg = nameInput.trim() ? students.filter(s => s.name.includes(nameInput) && !tempNames.includes(s.name)) : [];
     const filtered = (data.damageLogs || []).filter(l => {
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
@@ -1868,7 +1969,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       if (!damageForm.studentId) return alert('يرجى اختيار طالب أولاً');
       const newLog: DamageLog = { ...damageForm as DamageLog, id: Date.now().toString(), day: getDayName(damageForm.date || today) };
       updateData({ damageLogs: [newLog, ...(data.damageLogs || [])] });
-      setDamageForm({ ...damageForm, studentName: '', studentId: '', notes: '', description: '', action: 'تنبيه' });
+      setDamageForm({ ...damageForm, studentName: '', studentId: '', notes: '', description: '', participants: '', followUpStatus: 'قيد المتابعة', action: 'تنبيه' });
       setSearchQuery('');
       alert('تم حفظ بيانات الإتلاف');
     };
@@ -1876,7 +1977,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const cols = [
       { label: 'اسم الطالب', key: 'studentName' }, { label: 'الصف', key: 'grade' }, { label: 'الشعبة', key: 'section' },
       { label: 'عدد الإتلافات', key: 'prevDamageCount' }, { label: 'التاريخ', key: 'date' }, { label: 'بيان الإتلاف', key: 'description' },
-      { label: 'نوع الإجراء', key: 'action' }, { label: 'ملاحظات أخرى', key: 'notes' }
+      { label: 'المشاركين', key: 'participants' }, { label: 'الإجراء', key: 'action' }, { label: 'حالة المتابعة', key: 'followUpStatus' }, { label: 'ملاحظات أخرى', key: 'notes' }
     ];
 
     return (
@@ -1939,7 +2040,20 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2"><label className="text-[10px] font-black text-slate-400 mr-2">بيان الإتلاف</label><input className="w-full p-4 border-2 rounded-2xl outline-none font-black text-xs md:text-sm bg-slate-50 focus:border-red-400" value={damageForm.description} onChange={e => setDamageForm({ ...damageForm, description: e.target.value })} placeholder="ماذا تم إتلافه؟" /></div>
+              <div className="space-y-2"><label className="text-[10px] font-black text-slate-400 mr-2">المشاركين معه في الإتلاف</label><input className="w-full p-4 border-2 rounded-2xl outline-none font-black text-xs md:text-sm bg-slate-50 focus:border-red-400" value={damageForm.participants} onChange={e => setDamageForm({ ...damageForm, participants: e.target.value })} placeholder="أسماء المشاركين إن وجدوا..." /></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2"><label className="text-[10px] font-black text-slate-400 mr-2">الإجراء المتخذ</label><input className="w-full p-4 border-2 rounded-2xl outline-none font-black text-xs md:text-sm bg-slate-50 focus:border-red-400" value={damageForm.action} onChange={e => setDamageForm({ ...damageForm, action: e.target.value })} placeholder="تنبيه" /></div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 mr-2">حالة المتابعة</label>
+                <select className="w-full p-4 border-2 rounded-2xl outline-none font-black text-xs md:text-sm bg-slate-50 focus:border-red-400" value={damageForm.followUpStatus} onChange={e => setDamageForm({ ...damageForm, followUpStatus: e.target.value })}>
+                  <option value="قيد المتابعة">قيد المتابعة</option>
+                  <option value="تم الإصلاح">تم الإصلاح</option>
+                  <option value="تم شراء البديل">تم شراء البديل</option>
+                  <option value="لم يتم الإصلاح">لم يتم الإصلاح</option>
+                  <option value="لم يتم شراء البديل">لم يتم شراء البديل</option>
+                </select>
+              </div>
             </div>
             <button onClick={saveLog} className="w-full bg-[#0f172a] text-white p-5 md:p-6 rounded-3xl font-black text-lg md:text-xl hover:bg-black shadow-xl flex items-center justify-center gap-4 active:scale-95 transition-all mt-4"><Save size={24} /> حفظ بيانات الإتلاف</button>
           </div>
@@ -1948,7 +2062,24 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
             <FilterSection suggestions={nameSugg} values={filterValues} setValues={setFilterValues} tempNames={tempNames} setTempNames={setTempNames} appliedNames={appliedNames} setAppliedNames={setAppliedNames} nameInput={nameInput} setNameInput={setNameInput} onExportExcel={() => exportExcelFiltered('إتلاف_المدرسة', filtered, cols)} onExportTxt={() => exportTxtFiltered('إتلاف_المدرسة', filtered, cols)} onExportWA={() => shareWhatsAppRich('سجل إتلاف المدرسة المفلتر', filtered, cols)} />
             <div className="overflow-x-auto rounded-[1.5rem] border shadow-inner">
               <table className="w-full text-center text-[10px] md:text-sm border-collapse min-w-[1000px]"><thead className="bg-[#FFD966] text-slate-800 font-black"><tr>{cols.map(c => <th key={c.key} className="p-3 md:p-5 border-e border-red-200">{c.label}</th>)}</tr></thead>
-                <tbody className="divide-y divide-slate-100 bg-white font-bold">{filtered.length === 0 ? <tr><td colSpan={cols.length} className="p-20 text-slate-300 italic text-base md:text-lg font-bold">لا توجد بيانات إتلاف.</td></tr> : filtered.map(l => <tr key={l.id} className="hover:bg-red-50/30 transition-colors h-10 md:h-12"><td className="p-3 md:p-5 border-e border-slate-50 font-black">{l.studentName}</td><td className="p-3 md:p-5 border-e border-slate-50 font-bold">{l.grade}</td><td className="p-3 md:p-5 border-e border-slate-50">{l.section}</td><td className="p-3 md:p-5 border-e border-slate-50 text-red-600 text-lg">{l.prevDamageCount + 1}</td><td className="p-3 md:p-5 border-e border-slate-400 text-[10px]">{l.date}</td><td className="p-3 md:p-5 border-e border-slate-50">{l.description}</td><td className="p-3 md:p-5 border-e border-slate-50">{l.action}</td><td className="p-3 md:p-5 text-slate-400 text-[10px]">{l.notes}</td></tr>)}</tbody></table>
+                <tbody className="divide-y divide-slate-100 bg-white font-bold">{filtered.length === 0 ? <tr><td colSpan={cols.length} className="p-20 text-slate-300 italic text-base md:text-lg font-bold">لا توجد بيانات إتلاف.</td></tr> : filtered.map(l => <tr key={l.id} className="hover:bg-red-50/30 transition-colors h-10 md:h-12">
+                  <td className="p-3 md:p-5 border-e border-slate-50 font-black">{l.studentName}</td>
+                  <td className="p-3 md:p-5 border-e border-slate-50 font-bold">{l.grade}</td>
+                  <td className="p-3 md:p-5 border-e border-slate-50">{l.section}</td>
+                  <td className="p-3 md:p-5 border-e border-slate-50 text-red-600 text-lg">{l.prevDamageCount + 1}</td>
+                  <td className="p-3 md:p-5 border-e border-slate-400 text-[10px]">{l.date}</td>
+                  <td className="p-3 md:p-5 border-e border-slate-50 text-[11px]">{l.description}</td>
+                  <td className="p-3 md:p-5 border-e border-slate-50 text-[10px] text-slate-500 italic">{l.participants || '---'}</td>
+                  <td className="p-3 md:p-5 border-e border-slate-50 text-red-700">{l.action}</td>
+                  <td className="p-3 md:p-5 border-e border-slate-50">
+                    <span className={`px-2 py-1 rounded-lg text-[9px] font-black ${l.followUpStatus?.includes('تم') ? 'bg-green-100 text-green-700' :
+                      l.followUpStatus?.includes('قيد') ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                      {l.followUpStatus || 'قيد المتابعة'}
+                    </span>
+                  </td>
+                  <td className="p-3 md:p-5 text-slate-400 text-[10px]">{l.notes}</td>
+                </tr>)}</tbody></table>
             </div>
           </div>
         )}
@@ -1957,7 +2088,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
   };
 
   const renderParentVisitModule = () => {
-    const suggestions = searchQuery.trim() ? students.filter(s => s.name.includes(searchQuery)) : [];
+    const suggestions = (searchQuery.trim() && searchQuery !== visitForm.studentName) ? students.filter(s => s.name.includes(searchQuery)) : [];
     const nameSugg = nameInput.trim() ? students.filter(s => s.name.includes(nameInput) && !tempNames.includes(s.name)) : [];
     const filtered = (data.parentVisitLogs || []).filter(l => {
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
@@ -2096,7 +2227,118 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     );
   };
 
-  const renderCurrentModule = () => {
+  const PreviousRecordModal = ({
+    isOpen,
+    onClose,
+    title,
+    type,
+    studentId,
+    studentName,
+    onSelect
+  }: {
+    isOpen: boolean,
+    onClose: () => void,
+    title: string,
+    type: 'absence' | 'lateness' | 'violation',
+    studentId?: string,
+    studentName?: string,
+    onSelect: (record: any) => void
+  }) => {
+    if (!isOpen) return null;
+
+    const filteredRecords = (
+      type === 'absence' ? data.absenceLogs :
+        type === 'lateness' ? data.studentLatenessLogs :
+          data.studentViolationLogs
+    ) || [];
+
+    const studentRecords = studentId
+      ? filteredRecords.filter((r: any) => r.studentId === studentId)
+      : filteredRecords;
+
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+        <div className="bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="p-6 md:p-8 bg-slate-900 text-white flex justify-between items-center shrink-0">
+            <div>
+              <h3 className="text-xl md:text-2xl font-black flex items-center gap-3">
+                <History className="text-orange-500" /> {title}
+              </h3>
+              {studentName && <p className="text-orange-400 font-bold text-sm mt-1">للطالب: {studentName}</p>}
+            </div>
+            <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-full transition-all"><X size={24} /></button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-4 text-right">
+            {studentRecords.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-slate-300 gap-4">
+                <Search size={64} className="opacity-20" />
+                <p className="font-black text-lg text-right">لا توجد سجلات سابقة متاحة.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3">
+                {[...studentRecords].reverse().map((r: any) => (
+                  <button
+                    key={r.id}
+                    onClick={() => {
+                      onSelect(r);
+                      onClose();
+                    }}
+                    className="flex flex-col md:flex-row md:items-center justify-between p-5 rounded-2xl border-2 border-slate-50 bg-slate-50 hover:border-orange-500 hover:bg-orange-50/30 transition-all text-right group"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-slate-800 text-base md:text-lg">{r.date}</span>
+                        <span className="px-2 py-0.5 rounded-lg bg-white border text-[10px] font-black text-slate-400">{r.semester}</span>
+                      </div>
+                      <p className="text-slate-500 font-bold text-xs md:text-sm line-clamp-1 text-right">{r.reason || r.action || (r.behaviorViolations && r.behaviorViolations.join('، ')) || 'بدون تفاصيل'}</p>
+                    </div>
+                    <div className="mt-3 md:mt-0 flex items-center gap-4">
+                      <div className="text-left hidden md:block">
+                        <p className="text-[10px] font-black text-slate-400">انقر للتعديل أو العرض</p>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-slate-300 group-hover:bg-orange-600 group-hover:text-white transition-all shadow-sm">
+                        <ChevronRight size={20} />
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="p-6 bg-slate-50 border-t flex justify-end shrink-0">
+            <button onClick={onClose} className="px-8 py-3 rounded-xl bg-white border-2 font-black text-slate-600 hover:bg-slate-100 transition-all">إغلاق النافذة</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const [customViolation, setCustomViolation] = useState<{ cat: string, item: string }>({ cat: '', item: '' });
+
+  const addCustomViolation = (cat: string) => {
+    if (!customViolation.item.trim()) return;
+    const current = data.customViolationElements || {};
+    const catItems = current[cat as keyof typeof current] || [];
+    if (catItems.includes(customViolation.item.trim())) return alert('هذا العنصر موجود بالفعل');
+
+    updateData({
+      customViolationElements: {
+        ...current,
+        [cat]: [...catItems, customViolation.item.trim()]
+      }
+    });
+
+    // Also toggle it in the form automatically
+    const field = cat === 'behavior' ? 'behaviorViolations' : cat === 'duties' ? 'dutiesViolations' : 'achievementViolations';
+    const currentSelected = (violationForm as any)[field] || [];
+    setViolationForm({ ...violationForm, [field]: [...currentSelected, customViolation.item.trim()] });
+
+    setCustomViolation({ cat: '', item: '' });
+  };
+
+  const renderSubModuleContent = () => {
     switch (activeSubTab) {
       case 'الغياب اليومي': return renderAbsenceModule();
       case 'التأخر': return renderLatenessModule();
@@ -2126,6 +2368,74 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     }
   };
 
+  const renderCurrentModule = () => {
+    return (
+      <>
+        {renderSubModuleContent()}
+
+        <PreviousRecordModal
+          isOpen={showPreviousAbsence}
+          onClose={() => setShowPreviousAbsence(false)}
+          title="سجل غياب سابق"
+          type="absence"
+          studentId={absenceForm.studentId}
+          studentName={absenceForm.studentName}
+          onSelect={(r) => setAbsenceForm({ ...r })}
+        />
+
+        <PreviousRecordModal
+          isOpen={showPreviousLateness}
+          onClose={() => setShowPreviousLateness(false)}
+          title="سجل تأخر سابق"
+          type="lateness"
+          studentId={latenessForm.studentId}
+          studentName={latenessForm.studentName}
+          onSelect={(r) => setLatenessForm({ ...r })}
+        />
+
+        <PreviousRecordModal
+          isOpen={showPreviousViolation}
+          onClose={() => setShowPreviousViolation(false)}
+          title="سجل مخالفة سابقة"
+          type="violation"
+          studentId={violationForm.studentId}
+          studentName={violationForm.studentName}
+          onSelect={(r) => setViolationForm({ ...r })}
+        />
+
+        {customViolation.cat && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl p-6 md:p-8 space-y-6">
+              <h3 className="text-xl font-black text-slate-800">إضافة مخالفة مخصصة</h3>
+              <input
+                autoFocus
+                className="w-full p-4 border-2 rounded-2xl outline-none font-black text-lg focus:border-red-500 shadow-inner bg-slate-50"
+                placeholder="اكتب المخالفة هنا..."
+                value={customViolation.item}
+                onChange={e => setCustomViolation({ ...customViolation, item: e.target.value })}
+                onKeyDown={e => e.key === 'Enter' && addCustomViolation(customViolation.cat)}
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={() => addCustomViolation(customViolation.cat)}
+                  className="flex-1 bg-red-600 text-white p-4 rounded-xl font-black shadow-lg hover:bg-red-700 transition-all active:scale-95"
+                >
+                  إضافة
+                </button>
+                <button
+                  onClick={() => setCustomViolation({ cat: '', item: '' })}
+                  className="flex-1 bg-slate-100 text-slate-600 p-4 rounded-xl font-black hover:bg-slate-200 transition-all"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
+
   const handleSubTabClick = (item: string) => {
     setActiveSubTab(item);
     setShowTable(false);
@@ -2149,7 +2459,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
           <div className="flex flex-wrap gap-2 md:gap-4 justify-center md:justify-start">
             {Object.entries(structure).map(([key, cat]) => (
               <button key={key} onClick={() => setActiveTab(key as MainTab)} className={`flex items-center gap-2 md:gap-3 px-4 md:px-8 py-3 md:py-5 rounded-[1.5rem] md:rounded-[2rem] font-black text-sm md:text-lg transition-all shadow-sm ${activeTab === key ? 'bg-blue-600 text-white shadow-xl scale-105' : 'bg-white text-slate-600 border border-slate-100 hover:bg-blue-50'}`}>
-                {React.cloneElement(cat.icon as React.ReactElement, { size: 20 })} {cat.title}
+                {React.cloneElement(cat.icon as React.ReactElement<any>, { size: 20 })} {cat.title}
               </button>
             ))}
           </div>

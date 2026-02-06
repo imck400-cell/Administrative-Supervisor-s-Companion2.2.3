@@ -77,6 +77,8 @@ export interface TeacherFollowUp {
   violations_score: number;
   violations_notes: string[];
   order?: number;
+  gender?: string;
+  unaccreditedMetrics?: string[];
 }
 
 export interface DailyReportContainer {
@@ -111,7 +113,11 @@ export interface StudentReport {
   createdAt: string;
   isBlacklisted?: boolean;
   isExcellent?: boolean;
-  totalAbsences?: number;
+  absenceSummary?: string;
+  latenessSummary?: string;
+  exitSummary?: string;
+  violationSummary?: string;
+  damageSummary?: string;
 }
 
 export interface AbsenceLog {
@@ -197,6 +203,8 @@ export interface DamageLog {
   date: string;
   day: string;
   description: string;
+  participants?: string;
+  followUpStatus?: string;
   statusTags: string[];
   action: string;
   pledge: string;
@@ -221,6 +229,7 @@ export interface ParentVisitLog {
   recommendations: string;
   actions: string;
   followUpStatus: string[];
+  notes: string;
   prevVisitCount: number;
 }
 
@@ -244,7 +253,7 @@ export interface AppData {
   maxGrades: Record<string, number>;
   studentReports?: StudentReport[];
   absenceLogs?: AbsenceLog[];
-  latenessLogs?: LatenessLog[];
+  studentLatenessLogs?: LatenessLog[];
   studentViolationLogs?: StudentViolationLog[];
   exitLogs?: ExitLog[];
   damageLogs?: DamageLog[];
@@ -258,9 +267,9 @@ export interface AppData {
   pinnedVisitStudents?: string[];
   genericSpecialReports?: GenericSpecialReport[];
   customViolationElements?: {
-    behavior: string[];
-    duties: string[];
-    achievement: string[];
+    behavior?: string[];
+    duties?: string[];
+    achievement?: string[];
   };
   absenceManualAdditions?: Record<string, string[]>;
   absenceExclusions?: Record<string, string[]>;

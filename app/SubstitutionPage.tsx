@@ -17,6 +17,7 @@ const SubstitutionPage: React.FC = () => {
   // START OF CHANGE - Coverage State Management
   const [selectedCoverageDate, setSelectedCoverageDate] = useState(new Date().toISOString().split('T')[0]);
   const [showCoverageArchive, setShowCoverageArchive] = useState(false);
+  const [highlightedCoverageId, setHighlightedCoverageId] = useState<string | null>(null);
   // END OF CHANGE
 
   // --- Common Data ---
@@ -479,10 +480,10 @@ const SubstitutionPage: React.FC = () => {
           <div className="bg-white rounded-[2.5rem] shadow-xl border overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-center min-w-[1000px]">
-                <thead>
+                <thead className="sticky top-0 z-40 bg-white shadow-sm">
                   <tr className="bg-slate-100 text-slate-800 font-black border-b-2 border-slate-300 h-14">
-                    <th rowSpan={2} className="border-e border-slate-300 p-2 w-12 sticky right-0 bg-slate-100 z-10">م</th>
-                    <th rowSpan={2} className="border-e border-slate-300 p-2 w-48 sticky right-12 bg-slate-100 z-10">المعلم الغائب</th>
+                    <th rowSpan={2} className="border-e border-slate-300 p-2 w-12 bg-slate-100">م</th>
+                    <th rowSpan={2} className="border-e border-slate-300 p-2 w-48 bg-slate-100">المعلم الغائب</th>
                     <th className="border-e border-slate-300 p-2 w-32">الحصة</th>
                     {[1, 2, 3, 4, 5, 6, 7].map(n => <th key={n} className="border-e border-slate-300 p-2">{n}</th>)}
                     <th rowSpan={2} className="p-2 w-12"></th>
@@ -500,9 +501,12 @@ const SubstitutionPage: React.FC = () => {
                   ) : (
                     filteredSubstitutions.map((row: any, idx) => (
                       <React.Fragment key={row.id}>
-                        <tr className="border-b border-slate-200 h-14 hover:bg-slate-50/50 transition-colors">
-                          <td rowSpan={2} className="border-e border-slate-300 font-black bg-slate-50 sticky right-0 z-10">{idx + 1}</td>
-                          <td rowSpan={2} className="border-e border-slate-300 p-0 bg-[#FFF2CC]/50 sticky right-12 z-10">
+                        <tr
+                          className={`border-b border-slate-200 h-14 transition-colors ${highlightedCoverageId === row.id ? 'bg-yellow-50' : 'hover:bg-slate-50/50'}`}
+                          onClick={() => setHighlightedCoverageId(row.id)}
+                        >
+                          <td rowSpan={2} className={`border-e border-slate-300 font-black transition-colors ${highlightedCoverageId === row.id ? 'bg-yellow-100/50' : 'bg-slate-50'}`}>{idx + 1}</td>
+                          <td rowSpan={2} className={`border-e border-slate-300 p-0 transition-colors ${highlightedCoverageId === row.id ? 'bg-yellow-100/50' : 'bg-[#FFF2CC]/50'}`}>
                             <input
                               list={`teachers-abs-${row.id}`}
                               className="w-full p-3 bg-transparent text-center font-black outline-none border-none focus:bg-white"
@@ -538,8 +542,11 @@ const SubstitutionPage: React.FC = () => {
                             </button>
                           </td>
                         </tr>
-                        <tr className="border-b-2 border-slate-300 h-10">
-                          <td className="border-e border-slate-300 p-2 bg-slate-50 font-black text-[10px]">التوقيع البصمة</td>
+                        <tr
+                          className={`border-b-2 border-slate-300 h-10 transition-colors ${highlightedCoverageId === row.id ? 'bg-yellow-50' : ''}`}
+                          onClick={() => setHighlightedCoverageId(row.id)}
+                        >
+                          <td className={`border-e border-slate-300 p-2 font-black text-[10px] transition-colors ${highlightedCoverageId === row.id ? 'bg-yellow-100/50' : 'bg-slate-50'}`}>التوقيع البصمة</td>
                           {[1, 2, 3, 4, 5, 6, 7].map(num => (
                             <td key={`sig-${num}`} className="border-e border-slate-300 p-1 bg-white">
                               {row[`sig${num}`] === 'تمت الموافقة' ? (
@@ -676,11 +683,11 @@ const SubstitutionPage: React.FC = () => {
                     return (
                       <tr
                         key={row.id}
-                        className={`border-b border-slate-100 h-14 group transition-all cursor-pointer ${isRowHighlighted ? 'bg-orange-50' : 'hover:bg-slate-50/50'}`}
+                        className={`border-b border-slate-100 h-14 group transition-all cursor-pointer ${isRowHighlighted ? 'bg-yellow-50' : 'hover:bg-slate-50/50'}`}
                         onClick={() => setSelectedTeacherRow(prev => prev === row.id ? null : row.id)}
                       >
-                        <td className={`font-black text-blue-600 border-e border-slate-100 transition-colors ${isRowHighlighted ? 'bg-orange-100' : ''}`}>{idx + 1}</td>
-                        <td className={`p-1 border-e border-slate-200 transition-colors ${isRowHighlighted ? 'bg-orange-100' : ''}`}>
+                        <td className={`font-black text-blue-600 border-e border-slate-100 transition-colors ${isRowHighlighted ? 'bg-yellow-100/50' : ''}`}>{idx + 1}</td>
+                        <td className={`p-1 border-e border-slate-200 transition-colors ${isRowHighlighted ? 'bg-yellow-100/50' : ''}`}>
                           <input
                             list={`teacher-list-${row.id}`}
                             className={`w-full p-2 text-right font-black outline-none border-none text-xs ${isRowHighlighted ? 'bg-orange-50' : 'bg-transparent'}`}
@@ -691,9 +698,9 @@ const SubstitutionPage: React.FC = () => {
                           />
                           <datalist id={`teacher-list-${row.id}`}>{teacherList.map(n => <option key={n} value={n} />)}</datalist>
                         </td>
-                        <td className={`p-1 border-e border-slate-200 transition-colors ${isRowHighlighted ? 'bg-orange-100' : ''}`}>
+                        <td className={`p-1 border-e border-slate-200 transition-colors ${isRowHighlighted ? 'bg-yellow-100/50' : ''}`}>
                           <input
-                            className={`w-full p-2 text-right font-bold outline-none border-none text-xs text-emerald-700 ${isRowHighlighted ? 'bg-orange-50' : 'bg-transparent'}`}
+                            className={`w-full p-2 text-right font-bold outline-none border-none text-xs text-emerald-700 ${isRowHighlighted ? 'bg-yellow-50' : 'bg-transparent'}`}
                             value={row.subject}
                             onChange={e => updateTimetableField(row.id, ['subject'], e.target.value)}
                             onClick={(e) => e.stopPropagation()}
@@ -707,7 +714,7 @@ const SubstitutionPage: React.FC = () => {
                               return (
                                 <td
                                   key={pKey}
-                                  className={`p-0 border-e border-slate-100 transition-colors ${isRowHighlighted ? 'bg-orange-50' : ''} ${isColHighlighted ? 'bg-orange-100' : ''}`}
+                                  className={`p-0 border-e border-slate-100 transition-colors ${isRowHighlighted ? 'bg-yellow-50' : ''} ${isColHighlighted ? 'bg-yellow-100/50' : ''}`}
                                 >
                                   <input
                                     className={`w-full h-full p-2 text-center text-[11px] font-black outline-none bg-transparent focus:bg-white`}
@@ -721,16 +728,16 @@ const SubstitutionPage: React.FC = () => {
                             })}
                           </React.Fragment>
                         ))}
-                        <td className={`p-1 ${isRowHighlighted ? 'bg-orange-50' : ''}`}>
+                        <td className={`p-1 ${isRowHighlighted ? 'bg-yellow-50' : ''}`}>
                           <input
-                            className={`w-full p-2 text-right text-[10px] outline-none ${isRowHighlighted ? 'bg-orange-50' : 'bg-transparent'}`}
+                            className={`w-full p-2 text-right text-[10px] outline-none ${isRowHighlighted ? 'bg-yellow-50' : 'bg-transparent'}`}
                             value={row.notes}
                             onChange={e => updateTimetableField(row.id, ['notes'], e.target.value)}
                             onClick={(e) => e.stopPropagation()}
                             placeholder="..."
                           />
                         </td>
-                        <td className={`p-1 ${isRowHighlighted ? 'bg-orange-50' : ''}`}>
+                        <td className={`p-1 ${isRowHighlighted ? 'bg-yellow-50' : ''}`}>
                           <button
                             onClick={(e) => { e.stopPropagation(); sendTeacherWhatsApp(row); }}
                             className="text-green-500 hover:text-green-700 transition-colors p-2 rounded-xl"
@@ -739,7 +746,7 @@ const SubstitutionPage: React.FC = () => {
                             <Share2 size={16} />
                           </button>
                         </td>
-                        <td className={`p-1 ${isRowHighlighted ? 'bg-orange-50' : ''}`}>
+                        <td className={`p-1 ${isRowHighlighted ? 'bg-yellow-50' : ''}`}>
                           <button
                             onClick={(e) => { e.stopPropagation(); updateData({ timetable: data.timetable.filter(x => x.id !== row.id) }); }}
                             className="text-red-200 hover:text-red-600 transition-colors p-2 rounded-xl"

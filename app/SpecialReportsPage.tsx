@@ -1234,7 +1234,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                     </button>
 
                     {/* Popover List for each status */}
-                    <div className="hidden group-hover:block absolute top-full left-0 z-[110] mt-2 w-72 bg-white border-2 rounded-2xl shadow-2xl p-4 animate-in slide-in-from-top-2">
+                    <div className="hidden group-hover:block fixed inset-x-8 top-[20%] z-[500] w-auto max-h-[60vh] overflow-y-auto bg-white border-4 border-slate-800 rounded-3xl shadow-[0_0_100px_rgba(0,0,0,0.5)] p-4 animate-in zoom-in-95 duration-200 md:absolute md:inset-auto md:top-full md:left-0 md:z-[110] md:mt-2 md:w-72 md:border-2 md:shadow-2xl md:rounded-2xl">
                       <div className="flex justify-between items-center mb-2 border-b pb-1">
                         <h4 className="text-[10px] font-black text-blue-600">قائمة: {opt.label}</h4>
                         <button

@@ -57,6 +57,11 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
           { id: 'mainNotes', label: 'الملاحظات الأساسية', icon: <AlertTriangle size={12} /> },
           { id: 'guardianFollowUp', label: 'متابعة ولي الأمر', icon: <UserPlus size={12} /> },
           { id: 'guardianCooperation', label: 'تعاون ولي الأمر', icon: <UserPlus size={12} /> },
+          { id: 'absenceSummary', label: 'الغياب اليومي', icon: <UserX size={12} /> },
+          { id: 'latenessSummary', label: 'التأخر', icon: <Clock size={12} /> },
+          { id: 'exitSummary', label: 'خروج طالب', icon: <UserPlusIcon size={12} /> },
+          { id: 'violationSummary', label: 'المخالفات الطلابية', icon: <ShieldAlert size={12} /> },
+          { id: 'damageSummary', label: 'الإتلاف المدرسي', icon: <Hammer size={12} /> },
           { id: 'notes', label: 'ملاحظات أخرى', icon: <MessageSquare size={12} /> },
         ];
       case 'teachers':
@@ -124,6 +129,10 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
       ];
     }
 
+    if (['absenceSummary', 'latenessSummary', 'exitSummary', 'violationSummary', 'damageSummary'].includes(subType)) {
+      return [{ id: 'has_data', label: 'يوجد سجلات' }, { id: 'no_data', label: 'لا يوجد' }];
+    }
+
     switch (subType) {
       case 'supervisor':
         return [
@@ -161,13 +170,30 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
 
   const processedData = useMemo(() => {
     const results: Record<string, any[]> = {
-      students: (data.studentReports || []).map(s => ({ ...s, displayName: s.name, type: 'student' })),
+      students: (data.studentReports || []).map(s => {
+        const hasAbsence = (data.absenceLogs || []).some(l => l.studentId === s.id);
+        const hasLateness = (data.studentLatenessLogs || []).some(l => l.studentId === s.id);
+        const hasExit = (data.exitLogs || []).some(l => l.studentId === s.id);
+        const hasViolation = (data.studentViolationLogs || []).some(l => l.studentId === s.id);
+        const hasDamage = (data.damageLogs || []).some(l => l.studentId === s.id);
+
+        return {
+          ...s,
+          displayName: s.name,
+          type: 'student',
+          absenceSummary: hasAbsence ? 'has_data' : '',
+          latenessSummary: hasLateness ? 'has_data' : '',
+          exitSummary: hasExit ? 'has_data' : '',
+          violationSummary: hasViolation ? 'has_data' : '',
+          damageSummary: hasDamage ? 'has_data' : ''
+        };
+      }),
       teachers: (data.dailyReports.flatMap(r => r.teachersData)).map(t => ({ ...t, displayName: t.teacherName, type: 'teacher' })),
       violations: (data.violations || []).map(v => ({ ...v, displayName: v.studentName || v.teacherName, type: 'violation' })),
       substitutions: (data.substitutions || []).map(s => ({ ...s, displayName: s.absentTeacher, type: 'substitution' })),
       special_reports: [
         ...(data.absenceLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'الغياب اليومي', icon: <UserX size={12} /> })),
-        ...(data.latenessLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'التأخر', icon: <Clock size={12} /> })),
+        ...(data.studentLatenessLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'التأخر', icon: <Clock size={12} /> })),
         ...(data.exitLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'خروج طالب أثناء الدراسة', icon: <UserPlusIcon size={12} /> })),
         ...(data.damageLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل الإتلاف المدرسي', icon: <Hammer size={12} /> })),
         ...(data.studentViolationLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'المخالفات الطلابية', icon: <ShieldAlert size={12} /> })),
@@ -233,8 +259,10 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
 
         if (subSubOptions.length > 0 && card.subSubTypes.length > 0) {
           list = list.filter(i => {
-            const val = String((i as any)[card.subType]);
-            return card.subSubTypes.some(selected => val.includes(selected));
+            const val = String((i as any)[card.subType] || '');
+            if (card.subSubTypes.includes('has_data') && val !== '' && val !== 'undefined') return true;
+            if (card.subSubTypes.includes('no_data') && (val === '' || val === 'undefined')) return true;
+            return card.subSubTypes.some(selected => selected !== 'has_data' && selected !== 'no_data' && val.includes(selected));
           });
         }
       } else if (card.category === 'violations') {
@@ -262,6 +290,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
 
   const updateCard = (id: number, updates: Partial<CardConfig>) => {
     setCards(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+    setCardOffsets(prev => ({ ...prev, [id]: 0 }));
   };
 
   const toggleSubSubValue = (cardId: number, value: string) => {
@@ -273,6 +302,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
       }
       return c;
     }));
+    setCardOffsets(prev => ({ ...prev, [cardId]: 0 }));
   };
 
   const shiftCardData = (cardId: number, direction: 'prev' | 'next', max: number) => {

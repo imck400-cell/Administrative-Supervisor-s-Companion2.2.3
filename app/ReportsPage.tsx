@@ -688,11 +688,11 @@ export const DailyReportsPage: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-2xl border shadow-sm overflow-hidden relative">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[75vh] scroll-smooth custom-scrollbar">
           <table className={`w-full text-center border-collapse ${filterMode === 'metric' ? '' : 'min-w-[1400px]'}`}>
             <thead>
               <tr className="border-b border-slate-300">
-                <th rowSpan={2} className="p-2 border-e border-slate-300 w-12 sticky right-0 bg-[#FFD966] z-20">
+                <th rowSpan={2} className="p-2 border-e border-slate-300 w-12 sticky top-0 bg-[#FFD966] z-20">
                   <div className="flex flex-col items-center gap-1">
                     <input
                       type="checkbox"
@@ -717,7 +717,7 @@ export const DailyReportsPage: React.FC = () => {
                     </div>
                   </div>
                 </th>
-                <th rowSpan={2} className="p-2 border-e border-slate-300 w-44 sticky right-12 bg-[#FFD966] z-20">اسم المعلم</th>
+                <th rowSpan={2} className="p-2 border-e border-slate-300 w-44 sticky top-0 bg-[#FFD966] z-20">اسم المعلم</th>
                 {!filterMode.includes('metric') && (
                   <>
                     <th rowSpan={2} className="p-2 border-e border-slate-300 w-20 sticky top-0 bg-[#FFD966] z-10">النوع</th>
@@ -752,14 +752,14 @@ export const DailyReportsPage: React.FC = () => {
                   </div>
                 </th>
               </tr>
-              <tr className="text-[10px] sticky top-[45px] z-10">
+              <tr className="text-[10px] sticky top-[45px] z-10 bg-slate-50">
                 {displayedMetrics.filter(m => m.key !== 'violations_score').map(m => (
                   <th key={m.key} className={`p-1 border-e border-slate-300 min-w-[70px] align-bottom ${getMetricColor(m.key)}`}>
-                    <div className="flex flex-col items-center justify-end gap-1 pb-1 h-full w-full">
-                      <div className="vertical-text font-bold text-slate-800 h-20 mb-auto text-[11px]">{m.label}</div>
+                    <div className="flex flex-col items-center justify-center gap-0 h-full w-full">
+                      <div className="vertical-text font-bold text-slate-800 h-14 text-[10px]">{m.label}</div>
 
                       {/* Accreditation Toggle logic in Header */}
-                      <div className="flex flex-col items-center gap-0.5 mb-1 h-8 justify-center">
+                      <div className="flex flex-col items-center gap-0.5 h-6 justify-center">
                         <button
                           onClick={() => toggleAccreditation('bulk', m.key)}
                           className={`p-0.5 rounded-full transition-all flex items-center justify-center ${teachers.every(t => (t.unaccreditedMetrics || []).includes(m.key)) ? 'text-red-500 bg-red-50' : 'text-green-500 bg-green-50'}`}
@@ -833,10 +833,10 @@ export const DailyReportsPage: React.FC = () => {
                 return (
                   <tr
                     key={t.id}
-                    className={`border-b transition-colors h-10 ${highlightedRowId === t.id ? 'bg-orange-100' : (selectedTeacherIds.includes(t.id) ? 'bg-blue-50' : 'hover:bg-slate-50')}`}
+                    className={`border-b transition-colors h-10 ${highlightedRowId === t.id ? 'bg-yellow-50' : (selectedTeacherIds.includes(t.id) ? 'bg-blue-50' : 'hover:bg-slate-50')}`}
                     onClick={() => setHighlightedRowId(t.id)}
                   >
-                    <td className="p-1 border-e sticky right-0 bg-inherit group-hover:bg-slate-50">
+                    <td className="p-1 border-e bg-inherit">
                       <div className="flex items-center gap-1 justify-center">
                         <input
                           type="checkbox"
@@ -859,7 +859,7 @@ export const DailyReportsPage: React.FC = () => {
                         </button>
                       </div>
                     </td>
-                    <td className="p-1 border-e sticky right-12 bg-inherit group-hover:bg-slate-50">
+                    <td className="p-1 border-e bg-inherit">
                       <input
                         list="teacher-names-list"
                         className="w-full text-right font-bold outline-none bg-transparent text-xs"
@@ -1998,8 +1998,8 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
   showBulkActions: boolean;
 }) => {
   return (
-    <tr onClick={() => onRowClick(s.id)} className={`transition-colors h-10 group cursor-pointer ${isHighlighted ? 'bg-cyan-50' : 'hover:bg-blue-50/20'}`}>
-      <td className={`p-1 border-e border-slate-100 sticky right-0 z-10 transition-colors ${isHighlighted ? 'bg-cyan-50' : 'bg-white group-hover:bg-blue-50'} w-20`}>
+    <tr onClick={() => onRowClick(s.id)} className={`transition-colors h-10 group cursor-pointer ${isHighlighted ? 'bg-yellow-50' : 'hover:bg-blue-50/20'}`}>
+      <td className={`p-1 border-e border-slate-100 transition-colors ${isHighlighted ? 'bg-yellow-50' : 'bg-white group-hover:bg-blue-50'} w-20`}>
         <div className="flex items-center justify-center gap-2">
           <button onClick={(e) => { e.stopPropagation(); onDelete(s.id); }} className="p-1 text-slate-300 hover:text-red-500 transition-colors" title={lang === 'ar' ? 'حذف الطالب' : 'Delete Student'}>
             <Trash2 size={12} />
@@ -2014,7 +2014,7 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
           />
         </div>
       </td>
-      <td className={`p-1 border-e border-slate-100 sticky right-[80px] z-10 transition-colors shadow-[2px_0_5px_rgba(0,0,0,0.05)] ${isHighlighted ? 'bg-cyan-50' : 'bg-white group-hover:bg-blue-50'}`}>
+      <td className={`p-1 border-e border-slate-100 transition-colors ${isHighlighted ? 'bg-yellow-50' : 'bg-white group-hover:bg-blue-50'}`}>
         <div className="flex items-center gap-1 h-full">
           <button onClick={() => toggleStar(s.id, 'isExcellent')} title={lang === 'ar' ? 'إضافة للتميز' : 'Add to Excellence'}>
             <Star className={`w-3.5 h-3.5 ${s.isExcellent ? 'fill-green-500 text-green-500' : 'text-slate-300'}`} />
@@ -2870,7 +2870,7 @@ export const StudentsReportsPage: React.FC = () => {
           <table className={`w-full text-center border-collapse table-auto ${isOnlyMetricView ? 'min-w-[700px]' : 'min-w-[1600px]'}`}>
             <thead className="bg-[#FFD966] text-slate-800 sticky top-0 z-20">
               <tr className="border-b border-slate-300 h-12 text-center">
-                <th rowSpan={2} className="px-2 border-e border-slate-300 w-20 sticky right-0 bg-[#FFD966] z-30 whitespace-nowrap">
+                <th rowSpan={2} className="px-2 border-e border-slate-300 w-20 sticky top-0 bg-[#FFD966] z-30 whitespace-nowrap">
                   <div className="flex flex-col items-center gap-1">
                     {selectedStudentIds.length > 0 && (
                       <button
@@ -2895,7 +2895,7 @@ export const StudentsReportsPage: React.FC = () => {
                     </div>
                   </div>
                 </th>
-                <th rowSpan={2} className="px-3 border-e border-slate-300 w-[160px] text-xs font-black sticky right-[80px] bg-[#FFD966] z-30">{lang === 'ar' ? 'اسم الطالب' : 'Student Name'}</th>
+                <th rowSpan={2} className="px-3 border-e border-slate-300 w-[160px] text-xs font-black sticky top-0 bg-[#FFD966] z-30">{lang === 'ar' ? 'اسم الطالب' : 'Student Name'}</th>
                 <th rowSpan={2} className="px-1 border-e border-slate-300 w-20 text-xs font-black">{lang === 'ar' ? 'الصف' : 'Grade'}</th>
                 <th rowSpan={2} className="px-1 border-e border-slate-300 w-16 text-xs font-black">{lang === 'ar' ? 'الشعبة' : 'Section'}</th>
 

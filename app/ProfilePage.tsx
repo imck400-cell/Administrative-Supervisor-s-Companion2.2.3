@@ -24,8 +24,9 @@ const ProfilePage: React.FC = () => {
   };
 
   const updateCustomField = (index: number, field: 'label' | 'value', value: string) => {
-    const customFields = [...(profile.customFields || [])];
-    customFields[index][field] = value;
+    const customFields = (profile.customFields || []).map((f, i) =>
+      i === index ? { ...f, [field]: value } : f
+    );
     updateData({ profile: { ...profile, customFields } });
   };
 

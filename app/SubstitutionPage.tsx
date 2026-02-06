@@ -634,20 +634,20 @@ const SubstitutionPage: React.FC = () => {
           {/* Timetable Grid */}
           <div className="bg-white rounded-[2.5rem] shadow-xl border overflow-hidden relative">
             <div className="overflow-x-auto overflow-y-auto max-h-[600px] scroll-smooth">
-              <table className="w-full border-collapse text-center table-fixed min-w-[2000px]">
+              <table className="w-full border-collapse text-center table-auto">
                 <thead className="sticky top-0 z-40 bg-white">
                   <tr className="bg-slate-100 text-slate-800 font-black border-b border-slate-300 h-14">
-                    <th rowSpan={2} className="w-12 border-e border-slate-300 bg-slate-100">م</th>
-                    <th rowSpan={2} className="w-40 border-e border-slate-300 bg-slate-100">اسم المعلم</th>
-                    <th rowSpan={2} className="w-24 border-e border-slate-300 bg-slate-100">المادة</th>
+                    <th rowSpan={2} className="px-4 border-e border-slate-300 bg-slate-100 whitespace-nowrap w-12">م</th>
+                    <th rowSpan={2} className="px-6 border-e border-slate-300 bg-slate-100 whitespace-nowrap min-w-[180px]">اسم المعلم</th>
+                    <th rowSpan={2} className="px-6 border-e border-slate-300 bg-slate-100 whitespace-nowrap min-w-[120px]">المادة</th>
                     {daysAr.map(day => (
                       <th key={day} colSpan={8} className="border-e border-slate-300 bg-slate-100 py-2">
-                        <div className="flex items-center justify-center gap-2 text-sm">
+                        <div className="flex items-center justify-center gap-2 text-sm whitespace-nowrap px-4">
                           <Calendar size={14} className="text-emerald-600" /> {day}
                         </div>
                       </th>
                     ))}
-                    <th rowSpan={2} className="w-64">ملاحظات</th>
+                    <th rowSpan={2} className="px-6 min-w-[250px]">ملاحظات</th>
                     <th rowSpan={2} className="w-16">
                       <button
                         onClick={(e) => { e.stopPropagation(); sendAllTeachersWhatsApp(); }}
@@ -665,7 +665,7 @@ const SubstitutionPage: React.FC = () => {
                         {periodsAr.map((p, i) => (
                           <th
                             key={`${day}-p${i}`}
-                            className={`border-e border-slate-200 w-48 cursor-pointer hover:bg-orange-100 transition-colors ${highlightDayPeriod === `${day}-p${i}` ? 'bg-orange-200 text-orange-800' : ''}`}
+                            className={`border-e border-slate-200 px-3 whitespace-nowrap cursor-pointer hover:bg-orange-100 transition-colors ${highlightDayPeriod === `${day}-p${i}` ? 'bg-orange-200 text-orange-800' : ''}`}
                             onClick={() => setHighlightDayPeriod(prev => prev === `${day}-p${i}` ? null : `${day}-p${i}`)}
                           >
                             {p}
@@ -693,7 +693,7 @@ const SubstitutionPage: React.FC = () => {
                             className={`w-full p-2 text-right font-black outline-none border-none text-xs ${isRowHighlighted ? 'bg-orange-50' : 'bg-transparent'}`}
                             value={row.teacherName}
                             onChange={e => updateTimetableField(row.id, ['teacherName'], e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
+                            onFocus={() => setSelectedTeacherRow(row.id)}
                             placeholder="..."
                           />
                           <datalist id={`teacher-list-${row.id}`}>{teacherList.map(n => <option key={n} value={n} />)}</datalist>
@@ -703,7 +703,7 @@ const SubstitutionPage: React.FC = () => {
                             className={`w-full p-2 text-right font-bold outline-none border-none text-xs text-emerald-700 ${isRowHighlighted ? 'bg-yellow-50' : 'bg-transparent'}`}
                             value={row.subject}
                             onChange={e => updateTimetableField(row.id, ['subject'], e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
+                            onFocus={() => setSelectedTeacherRow(row.id)}
                             placeholder="..."
                           />
                         </td>
@@ -720,7 +720,7 @@ const SubstitutionPage: React.FC = () => {
                                     className={`w-full h-full p-2 text-center text-[11px] font-black outline-none bg-transparent focus:bg-white`}
                                     value={row.days[day][pKey] || ''}
                                     onChange={e => updateTimetableField(row.id, ['days', day, pKey], e.target.value)}
-                                    onClick={(e) => e.stopPropagation()}
+                                    onFocus={() => setSelectedTeacherRow(row.id)}
                                     placeholder="-"
                                   />
                                 </td>
@@ -733,7 +733,7 @@ const SubstitutionPage: React.FC = () => {
                             className={`w-full p-2 text-right text-[10px] outline-none ${isRowHighlighted ? 'bg-yellow-50' : 'bg-transparent'}`}
                             value={row.notes}
                             onChange={e => updateTimetableField(row.id, ['notes'], e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
+                            onFocus={() => setSelectedTeacherRow(row.id)}
                             placeholder="..."
                           />
                         </td>

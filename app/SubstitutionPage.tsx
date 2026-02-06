@@ -716,13 +716,20 @@ const SubstitutionPage: React.FC = () => {
                                   key={pKey}
                                   className={`p-0 border-e border-slate-100 transition-colors ${isRowHighlighted ? 'bg-yellow-50' : ''} ${isColHighlighted ? 'bg-yellow-100/50' : ''}`}
                                 >
-                                  <input
-                                    className={`w-full h-full p-2 text-center text-[11px] font-black outline-none bg-transparent focus:bg-white`}
-                                    value={row.days[day][pKey] || ''}
-                                    onChange={e => updateTimetableField(row.id, ['days', day, pKey], e.target.value)}
-                                    onFocus={() => setSelectedTeacherRow(row.id)}
-                                    placeholder="-"
-                                  />
+                                  <div className="flex flex-col items-center justify-center h-full w-full">
+                                    <input
+                                      className="w-full text-center text-[11px] font-black outline-none bg-transparent focus:bg-white p-1"
+                                      value={row.days[day][pKey] || ''}
+                                      onChange={e => updateTimetableField(row.id, ['days', day, pKey], e.target.value)}
+                                      onFocus={() => setSelectedTeacherRow(row.id)}
+                                      placeholder="-"
+                                    />
+                                    {row.days[day][pKey] && row.teacherName && (
+                                      <div className="text-[7px] font-bold text-slate-400 leading-none pb-1 truncate max-w-full px-1">
+                                        {row.teacherName.trim().split(/\s+/)[0]}
+                                      </div>
+                                    )}
+                                  </div>
                                 </td>
                               );
                             })}

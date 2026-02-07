@@ -8,11 +8,11 @@ import { DailyReportsPage, ViolationsPage, StudentsReportsPage } from './app/Rep
 import SpecialReportsPage from './app/SpecialReportsPage';
 import ProfilePage from './app/ProfilePage';
 import DataManagementModal from './components/DataManagementModal';
-import { 
-  Lock, LayoutDashboard, ClipboardCheck, UserX, UserPlus, 
-  Users, Sparkles, UserCircle, Database, Settings, 
-  FileSearch, ArrowUp, ArrowDown, Clock, ShieldAlert, 
-  Hammer, FileText, Calendar, Star, AlertCircle 
+import {
+  Lock, LayoutDashboard, ClipboardCheck, UserX, UserPlus,
+  Users, Sparkles, UserCircle, Database, Settings,
+  FileSearch, ArrowUp, ArrowDown, Clock, ShieldAlert,
+  Hammer, FileText, Calendar, Star, AlertCircle
 } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
@@ -36,8 +36,8 @@ const LoginPage: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-600 mr-2">كلمة المرور</label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               className={`w-full p-5 bg-slate-50 border-2 rounded-[1.5rem] focus:ring-4 focus:ring-blue-100 transition-all text-center text-xl font-bold tracking-widest ${error ? 'border-red-500' : 'border-slate-100 focus:border-blue-500'}`}
               value={pass}
               onChange={(e) => { setPass(e.target.value); setError(false); }}
@@ -70,7 +70,7 @@ const MainApp: React.FC = () => {
     { id: 'studentReports', label: lang === 'ar' ? 'تقارير الطلاب' : 'Student Reports', icon: <Users className="w-4 h-4" /> },
     { id: 'specialReports', label: lang === 'ar' ? 'تقارير خاصة' : 'Special Reports', icon: <FileSearch className="w-4 h-4" /> },
   ], [lang]);
-  
+
   const [recentActionIds, setRecentActionIds] = useState<string[]>(() => {
     const saved = localStorage.getItem('recent_nav_ids_v2');
     return saved ? JSON.parse(saved) : [];
@@ -78,7 +78,7 @@ const MainApp: React.FC = () => {
 
   const trackAction = (viewId: string) => {
     if (viewId === 'dashboard') return;
-    
+
     setRecentActionIds(prev => {
       const filtered = prev.filter(id => id !== viewId);
       const updated = [viewId, ...filtered].slice(0, 12);
@@ -110,7 +110,7 @@ const MainApp: React.FC = () => {
         }
         return navItems.find(item => item.id === id);
       })
-      .filter((item): item is { id: string; label: string; icon: React.ReactNode } => !!item);
+      .filter((item): item is { id: string; label: string; icon: React.ReactElement } => !!item);
   }, [recentActionIds, navItems]);
 
   const handleSetView = (v: string) => {
@@ -122,7 +122,7 @@ const MainApp: React.FC = () => {
 
   const renderView = () => {
     const [mainView, subView] = view.split(':');
-    switch(mainView) {
+    switch (mainView) {
       case 'dashboard': return <Dashboard setView={handleSetView} recentActions={recentActions} />;
       case 'substitute': return <SubstitutionPage />;
       case 'daily': return <DailyReportsPage />;
@@ -139,14 +139,14 @@ const MainApp: React.FC = () => {
   return (
     <Layout onNavigate={handleSetView} onOpenSettings={() => setIsDataModalOpen(true)}>
       <div className="fixed top-20 left-6 z-[60] flex flex-col gap-2 pointer-events-auto">
-        <button 
+        <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           className="p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all active:scale-90"
           title="أعلى الشاشة"
         >
           <ArrowUp size={20} />
         </button>
-        <button 
+        <button
           onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
           className="p-2 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-all active:scale-90"
           title="أسفل الشاشة"
@@ -160,8 +160,8 @@ const MainApp: React.FC = () => {
           <h2 className="text-2xl font-black text-slate-800"> رفيق المشرف الإداري </h2>
           <p className="text-blue-500 text-sm font-bold"> رفيقك في كتابة تقارير الإشراف الإداري </p>
         </div>
-        
-        <button 
+
+        <button
           onClick={() => setIsDataModalOpen(true)}
           className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:bg-slate-50 hover:border-blue-200 transition-all shadow-sm"
         >
@@ -172,14 +172,13 @@ const MainApp: React.FC = () => {
 
       <div className="flex flex-wrap gap-2 mb-8 bg-white/50 backdrop-blur-md p-2 rounded-2xl border border-white">
         {navItems.map((item) => (
-          <button 
+          <button
             key={item.id}
             onClick={() => handleSetView(item.id)}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all ${
-              view.startsWith(item.id) 
-              ? 'bg-blue-600 text-white shadow-xl shadow-blue-100 scale-105' 
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all ${view.startsWith(item.id)
+              ? 'bg-blue-600 text-white shadow-xl shadow-blue-100 scale-105'
               : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-100'
-            }`}
+              }`}
           >
             {item.icon}
             {item.label}
@@ -187,13 +186,13 @@ const MainApp: React.FC = () => {
         ))}
       </div>
 
-      <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
         {renderView()}
       </div>
 
-      <DataManagementModal 
-        isOpen={isDataModalOpen} 
-        onClose={() => setIsDataModalOpen(false)} 
+      <DataManagementModal
+        isOpen={isDataModalOpen}
+        onClose={() => setIsDataModalOpen(false)}
       />
     </Layout>
   );

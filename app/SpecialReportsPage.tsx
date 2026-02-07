@@ -12,7 +12,8 @@ import {
   Activity, Fingerprint, History, RefreshCw, Upload, LayoutList,
   Hammer, UserPlus, Edit, ArrowUpDown, PhoneCall, Mail
 } from 'lucide-react';
-import { AbsenceLog, LatenessLog, StudentViolationLog, StudentReport, ExitLog, DamageLog, ParentVisitLog, ExamLog } from '../types';
+import { AbsenceLog, LatenessLog, StudentViolationLog, StudentReport, ExitLog, DamageLog, ParentVisitLog, ExamLog, TaskItem, TaskReport, TaskRecord, ExecutionStatus } from '../types';
+import { defaultTaskTemplates } from '../context/GlobalState';
 import * as XLSX from 'xlsx';
 
 type MainTab = 'supervisor' | 'staff' | 'students' | 'tests';
@@ -274,6 +275,17 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     date: today, semester: 'الفصلين', type: 'visit', status: 'نادر الزيارة', customStatusItems: [], visitorName: '', reason: '', recommendations: '', actions: '', followUpStatus: [], notes: '', prevVisitCount: 0
   });
 
+  // Task Module States
+  const [selectedTaskCategories, setSelectedTaskCategories] = useState<('daily' | 'weekly' | 'monthly')[]>(['daily']);
+  const [taskTableDate, setTaskTableDate] = useState(today);
+  const [activeTaskReport, setActiveTaskReport] = useState<TaskReport | null>(null);
+  const [showPreviousTaskReports, setShowPreviousTaskReports] = useState(false);
+  const [customTaskInput, setCustomTaskInput] = useState('');
+  const [activeCategoryForAdd, setActiveCategoryForAdd] = useState<'daily' | 'weekly' | 'monthly' | null>(null);
+
+  const [bulkNoteValue, setBulkNoteValue] = useState('');
+  const [showBulkNotePopup, setShowBulkNotePopup] = useState(false);
+
   const getDayName = (dateStr: string) => {
     if (!dateStr) return '';
     try {
@@ -282,7 +294,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
   };
 
   const structure = {
-    supervisor: { title: 'المشرف الإداري', icon: <Briefcase />, items: ['الخطة الفصلية', 'الخلاصة الشهرية', 'المهام اليومية', 'المهام المضافة', 'المهام المرحلة', 'أهم المشكلات اليومية', 'التوصيات العامة', 'احتياجات الدور', 'سجل متابعة الدفاتر والتصحيح', 'الجرد العام للعهد', 'ملاحظات عامة'] },
+    supervisor: { title: 'المشرف الإداري', icon: <Briefcase />, items: ['المهام', 'الخطة الفصلية', 'الخلاصة الشهرية', 'المهام اليومية', 'المهام المضافة', 'المهام المرحلة', 'أهم المشكلات اليومية', 'التوصيات العامة', 'احتياجات الدور', 'سجل متابعة الدفاتر والتصحيح', 'الجرد العام للعهد', 'ملاحظات عامة'] },
     staff: { title: 'الكادر التعليمي', icon: <Users />, items: ['سجل الإبداع والتميز', 'كشف الاستلام والتسليم', 'المخالفات', 'التعميمات'] },
     students: { title: 'الطلاب/ الطالبات', icon: <GraduationCap />, items: ['الغياب اليومي', 'التأخر', 'خروج طالب أثناء الدراسة', 'المخالفات الطلابية', 'سجل الإتلاف المدرسي', 'سجل الحالات الخاصة', 'سجل الحالة الصحية', 'سجل زيارة أولياء الأمور والتواصل بهم'] },
     tests: { title: 'تقارير الاختبار', icon: <FileSearch />, items: ['الاختبار الشهري', 'الاختبار الفصلي'] }
@@ -2338,8 +2350,563 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     setCustomViolation({ cat: '', item: '' });
   };
 
+  const renderTasksModule = () => {
+    const templates = data.taskTemplates || [];
+    const dailyTemplates = templates.filter(t => t.category === 'daily');
+    const weeklyTemplates = templates.filter(t => t.category === 'weekly');
+    const monthlyTemplates = templates.filter(t => t.category === 'monthly');
+
+    const resetTasksToDefaults = () => {
+      if (!window.confirm('هل أنت متأكد من استعادة المهام الافتراضية؟ سيؤدي ذلك إلى حذف أي مهام مخصصة قمت بإضافتها.')) return;
+      updateData({ taskTemplates: defaultTaskTemplates });
+      alert('تم استعادة المهام الافتراضية بنجاح');
+    };
+
+    const handleAddTaskTemplate = (cat: 'daily' | 'weekly' | 'monthly') => {
+      if (!customTaskInput.trim()) return;
+      const newTemplate: TaskItem = {
+        id: Date.now().toString(),
+        category: cat,
+        text: customTaskInput.trim()
+      };
+      updateData({ taskTemplates: [...templates, newTemplate] });
+      setCustomTaskInput('');
+      setActiveCategoryForAdd(null);
+    };
+
+    const removeTaskTemplate = (id: string) => {
+      updateData({ taskTemplates: templates.filter(t => t.id !== id) });
+    };
+
+    const generateTaskTable = () => {
+      const selectedTemplates = templates.filter(t => selectedTaskCategories.includes(t.category));
+      if (selectedTemplates.length === 0) return alert('يرجى اختيار فئة واحدة على الأقل');
+
+      const records: TaskRecord[] = selectedTemplates.map(t => ({
+        id: Math.random().toString(36).substr(2, 9),
+        taskText: t.text,
+        degree: 2,
+        maxDegree: 2,
+        status: 'pending',
+        failReason: '',
+        notes: ''
+      }));
+
+      const d = taskTableDate;
+      const gy = new Date(d).getFullYear();
+      const hy = Math.floor((gy - 622) * (33 / 32));
+
+      const newReport: TaskReport = {
+        id: Date.now().toString(),
+        dateStr: d,
+        dateHijri: `${hy} هـ`,
+        dayName: getDayName(d),
+        selectedCategories: [...selectedTaskCategories],
+        tasks: records
+      };
+
+      setActiveTaskReport(newReport);
+    };
+
+    const saveTaskReport = () => {
+      if (!activeTaskReport) return;
+
+      const reports = data.taskReports || [];
+      const exists = reports.find(r => r.dateStr === activeTaskReport.dateStr);
+
+      if (exists) {
+        if (!window.confirm('يوجد تقرير بالفعل لهذا التاريخ. هل تريد استبداله؟')) return;
+        updateData({ taskReports: reports.map(r => r.dateStr === activeTaskReport.dateStr ? activeTaskReport : r) });
+      } else {
+        updateData({ taskReports: [activeTaskReport, ...reports] });
+      }
+
+      alert('تم حفظ جدول المهام بنجاح');
+    };
+
+    const toggleStatus = (taskId: string) => {
+      if (!activeTaskReport) return;
+      const updatedTasks = activeTaskReport.tasks.map(t => {
+        if (t.id === taskId) {
+          const next: ('pending' | 'done' | 'failed') = t.status === 'pending' ? 'done' : t.status === 'done' ? 'failed' : 'pending';
+          return { ...t, status: next };
+        }
+        return t;
+      });
+      setActiveTaskReport({ ...activeTaskReport, tasks: updatedTasks });
+    };
+
+    const updateTaskRecord = (taskId: string, field: keyof TaskRecord, value: any) => {
+      if (!activeTaskReport) return;
+      const updatedTasks = activeTaskReport.tasks.map(t => {
+        if (t.id === taskId) {
+          if (field === 'degree') {
+            const newVal = Math.min(Number(value), t.maxDegree);
+            return { ...t, [field]: newVal };
+          }
+          if (field === 'maxDegree') {
+            const newMax = Number(value);
+            const newDegree = Math.min(t.degree, newMax);
+            return { ...t, maxDegree: newMax, degree: newDegree };
+          }
+          return { ...t, [field]: value };
+        }
+        return t;
+      });
+      setActiveTaskReport({ ...activeTaskReport, tasks: updatedTasks });
+    };
+
+    const deleteReport = (reportId: string) => {
+      if (!window.confirm('هل أنت متأكد من حذف هذا التقرير؟')) return;
+      updateData({ taskReports: (data.taskReports || []).filter(r => r.id !== reportId) });
+    };
+
+    const renderCategoryBox = (title: string, category: 'daily' | 'weekly' | 'monthly', items: TaskItem[]) => (
+      <div className="bg-white rounded-[2rem] border-2 border-slate-100 p-6 flex flex-col h-[400px] shadow-sm hover:shadow-md transition-all">
+        <div className="flex justify-between items-center mb-4 border-b pb-3">
+          <h4 className="font-black text-slate-800 flex items-center gap-2">
+            <LayoutList size={18} className="text-blue-500" /> {title}
+          </h4>
+          <button
+            onClick={() => setActiveCategoryForAdd(category)}
+            className="flex items-center gap-1 bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+          >
+            <Plus size={14} /> إضافة عنصر
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+          {items.map(t => (
+            <div key={t.id} className="group flex items-center justify-between p-3 bg-slate-50 hover:bg-blue-50/50 rounded-xl border border-transparent hover:border-blue-100 transition-all">
+              <span className="text-xs font-bold text-slate-600 leading-relaxed text-right">{t.text}</span>
+              <button onClick={() => removeTaskTemplate(t.id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-red-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+
+    if (showPreviousTaskReports) {
+      const reports = data.taskReports || [];
+      return (
+        <div className="bg-[#f8fafc] p-6 md:p-10 rounded-[3rem] border-4 border-slate-200 shadow-2xl animate-in fade-in duration-500 font-arabic text-right min-h-[600px]">
+          <div className="flex justify-between items-center mb-8 bg-white p-6 rounded-[2rem] shadow-sm">
+            <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+              <History className="text-blue-600" /> تقارير المهام السابقة
+            </h2>
+            <button onClick={() => setShowPreviousTaskReports(false)} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-all"><X size={20} /></button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {reports.length === 0 ? (
+              <div className="col-span-full py-20 text-center text-slate-400 font-bold bg-white rounded-[2rem] border-2 border-dashed">لا توجد تقارير سابقة</div>
+            ) : (
+              reports.map(r => (
+                <div key={r.id} className="bg-white p-6 rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-xl transition-all group">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full text-[10px] font-black">{r.dayName}</div>
+                    <div className="flex gap-2">
+                      <button onClick={() => { setActiveTaskReport(r); setShowPreviousTaskReports(false); }} className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all"><Edit size={16} /></button>
+                      <button onClick={() => deleteReport(r.id)} className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all"><Trash2 size={16} /></button>
+                    </div>
+                  </div>
+                  <h3 className="font-black text-slate-800 text-lg mb-1">{r.dateStr}</h3>
+                  <p className="text-slate-400 text-[10px] font-bold mb-4">{r.dateHijri}</p>
+                  <div className="flex flex-wrap gap-1.5 pt-4 border-t">
+                    {r.selectedCategories.map(c => (
+                      <span key={c} className="bg-slate-50 text-slate-500 px-2.5 py-1 rounded-lg text-[9px] font-black border">
+                        {c === 'daily' ? 'يومية' : c === 'weekly' ? 'أسبوعية' : 'شهرية'}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (activeTaskReport) {
+      const reasonsList = ["غياب", "تأخر عن الدوام", "خروج أثناء الدوام", "اجتماع بالإدارة", "إقامة نشاط مدرسي", "تكليف بعمل آخر من الإدارة", "ضغوط عمل لهذا اليوم", "أخرى"];
+
+      // Bulk Actions logic
+      const applyBulkValue = (field: keyof TaskRecord, value: any) => {
+        const updated = activeTaskReport.tasks.map(t => {
+          let newVal = value;
+          if (field === 'degree') newVal = Math.min(Number(value), t.maxDegree);
+          return { ...t, [field]: newVal };
+        });
+        setActiveTaskReport({ ...activeTaskReport, tasks: updated });
+      };
+
+      const cycleBulkStatus = () => {
+        const current = activeTaskReport.tasks[0]?.status || 'pending';
+        const next: ExecutionStatus = current === 'pending' ? 'done' : current === 'done' ? 'failed' : 'pending';
+        applyBulkValue('status', next);
+      };
+
+      // Calculations
+      const totalMax = activeTaskReport.tasks.reduce((sum, t) => sum + (t.maxDegree || 0), 0);
+      const totalDegree = activeTaskReport.tasks.reduce((sum, t) => sum + (t.degree || 0), 0);
+      const percentage = totalMax > 0 ? ((totalDegree / totalMax) * 100).toFixed(2) : '0';
+
+      const exportTasksToExcel = () => {
+        const rows: any[] = activeTaskReport.tasks.map((t, i) => ({
+          'م': i + 1,
+          'المهمة': t.taskText,
+          'الدرجة القصوى': t.maxDegree,
+          'الدرجة المستحقة': t.degree,
+          'حالة التنفيذ': t.status === 'done' ? 'تم' : t.status === 'failed' ? 'لم ينفذ' : 'قيد التنفيذ',
+          'السبب': t.failReason + (t.failOtherReason ? ` (${t.failOtherReason})` : ''),
+          'ملاحظات': t.notes
+        }));
+
+        // Add summary row to excel
+        rows.push({
+          'م': '',
+          'المهمة': 'المجموع الكلي والنسبة',
+          'الدرجة القصوى': totalMax,
+          'الدرجة المستحقة': totalDegree,
+          'حالة التنفيذ': `% ${percentage}`,
+          'السبب': '',
+          'ملاحظات': ''
+        });
+
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'تقرير المهام');
+        XLSX.writeFile(wb, `تقرير_المهام_${activeTaskReport.dateStr}.xlsx`);
+      };
+
+      const exportTasksToTxt = () => {
+        let content = `تقرير المهام - ${activeTaskReport.dayName} - ${activeTaskReport.dateStr}\n`;
+        content += `التاريخ الهجري: ${activeTaskReport.dateHijri}\n`;
+        content += `--------------------------------------------------\n\n`;
+
+        activeTaskReport.tasks.forEach((t, i) => {
+          content += `${i + 1}- ${t.taskText}\n`;
+          content += `   الدرجة: ${t.degree}/${t.maxDegree} | الحالة: ${t.status === 'done' ? 'تم' : t.status === 'failed' ? 'لم ينفذ' : 'قيد التنفيذ'}\n`;
+          if (t.failReason) content += `   السبب: ${t.failReason}${t.failOtherReason ? ` (${t.failOtherReason})` : ''}\n`;
+          if (t.notes) content += `   ملاحظات: ${t.notes}\n`;
+          content += `\n`;
+        });
+
+        content += `--------------------------------------------------\n`;
+        content += `المجموع الكلي: ${totalDegree} من ${totalMax}\n`;
+        content += `النسبة المئوية: ${percentage}%\n`;
+
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `تقرير_المهام_${activeTaskReport.dateStr}.txt`;
+        link.click();
+      };
+
+      const shareTasksWhatsApp = () => {
+        let msg = `*📊 تقرير المهام الإدارية*\n`;
+        msg += `*🗓 اليوم:* ${activeTaskReport.dayName}\n`;
+        msg += `*📅 التاريخ:* ${activeTaskReport.dateStr} م / ${activeTaskReport.dateHijri}\n`;
+        msg += `------------------------------------------\n\n`;
+
+        activeTaskReport.tasks.forEach((t, i) => {
+          const statusIcon = t.status === 'done' ? '✅' : t.status === 'failed' ? '❌' : '⏳';
+          msg += `*${i + 1}.* ${t.taskText}\n`;
+          msg += `${statusIcon} *الحالة:* ${t.status === 'done' ? 'تم التنفيذ' : t.status === 'failed' ? 'لم ينفذ' : 'قيد التنفيذ'}\n`;
+          msg += `🎯 *الدرجة:* ${t.degree} / ${t.maxDegree}\n`;
+          if (t.failReason) msg += `⚠️ *السبب:* ${t.failReason}${t.failOtherReason ? ` - ${t.failOtherReason}` : ''}\n`;
+          if (t.notes) msg += `📝 *ملاحظات:* ${t.notes}\n`;
+          msg += `\n`;
+        });
+
+        msg += `------------------------------------------\n`;
+        msg += `*📈 المجموع:* ${totalDegree} / ${totalMax}\n`;
+        msg += `*💯 النسبة المئوية:* ${percentage}%\n`;
+
+        const encoded = encodeURIComponent(msg);
+        window.open(`https://wa.me/?text=${encoded}`, '_blank');
+      };
+
+      return (
+        <div className="bg-[#fdfdfd] p-6 md:p-10 rounded-[3rem] border-4 border-blue-600 shadow-2xl animate-in zoom-in-95 duration-500 font-arabic text-right relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-[100%] -mr-16 -mt-16 -z-10"></div>
+
+          <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6 border-b pb-8">
+            <div className="flex flex-wrap gap-3">
+              <button onClick={saveTaskReport} className="bg-emerald-600 text-white px-8 py-4 rounded-2xl font-black text-sm hover:bg-emerald-700 transition-all flex items-center gap-3 shadow-lg active:scale-95">
+                <Save size={20} /> حفظ الجدول
+              </button>
+              <div className="flex bg-white border-2 rounded-2xl overflow-hidden shadow-sm">
+                <button onClick={exportTasksToExcel} title="تصدير إكسل" className="p-4 hover:bg-slate-50 text-emerald-600 border-e transition-all"><FileSpreadsheet size={20} /></button>
+                <button onClick={exportTasksToTxt} title="تصدير نصي" className="p-4 hover:bg-slate-50 text-blue-600 border-e transition-all"><FileText size={20} /></button>
+                <button onClick={shareTasksWhatsApp} title="ارسال واتساب" className="p-4 hover:bg-slate-50 text-emerald-500 transition-all"><MessageCircle size={20} /></button>
+              </div>
+              <button onClick={() => setShowPreviousTaskReports(true)} className="bg-slate-800 text-white px-8 py-4 rounded-2xl font-black text-sm hover:bg-black transition-all flex items-center gap-3 shadow-lg">
+                <History size={20} /> تقارير المهام السابقة
+              </button>
+              <button onClick={() => setActiveTaskReport(null)} className="p-4 bg-white border-2 hover:bg-slate-50 rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+            </div>
+            <div className="text-center md:text-right">
+              <h2 className="text-3xl font-black text-slate-800 mb-2">جدول المهام</h2>
+              <div className="flex flex-wrap md:flex-nowrap items-center gap-4 bg-white p-4 rounded-2xl border-2 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <Calendar className="text-blue-600" size={18} />
+                  <input
+                    type="date"
+                    className="bg-transparent font-black text-sm outline-none w-32"
+                    value={activeTaskReport.dateStr}
+                    onChange={e => {
+                      const d = e.target.value;
+                      const gy_new = new Date(d).getFullYear();
+                      const hy_new = Math.floor((gy_new - 622) * (33 / 32));
+                      setActiveTaskReport({
+                        ...activeTaskReport,
+                        dateStr: d,
+                        dayName: getDayName(d),
+                        dateHijri: `${hy_new} هـ`
+                      });
+                    }}
+                  />
+                </div>
+                <div className="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl font-black text-xs md:text-sm whitespace-nowrap">
+                  {activeTaskReport.dayName} - {activeTaskReport.dateStr.split('-')[0]} م / {activeTaskReport.dateHijri}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-[2.5rem] border-2 shadow-2xl bg-white mb-8">
+            <table className="w-full border-collapse text-center min-w-[1200px]">
+              <thead>
+                <tr className="bg-slate-900 text-white font-black text-sm">
+                  <th className="p-5 border-e border-slate-700 w-16">م</th>
+                  <th className="p-5 border-e border-slate-700 w-12 text-center"><CheckSquare size={18} className="mx-auto" /></th>
+                  <th className="p-5 border-e border-slate-700 w-80 text-right">المهمة</th>
+                  <th className="p-5 border-e border-slate-700 w-32">الدرجة القصوى</th>
+                  <th className="p-5 border-e border-slate-700 w-24">الدرجة</th>
+                  <th className="p-5 border-e border-slate-700 w-32">حالة التنفيذ</th>
+                  <th className="p-5 border-e border-slate-700 w-56 text-right">سبب عدم التنفيذ</th>
+                  <th className="p-5 w-40 text-right">ملاحظات</th>
+                </tr>
+                <tr className="bg-slate-100 border-b-2 border-slate-200">
+                  <td className="p-2 border-e border-slate-200"></td>
+                  <td className="p-2 border-e border-slate-200"></td>
+                  <td className="p-2 border-e border-slate-200 font-black text-[10px] text-slate-500">تعبئة تلقائية للكل ⬅️</td>
+                  <td className="p-2 border-e border-slate-200">
+                    <div className="flex gap-1 justify-center">
+                      <input type="number" defaultValue="2" className="w-12 p-1 border rounded text-center text-xs font-black bulk-max-degree" />
+                      <button onClick={() => {
+                        const val = Number((document.querySelector('.bulk-max-degree') as HTMLInputElement)?.value || 2);
+                        applyBulkValue('maxDegree', val);
+                      }} title="تطبيق على الكل" className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-all"><Zap size={14} /></button>
+                    </div>
+                  </td>
+                  <td className="p-2 border-e border-slate-200">
+                    <div className="flex gap-1 justify-center">
+                      <input type="number" defaultValue="2" className="w-12 p-1 border rounded text-center text-xs font-black bulk-degree-val" />
+                      <button onClick={() => {
+                        const val = Number((document.querySelector('.bulk-degree-val') as HTMLInputElement)?.value || 2);
+                        applyBulkValue('degree', val);
+                      }} title="تطبيق على الكل" className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-all"><Zap size={14} /></button>
+                    </div>
+                  </td>
+                  <td className="p-2 border-e border-slate-200 px-4 text-center">
+                    <button onClick={cycleBulkStatus} className="w-full py-1.5 bg-slate-800 text-white rounded-lg font-black text-[10px] hover:bg-black transition-all flex items-center justify-center gap-2">
+                      <RefreshCw size={12} /> تغيير الكل
+                    </button>
+                  </td>
+                  <td className="p-2 border-e border-slate-200 px-4">
+                    <select
+                      className="w-full p-1 border rounded text-[10px] font-black"
+                      onChange={e => applyBulkValue('failReason', e.target.value)}
+                    >
+                      <option value="">اختر للكل...</option>
+                      {reasonsList.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </td>
+                  <td className="p-2 text-center bg-slate-50/50">
+                    <button onClick={() => setShowBulkNotePopup(true)} className="w-[80%] py-1.5 bg-blue-100 text-blue-700 rounded-lg font-black text-[10px] hover:bg-blue-600 hover:text-white transition-all mx-auto flex items-center justify-center gap-2">
+                      <PencilLine size={12} /> ملاحظة للكل
+                    </button>
+                  </td>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {activeTaskReport.tasks.map((task, idx) => (
+                  <tr key={task.id} className={`hover:bg-slate-50 transition-colors h-16 ${task.status === 'done' ? 'bg-emerald-50/20' : task.status === 'failed' ? 'bg-red-50/20' : ''}`}>
+                    <td className="font-black text-slate-400 border-e">{idx + 1}</td>
+                    <td className="border-e">
+                      <input type="checkbox" className="w-5 h-5 rounded accent-blue-600" />
+                    </td>
+                    <td className="text-right px-6 font-black text-slate-700 border-e text-xs leading-relaxed">{task.taskText}</td>
+                    <td className="border-e text-center">
+                      <input
+                        type="number"
+                        className="w-16 p-2 bg-slate-50 border rounded-lg text-center font-black text-xs"
+                        value={task.maxDegree}
+                        onChange={e => updateTaskRecord(task.id, 'maxDegree', Number(e.target.value))}
+                      />
+                    </td>
+                    <td className="border-e text-center">
+                      <input
+                        type="number"
+                        className="w-16 p-2 bg-white border-2 border-blue-100 rounded-lg text-center font-black text-xs text-blue-600 focus:border-blue-500 outline-none"
+                        value={task.degree}
+                        max={task.maxDegree}
+                        onChange={e => updateTaskRecord(task.id, 'degree', Number(e.target.value))}
+                      />
+                    </td>
+                    <td className="border-e p-2">
+                      <button
+                        onClick={() => toggleStatus(task.id)}
+                        className={`w-full py-2.5 rounded-xl font-black text-[10px] shadow-sm transition-all active:scale-95 ${task.status === 'done' ? 'bg-emerald-600 text-white' :
+                          task.status === 'failed' ? 'bg-red-600 text-white' :
+                            'bg-amber-500 text-white'
+                          }`}
+                      >
+                        {task.status === 'done' ? 'تم التنفيذ' : task.status === 'failed' ? 'لم يتم التنفيذ' : 'قيد التنفيذ'}
+                      </button>
+                    </td>
+                    <td className="border-e p-2 text-right">
+                      <div className="space-y-1.5 px-2">
+                        <select
+                          className="w-full p-2 bg-slate-50 border rounded-lg text-[10px] font-bold outline-none focus:border-blue-400"
+                          value={task.failReason}
+                          onChange={e => updateTaskRecord(task.id, 'failReason', e.target.value)}
+                        >
+                          <option value="">اختر السبب...</option>
+                          {reasonsList.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                        {task.failReason === 'أخرى' && (
+                          <input
+                            className="w-full p-2 border rounded-lg text-[10px] font-bold outline-none animate-in slide-in-from-top-1 px-1"
+                            placeholder="اكتب السبب المخصص..."
+                            value={task.failOtherReason || ''}
+                            onChange={e => updateTaskRecord(task.id, 'failOtherReason', e.target.value)}
+                          />
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-2 text-right">
+                      <textarea
+                        className="w-full p-2 bg-slate-50 border rounded-lg text-[10px] font-bold outline-none focus:bg-white focus:border-blue-300 min-h-[40px] resize-none"
+                        placeholder="..."
+                        value={task.notes}
+                        onChange={e => updateTaskRecord(task.id, 'notes', e.target.value)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-slate-900 text-white font-black">
+                  <td colSpan={3} className="p-5 text-right text-lg border-e border-slate-700">المجموع الكلي والنسبة المئوية للمهام</td>
+                  <td className="p-5 border-e border-slate-700 text-xl">{totalMax}</td>
+                  <td className="p-5 border-e border-slate-700 text-xl text-emerald-400">{totalDegree}</td>
+                  <td className="p-5 border-e border-slate-700 text-xl" colSpan={2}>
+                    <div className="flex items-center justify-center gap-3">
+                      <span className="text-slate-400 text-sm">الإحصائية:</span>
+                      <span className="text-blue-400">{percentage}%</span>
+                    </div>
+                  </td>
+                  <td className="p-5"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {showBulkNotePopup && (
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[210] flex items-center justify-center p-4 animate-in fade-in duration-300">
+              <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl p-8 border-4 border-blue-500 animate-in zoom-in-95 duration-200">
+                <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                  <PencilLine className="text-blue-500" /> كتابة ملاحظة للجميع
+                </h3>
+                <textarea
+                  className="w-full p-4 border-2 rounded-2xl outline-none font-bold text-sm bg-slate-50 focus:border-blue-500 min-h-[120px] shadow-inner mb-6"
+                  placeholder="العبارة التي ستظهر في جميع الحقول..."
+                  value={bulkNoteValue}
+                  onChange={e => setBulkNoteValue(e.target.value)}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => { applyBulkValue('notes', bulkNoteValue); setShowBulkNotePopup(false); setBulkNoteValue(''); }} className="bg-blue-600 text-white p-4 rounded-xl font-black hover:bg-blue-700 transition-all shadow-md">تم</button>
+                  <button onClick={() => { setShowBulkNotePopup(false); setBulkNoteValue(''); }} className="bg-slate-100 text-slate-500 p-4 rounded-xl font-black hover:bg-slate-200 transition-all">إلغاء</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 md:p-8 rounded-[2.5rem] border shadow-xl gap-6">
+          <div className="flex-1 w-full space-y-4">
+            <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3"><Briefcase className="text-blue-600" /> إدارة المهام</h3>
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 bg-slate-50 px-5 py-3 rounded-2xl border cursor-pointer hover:bg-white transition-all">
+                <input type="checkbox" className="w-4 h-4 rounded accent-blue-600" checked={selectedTaskCategories.includes('daily')} onChange={e => e.target.checked ? setSelectedTaskCategories([...selectedTaskCategories, 'daily']) : setSelectedTaskCategories(selectedTaskCategories.filter(c => c !== 'daily'))} />
+                <span className="text-xs font-black text-slate-600">المهام اليومية</span>
+              </label>
+              <label className="flex items-center gap-2 bg-slate-50 px-5 py-3 rounded-2xl border cursor-pointer hover:bg-white transition-all">
+                <input type="checkbox" className="w-4 h-4 rounded accent-blue-600" checked={selectedTaskCategories.includes('weekly')} onChange={e => e.target.checked ? setSelectedTaskCategories([...selectedTaskCategories, 'weekly']) : setSelectedTaskCategories(selectedTaskCategories.filter(c => c !== 'weekly'))} />
+                <span className="text-xs font-black text-slate-600">المهام الأسبوعية</span>
+              </label>
+              <label className="flex items-center gap-2 bg-slate-50 px-5 py-3 rounded-2xl border cursor-pointer hover:bg-white transition-all">
+                <input type="checkbox" className="w-4 h-4 rounded accent-blue-600" checked={selectedTaskCategories.includes('monthly')} onChange={e => e.target.checked ? setSelectedTaskCategories([...selectedTaskCategories, 'monthly']) : setSelectedTaskCategories(selectedTaskCategories.filter(c => c !== 'monthly'))} />
+                <span className="text-xs font-black text-slate-600">المهام الشهرية</span>
+              </label>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3 w-full md:w-auto">
+            <button onClick={generateTaskTable} className="flex-1 bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-sm hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95">
+              <Zap size={18} /> جدول المهام
+            </button>
+            <button onClick={() => setShowPreviousTaskReports(true)} className="flex-1 bg-slate-800 text-white px-8 py-4 rounded-2xl font-black text-sm hover:bg-black transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95">
+              <History size={18} /> تقارير المهام السابقة
+            </button>
+            <button onClick={resetTasksToDefaults} title="استعادة المهام الافتراضية" className="p-4 bg-red-50 text-red-600 border-2 border-red-100 hover:bg-red-600 hover:text-white rounded-2xl transition-all shadow-sm flex items-center justify-center">
+              <RefreshCw size={20} />
+            </button>
+            <button onClick={() => setActiveSubTab(null)} className="p-4 bg-white border-2 hover:bg-slate-50 rounded-2xl transition-all shadow-sm flex items-center justify-center"><X size={20} /></button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {renderCategoryBox('المهام اليومية', 'daily', dailyTemplates)}
+          {renderCategoryBox('المهام الأسبوعية', 'weekly', weeklyTemplates)}
+          {renderCategoryBox('المهام الشهرية', 'monthly', monthlyTemplates)}
+        </div>
+
+        {activeCategoryForAdd && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-300">
+            <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl p-8 border-4 border-emerald-500 animate-in zoom-in-95 duration-200">
+              <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                <Plus className="text-emerald-500" /> إضافة عنصر جديد
+              </h3>
+              <textarea
+                autoFocus
+                className="w-full p-4 border-2 rounded-2xl outline-none font-bold text-sm bg-slate-50 focus:border-emerald-500 min-h-[120px] shadow-inner mb-6"
+                placeholder="اكتب المهمة هنا..."
+                value={customTaskInput}
+                onChange={e => setCustomTaskInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleAddTaskTemplate(activeCategoryForAdd))}
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => handleAddTaskTemplate(activeCategoryForAdd)} className="bg-emerald-600 text-white p-4 rounded-xl font-black hover:bg-emerald-700 transition-all shadow-md active:scale-95">إضافة</button>
+                <button onClick={() => { setActiveCategoryForAdd(null); setCustomTaskInput(''); }} className="bg-slate-100 text-slate-500 p-4 rounded-xl font-black hover:bg-slate-200 transition-all">إلغاء</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderSubModuleContent = () => {
     switch (activeSubTab) {
+      case 'المهام': return renderTasksModule();
       case 'الغياب اليومي': return renderAbsenceModule();
       case 'التأخر': return renderLatenessModule();
       case 'المخالفات الطلابية': return renderViolationModule();

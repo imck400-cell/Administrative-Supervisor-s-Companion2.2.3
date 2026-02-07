@@ -242,6 +242,34 @@ export interface GenericSpecialReport {
   date: string;
 }
 
+export type ExecutionStatus = 'pending' | 'done' | 'failed';
+
+export interface TaskItem {
+  id: string;
+  category: 'daily' | 'weekly' | 'monthly';
+  text: string;
+}
+
+export interface TaskRecord {
+  id: string;
+  taskText: string;
+  degree: number;
+  maxDegree: number;
+  status: ExecutionStatus;
+  failReason: string;
+  failOtherReason?: string;
+  notes: string;
+}
+
+export interface TaskReport {
+  id: string;
+  dateStr: string;
+  dateHijri: string;
+  dayName: string;
+  selectedCategories: ('daily' | 'weekly' | 'monthly')[];
+  tasks: TaskRecord[];
+}
+
 export interface AppData {
   profile: SchoolProfile;
   substitutions: SubstitutionEntry[];
@@ -273,4 +301,6 @@ export interface AppData {
   };
   absenceManualAdditions?: Record<string, string[]>;
   absenceExclusions?: Record<string, string[]>;
+  taskTemplates?: TaskItem[];
+  taskReports?: TaskReport[];
 }

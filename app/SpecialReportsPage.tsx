@@ -236,8 +236,12 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
 
   // Exam Record Specific States
   const [examStage, setExamStage] = useState<'basic' | 'secondary'>('basic');
+  const [examModalDate, setExamModalDate] = useState(today);
+  const [examModalSemester, setExamModalSemester] = useState<'الأول' | 'الثاني'>('الأول');
+  const [currentExamMonthTerm, setCurrentExamMonthTerm] = useState('الأول');
   const [examFilters, setExamFilters] = useState({
     semester: '',
+    month: '',
     dateStart: '',
     dateEnd: '',
     studentName: '',
@@ -339,6 +343,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       if (examFilters.semester && log.semester !== examFilters.semester) return false;
       if (examFilters.dateStart && log.date < examFilters.dateStart) return false;
       if (examFilters.dateEnd && log.date > examFilters.dateEnd) return false;
+      if (examFilters.month && log.month !== examFilters.month) return false;
       if (examFilters.studentName && !log.studentName.includes(examFilters.studentName)) return false;
 
       if (examFilters.subject || examFilters.status || examFilters.grade || examFilters.section) {
@@ -355,6 +360,8 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
 
     const handleAddExamRow = () => {
       setAbsentEntries([{ name: '', subject: '' }]);
+      setExamModalDate(today);
+      setExamModalSemester(examFilters.semester as any || 'الأول');
       setIsAddAbsentModalOpen(true);
     };
 
@@ -376,8 +383,9 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
             id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
             studentId: s?.id || '',
             studentName: entry.name,
-            date: today,
-            semester: 'الأول',
+            date: examModalDate,
+            semester: examModalSemester,
+            month: currentExamMonthTerm,
             stage: examStage,
             type: activeSubTab === 'الاختبار الشهري' ? 'monthly' : 'final',
             subjectsData
@@ -478,6 +486,20 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
           <div className="flex flex-wrap gap-3">
             <button onClick={() => setExamStage('basic')} className={`px-8 py-3 rounded-2xl font-black text-sm transition-all shadow-md ${examStage === 'basic' ? 'bg-[#7030A0] text-white' : 'bg-white text-[#7030A0] border border-[#7030A0]'}`}>أساسي</button>
             <button onClick={() => setExamStage('secondary')} className={`px-8 py-3 rounded-2xl font-black text-sm transition-all shadow-md ${examStage === 'secondary' ? 'bg-[#7030A0] text-white' : 'bg-white text-[#7030A0] border border-[#7030A0]'}`}>ثانوي</button>
+            <div className="flex items-center bg-white border border-[#7030A0] rounded-2xl overflow-hidden shadow-md">
+              <span className="px-4 text-[10px] font-black text-[#7030A0] border-e">{activeSubTab === 'الاختبار الشهري' ? 'الشهر' : 'الفصل'}</span>
+              <select
+                className="p-3 outline-none font-black text-xs bg-transparent text-blue-600"
+                value={currentExamMonthTerm}
+                onChange={(e) => setCurrentExamMonthTerm(e.target.value)}
+              >
+                {activeSubTab === 'الاختبار الشهري' ? (
+                  ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'].map(m => <option key={m} value={m}>{m}</option>)
+                ) : (
+                  ['الأول', 'الثاني'].map(t => <option key={t} value={t}>{t}</option>)
+                )}
+              </select>
+            </div>
             <button onClick={handleAddExamRow} className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-sm hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg"><Plus size={18} /> إضافة غائب</button>
             <button onClick={() => setActiveSubTab(null)} className="flex items-center gap-2 bg-slate-800 text-white px-8 py-3 rounded-2xl font-black text-sm hover:bg-black transition-all shadow-md">
               <FileSearch size={18} /> التقارير الخاصة
@@ -496,6 +518,28 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
               <div className="p-6 bg-blue-600 text-white flex justify-between items-center shadow-lg">
                 <h3 className="text-2xl font-black flex items-center gap-3"><Plus size={28} /> إضافة أسماء الغائبين</h3>
                 <button onClick={() => setIsAddAbsentModalOpen(false)} className="hover:bg-blue-700 p-2 rounded-full transition-colors"><X size={24} /></button>
+              </div>
+              <div className="bg-blue-50 p-6 border-b-2 border-blue-100 grid grid-cols-2 gap-6">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-blue-600 mr-2 block">تاريخ الغياب الجماعي</label>
+                  <input
+                    type="date"
+                    className="w-full p-3 rounded-xl border-2 border-white focus:border-blue-400 outline-none font-black text-sm"
+                    value={examModalDate}
+                    onChange={(e) => setExamModalDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-blue-600 mr-2 block">الفصل الدراسي</label>
+                  <select
+                    className="w-full p-3 rounded-xl border-2 border-white focus:border-blue-400 outline-none font-black text-sm bg-white"
+                    value={examModalSemester}
+                    onChange={(e) => setExamModalSemester(e.target.value as any)}
+                  >
+                    <option value="الأول">الفصل الدراسي الأول</option>
+                    <option value="الثاني">الفصل الدراسي الثاني</option>
+                  </select>
+                </div>
               </div>
               <div className="flex-1 overflow-y-auto p-8 space-y-4">
                 {absentEntries.map((entry, idx) => (
@@ -578,6 +622,17 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                 <option value="">الكل</option><option value="الأول">الأول</option><option value="الثاني">الثاني</option>
               </select>
             </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 mr-2">{activeSubTab === 'الاختبار الشهري' ? 'الشهر' : 'الفصل'}</label>
+              <select className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-black" value={examFilters.month} onChange={e => setExamFilters({ ...examFilters, month: e.target.value })}>
+                <option value="">الكل</option>
+                {activeSubTab === 'الاختبار الشهري' ? (
+                  ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'].map(m => <option key={m} value={m}>{m}</option>)
+                ) : (
+                  ['الأول', 'الثاني'].map(t => <option key={t} value={t}>{t}</option>)
+                )}
+              </select>
+            </div>
             <div className="space-y-1 md:col-span-2">
               <label className="text-[10px] font-black text-slate-400 mr-2">نطاق التاريخ</label>
               <div className="flex gap-2 items-center bg-slate-50 p-1 rounded-xl border">
@@ -605,7 +660,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
             <div className="flex gap-2">
               <button title="واتساب" onClick={handleExportWA} className="p-3 bg-green-600 text-white rounded-xl shadow-md hover:bg-green-700 active:scale-95 transition-all flex-1 flex justify-center"><Share2 size={20} /></button>
               <button title="إكسل" onClick={handleExportExcel} className="p-3 bg-green-700 text-white rounded-xl shadow-md hover:bg-green-800 active:scale-95 transition-all flex-1 flex justify-center"><FileSpreadsheet size={20} /></button>
-              <button title="مسح الفلاتر" onClick={() => setExamFilters({ semester: '', dateStart: '', dateEnd: '', studentName: '', grade: '', section: '', subject: '', score: '', status: '' })} className="p-3 bg-slate-100 text-slate-400 rounded-xl hover:bg-slate-200 transition-all"><RefreshCw size={20} /></button>
+              <button title="مسح الفلاتر" onClick={() => setExamFilters({ semester: '', month: '', dateStart: '', dateEnd: '', studentName: '', grade: '', section: '', subject: '', score: '', status: '' })} className="p-3 bg-slate-100 text-slate-400 rounded-xl hover:bg-slate-200 transition-all"><RefreshCw size={20} /></button>
             </div>
           </div>
         </div>
@@ -648,7 +703,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                     </td>
                     {currentSubjects.map(subj => (
                       <React.Fragment key={subj}>
-                        <td className="border-e border-[#7030A0]/20 p-1">
+                        <td className={`border-e border-[#7030A0]/20 p-1 transition-colors ${log.subjectsData[subj]?.status === 'not_tested' ? 'bg-amber-50' : ''}`}>
                           <input className="w-full p-1 text-center text-[11px] font-bold outline-none bg-transparent focus:bg-white rounded" value={log.subjectsData[subj]?.class} onChange={e => updateSubjectData(log.id, subj, 'class', e.target.value)} placeholder="مثال: 9-أ" />
                         </td>
                         <td className="border-e-2 border-[#7030A0] p-1 relative">

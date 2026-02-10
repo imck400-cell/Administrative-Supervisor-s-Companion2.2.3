@@ -67,18 +67,11 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
       case 'teachers':
         return [
           { id: 'all', label: 'الكل', icon: <Users size={12} /> },
-          { id: 'attendance', label: 'الحضور', icon: <Clock size={12} /> },
-          { id: 'appearance', label: 'المظهر الشخصي', icon: <User size={12} /> },
-          { id: 'preparation', label: 'التحضير', icon: <CheckCircle2 size={12} /> },
-          { id: 'supervision_queue', label: 'طابور الصباح', icon: <UserCheck size={12} /> },
-          { id: 'supervision_rest', label: 'إشراف الراحة', icon: <UserCheck size={12} /> },
-          { id: 'supervision_end', label: 'إشراف نهاية الدوام', icon: <UserCheck size={12} /> },
-          { id: 'correction_books', label: 'تصحيح الكتب', icon: <BookOpen size={12} /> },
-          { id: 'correction_notebooks', label: 'تصحيح الدفاتر', icon: <BookOpen size={12} /> },
-          { id: 'correction_followup', label: 'تصحيح المتابعة', icon: <ClipboardCheck size={12} /> },
-          { id: 'teaching_aids', label: 'وسيلة تعلمية', icon: <Sparkles size={12} /> },
-          { id: 'extra_activities', label: 'أنشطة لا صفية', icon: <Activity size={12} /> },
-          { id: 'violations_score', label: 'المخالفات', icon: <AlertCircle size={12} /> },
+          ...(data.metricsList || []).map(m => ({
+            id: m.key,
+            label: m.label,
+            icon: <Activity size={12} /> // Default icon for dynamic metrics
+          }))
         ];
       case 'special_reports':
         return [

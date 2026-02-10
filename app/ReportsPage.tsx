@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, memo } from 'react';
 import { useGlobal } from '../context/GlobalState';
 import {
-  Plus, Search, Trash2, Filter, ChevronDown, Check, Calendar, Percent, User, Users, Target, Settings2, AlertCircle, X, ChevronRight, Zap, CheckCircle, FilePlus, FolderOpen, Save, ListOrdered, ArrowUpDown, ArrowUp, ArrowDown, SortAsc, Book, School, Type, Sparkles, FilterIcon, BarChart3, LayoutList, Upload, Download, Phone, UserCircle, Activity, Star, FileText, FileSpreadsheet, Share2, Edit, ChevronLeft, UserCheck, GraduationCap, MessageCircle
+  Plus, Search, Trash2, Filter, ChevronDown, ChevronUp, Palette, Check, Calendar, Percent, User, Users, Target, Settings2, AlertCircle, X, ChevronRight, Zap, CheckCircle, FilePlus, FolderOpen, Save, ListOrdered, ArrowUpDown, ArrowUp, ArrowDown, SortAsc, Book, School, Type, Sparkles, FilterIcon, BarChart3, LayoutList, Upload, Download, Phone, UserCircle, Activity, Star, FileText, FileSpreadsheet, Share2, Edit, ChevronLeft, UserCheck, GraduationCap, MessageCircle
 } from 'lucide-react';
 import { TeacherFollowUp, DailyReportContainer, StudentReport } from '../types';
 import DynamicTable from '../components/DynamicTable';
@@ -89,23 +89,23 @@ export const DailyReportsPage: React.FC = () => {
     return list;
   }, [currentReport, sortConfig, filterMode, activeTeacherFilter]);
 
-  const metricsConfig = [
-    { key: 'attendance', label: 'الحضور اليومي', max: data.maxGrades.attendance || 5 },
-    { key: 'appearance', label: 'المظهر الشخصي', max: data.maxGrades.appearance || 5 },
-    { key: 'preparation', label: 'اكتمال التحضير', max: data.maxGrades.preparation || 10 },
-    { key: 'supervision_queue', label: 'إشراف الطابور', max: data.maxGrades.supervision_queue || 5 },
-    { key: 'supervision_rest', label: 'إشراف الراحة', max: data.maxGrades.supervision_rest || 5 },
-    { key: 'supervision_end', label: 'إشراف نهاية الدوام', max: data.maxGrades.supervision_end || 5 },
-    { key: 'correction_books', label: 'تصحيح الكتب', max: data.maxGrades.correction_books || 10 },
-    { key: 'correction_notebooks', label: 'تصحيح الدفاتر', max: data.maxGrades.correction_notebooks || 10 },
-    { key: 'correction_followup', label: 'تصحيح المتابعة', max: data.maxGrades.correction_followup || 10 },
-    { key: 'teaching_aids', label: 'توفر وسيلة تعلمية', max: data.maxGrades.teaching_aids || 10 },
-    { key: 'extra_activities', label: 'أنشطة لا صفية', max: data.maxGrades.extra_activities || 10 },
-    { key: 'radio', label: 'إقامة إذاعة', max: data.maxGrades.radio || 5 },
-    { key: 'creativity', label: 'إبداع', max: data.maxGrades.creativity || 5 },
-    { key: 'zero_period', label: 'إقامة حصة صفرية', max: data.maxGrades.zero_period || 5 },
-    { key: 'violations_score', label: 'المخالفات', max: 0 }, // Added for Report selectability
-  ];
+  const metricsList = data.metricsList || [];
+
+  const metricsConfig = useMemo(() => metricsList.map(m => ({
+    key: m.key,
+    label: m.label,
+    color: m.color,
+    max: data.maxGrades?.[m.key] || m.max || 0
+  })), [metricsList, data.maxGrades]);
+
+  const getTextColor = (hexColor?: string) => {
+    if (!hexColor || !hexColor.startsWith('#')) return 'text-slate-800';
+    const r = parseInt(hexColor.slice(1, 3), 16);
+    const g = parseInt(hexColor.slice(3, 5), 16);
+    const b = parseInt(hexColor.slice(5, 7), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 155 ? 'text-slate-800' : 'text-white';
+  };
 
   const subjects = ["مربية", "القرآن الكريم", "التربية الإسلامية", "اللغة العربية", "اللغة الإنجليزية", "الرياضيات", "العلوم", "الكيمياء", "الفيزياء", "الأحياء", "الاجتماعيات", "الحاسوب", "المكتبة", "الفنية", "المختص الاجتماعي", "الأنشطة", "غيرها"];
   const grades = ["تمهيدي", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
@@ -115,11 +115,15 @@ export const DailyReportsPage: React.FC = () => {
     ? metricsConfig.filter(m => selectedMetrics.includes(m.key))
     : metricsConfig;
 
-  const getMetricColor = (key: string) => {
-    if (key === 'attendance' || key === 'appearance') return 'bg-[#E2EFDA]';
-    if (key === 'preparation') return 'bg-white';
-    if (key.startsWith('supervision')) return 'bg-[#FCE4D6]';
-    return 'bg-[#DDEBF7]';
+  const getMetricStyle = (metric: any) => {
+    if (metric.color && metric.color.startsWith('#')) {
+      return { backgroundColor: metric.color };
+    }
+    const key = metric.key;
+    if (key === 'attendance' || key === 'appearance') return { backgroundColor: '#E2EFDA' };
+    if (key === 'preparation') return { backgroundColor: '#ffffff' };
+    if (key.startsWith('supervision')) return { backgroundColor: '#FCE4D6' };
+    return { backgroundColor: '#DDEBF7' };
   };
 
   const handleCreateReport = () => {
@@ -149,13 +153,14 @@ export const DailyReportsPage: React.FC = () => {
 
   const addNewTeacher = () => {
     if (!activeReportId) return;
-    const newTeacher: TeacherFollowUp = {
+    const newTeacher: any = {
       id: Date.now().toString(), teacherName: '', subjectCode: '', className: '',
-      attendance: 0, appearance: 0, preparation: 0, supervision_queue: 0, supervision_rest: 0, supervision_end: 0,
-      correction_books: 0, correction_notebooks: 0, correction_followup: 0, teaching_aids: 0, extra_activities: 0,
-      radio: 0, creativity: 0, zero_period: 0, violations_score: 0, violations_notes: [], order: teachers.length + 1,
+      violations_notes: [], order: teachers.length + 1,
       gender: 'ذكر'
     };
+    metricsList.forEach(m => {
+      newTeacher[m.key] = 0;
+    });
 
     const updatedReports = reports.map(r => r.id === activeReportId ? { ...r, teachersData: [...r.teachersData, newTeacher] } : r);
     updateData({ dailyReports: updatedReports });
@@ -409,28 +414,20 @@ export const DailyReportsPage: React.FC = () => {
     );
   };
 
-  const fieldsConfig = [
+  const fieldsConfig = useMemo(() => [
     { key: 'teacherName', label: 'اسم المعلم', emoji: '👤', color: 'bg-blue-600' },
     { key: 'subjectCode', label: 'المادة', emoji: '📚', color: 'bg-indigo-600' },
     { key: 'className', label: 'الصف', emoji: '🎓', color: 'bg-purple-600' },
     { key: 'gender', label: 'النوع', emoji: '🚻', color: 'bg-pink-600' },
-    { key: 'attendance', label: 'الحضور اليومي', emoji: '📅', color: 'bg-green-600' },
-    { key: 'appearance', label: 'المظهر الشخصي', emoji: '👔', color: 'bg-emerald-600' },
-    { key: 'preparation', label: 'اكتمال التحضير', emoji: '📝', color: 'bg-teal-600' },
-    { key: 'supervision_queue', label: 'إشراف الطابور', emoji: '🚶', color: 'bg-orange-600' },
-    { key: 'supervision_rest', label: 'إشراف الراحة', emoji: '☕', color: 'bg-orange-500' },
-    { key: 'supervision_end', label: 'إشراف نهاية الدوام', emoji: '🔚', color: 'bg-orange-400' },
-    { key: 'correction_books', label: 'تصحيح الكتب', emoji: '📖', color: 'bg-cyan-600' },
-    { key: 'correction_notebooks', label: 'تصحيح الدفاتر', emoji: '📒', color: 'bg-cyan-500' },
-    { key: 'correction_followup', label: 'تصحيح المتابعة', emoji: '📋', color: 'bg-cyan-400' },
-    { key: 'teaching_aids', label: 'توفر وسيلة تعلمية', emoji: '💡', color: 'bg-yellow-600' },
-    { key: 'extra_activities', label: 'أنشطة لا صفية', emoji: '⚽', color: 'bg-lime-600' },
-    { key: 'radio', label: 'إقامة إذاعة', emoji: '🎙️', color: 'bg-red-600' },
-    { key: 'zero_period', label: 'إقامة حصة صفرية', emoji: '0️⃣', color: 'bg-slate-600' },
-    { key: 'violations_score', label: 'المخالفات', emoji: '⚠️', color: 'bg-red-700' },
+    ...metricsList.map(m => ({
+      key: m.key,
+      label: m.label,
+      emoji: m.emoji || '🎯',
+      color: m.color || 'bg-slate-600'
+    })),
     { key: 'total', label: 'المجموع', emoji: '∑', color: 'bg-black' },
     { key: 'percent', label: 'النسبة', emoji: '📊', color: 'bg-blue-800' },
-  ];
+  ], [metricsList]);
 
   const handleTeacherReportSave = () => {
     // Data is already bound to main state via updateTeacher, so just close
@@ -598,30 +595,22 @@ export const DailyReportsPage: React.FC = () => {
       const existingNames = new Set(teachers.map(t => t.teacherName.trim()));
       const newTeachers: TeacherFollowUp[] = teacherNames
         .filter(name => !existingNames.has(name))
-        .map((name, idx) => ({
-          id: `${Date.now()}-${idx}`,
-          teacherName: name,
-          subjectCode: teacherProfiles[name]?.subject || '',
-          className: teacherProfiles[name]?.class || '',
-          attendance: 0,
-          appearance: 0,
-          preparation: 0,
-          supervision_queue: 0,
-          supervision_rest: 0,
-          supervision_end: 0,
-          correction_books: 0,
-          correction_notebooks: 0,
-          correction_followup: 0,
-          teaching_aids: 0,
-          extra_activities: 0,
-          radio: 0,
-          creativity: 0,
-          zero_period: 0,
-          violations_score: 0,
-          violations_notes: [],
-          order: teachers.length + idx + 1,
-          gender: 'ذكر'
-        }));
+        .map((name, idx) => {
+          const t: any = {
+            id: `${Date.now()}-${idx}`,
+            teacherName: name,
+            subjectCode: teacherProfiles[name]?.subject || '',
+            className: teacherProfiles[name]?.class || '',
+            violations_notes: [],
+            order: teachers.length + idx + 1,
+            gender: 'ذكر'
+          };
+          // Initialize all metrics from the list to 0
+          metricsList.forEach(m => {
+            t[m.key] = 0;
+          });
+          return t as TeacherFollowUp;
+        });
 
       if (newTeachers.length === 0) {
         alert('جميع الأسماء موجودة بالفعل في الجدول');
@@ -664,6 +653,7 @@ export const DailyReportsPage: React.FC = () => {
           <button onClick={addNewTeacher} className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-xl font-bold border border-purple-200 hover:bg-purple-100 transition-all text-xs sm:text-sm"><UserCircle size={16} /> إضافة معلم</button>
           <button onClick={() => setShowImportModal(true)} className="flex items-center gap-2 bg-orange-50 text-orange-700 px-4 py-2 rounded-xl font-bold border border-orange-200 hover:bg-orange-100 transition-all text-xs sm:text-sm"><Upload size={16} /> استيراد أسماء المعلمين</button>
           <button onClick={() => setShowTeacherReport(true)} className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-xl font-bold border border-green-200 hover:bg-green-100 transition-all text-xs sm:text-sm"><FileText size={16} /> تقرير معلم</button>
+          <button onClick={() => setShowMetricPicker(true)} className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-xl font-bold border border-blue-200 hover:bg-blue-100 transition-all text-xs sm:text-sm"><Settings2 size={16} /> تخصيص المجالات</button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -671,9 +661,6 @@ export const DailyReportsPage: React.FC = () => {
             <button onClick={() => setFilterMode(prev => prev === 'all' ? 'metric' : 'all')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold border transition-all text-xs sm:text-sm ${filterMode === 'metric' ? 'bg-orange-100 text-orange-600 border-orange-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
               <Filter size={16} /> {filterMode === 'metric' ? 'عرض مخصص' : 'عرض الجميع'}
             </button>
-            {filterMode === 'metric' && (
-              <button onClick={() => setShowMetricPicker(true)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 w-5 h-5 flex items-center justify-center text-[10px]"><Settings2 size={10} /></button>
-            )}
           </div>
 
           <button onClick={() => setShowSortModal(true)} className="p-2.5 bg-slate-50 text-slate-600 rounded-xl border border-slate-200 hover:bg-white"><ListOrdered size={18} /></button>
@@ -754,9 +741,9 @@ export const DailyReportsPage: React.FC = () => {
               </tr>
               <tr className="text-[10px] sticky top-[45px] z-10 bg-slate-50">
                 {displayedMetrics.filter(m => m.key !== 'violations_score').map(m => (
-                  <th key={m.key} className={`p-1 border-e border-slate-300 min-w-[70px] align-bottom ${getMetricColor(m.key)}`}>
+                  <th key={m.key} className={`p-1 border-e border-slate-300 min-w-[70px] align-bottom transition-colors`} style={getMetricStyle(m)}>
                     <div className="flex flex-col items-center justify-center gap-0 h-full w-full">
-                      <div className="vertical-text font-bold text-slate-800 h-14 text-[10px]">{m.label}</div>
+                      <div className={`vertical-text font-bold h-14 text-[10px] ${getTextColor(m.color)}`}>{m.label}</div>
 
                       {/* Accreditation Toggle logic in Header */}
                       <div className="flex flex-col items-center gap-0.5 h-6 justify-center">
@@ -993,14 +980,14 @@ export const DailyReportsPage: React.FC = () => {
                 <tr>
                   <td colSpan={filterMode === 'metric' ? 2 : 5} className="p-2 text-left px-4 border-e">المجموع الكلي</td>
                   {displayedMetrics.map(m => (
-                    <td key={m.key} className="p-2 border-e text-blue-600">
-                      <div className="flex flex-col">
+                    <td key={m.key} className="p-2 border-e transition-colors" style={getMetricStyle(m)}>
+                      <div className={`flex flex-col font-black font-sans ${getTextColor(m.color)}`}>
                         <span>{getColSum(m.key)}</span>
                       </div>
                     </td>
                   ))}
                   <td className="p-2 border-e"></td>
-                  <td className="p-2 border-e text-blue-700">{teachers.reduce((acc, t) => acc + calculateTotal(t), 0)}</td>
+                  <td className="p-2 border-e text-blue-700 font-sans">{teachers.reduce((acc, t) => acc + calculateTotal(t), 0)}</td>
                   <td className="p-2 border-e font-sans">
                     {(() => {
                       const totalSum = teachers.reduce((acc, t) => acc + calculateTotal(t), 0);
@@ -1012,9 +999,9 @@ export const DailyReportsPage: React.FC = () => {
                 <tr>
                   <td colSpan={filterMode === 'metric' ? 2 : 5} className="p-2 text-left px-4 border-e">النسبة العامة</td>
                   {displayedMetrics.map(m => (
-                    <td key={m.key} className="p-2 border-e text-slate-500">
-                      <div className="flex flex-col">
-                        <span className="text-[10px]">{getColPercent(m.key, m.max)}%</span>
+                    <td key={m.key} className="p-2 border-e transition-colors" style={getMetricStyle(m)}>
+                      <div className={`flex flex-col ${getTextColor(m.color)} opacity-80 font-sans`}>
+                        <span className="text-[10px] font-bold">{getColPercent(m.key, m.max)}%</span>
                       </div>
                     </td>
                   ))}
@@ -1080,24 +1067,149 @@ export const DailyReportsPage: React.FC = () => {
         )
       }
 
-      {/* Metric Picker Modal */}
+      {/* Metric Picker Modal (Customization) */}
       {
         showMetricPicker && (
           <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in duration-200">
-              <h3 className="font-bold text-center mb-4">اختر المعايير للعرض</h3>
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                {metricsConfig.map(m => (
-                  <button
-                    key={m.key}
-                    onClick={() => setSelectedMetrics(prev => prev.includes(m.key) ? prev.filter(k => k !== m.key) : [...prev, m.key])}
-                    className={`p-2 rounded-lg text-xs font-bold border ${selectedMetrics.includes(m.key) ? 'bg-blue-500 text-white border-blue-600' : 'bg-slate-50 border-slate-200'}`}
-                  >
-                    {m.label}
-                  </button>
+            <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl animate-in zoom-in duration-200 relative">
+              {/* Close Button */}
+              <button
+                onClick={() => setShowMetricPicker(false)}
+                className="absolute top-4 left-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition-all text-slate-500 hover:text-slate-800"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="flex items-center justify-between mb-4 border-b pb-2">
+                <button
+                  onClick={() => {
+                    const name = prompt(lang === 'ar' ? 'أدخل مسمى المجال الجديد:' : 'Enter new domain name:');
+                    if (name) {
+                      const newKey = `metric_${Date.now()}`;
+                      const newList = [...metricsList, { key: newKey, label: name, emoji: '🎯', max: 10, color: '#DDEBF7' }];
+                      updateData({ metricsList: newList });
+                      setSelectedMetrics(prev => [...prev, newKey]);
+                    }
+                  }}
+                  className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-blue-700 transition-all shadow-sm"
+                >
+                  <Plus size={14} /> إضافة مجال جديد
+                </button>
+                <h3 className="font-bold flex-1 text-center mr-8">تخصيص مجالات التقييم</h3>
+              </div>
+              <p className="text-[10px] text-slate-500 text-center mb-4">يمكنك تغيير مسمى كل مجال، ترتيبه، لونه، أو حذفه</p>
+
+              <div className="max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 space-y-4 mb-4">
+                {metricsConfig.map((m, mIdx) => (
+                  <div key={m.key} className="flex flex-col gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-100 group shadow-sm">
+                    <div className="flex items-center gap-2">
+                      {/* Reordering Controls */}
+                      <div className="flex flex-col gap-0.5">
+                        <button
+                          disabled={mIdx === 0}
+                          onClick={() => {
+                            const newList = [...metricsList];
+                            [newList[mIdx - 1], newList[mIdx]] = [newList[mIdx], newList[mIdx - 1]];
+                            updateData({ metricsList: newList });
+                          }}
+                          className={`p-1 rounded bg-white border border-slate-200 text-slate-400 hover:text-blue-600 transition-colors ${mIdx === 0 ? 'opacity-30' : ''}`}
+                        >
+                          <ChevronUp size={12} />
+                        </button>
+                        <button
+                          disabled={mIdx === metricsConfig.length - 1}
+                          onClick={() => {
+                            const newList = [...metricsList];
+                            [newList[mIdx], newList[mIdx + 1]] = [newList[mIdx + 1], newList[mIdx]];
+                            updateData({ metricsList: newList });
+                          }}
+                          className={`p-1 rounded bg-white border border-slate-200 text-slate-400 hover:text-blue-600 transition-colors ${mIdx === metricsConfig.length - 1 ? 'opacity-30' : ''}`}
+                        >
+                          <ChevronDown size={12} />
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => setSelectedMetrics(prev => prev.includes(m.key) ? prev.filter(k => k !== m.key) : [...prev, m.key])}
+                        className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all ${selectedMetrics.includes(m.key) ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-300 border border-slate-200'}`}
+                      >
+                        <Check size={16} />
+                      </button>
+                      <input
+                        type="text"
+                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-right outline-none focus:border-blue-500 transition-all font-arabic"
+                        value={m.label}
+                        onChange={(e) => {
+                          const newList = metricsList.map(item => item.key === m.key ? { ...item, label: e.target.value } : item);
+                          updateData({ metricsList: newList });
+                        }}
+                        placeholder="مسمى المجال.."
+                      />
+                      <button
+                        onClick={() => {
+                          if (confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذا المجال؟ سيتم حذفه من كافة السجلات.' : 'Are you sure you want to delete this domain? It will be removed from all records.')) {
+                            const newList = metricsList.filter(item => item.key !== m.key);
+                            updateData({ metricsList: newList });
+                            setSelectedMetrics(prev => prev.filter(k => k !== m.key));
+                          }
+                        }}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        title="حذف المجال"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 px-10">
+                      <div className="flex items-center gap-2">
+                        <label className="text-[10px] font-bold text-slate-400">الدرجة:</label>
+                        <input
+                          type="number"
+                          className="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-black text-center outline-none focus:border-blue-500 transition-all"
+                          value={m.max}
+                          onChange={(e) => {
+                            const val = Math.max(1, parseInt(e.target.value) || 0);
+                            const newList = metricsList.map(item => item.key === m.key ? { ...item, max: val } : item);
+                            updateData({ metricsList: newList });
+                          }}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-1">
+                        <label className="text-[10px] font-bold text-slate-400">اللون:</label>
+                        <div className="flex flex-wrap gap-1">
+                          {[
+                            '#E2EFDA', '#FCE4D6', '#DDEBF7', '#FFF2CC', '#E1F5FE', '#F3E5F5', '#E8F5E9', '#FFFDE7', '#F5F5F5', '#EF9A9A'
+                          ].map(color => (
+                            <button
+                              key={color}
+                              onClick={() => {
+                                const newList = metricsList.map(item => item.key === m.key ? { ...item, color: color } : item);
+                                updateData({ metricsList: newList });
+                              }}
+                              className={`w-5 h-5 rounded-full border border-slate-200 transition-all ${metricsList.find(i => i.key === m.key)?.color === color ? 'scale-125 ring-2 ring-blue-400' : 'hover:scale-110'}`}
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                          <div className={`relative w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center overflow-hidden`}>
+                            <input
+                              type="color"
+                              className="absolute inset-0 opacity-0 cursor-pointer scale-150"
+                              value={metricsList.find(i => i.key === m.key)?.color || '#ffffff'}
+                              onChange={(e) => {
+                                const newList = metricsList.map(item => item.key === m.key ? { ...item, color: e.target.value } : item);
+                                updateData({ metricsList: newList });
+                              }}
+                            />
+                            <Palette size={10} className="text-slate-400 pointer-events-none" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
-              <button onClick={() => setShowMetricPicker(false)} className="w-full p-2 bg-slate-800 text-white rounded-xl font-bold">موافق</button>
+              <button onClick={() => setShowMetricPicker(false)} className="w-full p-3 bg-slate-800 text-white rounded-xl font-bold shadow-lg hover:bg-slate-900 transition-all">موافق</button>
             </div>
           </div>
         )

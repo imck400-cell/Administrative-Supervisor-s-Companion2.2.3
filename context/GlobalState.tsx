@@ -29,6 +29,42 @@ const defaultMaxGrades = {
   zero_period: 5
 };
 
+const defaultMetricLabels = {
+  attendance: 'الحضور اليومي',
+  appearance: 'المظهر الشخصي',
+  preparation: 'اكتمال التحضير',
+  supervision_queue: 'إشراف الطابور',
+  supervision_rest: 'إشراف الراحة',
+  supervision_end: 'إشراف نهاية الدوام',
+  correction_notebooks: 'تصحيح الدفاتر',
+  correction_books: 'تصحيح الكتب',
+  correction_followup: 'تصحيح المتابعة',
+  teaching_aids: 'توفر وسيلة تعلمية',
+  extra_activities: 'أنشطة لا صفية',
+  radio: 'إقامة إذاعة',
+  creativity: 'إبداع',
+  zero_period: 'إقامة حصة صفرية',
+  violations_score: 'المخالفات'
+};
+
+const initialMetricsList = [
+  { key: 'attendance', label: 'الحضور اليومي', emoji: '📅', color: 'bg-green-600', max: 5 },
+  { key: 'appearance', label: 'المظهر الشخصي', emoji: '👔', color: 'bg-emerald-600', max: 5 },
+  { key: 'preparation', label: 'اكتمال التحضير', emoji: '📝', color: 'bg-teal-600', max: 10 },
+  { key: 'supervision_queue', label: 'إشراف الطابور', emoji: '🚶', color: 'bg-orange-600', max: 5 },
+  { key: 'supervision_rest', label: 'إشراف الراحة', emoji: '☕', color: 'bg-orange-500', max: 5 },
+  { key: 'supervision_end', label: 'إشراف نهاية الدوام', emoji: '🔚', color: 'bg-orange-400', max: 5 },
+  { key: 'correction_books', label: 'تصحيح الكتب', emoji: '📖', color: 'bg-cyan-600', max: 10 },
+  { key: 'correction_notebooks', label: 'تصحيح الدفاتر', emoji: '📒', color: 'bg-cyan-500', max: 10 },
+  { key: 'correction_followup', label: 'تصحيح المتابعة', emoji: '📋', color: 'bg-cyan-400', max: 10 },
+  { key: 'teaching_aids', label: 'توفر وسيلة تعلمية', emoji: '💡', color: 'bg-yellow-600', max: 10 },
+  { key: 'extra_activities', label: 'أنشطة لا صفية', emoji: '⚽', color: 'bg-lime-600', max: 10 },
+  { key: 'radio', label: 'إقامة إذاعة', emoji: '🎙️', color: 'bg-red-600', max: 5 },
+  { key: 'creativity', label: 'إبداع', emoji: '✨', color: 'bg-amber-600', max: 5 },
+  { key: 'zero_period', label: 'إقامة حصة صفرية', emoji: '0️⃣', color: 'bg-slate-600', max: 5 },
+  { key: 'violations_score', label: 'المخالفات', emoji: '⚠️', color: 'bg-red-700', max: 0 },
+];
+
 export const defaultTaskTemplates: TaskItem[] = [
   // Daily Tasks
   { id: 'd1', category: 'daily', text: 'توثيق المهام اليومية في الأدوات' },
@@ -132,7 +168,9 @@ const defaultData: AppData = {
     achievement: []
   },
   taskTemplates: defaultTaskTemplates,
-  taskReports: []
+  taskReports: [],
+  metricLabels: defaultMetricLabels,
+  metricsList: initialMetricsList
 };
 
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);

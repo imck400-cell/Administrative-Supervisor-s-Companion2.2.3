@@ -38,6 +38,7 @@ export interface ExamLog {
   semester: string;
   stage: 'basic' | 'secondary';
   type: 'monthly' | 'final';
+  month?: string;
   subjectsData: Record<string, { class: string; grade: string; status: 'tested' | 'not_tested' }>;
 }
 
@@ -53,6 +54,14 @@ export interface SubstitutionEntry {
   p1?: string; p2?: string; p3?: string; p4?: string; p5?: string; p6?: string; p7?: string;
   sig1?: string; sig2?: string; sig3?: string; sig4?: string; sig5?: string; sig6?: string; sig7?: string;
   signature?: string;
+}
+
+export interface MetricDefinition {
+  key: string;
+  label: string;
+  emoji: string;
+  color?: string;
+  max: number;
 }
 
 export interface TeacherFollowUp {
@@ -79,6 +88,7 @@ export interface TeacherFollowUp {
   order?: number;
   gender?: string;
   unaccreditedMetrics?: string[];
+  [key: string]: any;
 }
 
 export interface DailyReportContainer {
@@ -303,4 +313,6 @@ export interface AppData {
   absenceExclusions?: Record<string, string[]>;
   taskTemplates?: TaskItem[];
   taskReports?: TaskReport[];
+  metricLabels?: Record<string, string>;
+  metricsList?: MetricDefinition[];
 }

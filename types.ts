@@ -98,6 +98,28 @@ export interface DailyReportContainer {
   teachersData: TeacherFollowUp[];
 }
 
+export interface AdminFollowUp {
+  id: string;
+  employeeName: string;
+  gender: string;
+  branch: string;
+  role: string;
+  violations_score: number;
+  violations_notes: string[];
+  order?: number;
+  unaccreditedMetrics?: string[];
+  [key: string]: any;
+}
+
+export interface AdminReportContainer {
+  id: string;
+  dateStr: string;
+  followUpType: string;
+  writer: string;
+  employeesData: AdminFollowUp[];
+  reportCount?: number;
+}
+
 export interface StudentReport {
   id: string;
   name: string;
@@ -315,4 +337,7 @@ export interface AppData {
   taskReports?: TaskReport[];
   metricLabels?: Record<string, string>;
   metricsList?: MetricDefinition[];
+  adminReports?: AdminReportContainer[];
+  adminMetricsList?: Record<string, MetricDefinition[]>; // key is followUpType
+  adminFollowUpTypes?: string[];
 }

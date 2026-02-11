@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-type DataCategory = 'students' | 'teachers' | 'violations' | 'substitutions' | 'special_reports';
+type DataCategory = 'students' | 'teachers' | 'violations' | 'substitutions' | 'special_reports' | 'staff_followup';
 type TimeRange = 'daily' | 'weekly' | 'monthly' | 'custom' | 'all';
 
 interface CardConfig {
@@ -40,6 +40,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
     { id: 'violations', label: 'التعهدات والمخالفات', icon: <ShieldAlert className="text-red-500" />, view: 'violations' },
     { id: 'special_reports', label: 'التقارير الخاصة', icon: <FileText className="text-orange-500" />, view: 'specialReports' },
     { id: 'substitutions', label: 'جدول التغطية', icon: <UserPlusIcon className="text-purple-500" />, view: 'substitute' },
+    { id: 'staff_followup', label: 'متابعة الموظفين', icon: <ClipboardCheck className="text-indigo-500" />, view: 'staffFollowUp' },
   ];
 
   const getSubTypes = (category: DataCategory) => {
@@ -86,6 +87,15 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
           { id: 'all', label: 'الكل', icon: <UserPlusIcon size={12} /> },
           { id: 'pending', label: 'قيد التغطية', icon: <Clock size={12} /> },
           { id: 'paid', label: 'تمت التغطية', icon: <CheckCircle2 size={12} /> },
+        ];
+      case 'staff_followup':
+        return [
+          { id: 'all', label: 'الكل', icon: <Users size={12} /> },
+          ...(data.adminFollowUpTypes || []).map(t => ({
+            id: t,
+            label: t,
+            icon: <ClipboardCheck size={12} />
+          }))
         ];
       default:
         return [{ id: 'all', label: 'الكل', icon: <Users size={12} /> }];
@@ -192,7 +202,8 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
         ...(data.studentViolationLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'المخالفات الطلابية', icon: <ShieldAlert size={12} /> })),
         ...(data.parentVisitLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل زيارة أولياء الأمور والتواصل بهم', icon: <Users size={12} /> })),
         ...(data.genericSpecialReports || []).map(l => ({ ...l, displayName: l.title, cat: l.category === 'supervisor' ? 'supervisor' : l.category === 'staff' ? 'staff' : l.category === 'tests' ? 'tests' : 'supervisor', sub: l.subCategory, icon: <FileText size={12} /> })),
-      ]
+      ],
+      staff_followup: (data.adminReports || []).flatMap(r => r.employeesData.map(e => ({ ...e, displayName: e.employeeName, type: 'staff_followup', followUpType: r.followUpType, date: r.dateStr })))
     };
 
     Object.keys(results).forEach(key => {
@@ -257,6 +268,10 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
             if (card.subSubTypes.includes('no_data') && (val === '' || val === 'undefined')) return true;
             return card.subSubTypes.some(selected => selected !== 'has_data' && selected !== 'no_data' && val.includes(selected));
           });
+        }
+      } else if (card.category === 'staff_followup') {
+        if (card.subType !== 'all') {
+          list = list.filter(i => i.followUpType === card.subType);
         }
       } else if (card.category === 'violations') {
         // If needed, add specific violation filters here
@@ -560,6 +575,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
             {[
               { label: 'التقرير اليومي', icon: <FileText />, view: 'daily' },
               { label: 'تغطية الحصص', icon: <UserPlusIcon />, view: 'substitute' },
+              { label: 'متابعة الموظفين', icon: <ClipboardCheck className="text-indigo-600" />, view: 'staffFollowUp' },
               { label: 'تعهد طالب', icon: <AlertCircle />, view: 'violations' },
               { label: 'خطة الإشراف', icon: <CalendarDays />, view: 'specialReports' },
               ...recentActions.map(action => ({

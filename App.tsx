@@ -54,7 +54,7 @@ const MainApp: React.FC = () => {
   const navItems = useMemo(() => [
     { id: 'dashboard', label: 'الرئيسية', icon: <LayoutDashboard size={18} /> },
     { id: 'daily', label: 'متابعة المعلمين', icon: <ClipboardCheck size={18} /> },
-    { id: 'adminReports', label: 'متابعة الإداريين', icon: <Briefcase size={18} /> },
+    { id: 'adminReports', label: 'متابعة الموظفين والعاملين', icon: <Briefcase size={18} /> },
     { id: 'substitute', label: 'جدول التغطية', icon: <UserPlus size={18} /> },
     { id: 'violations', label: 'التعهدات', icon: <UserX size={18} /> },
     { id: 'studentReports', label: 'تقارير الطلاب', icon: <Users size={18} /> },

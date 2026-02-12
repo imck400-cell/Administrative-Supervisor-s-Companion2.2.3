@@ -66,38 +66,38 @@ const initialMetricsList = [
 ];
 
 const standardAdminMetrics = [
-  { key: 'appearance', label: 'المظهر الشخصي', emoji: '👔', color: '#E2EFDA', max: 5 },
-  { key: 'discipline', label: 'الانضباط في الوقت', emoji: '⏱️', color: '#FCE4D6', max: 10 },
-  { key: 'quality', label: 'جودة العمل', emoji: '💎', color: '#DDEBF7', max: 10 },
-  { key: 'communication', label: 'التواصل الفعال', emoji: '🗣️', color: '#FFF2CC', max: 10 },
-  { key: 'problem_solving', label: 'حسن احتواء المشكلات', emoji: '🧩', color: '#E1F5FE', max: 10 },
-  { key: 'quality_plan', label: 'السير وفق خطة المدرسة للجودة', emoji: '📊', color: '#F3E5F5', max: 10 },
+  { key: 'appearance', label: 'المظهر الشخصي', emoji: '👔', color: '#E2EFDA', max: 4 },
+  { key: 'discipline', label: 'الانضباط في الوقت', emoji: '⏱️', color: '#FCE4D6', max: 4 },
+  { key: 'quality', label: 'جودة العمل', emoji: '💎', color: '#DDEBF7', max: 4 },
+  { key: 'communication', label: 'التواصل الفعال', emoji: '🗣️', color: '#FFF2CC', max: 4 },
+  { key: 'problem_solving', label: 'حسن احتواء المشكلات', emoji: '🧩', color: '#E1F5FE', max: 4 },
+  { key: 'quality_plan', label: 'السير وفق خطة المدرسة للجودة', emoji: '📊', color: '#F3E5F5', max: 4 },
 ];
 
 const specializedAdminMetrics: Record<string, any[]> = {
   'متابعة أداء المقصف': [
-    { key: 'appearance', label: 'المظهر الشخصي', emoji: '👔', color: '#E2EFDA', max: 5 },
-    { key: 'hygiene_personal', label: 'النظافة الشخصية', emoji: '🧼', color: '#FCE4D6', max: 10 },
-    { key: 'hygiene_general', label: 'النظافة العامة', emoji: '🧹', color: '#DDEBF7', max: 10 },
-    { key: 'quality', label: 'جودة العمل', emoji: '💎', color: '#FFF2CC', max: 10 },
-    { key: 'provision', label: 'توفير الطلبات', emoji: '📦', color: '#E1F5FE', max: 10 },
-    { key: 'speed', label: 'سرعة الإنجاز', emoji: '⚡', color: '#F3E5F5', max: 10 },
-    { key: 'quality_plan', label: 'السير وفق خطة المدرسة للجودة', emoji: '📊', color: '#E8F5E9', max: 10 },
+    { key: 'appearance', label: 'المظهر الشخصي', emoji: '👔', color: '#E2EFDA', max: 4 },
+    { key: 'hygiene_personal', label: 'النظافة الشخصية', emoji: '🧼', color: '#FCE4D6', max: 4 },
+    { key: 'hygiene_general', label: 'النظافة العامة', emoji: '🧹', color: '#DDEBF7', max: 4 },
+    { key: 'quality', label: 'جودة العمل', emoji: '💎', color: '#FFF2CC', max: 4 },
+    { key: 'provision', label: 'توفير الطلبات', emoji: '📦', color: '#E1F5FE', max: 4 },
+    { key: 'speed', label: 'سرعة الإنجاز', emoji: '⚡', color: '#F3E5F5', max: 4 },
+    { key: 'quality_plan', label: 'السير وفق خطة المدرسة للجودة', emoji: '📊', color: '#E8F5E9', max: 4 },
   ],
   'متابعة المشرف الأكاديمي': [
-    { key: 'appearance', label: 'المظهر الشخصي', emoji: '👔', color: '#E2EFDA', max: 5 },
-    { key: 'early_attendance', label: 'الحضور أول الوقت', emoji: '⏱️', color: '#FCE4D6', max: 10 },
-    { key: 'quality', label: 'جودة العمل', emoji: '💎', color: '#DDEBF7', max: 10 },
-    { key: 'reports_completion', label: 'اكتمال التقارير', emoji: '📋', color: '#FFF2CC', max: 10 },
-    { key: 'quality_plan', label: 'السير وفق خطة المدرسة للجودة', emoji: '📊', color: '#E1F5FE', max: 10 },
+    { key: 'appearance', label: 'المظهر الشخصي', emoji: '👔', color: '#E2EFDA', max: 4 },
+    { key: 'early_attendance', label: 'الحضور أول الوقت', emoji: '⏱️', color: '#FCE4D6', max: 4 },
+    { key: 'quality', label: 'جودة العمل', emoji: '💎', color: '#DDEBF7', max: 4 },
+    { key: 'reports_completion', label: 'اكتمال التقارير', emoji: '📋', color: '#FFF2CC', max: 4 },
+    { key: 'quality_plan', label: 'السير وفق خطة المدرسة للجودة', emoji: '📊', color: '#E1F5FE', max: 4 },
   ],
   'متابعة أخرى': [
-    { key: 'appearance', label: 'المظهر الشخصي', emoji: '👔', color: '#E2EFDA', max: 5 },
-    { key: 'early_attendance', label: 'الحضور أول الوقت', emoji: '⏱️', color: '#FCE4D6', max: 10 },
-    { key: 'quality', label: 'جودة العمل', emoji: '💎', color: '#DDEBF7', max: 10 },
-    { key: 'communication', label: 'التواصل الفعال', emoji: '🗣️', color: '#FFF2CC', max: 10 },
-    { key: 'problem_solving', label: 'حسن احتواء المشكلات', emoji: '🧩', color: '#E1F5FE', max: 10 },
-    { key: 'quality_plan', label: 'السير وفق خطة المدرسة للجودة', emoji: '📊', color: '#F3E5F5', max: 10 },
+    { key: 'appearance', label: 'المظهر الشخصي', emoji: '👔', color: '#E2EFDA', max: 4 },
+    { key: 'early_attendance', label: 'الحضور أول الوقت', emoji: '⏱️', color: '#FCE4D6', max: 4 },
+    { key: 'quality', label: 'جودة العمل', emoji: '💎', color: '#DDEBF7', max: 4 },
+    { key: 'communication', label: 'التواصل الفعال', emoji: '🗣️', color: '#FFF2CC', max: 4 },
+    { key: 'problem_solving', label: 'حسن احتواء المشكلات', emoji: '🧩', color: '#E1F5FE', max: 4 },
+    { key: 'quality_plan', label: 'السير وفق خطة المدرسة للجودة', emoji: '📊', color: '#F3E5F5', max: 4 },
   ]
 };
 
@@ -122,9 +122,18 @@ const adminFollowUpTypes = [
   'متابعة أخرى'
 ];
 
+// Ensure admin metrics always have max: 4
+const ensureAdminMetricsMax = (metrics: any[]): any[] => {
+  return metrics.map(m => ({ ...m, max: 4 }));
+};
+
 const initialAdminMetricsList: Record<string, any[]> = {};
 adminFollowUpTypes.forEach(type => {
-  initialAdminMetricsList[type] = specializedAdminMetrics[type] || standardAdminMetrics;
+  if (specializedAdminMetrics[type]) {
+    initialAdminMetricsList[type] = ensureAdminMetricsMax(specializedAdminMetrics[type]);
+  } else {
+    initialAdminMetricsList[type] = ensureAdminMetricsMax(standardAdminMetrics);
+  }
 });
 
 export const defaultTaskTemplates: TaskItem[] = [

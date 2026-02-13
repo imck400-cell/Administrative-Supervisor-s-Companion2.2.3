@@ -95,6 +95,8 @@ export interface DailyReportContainer {
   id: string;
   dayName: string;
   dateStr: string;
+  writer?: string;
+  reportCount?: number;
   teachersData: TeacherFollowUp[];
 }
 
@@ -118,6 +120,7 @@ export interface AdminReportContainer {
   writer: string;
   employeesData: AdminFollowUp[];
   reportCount?: number;
+  periodName?: string;
 }
 
 export interface StudentReport {

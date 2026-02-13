@@ -23,7 +23,7 @@ interface CardConfig {
   subSubTypes: string[];
 }
 
-const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[] }> = ({ setView, recentActions = [] }) => {
+const Dashboard: React.FC<{ setView: (v: string) => void; recentActions?: any[] }> = React.memo(({ setView, recentActions = [] }) => {
   const { lang, data } = useGlobal();
 
   const today = new Date().toISOString().split('T')[0];
@@ -411,7 +411,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {cards.map((card, idx) => {
           const list = getFilteredListForCard(card);
           const count = list.length;
@@ -425,7 +425,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
           return (
             <div
               key={card.id}
-              className={`rounded-[2.5rem] border-2 ${design.border} p-4 shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all group flex flex-col gap-1.5 relative overflow-visible h-[340px] mt-6`}
+              className={`rounded-[2.5rem] border-2 ${design.border} p-4 shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all group flex flex-col gap-1.5 relative overflow-visible h-auto min-h-[340px] mt-6`}
               style={{ background: design.gradient }}
             >
               <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-30">
@@ -600,6 +600,6 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
       </div>
     </div>
   );
-};
+});
 
 export default Dashboard;

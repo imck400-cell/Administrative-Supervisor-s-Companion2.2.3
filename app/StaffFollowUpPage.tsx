@@ -6,11 +6,11 @@ import {
     Search, CheckCircle, Zap, Trash2, Star, X, AlertCircle,
     FileText, Share2, Download, ChevronUp, ChevronDown, ListFilter,
     Users, LayoutDashboard, ClipboardList, Send, Calendar, Clock,
-    FileBarChart2, MoreHorizontal, MessageSquare
+    FileBarChart2, MoreHorizontal, MessageSquare, Target, FileOutput, ChevronLeft
 } from 'lucide-react';
 import { AdminFollowUp, AdminReportContainer, MetricDefinition } from '../types';
 
-const StaffFollowUpPage: React.FC = () => {
+const StaffFollowUpPage: React.FC = React.memo(() => {
     const { lang, data, updateData } = useGlobal();
 
     // Local State
@@ -31,59 +31,197 @@ const StaffFollowUpPage: React.FC = () => {
     const [aggDateFrom, setAggDateFrom] = useState<string>(new Date().toISOString().split('T')[0]);
     const [aggDateTo, setAggDateTo] = useState<string>(new Date().toISOString().split('T')[0]);
     const [selectedReportPeriod, setSelectedReportPeriod] = useState<string | null>(null);
+    const [archiveTab, setArchiveTab] = useState<'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'>('daily');
+    const [archiveSearch, setArchiveSearch] = useState('');
+    const [showIndicatorsModal, setShowIndicatorsModal] = useState(false);
 
-    // Utility function to convert Arabic numerals to English
-    const toEnglishNum = (num: number | string): string => {
-        const arabicNums = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-        const englishNums = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-        let str = String(num);
-        for (let i = 0; i < arabicNums.length; i++) {
-            str = str.replace(new RegExp(arabicNums[i], 'g'), englishNums[i]);
+
+    // Derived Data
+    const displayedMetrics = useMemo(() => {
+        return data.adminMetricsList?.[followUpType] || [];
+    }, [data.adminMetricsList, followUpType]);
+
+    const employees = useMemo(() => {
+        const report = data.adminReports?.find(r => r.id === currentReportId);
+        if (!report) return [];
+        let list = [...report.employeesData];
+        if (searchTerm) {
+            list = list.filter(e => e.employeeName.toLowerCase().includes(searchTerm.toLowerCase()));
         }
-        return str;
+        return list;
+    }, [data.adminReports, currentReportId, searchTerm]);
+
+    const setWriterState = (w: string) => {
+        setWriter(w);
+        const updatedReports = (data.adminReports || []).map(r =>
+            r.id === currentReportId ? { ...r, writer: w } : r
+        );
+        updateData({ adminReports: updatedReports });
     };
+
+    // Utility for numeric conversion
+    const toEnglishNum = (str: string | number) => {
+        if (str === null || str === undefined) return '0';
+        const arabicNums = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        return str.toString().replace(/[٠-٩]/g, d => arabicNums.indexOf(d).toString());
+    };
+
+    const toArabicNum = (str: string | number) => {
+        if (str === null || str === undefined) return '٠';
+        const arabicNums = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        return str.toString().replace(/[0-9]/g, d => arabicNums[parseInt(d)]);
+    };
+
+    const createNewReport = () => {
+        const lastReportOfType = (data.adminReports || []).find(r => r.followUpType === followUpType);
+        const inheritedEmployees = lastReportOfType ? lastReportOfType.employeesData.map(e => ({
+            ...e,
+            id: `emp_${Date.now()}_${Math.random()}`,
+            violations_score: 0,
+            violations_notes: [],
+            ...displayedMetrics.reduce((acc, m) => ({ ...acc, [m.key]: 0 }), {})
+        })) : [];
+
+        const newId = `admin_report_${Date.now()}`;
+        const newReport: AdminReportContainer = {
+            id: newId,
+            dateStr: new Date().toISOString().split('T')[0],
+            followUpType: followUpType,
+            writer: writer,
+            employeesData: inheritedEmployees
+        };
+        updateData({ adminReports: [newReport, ...(data.adminReports || [])] });
+        setCurrentReportId(newId);
+    };
+
+    const addEmployee = () => {
+        const report = data.adminReports?.find(r => r.id === currentReportId);
+        if (!report) return;
+
+        const newEmp: AdminFollowUp = {
+            id: `emp_${Date.now()}`,
+            employeeName: 'موظف جديد',
+            gender: 'غير محدد',
+            role: 'غير محدد',
+            branch: 'غير محدد',
+            violations_score: 0,
+            violations_notes: [],
+            recommendations: '',
+            unaccreditedMetrics: [],
+            ...displayedMetrics.reduce((acc, m) => ({ ...acc, [m.key]: 0 }), {})
+        };
+
+        const updatedReports = (data.adminReports || []).map(r =>
+            r.id === currentReportId ? { ...r, employeesData: [...(r.employeesData || []), newEmp] } : r
+        );
+        updateData({ adminReports: updatedReports });
+    };
+
+    // Handle Bottom Menu Actions
+    useEffect(() => {
+        const handleAction = (e: any) => {
+            const { actionId } = e.detail;
+            switch (actionId) {
+                case 'add_table': createNewReport(); break;
+                case 'indicators': setShowIndicatorsModal(true); break;
+                case 'archive': setShowArchive(true); break;
+                case 'add_teacher': addEmployee(); break;
+                case 'import': {
+                    const btn = document.querySelector('[data-type="import-btn"]');
+                    if (btn instanceof HTMLElement) btn.click();
+                    break;
+                }
+                case 'teacher_report': if (employees.length > 0) setShowIndividualModal(employees[0].id); break;
+                case 'metrics': setShowCustomizer(true); break;
+                case 'excel': exportToExcel(); break;
+                case 'date': {
+                    const btn = document.querySelector('[data-type="report-info"]');
+                    if (btn instanceof HTMLElement) btn.click();
+                    break;
+                }
+            }
+        };
+        window.addEventListener('page-action', handleAction);
+        return () => window.removeEventListener('page-action', handleAction);
+    }, [employees, followUpType, currentReportId, displayedMetrics, data.adminReports, writer]);
+
+    // Auto-create report for today on load or type change
+    useEffect(() => {
+        if (!data.adminReports) return;
+        const today = new Date().toISOString().split('T')[0];
+        const existing = data.adminReports.find(r => r.dateStr === today && r.followUpType === followUpType && !r.reportCount);
+        if (!existing) {
+            // Inherit writer and employees from the most recent daily report of any type or this type
+            const lastReport = (data.adminReports || []).find(r => !r.reportCount);
+            const lastReportSameType = (data.adminReports || []).find(r => r.followUpType === followUpType && !r.reportCount);
+
+            const inheritedWriter = lastReportSameType?.writer || lastReport?.writer || '';
+            const inheritedEmployees = lastReportSameType ? lastReportSameType.employeesData.map(e => ({
+                ...e,
+                id: `emp_${Date.now()}_${Math.random()}`,
+                violations_score: 0,
+                violations_notes: [],
+                recommendations: '',
+                ...displayedMetrics.reduce((acc, m) => ({ ...acc, [m.key]: 0 }), {})
+            })) : [];
+
+            const newId = `admin_report_${Date.now()}`;
+            const newReport: AdminReportContainer = {
+                id: newId,
+                dateStr: today,
+                followUpType: followUpType,
+                writer: inheritedWriter,
+                employeesData: inheritedEmployees
+            };
+            setCurrentReportId(newId);
+            setWriterState(inheritedWriter);
+        } else {
+            setCurrentReportId(existing.id);
+            setWriterState(existing.writer || '');
+        }
+    }, [followUpType, data.adminReports, displayedMetrics, updateData, setCurrentReportId]);
+
 
     // Hijri date helper with month names
     const hijriMonths = ['محرم', 'صفر', 'ربيع الأول', 'ربيع الثاني', 'جمادى الأولى', 'جمادى الثانية', 'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'];
-    const toHijri = (dateStr: string) => {
+    const toHijriFriendly = (dateStr: string) => {
         try {
+            if (!dateStr) return '';
+            // Handle range
+            if (dateStr.includes(' إلى ')) {
+                const parts = dateStr.split(' إلى ');
+                return `${toHijriFriendly(parts[0])} إلى ${toHijriFriendly(parts[1])}`;
+            }
             const d = new Date(dateStr);
             const parts = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric', month: 'numeric', year: 'numeric' }).formatToParts(d);
             const day = parts.find(p => p.type === 'day')?.value || '';
             const monthNum = parseInt(parts.find(p => p.type === 'month')?.value || '1');
             const year = parts.find(p => p.type === 'year')?.value || '';
             return `${day}/ ${hijriMonths[monthNum - 1]}/ ${year}`;
-        } catch { return ''; }
+        } catch { return dateStr; }
+    };
+
+    const formatGregorianDate = (dateStr: string) => {
+        try {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return new Intl.DateTimeFormat('ar-SA', { day: 'numeric', month: 'numeric', year: 'numeric' }).format(d);
+        } catch { return dateStr; }
     };
 
     // Generate report title helper
     const getReportTitle = (report: any) => {
-        if (report?.periodName) {
-            return `التقرير ${report.periodName} ل${followUpType}`;
-        }
-        return `تقرير ${followUpType}`;
+        const typeLabel = report?.periodName || 'اليومي';
+        return `التقرير ${typeLabel} لأداء المعلمين والمعلمات`;
     };
 
     const getReportDateLabel = (report: any) => {
         if (report?.reportCount) {
             const parts = (report.dateStr || '').split(' إلى ');
-            const from = parts[0] || '';
-            const to = parts[1] || '';
-            return `من تاريخ ${toHijri(from)}هـ - ${from}م إلى تاريخ ${toHijri(to)}هـ - ${to}م`;
+            return `من تاريخ ${toHijriFriendly(parts[0])}هـ - ${formatGregorianDate(parts[0])}م إلى ${toHijriFriendly(parts[1])}هـ - ${formatGregorianDate(parts[1])}م`;
         }
-        return `بتاريخ ${toHijri(report?.dateStr || '')}هـ - ${report?.dateStr || ''}م`;
+        return `بتاريخ ${toHijriFriendly(report?.dateStr || '')}هـ - ${formatGregorianDate(report?.dateStr || '')}م`;
     };
-
-    // Derived Data
-    const employees = useMemo(() => {
-        const report = data.adminReports?.find(r => r.id === currentReportId);
-        if (!report) return [];
-        return report.employeesData;
-    }, [data.adminReports, currentReportId]);
-
-    const displayedMetrics = useMemo(() => {
-        return data.adminMetricsList?.[followUpType] || [];
-    }, [data.adminMetricsList, followUpType]);
 
     // Actions
     const handleTypeChange = (newType: string) => {
@@ -109,35 +247,13 @@ const StaffFollowUpPage: React.FC = () => {
         const reportsOfType = (data.adminReports || []).filter(r => r.followUpType === targetType);
         if (reportsOfType.length > 0) {
             setCurrentReportId(reportsOfType[0].id);
-            setWriter(reportsOfType[0].writer || '');
+            setWriterState(reportsOfType[0].writer || '');
         } else {
             setCurrentReportId(null);
-            setWriter('');
+            setWriterState('');
         }
     };
 
-    const createNewReport = () => {
-        const lastReportOfType = (data.adminReports || []).find(r => r.followUpType === followUpType);
-        const inheritedEmployees = lastReportOfType ? lastReportOfType.employeesData.map(e => ({
-            ...e,
-            id: `emp_${Date.now()}_${Math.random()}`,
-            violations_score: 0,
-            violations_notes: [],
-            // Reset scores for all metrics to 0
-            ...displayedMetrics.reduce((acc, m) => ({ ...acc, [m.key]: 0 }), {})
-        })) : [];
-
-        const newId = `admin_report_${Date.now()}`;
-        const newReport: AdminReportContainer = {
-            id: newId,
-            dateStr: new Date().toISOString().split('T')[0],
-            followUpType: followUpType,
-            writer: writer,
-            employeesData: inheritedEmployees
-        };
-        updateData({ adminReports: [newReport, ...(data.adminReports || [])] });
-        setCurrentReportId(newId);
-    };
 
     const aggregateReports = (period: string) => {
         if (!data.adminReports || data.adminReports.length === 0) {
@@ -149,11 +265,11 @@ const StaffFollowUpPage: React.FC = () => {
             r.followUpType === followUpType &&
             r.dateStr >= aggDateFrom &&
             r.dateStr <= aggDateTo &&
-            !r.reportCount // Don't aggregate already aggregated reports to avoid double counting
+            !r.reportCount // CRITICAL: Only aggregate daily reports
         );
 
         if (filtered.length === 0) {
-            alert('لا توجد تقارير في هذه الفترة الزمنية لهذا النوع من المتابعة');
+            alert('لا توجد تقارير يومية في هذه الفترة الزمنية لهذا النوع من المتابعة لكي يتم تجميعها في تقرير ' + period);
             return;
         }
 
@@ -209,28 +325,6 @@ const StaffFollowUpPage: React.FC = () => {
         }
     };
 
-    const addEmployee = () => {
-        if (!currentReportId) { alert('نرجو إنشاء جدول جديد أولاً'); return; }
-        const name = prompt('أدخل اسم الموظف:');
-        if (!name) return;
-
-        const newEmp: AdminFollowUp = {
-            id: `emp_${Date.now()}`,
-            employeeName: name,
-            gender: 'ذكر',
-            branch: 'المركز الرئيسي',
-            role: followUpType.includes('متابعة') ? followUpType.split('متابعة ')[1] || followUpType : followUpType,
-            violations_score: 0,
-            violations_notes: [],
-            unaccreditedMetrics: []
-        };
-
-        const updatedReports = (data.adminReports || []).map(r => {
-            if (r.id === currentReportId) return { ...r, employeesData: [...r.employeesData, newEmp] };
-            return r;
-        });
-        updateData({ adminReports: updatedReports });
-    };
 
     const updateEmployee = (empId: string, updates: Partial<AdminFollowUp>) => {
         const updatedReports = (data.adminReports || []).map(r => {
@@ -434,92 +528,80 @@ const StaffFollowUpPage: React.FC = () => {
 <style>
     table { border-collapse: collapse; width: 100%; direction: rtl; }
     th, td { border: 1px solid #000; padding: 8px; text-align: center; font-family: Arial, sans-serif; }
-    .header { background-color: #800000; color: white; font-weight: bold; font-size: 16px; }
-    .subheader { background-color: #FFD966; color: #4F3F0F; font-weight: bold; }
-    .metric-header { background-color: #f0f0f0; font-weight: bold; font-size: 11px; }
-    .data-row { background-color: #fff; }
-    .data-row:nth-child(even) { background-color: #f9f9f9; }
-    .footer-row { background-color: #FFD966; font-weight: bold; }
-    .total-cell { background-color: #E6B11F; font-weight: bold; }
-    .percent-cell { background-color: #800000; color: white; font-weight: bold; }
-    .signature { border: none; padding: 20px; font-weight: bold; }
     .title-section { border: none; text-align: center; font-size: 18px; font-weight: bold; }
-    .date-section { border: none; text-align: center; font-size: 14px; color: #666; }
+    .date-section { border: none; text-align: center; font-size: 14px; color: #333; }
+    .subheader { background-color: #f1f5f9; font-weight: bold; }
+    .metric-header { background-color: #f8fafc; font-weight: bold; font-size: 11px; }
+    .footer-row { background-color: #f8fafc; font-weight: bold; }
+    .total-cell { background-color: #f1f5f9; font-weight: bold; }
+    .percent-cell { background-color: #334155; color: white; font-weight: bold; }
 </style>
 </head>
 <body>
 <table>
-    <!-- Header Section -->
     <tr>
-        <td colspan="${5 + displayedMetrics.length + 4}" class="title-section" style="background-color: #800000; color: white; font-size: 20px; padding: 15px;">
-            ${profile.schoolName || 'المدرسة'} ${profile.branch ? `- فرع ${profile.branch}` : ''}
+        <td colspan="${5 + displayedMetrics.length + 3}" class="title-section" style="font-size: 22px; padding: 10px;">
+            ${profile.schoolName || 'المدرسة'} - ${profile.branch || ''}
         </td>
     </tr>
     <tr>
-        <td colspan="${5 + displayedMetrics.length + 4}" class="title-section" style="padding: 10px;">
+        <td colspan="${5 + displayedMetrics.length + 3}" class="title-section" style="padding: 10px;">
             ${title}
         </td>
     </tr>
     <tr>
-        <td colspan="${5 + displayedMetrics.length + 4}" class="date-section" style="padding: 8px;">
+        <td colspan="${5 + displayedMetrics.length + 3}" class="date-section" style="padding: 8px; font-weight: bold;">
             ${dateLabel}
         </td>
     </tr>
-    <tr><td colspan="${5 + displayedMetrics.length + 4}" style="border: none; height: 10px;"></td></tr>
+    <tr><td colspan="${5 + displayedMetrics.length + 3}" style="border: none; height: 15px;"></td></tr>
     
-    <!-- Table Header Row 1 -->
     <tr class="subheader">
-        <th rowspan="2" style="width: 40px;">#</th>
-        <th rowspan="2" style="min-width: 150px;">اسم الموظف</th>
-        <th rowspan="2">النوع</th>
+        <th rowspan="2">م</th>
+        <th rowspan="2" style="min-width: 200px;">اسم الموظف</th>
         <th rowspan="2">الوظيفة</th>
         <th rowspan="2">الفرع</th>
-        <th colspan="${displayedMetrics.length}">مجالات تقييم الموظفين</th>
+        <th colspan="${displayedMetrics.length}">مجالات التقييم</th>
         <th rowspan="2">المخالفات</th>
         <th rowspan="2">المجموع</th>
         <th rowspan="2">النسبة %</th>
-        <th rowspan="2" style="min-width: 200px;">الملاحظات والتوصيات</th>
+        <th rowspan="2">الملاحظات</th>
     </tr>
     
-    <!-- Table Header Row 2 - Metrics -->
     <tr class="metric-header">
-        ${displayedMetrics.map(m => `<th style="background-color: ${m.color}; min-width: 80px;">${m.label}<br/>(${m.max * rcCount})</th>`).join('')}
+        ${displayedMetrics.map(m => `<th style="background-color: ${m.color}30;">${m.label}<br/>(${m.max * rcCount})</th>`).join('')}
     </tr>
     
-    <!-- Data Rows -->
     ${employees.map((emp, idx) => {
             const total = calculateTotal(emp);
             const max = calculateMaxTotal(emp);
             const percent = max > 0 ? ((total / max) * 100).toFixed(1) : '0';
             return `
-    <tr class="data-row">
+    <tr>
         <td>${idx + 1}</td>
-        <td style="text-align: right; font-weight: bold;">${emp.employeeName}</td>
-        <td>${emp.gender}</td>
+        <td style="text-align: right;">${emp.employeeName}</td>
         <td>${emp.role}</td>
         <td>${emp.branch}</td>
         ${displayedMetrics.map(m => {
                 const isUnaccredited = (emp.unaccreditedMetrics || []).includes(m.key);
-                const val = isUnaccredited ? 'غ.م' : (emp[m.key] || 0);
-                return `<td style="background-color: ${m.color}15;">${val}</td>`;
+                return `<td style="background-color: ${m.color}10;">${isUnaccredited ? 'غ.م' : (emp[m.key] || 0)}</td>`;
             }).join('')}
-        <td style="${emp.violations_score > 0 ? 'background-color: #fee2e2; color: #dc2626;' : ''}">${emp.violations_score}</td>
-        <td style="background-color: #dbeafe; font-weight: bold;">${total}</td>
-        <td style="background-color: #dbeafe; font-weight: bold;">${percent}%</td>
-        <td style="text-align: right; font-size: 11px;">${(emp.recommendations || '').replace(/[\n\r]/g, ' ')}</td>
+        <td>${emp.violations_score}</td>
+        <td style="font-weight: bold;">${total}</td>
+        <td style="font-weight: bold;">${percent}%</td>
+        <td style="text-align: right;">${emp.recommendations || ''}</td>
     </tr>`;
         }).join('')}
     
-    <!-- Statistics Footer Row -->
     <tr class="footer-row">
-        <td colspan="5" style="text-align: right; font-weight: bold;">الإحصائيات الإجمالية والنسب المئوية المحققة</td>
+        <td colspan="4">المجموع الكلي والنسبة العامة</td>
         ${displayedMetrics.map(m => {
             const sum = getColSum(m.key);
             const pct = getColPercent(m.key, m.max);
-            return `<td style="background-color: ${m.color}30;">(${sum})<br/>${pct}%</td>`;
+            return `<td style="background-color: ${m.color}20;">${sum}<br/>${pct}%</td>`;
         }).join('')}
-        <td></td>
-        <td class="total-cell">(${employees.reduce((acc, e) => acc + calculateTotal(e), 0)})</td>
+        <td>${employees.reduce((acc, e) => acc + (e.violations_score || 0), 0)}</td>
+        <td class="total-cell">${employees.reduce((acc, e) => acc + calculateTotal(e), 0)}</td>
         <td class="percent-cell">${(() => {
                 const tSum = employees.reduce((acc, e) => acc + calculateTotal(e), 0);
                 const tMax = employees.reduce((acc, e) => acc + calculateMaxTotal(e), 0);
@@ -527,50 +609,38 @@ const StaffFollowUpPage: React.FC = () => {
             })()}%</td>
         <td></td>
     </tr>
+
+    <tr><td colspan="${5 + displayedMetrics.length + 3}" style="border: none; height: 30px;"></td></tr>
     
-    <!-- Empty Row -->
-    <tr><td colspan="${5 + displayedMetrics.length + 4}" style="border: none; height: 20px;"></td></tr>
-    
-    <!-- Signature Section -->
     <tr>
-        <td colspan="${Math.floor((5 + displayedMetrics.length + 4) / 2)}" class="signature" style="text-align: right;">
-            <strong>كاتب التقرير:</strong> ${writer || report.writer || '......................'}
+        <td colspan="${Math.floor((5 + displayedMetrics.length + 3) / 2)}" style="border: none; text-align: right; font-weight: bold;">
+            كاتب التقرير: ${writer || report.writer || ''}
         </td>
-        <td colspan="${Math.ceil((5 + displayedMetrics.length + 4) / 2)}" class="signature" style="text-align: left;">
-            <strong>مدير الفرع:</strong> ${profile.branchManager || '......................'}
-        </td>
-    </tr>
-    
-    <!-- Legend -->
-    <tr>
-        <td colspan="${5 + displayedMetrics.length + 4}" style="border: none; font-size: 10px; color: #666; text-align: center; padding: 10px;">
-            غ.م = غير معتمد (مستبعد من الحساب) | الدرجات الضعيفة أقل من 30%
+        <td colspan="${Math.ceil((5 + displayedMetrics.length + 3) / 2)}" style="border: none; text-align: left; font-weight: bold;">
+            مدير الفرع: ${data.profile.branchManager || ''}
         </td>
     </tr>
 </table>
 </body>
 </html>`;
 
-        const BOM = '\uFEFF';
-        const blob = new Blob([BOM + content], { type: 'application/vnd.ms-excel;charset=utf-8' });
+        const blob = new Blob(['\uFEFF' + content], { type: 'application/vnd.ms-excel;charset=utf-8' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = `${title.replace(/\s+/g, '_')}.xls`;
+        link.download = `${title}.xls`;
         link.click();
     };
 
-    const exportToTxt = () => {
+    const exportToText = () => {
         const report = data.adminReports?.find(r => r.id === currentReportId);
         if (!report) return;
-        const title = getReportTitle(report) + ' - ' + getReportDateLabel(report);
-        let content = `${title}\n`;
-        content += `كاتب التقرير: ${writer || report.writer}\n`;
-        content += `${'='.repeat(50)}\n\n`;
+
+        let content = `التقرير: ${getReportTitle(report)}\nالتاريخ: ${getReportDateLabel(report)}\n\n`;
         employees.forEach((emp, idx) => {
             const total = calculateTotal(emp);
             const max = calculateMaxTotal(emp);
             const percent = max > 0 ? ((total / max) * 100).toFixed(1) : '0';
-            content += `${idx + 1}. ${emp.employeeName} (${emp.role} - ${emp.branch})\n`;
+            content += `${idx + 1}. ${emp.employeeName} (${emp.role} - ${emp.branch}) \n`;
             displayedMetrics.forEach(m => {
                 if (!(emp.unaccreditedMetrics || []).includes(m.key)) {
                     content += `   - ${m.label}: ${emp[m.key] || 0} / ${m.max * (report.reportCount || 1)}\n`;
@@ -620,183 +690,34 @@ const StaffFollowUpPage: React.FC = () => {
         }
     };
 
+
     return (
         <div className="flex flex-col gap-6" dir="rtl">
-            {/* Top Selector Bar */}
-            <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border-4 border-slate-50 flex flex-wrap items-center gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
-                <div className="flex flex-col gap-2 min-w-[300px] flex-1">
-                    <label className="text-sm font-black text-slate-600 mr-2 flex items-center gap-2">
-                        <ListFilter size={18} className="text-blue-500" /> نوع المتابعة
-                    </label>
-                    <select
-                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all appearance-none"
-                        value={followUpType}
-                        onChange={(e) => handleTypeChange(e.target.value)}
-                    >
-                        {(data.adminFollowUpTypes || []).map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                </div>
-
-                <div className="flex flex-col gap-2 min-w-[200px]">
-                    <label className="text-sm font-black text-slate-600 mr-2 flex items-center gap-2">
-                        <UserCircle size={18} className="text-blue-500" /> كاتب التقرير
-                    </label>
-                    <input
-                        type="text"
-                        className="bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all font-sans"
-                        placeholder="اسم كاتب التقرير..."
-                        value={writer}
-                        onChange={(e) => setWriter(e.target.value)}
-                    />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                    <label className="text-sm font-black text-slate-600 mr-2 flex items-center gap-2">
-                        <FileBarChart2 size={18} className="text-blue-500" /> نوع التقرير
-                    </label>
-                    <div className="flex gap-2">
-                        {['أسبوعي', 'شهري', 'فصلي', 'سنوي'].map(period => (
-                            <button
-                                key={period}
-                                onClick={() => setSelectedReportPeriod(selectedReportPeriod === period ? null : period)}
-                                className={`px-5 py-3.5 border-2 rounded-[1.2rem] font-black text-xs transition-all shadow-sm active:scale-95 ${selectedReportPeriod === period
-                                    ? 'bg-blue-600 text-white border-blue-600'
-                                    : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50 hover:border-blue-500'
-                                    }`}
-                            >
-                                {period}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {selectedReportPeriod && (
-                    <div className="flex flex-col gap-2 flex-1 animate-in fade-in slide-in-from-top-2 duration-300">
-                        <label className="text-sm font-black text-slate-600 mr-2 flex items-center gap-2">
-                            <Calendar size={18} className="text-amber-500" /> فترة التجميع (من تاريخ - إلى تاريخ)
-                        </label>
-                        <div className="flex gap-2 items-center">
-                            <div className="flex flex-col gap-1 flex-1">
-                                <span className="text-[10px] font-bold text-slate-400 mr-2">من تاريخ</span>
-                                <input
-                                    type="date"
-                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3 font-bold text-xs outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 font-sans transition-all"
-                                    value={aggDateFrom}
-                                    onChange={(e) => setAggDateFrom(e.target.value)}
-                                />
-                            </div>
-                            <span className="text-slate-400 font-bold mt-5">إلى</span>
-                            <div className="flex flex-col gap-1 flex-1">
-                                <span className="text-[10px] font-bold text-slate-400 mr-2">إلى تاريخ</span>
-                                <input
-                                    type="date"
-                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3 font-bold text-xs outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 font-sans transition-all"
-                                    value={aggDateTo}
-                                    onChange={(e) => setAggDateTo(e.target.value)}
-                                />
-                            </div>
-                            <button
-                                onClick={() => {
-                                    aggregateReports(selectedReportPeriod);
-                                    setSelectedReportPeriod(null);
-                                }}
-                                className="mt-5 px-6 py-3 bg-amber-500 text-white rounded-[1.2rem] font-black text-xs hover:bg-amber-600 transition-all shadow-lg shadow-amber-100 active:scale-95"
-                            >
-                                تجميع
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                <button
-                    onClick={createNewReport}
-                    className="mt-auto h-[58px] px-8 bg-blue-600 text-white rounded-[1.5rem] font-black text-lg shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all flex items-center gap-2 transform hover:scale-[1.02] active:scale-95"
-                >
-                    <Plus size={22} /> إظهار التقرير
-                </button>
+            {/* Top Selector Bar - Hidden in redesign but kept for logic accessibility */}
+            <div className="hidden pointer-events-none h-0 p-0 overflow-hidden">
+                {/* Legacy Selector Hidden */}
             </div>
 
             {currentReportId && (
                 <>
-                    {/* Header Controls */}
-                    <div className="flex flex-wrap items-center justify-between gap-4 bg-white/60 backdrop-blur-lg p-5 rounded-[2.2rem] border border-white shadow-lg animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <button
-                                onClick={createNewReport}
-                                className="flex items-center gap-2 h-11 px-5 bg-blue-600 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all"
-                            >
-                                <Plus size={18} /> إضافة جدول
-                            </button>
-                            <button
-                                onClick={() => setShowArchive(true)}
-                                className="flex items-center gap-2 h-11 px-5 bg-slate-800 text-white rounded-xl text-xs font-black shadow-lg shadow-slate-100 hover:bg-slate-900 transition-all"
-                            >
-                                <Archive size={18} /> أرشيف التقارير
-                            </button>
-                            <div className="h-8 w-[2px] bg-slate-200 mx-2" />
-                            <button
-                                onClick={addEmployee}
-                                className="flex items-center gap-2 h-11 px-5 bg-teal-600 text-white rounded-xl text-xs font-black shadow-lg shadow-teal-100 hover:bg-teal-700 transition-all"
-                            >
-                                <UserPlus size={18} /> إضافة اسم
-                            </button>
-                            <button
-                                onClick={() => {
-                                    const input = document.createElement('input');
-                                    input.type = 'file';
-                                    input.accept = '.txt,.xml,.xlsx';
-                                    input.onchange = (e) => alert('تم استيراد الأسماء بنجاح (محاكاة)');
-                                    input.click();
-                                }}
-                                className="flex items-center gap-2 h-11 px-5 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all"
-                            >
-                                <FileUp size={18} /> استيراد الأسماء
-                            </button>
-                            <button
-                                onClick={() => { if (employees.length > 0) setShowIndividualModal(employees[0].id); }}
-                                className="flex items-center gap-2 h-11 px-5 bg-purple-600 text-white rounded-xl text-xs font-black shadow-lg shadow-purple-100 hover:bg-purple-700 transition-all"
-                            >
-                                <UserCircle size={18} /> تقرير فردي
-                            </button>
-                            <button
-                                onClick={() => setShowCustomizer(true)}
-                                className="flex items-center gap-2 h-11 px-5 bg-amber-500 text-white rounded-xl text-xs font-black shadow-lg shadow-amber-100 hover:bg-amber-600 transition-all"
-                            >
-                                <Palette size={18} /> تخصيص المجالات
-                            </button>
-                            <div className="h-8 w-[2px] bg-slate-200 mx-2" />
-                            <button
-                                onClick={exportToExcel}
-                                className="flex items-center gap-2 h-11 px-5 bg-emerald-600 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all"
-                            >
-                                <Download size={18} /> excel
-                            </button>
-                            <button
-                                onClick={exportToTxt}
-                                className="flex items-center gap-2 h-11 px-5 bg-rose-600 text-white rounded-xl text-xs font-black shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all"
-                            >
-                                <FileText size={18} /> TXT
-                            </button>
-                            <button
-                                onClick={() => generateWhatsAppReport('bulk')}
-                                className="flex items-center gap-2 h-11 px-5 bg-green-600 text-white rounded-xl text-xs font-black shadow-lg shadow-green-100 hover:bg-green-700 transition-all"
-                            >
-                                <Share2 size={18} /> واتساب
-                            </button>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <div className="relative group">
-                                <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
-                                <input
-                                    type="text"
-                                    placeholder="بحث سريع عن اسم..."
-                                    className="bg-white border-2 border-slate-100 rounded-2xl pr-12 pl-4 py-3 text-sm font-bold focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none w-72 shadow-inner transition-all font-sans"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
+                    {/* Redesigned Search Bar */}
+                    <div className="mb-2 animate-in fade-in slide-in-from-top-4 duration-700">
+                        <div className="relative group max-w-xs mx-auto md:mx-0">
+                            <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-600 transition-all">
+                                <Search size={18} />
                             </div>
+                            <input
+                                type="text"
+                                placeholder="بحث سريع..."
+                                className="w-full bg-white border border-slate-200 rounded-2xl py-3 pr-10 pl-4 text-sm font-bold shadow-sm focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none transition-all placeholder:text-slate-300"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
                         </div>
+                    </div>
+
+                    <div className="hidden pointer-events-none h-0 p-0 overflow-hidden">
+                        {/* Legacy Header Hidden */}
                     </div>
 
                     {/* Report Title Header */}
@@ -808,11 +729,26 @@ const StaffFollowUpPage: React.FC = () => {
                                 <h2 className="text-2xl font-black text-slate-800 tracking-tight">
                                     {getReportTitle(report)}
                                 </h2>
-                                <div className="flex items-center gap-3 bg-slate-50 px-6 py-2 rounded-full border border-slate-100">
+                                <div className="flex items-center gap-3 bg-slate-50 px-6 py-2 rounded-full border border-slate-100 group">
                                     <Calendar size={18} className="text-blue-500" />
-                                    <span className="font-black text-slate-600 text-sm">
-                                        {getReportDateLabel(report)}
-                                    </span>
+                                    {(!report.reportCount) ? (
+                                        <input
+                                            type="date"
+                                            className="bg-transparent font-black text-slate-600 text-sm outline-none focus:ring-2 focus:ring-blue-200 rounded px-2 py-1 transition-all cursor-pointer font-sans"
+                                            value={report.dateStr}
+                                            onChange={(e) => {
+                                                const newDate = e.target.value;
+                                                const updatedReports = (data.adminReports || []).map(r =>
+                                                    r.id === currentReportId ? { ...r, dateStr: newDate } : r
+                                                );
+                                                updateData({ adminReports: updatedReports });
+                                            }}
+                                        />
+                                    ) : (
+                                        <span className="font-black text-slate-600 text-sm">
+                                            {getReportDateLabel(report)}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         );
@@ -896,7 +832,7 @@ const StaffFollowUpPage: React.FC = () => {
                                 <tbody className="divide-y divide-slate-100">
                                     {employees.length === 0 ? (
                                         <tr><td colSpan={100} className="p-32 text-center text-slate-300 font-bold text-lg">لم يتم رصد أي موظفين بعد في هذا الجدول</td></tr>
-                                    ) : employees.filter(e => e.employeeName?.includes(searchTerm)).map((emp, idx) => {
+                                    ) : employees.map((emp, idx) => {
                                         const total = calculateTotal(emp);
                                         const max = calculateMaxTotal(emp);
                                         const percent = max > 0 ? ((total / max) * 100).toFixed(1) : '0';
@@ -1045,6 +981,7 @@ const StaffFollowUpPage: React.FC = () => {
                                             })()}%
                                         </td>
                                         <td className="bg-[#E6B11F]/20"></td>
+                                        <td className="bg-[#E6B11F]/5"></td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -1094,58 +1031,164 @@ const StaffFollowUpPage: React.FC = () => {
             {/* Archive Modal */}
             {showArchive && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[3rem] w-full max-w-3xl overflow-hidden shadow-2xl border-[10px] border-white flex flex-col max-h-[85vh] animate-in zoom-in-95">
-                        <div className="p-10 bg-slate-900 text-white flex items-center justify-between shadow-2xl">
+                    <div className="bg-white rounded-[3rem] w-full max-w-4xl overflow-hidden shadow-2xl border-[10px] border-white flex flex-col max-h-[85vh] animate-in zoom-in-95">
+                        <div className="p-8 bg-slate-900 text-white flex items-center justify-between shadow-xl">
                             <div className="flex flex-col">
-                                <h3 className="text-3xl font-black tracking-tight">أرشيف تقارير المتابعة</h3>
-                                <p className="text-slate-400 font-bold mt-1">تصفح وإدارة الجوال السابقة</p>
+                                <h3 className="text-3xl font-black tracking-tight">أرشيف التقارير</h3>
+                                <div className="flex items-center gap-4 mt-2">
+                                    <div className="relative">
+                                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                                        <input
+                                            type="text"
+                                            placeholder="بحث بالتاريخ..."
+                                            className="bg-white/10 border border-white/20 rounded-xl pr-10 pl-4 py-2 text-sm font-bold focus:bg-white/20 outline-none w-48 transition-all"
+                                            value={archiveSearch}
+                                            onChange={(e) => setArchiveSearch(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
                             </div>
                             <button onClick={() => setShowArchive(false)} className="p-3 hover:bg-white/10 rounded-2xl transition-all active:scale-90 bg-white/5 border border-white/10">
                                 <X size={28} />
                             </button>
                         </div>
-                        <div className="flex-1 overflow-auto p-10 space-y-4 custom-scrollbar">
-                            {(data.adminReports || []).length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-20 text-slate-300 gap-4">
-                                    <Archive size={64} strokeWidth={1} />
-                                    <span className="font-black text-xl">الأرشيف فارغ حالياً</span>
-                                </div>
-                            ) : (data.adminReports || []).filter(r => r.followUpType === followUpType).map(r => {
-                                const reportTypeLabel = r.periodName ? r.periodName : 'يومي';
-                                return (
-                                    <div key={r.id} className="group relative flex items-center justify-between p-6 bg-slate-50 border-2 border-indigo-100 rounded-[2rem] hover:border-indigo-500 hover:bg-white transition-all duration-300 cursor-pointer overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1">
-                                        <div className="flex items-center gap-6" onClick={() => { setCurrentReportId(r.id); setFollowUpType(r.followUpType); setWriter(r.writer || ''); setShowArchive(false); }}>
-                                            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-3xl flex items-center justify-center font-black shadow-inner group-hover:scale-110 transition-transform">
-                                                <Calendar size={28} />
+
+                        {/* Archive Tabs */}
+                        <div className="flex bg-slate-100 p-2 gap-2">
+                            {[
+                                { id: 'daily', label: 'اليومية' },
+                                { id: 'weekly', label: 'الأسبوعية' },
+                                { id: 'monthly', label: 'الشهرية' },
+                                { id: 'quarterly', label: 'الفصلية' },
+                                { id: 'yearly', label: 'السنوية' }
+                            ].map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setArchiveTab(tab.id as any)}
+                                    className={`flex-1 py-3 rounded-2xl font-black text-sm transition-all ${archiveTab === tab.id ? 'bg-white text-blue-600 shadow-md scale-105' : 'text-slate-500 hover:bg-white/50'}`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="flex-1 overflow-auto p-8 space-y-4 custom-scrollbar bg-slate-50/50">
+                            {(() => {
+                                const filteredReports = (data.adminReports || []).filter(r => {
+                                    const isTypeMatch = r.followUpType === followUpType;
+                                    if (!isTypeMatch) return false;
+
+                                    const reportPeriod = r.periodName || 'Daily';
+                                    const tabMap: Record<string, string> = {
+                                        'daily': 'Daily',
+                                        'weekly': 'الأسبوعي',
+                                        'monthly': 'الشهري',
+                                        'quarterly': 'الفصلي',
+                                        'yearly': 'السنوي'
+                                    };
+                                    const isTabMatch = archiveTab === 'daily' ? !r.reportCount : reportPeriod === tabMap[archiveTab];
+                                    if (!isTabMatch) return false;
+
+                                    if (archiveSearch && !r.dateStr.includes(archiveSearch)) return false;
+
+                                    return true;
+                                });
+
+                                if (filteredReports.length === 0) {
+                                    return (
+                                        <div className="flex flex-col items-center justify-center py-20 text-slate-300 gap-4">
+                                            <Archive size={64} strokeWidth={1} />
+                                            <span className="font-black text-xl">لا توجد تقارير في هذا القسم</span>
+                                        </div>
+                                    );
+                                }
+
+                                return filteredReports.map(r => (
+                                    <div key={r.id} className="group relative flex items-center justify-between p-6 bg-white border-2 border-slate-100 rounded-[2rem] hover:border-blue-500 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md">
+                                        <div className="flex items-center gap-6 flex-1" onClick={() => { setCurrentReportId(r.id); setFollowUpType(r.followUpType); setWriter(r.writer || ''); setShowArchive(false); }}>
+                                            <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-black shadow-inner">
+                                                <Calendar size={24} />
                                             </div>
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-2">
-                                                    <span className={`text-xs font-black px-2 py-0.5 rounded-full ${reportTypeLabel === 'يومي' ? 'bg-green-100 text-green-700' :
-                                                        reportTypeLabel === 'الأسبوعي' ? 'bg-blue-100 text-blue-700' :
-                                                            reportTypeLabel === 'الشهري' ? 'bg-purple-100 text-purple-700' :
-                                                                reportTypeLabel === 'الفصلي' ? 'bg-amber-100 text-amber-700' :
-                                                                    'bg-red-100 text-red-700'
-                                                        }`}>{reportTypeLabel}</span>
-                                                    <span className="font-black text-xl text-slate-800">{r.dateStr}</span>
+                                                    <span className="font-black text-lg text-slate-800">{r.dateStr}</span>
+                                                    {r.reportCount && <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-2 py-0.5 rounded-full">تجميعي</span>}
                                                 </div>
-                                                <span className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-0.5 rounded-full inline-block w-fit">{r.followUpType}</span>
-                                                <div className="flex items-center gap-4 text-xs font-bold text-slate-400 mt-2">
+                                                <div className="flex items-center gap-4 text-xs font-bold text-slate-400">
                                                     <span className="flex items-center gap-1"><UserCircle size={14} /> {r.writer || 'غير محدد'}</span>
                                                     <span className="flex items-center gap-1"><Users size={14} /> {r.employeesData.length} موظف</span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <button onClick={() => deleteReport(r.id)} className="p-4 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all">
-                                                <Trash2 size={24} />
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => deleteReport(r.id)} className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all" title="حذف">
+                                                <Trash2 size={20} />
                                             </button>
-                                            <button onClick={(e) => { e.stopPropagation(); setCurrentReportId(r.id); setFollowUpType(r.followUpType); setWriter(r.writer || ''); setTimeout(() => generateWhatsAppReport('bulk'), 100); }} className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center text-green-600 hover:bg-green-200 transition-colors">
-                                                <Send size={24} className="rotate-180" />
+                                            <button onClick={(e) => { e.stopPropagation(); setCurrentReportId(r.id); setFollowUpType(r.followUpType); setWriter(r.writer || ''); setTimeout(() => generateWhatsAppReport('bulk'), 100); }} className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center hover:bg-green-100 transition-all">
+                                                <Send size={20} className="rotate-180" />
                                             </button>
                                         </div>
                                     </div>
-                                );
-                            })}
+                                ));
+                            })()}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Report Indicators Modal */}
+            {showIndicatorsModal && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[3rem] w-full max-w-lg shadow-2xl border-[8px] border-white flex flex-col animate-in zoom-in-95">
+                        <div className="p-8 bg-blue-600 text-white flex items-center justify-between">
+                            <div>
+                                <h3 className="text-2xl font-black">مؤشرات التقارير</h3>
+                                <p className="text-blue-100 font-bold text-xs">{followUpType}</p>
+                            </div>
+                            <button onClick={() => setShowIndicatorsModal(false)} className="p-3 hover:bg-white/10 rounded-2xl transition-all"><X size={24} /></button>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-black text-slate-400 mb-2 mr-2">من تاريخ</label>
+                                    <input
+                                        type="date"
+                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm font-black outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all font-sans"
+                                        value={aggDateFrom}
+                                        onChange={(e) => setAggDateFrom(e.target.value)}
+                                    />
+                                </div>
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-black text-slate-400 mb-2 mr-2">إلى تاريخ</label>
+                                    <input
+                                        type="date"
+                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm font-black outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all font-sans"
+                                        value={aggDateTo}
+                                        onChange={(e) => setAggDateTo(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 gap-3">
+                                {['أسبوعي', 'شهري', 'فصلي', 'سنوي'].map(period => (
+                                    <button
+                                        key={period}
+                                        onClick={() => { aggregateReports(period); setShowIndicatorsModal(false); }}
+                                        className={`w-full py-4 px-6 rounded-[1.5rem] font-black text-lg flex items-center justify-between transition-all group shadow-sm hover:shadow-md
+                                    ${period === 'أسبوعي' ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white' :
+                                                period === 'شهري' ? 'bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white' :
+                                                    period === 'فصلي' ? 'bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white' :
+                                                        'bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white'}`}
+                                    >
+                                        <span className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/10 transition-colors">
+                                                <FileOutput size={20} />
+                                            </div>
+                                            إنشاء تقرير {period} مجمع
+                                        </span>
+                                        <ChevronLeft size={20} className="opacity-30 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 transition-all" />
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1449,6 +1492,6 @@ const StaffFollowUpPage: React.FC = () => {
       `}</style>
         </div>
     );
-};
+});
 
 export default StaffFollowUpPage;

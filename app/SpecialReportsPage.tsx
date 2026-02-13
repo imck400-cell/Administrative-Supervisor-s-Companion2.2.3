@@ -62,9 +62,10 @@ interface CategoryMember {
   section: string;
   isAuto: boolean;
 }
+// END OF CHANGE
 
 // Moved outside to prevent Hook mismatch error 310
-const FrequentNamesPicker = React.memo(({ logs, onSelectQuery, isOpen, onClose }: { logs: any[], onSelectQuery: (name: string) => void, isOpen: boolean, onClose: () => void }) => {
+const FrequentNamesPicker = ({ logs, onSelectQuery, isOpen, onClose }: { logs: any[], onSelectQuery: (name: string) => void, isOpen: boolean, onClose: () => void }) => {
   const frequentList = useMemo(() => {
     const uniqueMap = new Map();
     [...logs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).forEach(log => {
@@ -103,10 +104,10 @@ const FrequentNamesPicker = React.memo(({ logs, onSelectQuery, isOpen, onClose }
       </div>
     </div>
   );
-});
+};
 
 /* Moved FilterSection outside to prevent re-renders losing focus */
-const FilterSection = React.memo(({
+const FilterSection = ({
   values, setValues, tempNames, setTempNames, appliedNames, setAppliedNames, nameInput, setNameInput, onExportExcel, onExportTxt, onExportWA, suggestions
 }: any) => (
   <div className="bg-slate-50 p-4 md:p-6 rounded-[2rem] border-2 border-slate-100 space-y-4 md:space-y-6 shadow-sm mb-6 animate-in slide-in-from-top-4 duration-300 font-arabic">
@@ -159,7 +160,7 @@ const FilterSection = React.memo(({
       </div>
     </div>
   </div>
-));
+);
 
 // START OF CHANGE - Requirement: Navigate Function from App
 interface SpecialReportsPageProps {
@@ -168,7 +169,7 @@ interface SpecialReportsPageProps {
   onNavigate?: (viewId: string) => void;
 }
 
-export const SpecialReportsPage: React.FC<SpecialReportsPageProps> = React.memo(({ initialSubTab, onSubTabOpen, onNavigate }) => {
+const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, onSubTabOpen, onNavigate }) => {
   // END OF CHANGE
   const { lang, data, updateData } = useGlobal();
   const [activeTab, setActiveTab] = useState<MainTab>('supervisor');
@@ -179,25 +180,6 @@ export const SpecialReportsPage: React.FC<SpecialReportsPageProps> = React.memo(
       setActiveSubTab(initialSubTab);
     }
   }, [initialSubTab]);
-
-  useEffect(() => {
-    const handleAction = (e: any) => {
-      const { actionId } = e.detail;
-      switch (actionId) {
-        case 'tasks': setActiveSubTab('المهام'); break;
-        case 'absence': setActiveSubTab('الغياب اليومي'); break;
-        case 'lateness': setActiveSubTab('التأخر'); break;
-        case 'violations': setActiveSubTab('المخالفات الطلابية'); break;
-        case 'exit': setActiveSubTab('خروج طالب أثناء الدراسة'); break;
-        case 'damage': setActiveSubTab('سجل الإتلاف المدرسي'); break;
-        case 'parent_visit': setActiveSubTab('سجل زيارة أولياء الأمور والتواصل بهم'); break;
-        case 'exams': setActiveSubTab('الاختبار الشهري'); break;
-        case 'back_to_menu': setActiveSubTab(null); break;
-      }
-    };
-    window.addEventListener('page-action', handleAction);
-    return () => window.removeEventListener('page-action', handleAction);
-  }, []);
 
   const [showTable, setShowTable] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -3123,6 +3105,6 @@ export const SpecialReportsPage: React.FC<SpecialReportsPageProps> = React.memo(
       ) : renderCurrentModule()}
     </div>
   );
-});
+};
 
 export default SpecialReportsPage;

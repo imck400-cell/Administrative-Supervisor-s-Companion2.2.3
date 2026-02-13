@@ -6,19 +6,22 @@ import {
     Search, CheckCircle, Zap, Trash2, Star, X, AlertCircle,
     FileText, Share2, Download, ChevronUp, ChevronDown, ListFilter,
     Users, LayoutDashboard, ClipboardList, Send, Calendar, Clock,
-    FileBarChart2, MoreHorizontal, MessageSquare, Target, FileOutput, ChevronLeft
+    FileBarChart2, MoreHorizontal, MessageSquare
 } from 'lucide-react';
 import { AdminFollowUp, AdminReportContainer, MetricDefinition } from '../types';
+import { INDICATORS_DATA, ACTIVITIES_DATA } from './evaluationData';
 
-const StaffFollowUpPage: React.FC = React.memo(() => {
+const StaffFollowUpPage: React.FC = () => {
     const { lang, data, updateData } = useGlobal();
 
     // Local State
     const [currentReportId, setCurrentReportId] = useState<string | null>(null);
-    const [followUpType, setFollowUpType] = useState<string>(data.adminFollowUpTypes?.[0] || 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس');
-    const [writer, setWriter] = useState<string>('');
+    const [viewMode, setViewMode] = useState<'group' | 'individual'>('individual');
     const [showArchive, setShowArchive] = useState(false);
     const [showCustomizer, setShowCustomizer] = useState(false);
+    const [showCriteriaModal, setShowCriteriaModal] = useState(false);
+    const [followUpType, setFollowUpType] = useState('متابعة المدير العام');
+    const [writer, setWriter] = useState('');
     const [showSummaryReport, setShowSummaryReport] = useState<string | null>(null); // 'أسبوعي', 'شهري', etc.
     const [violationModal, setViolationModal] = useState<{ id: string, notes: string[] } | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -31,196 +34,209 @@ const StaffFollowUpPage: React.FC = React.memo(() => {
     const [aggDateFrom, setAggDateFrom] = useState<string>(new Date().toISOString().split('T')[0]);
     const [aggDateTo, setAggDateTo] = useState<string>(new Date().toISOString().split('T')[0]);
     const [selectedReportPeriod, setSelectedReportPeriod] = useState<string | null>(null);
-    const [archiveTab, setArchiveTab] = useState<'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'>('daily');
-    const [archiveSearch, setArchiveSearch] = useState('');
-    const [showIndicatorsModal, setShowIndicatorsModal] = useState(false);
+    const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
+    const [individualForm, setIndividualForm] = useState({
+        schoolName: data.profile?.schoolName || '',
+        branch: data.profile?.branch || 'المركز الرئيسي',
+        semester: data.profile?.semester || 'الأول',
+        writer: '',
+        reportNumber: '',
+        employeeName: '',
+        role: '',
+        reportField: 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
+    });
 
+    const [individualScores, setIndividualScores] = useState<Record<string, number>>({});
+    const [evidenceStatus, setEvidenceStatus] = useState<Record<string, 'توفر' | 'ناقص' | 'لم يتوفر'>>({});
+    const [failureReasons, setFailureReasons] = useState<Record<string, string>>({});
+    const [customItems, setCustomItems] = useState<{ id: string, label: string }[]>([]);
+    const [violationTags, setViolationTags] = useState<string[]>([]);
+    const [noteTags, setNoteTags] = useState<string[]>([]);
+    const [activeViolationTags, setActiveViolationTags] = useState<string[]>([]);
+    const [activeNoteTags, setActiveNoteTags] = useState<string[]>([]);
+    const [violationsText, setViolationsText] = useState('');
+    const [notesText, setNotesText] = useState('');
+    const [employeeComment, setEmployeeComment] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [unaccreditedItems, setUnaccreditedItems] = useState<Record<string, boolean>>({});
 
-    // Derived Data
-    const displayedMetrics = useMemo(() => {
-        return data.adminMetricsList?.[followUpType] || [];
-    }, [data.adminMetricsList, followUpType]);
+    const [reportFields, setReportFields] = useState<string[]>(() => {
+        const saved = localStorage.getItem('admin_report_fields');
+        if (saved) return JSON.parse(saved);
+        return [
+            'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس',
+            'متابعة المدير العام',
+            'متابعة مدير الفرع',
+            'متابعة إدارة الجودة',
+            'متابعة وكيل المدرسة',
+            'متابعة السكرتارية',
+            'متابعة المشرف التربوي',
+            'متابعة المشرف الإداري',
+            'متابعة المشرف الأكاديمي',
+            'متابعة المختص الاجتماعي',
+            'متابعة مسؤول معمل العلوم',
+            'متابعة مسؤول الأنشطة',
+            'متابعة مسؤول الرياضة',
+            'متابعة مسؤول الفنية',
+            'متابعة مسؤول المخازن',
+            'متابعة معمل الوسائل',
+            'متابعة مسؤول المكتبة',
+            'متابعة شاشة العرض',
+            'متابعة مهندس البيئة',
+            'متابعة الحراسة',
+            'متابعة حركة المواصلات',
+            'متابعة أداء المقصف'
+        ];
+    });
 
-    const employees = useMemo(() => {
-        const report = data.adminReports?.find(r => r.id === currentReportId);
-        if (!report) return [];
-        let list = [...report.employeesData];
-        if (searchTerm) {
-            list = list.filter(e => e.employeeName.toLowerCase().includes(searchTerm.toLowerCase()));
-        }
-        return list;
-    }, [data.adminReports, currentReportId, searchTerm]);
-
-    const setWriterState = (w: string) => {
-        setWriter(w);
-        const updatedReports = (data.adminReports || []).map(r =>
-            r.id === currentReportId ? { ...r, writer: w } : r
-        );
-        updateData({ adminReports: updatedReports });
-    };
-
-    // Utility for numeric conversion
-    const toEnglishNum = (str: string | number) => {
-        if (str === null || str === undefined) return '0';
-        const arabicNums = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-        return str.toString().replace(/[٠-٩]/g, d => arabicNums.indexOf(d).toString());
-    };
-
-    const toArabicNum = (str: string | number) => {
-        if (str === null || str === undefined) return '٠';
-        const arabicNums = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-        return str.toString().replace(/[0-9]/g, d => arabicNums[parseInt(d)]);
-    };
-
-    const createNewReport = () => {
-        const lastReportOfType = (data.adminReports || []).find(r => r.followUpType === followUpType);
-        const inheritedEmployees = lastReportOfType ? lastReportOfType.employeesData.map(e => ({
-            ...e,
-            id: `emp_${Date.now()}_${Math.random()}`,
-            violations_score: 0,
-            violations_notes: [],
-            ...displayedMetrics.reduce((acc, m) => ({ ...acc, [m.key]: 0 }), {})
-        })) : [];
-
-        const newId = `admin_report_${Date.now()}`;
-        const newReport: AdminReportContainer = {
-            id: newId,
-            dateStr: new Date().toISOString().split('T')[0],
-            followUpType: followUpType,
-            writer: writer,
-            employeesData: inheritedEmployees
-        };
-        updateData({ adminReports: [newReport, ...(data.adminReports || [])] });
-        setCurrentReportId(newId);
-    };
-
-    const addEmployee = () => {
-        const report = data.adminReports?.find(r => r.id === currentReportId);
-        if (!report) return;
-
-        const newEmp: AdminFollowUp = {
-            id: `emp_${Date.now()}`,
-            employeeName: 'موظف جديد',
-            gender: 'غير محدد',
-            role: 'غير محدد',
-            branch: 'غير محدد',
-            violations_score: 0,
-            violations_notes: [],
-            recommendations: '',
-            unaccreditedMetrics: [],
-            ...displayedMetrics.reduce((acc, m) => ({ ...acc, [m.key]: 0 }), {})
-        };
-
-        const updatedReports = (data.adminReports || []).map(r =>
-            r.id === currentReportId ? { ...r, employeesData: [...(r.employeesData || []), newEmp] } : r
-        );
-        updateData({ adminReports: updatedReports });
-    };
-
-    // Handle Bottom Menu Actions
     useEffect(() => {
-        const handleAction = (e: any) => {
-            const { actionId } = e.detail;
-            switch (actionId) {
-                case 'add_table': createNewReport(); break;
-                case 'indicators': setShowIndicatorsModal(true); break;
-                case 'archive': setShowArchive(true); break;
-                case 'add_teacher': addEmployee(); break;
-                case 'import': {
-                    const btn = document.querySelector('[data-type="import-btn"]');
-                    if (btn instanceof HTMLElement) btn.click();
-                    break;
-                }
-                case 'teacher_report': if (employees.length > 0) setShowIndividualModal(employees[0].id); break;
-                case 'metrics': setShowCustomizer(true); break;
-                case 'excel': exportToExcel(); break;
-                case 'date': {
-                    const btn = document.querySelector('[data-type="report-info"]');
-                    if (btn instanceof HTMLElement) btn.click();
-                    break;
-                }
-            }
-        };
-        window.addEventListener('page-action', handleAction);
-        return () => window.removeEventListener('page-action', handleAction);
-    }, [employees, followUpType, currentReportId, displayedMetrics, data.adminReports, writer]);
+        localStorage.setItem('admin_report_fields', JSON.stringify(reportFields));
+    }, [reportFields]);
 
-    // Auto-create report for today on load or type change
+    const [customActivities, setCustomActivities] = useState<Record<string, Array<{ text: string, planned: string, evidence: string }>>>(() => {
+        const saved = localStorage.getItem('admin_custom_activities');
+        return saved ? JSON.parse(saved) : ACTIVITIES_DATA;
+    });
+
     useEffect(() => {
-        if (!data.adminReports) return;
-        const today = new Date().toISOString().split('T')[0];
-        const existing = data.adminReports.find(r => r.dateStr === today && r.followUpType === followUpType && !r.reportCount);
-        if (!existing) {
-            // Inherit writer and employees from the most recent daily report of any type or this type
-            const lastReport = (data.adminReports || []).find(r => !r.reportCount);
-            const lastReportSameType = (data.adminReports || []).find(r => r.followUpType === followUpType && !r.reportCount);
+        localStorage.setItem('admin_custom_activities', JSON.stringify(customActivities));
+    }, [customActivities]);
 
-            const inheritedWriter = lastReportSameType?.writer || lastReport?.writer || '';
-            const inheritedEmployees = lastReportSameType ? lastReportSameType.employeesData.map(e => ({
-                ...e,
-                id: `emp_${Date.now()}_${Math.random()}`,
-                violations_score: 0,
-                violations_notes: [],
-                recommendations: '',
-                ...displayedMetrics.reduce((acc, m) => ({ ...acc, [m.key]: 0 }), {})
-            })) : [];
-
-            const newId = `admin_report_${Date.now()}`;
-            const newReport: AdminReportContainer = {
-                id: newId,
-                dateStr: today,
-                followUpType: followUpType,
-                writer: inheritedWriter,
-                employeesData: inheritedEmployees
-            };
-            setCurrentReportId(newId);
-            setWriterState(inheritedWriter);
-        } else {
-            setCurrentReportId(existing.id);
-            setWriterState(existing.writer || '');
+    // Utility function to convert Arabic numerals to English
+    const toEnglishNum = (num: number | string): string => {
+        const arabicNums = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        const englishNums = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+        let str = String(num);
+        for (let i = 0; i < arabicNums.length; i++) {
+            str = str.replace(new RegExp(arabicNums[i], 'g'), englishNums[i]);
         }
-    }, [followUpType, data.adminReports, displayedMetrics, updateData, setCurrentReportId]);
-
+        return str;
+    };
 
     // Hijri date helper with month names
     const hijriMonths = ['محرم', 'صفر', 'ربيع الأول', 'ربيع الثاني', 'جمادى الأولى', 'جمادى الثانية', 'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'];
-    const toHijriFriendly = (dateStr: string) => {
+    const toHijri = (dateStr: string) => {
         try {
-            if (!dateStr) return '';
-            // Handle range
-            if (dateStr.includes(' إلى ')) {
-                const parts = dateStr.split(' إلى ');
-                return `${toHijriFriendly(parts[0])} إلى ${toHijriFriendly(parts[1])}`;
-            }
             const d = new Date(dateStr);
             const parts = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric', month: 'numeric', year: 'numeric' }).formatToParts(d);
             const day = parts.find(p => p.type === 'day')?.value || '';
             const monthNum = parseInt(parts.find(p => p.type === 'month')?.value || '1');
             const year = parts.find(p => p.type === 'year')?.value || '';
             return `${day}/ ${hijriMonths[monthNum - 1]}/ ${year}`;
-        } catch { return dateStr; }
-    };
-
-    const formatGregorianDate = (dateStr: string) => {
-        try {
-            if (!dateStr) return '';
-            const d = new Date(dateStr);
-            return new Intl.DateTimeFormat('ar-SA', { day: 'numeric', month: 'numeric', year: 'numeric' }).format(d);
-        } catch { return dateStr; }
+        } catch { return ''; }
     };
 
     // Generate report title helper
     const getReportTitle = (report: any) => {
-        const typeLabel = report?.periodName || 'اليومي';
-        return `التقرير ${typeLabel} لأداء المعلمين والمعلمات`;
+        if (report?.periodName) {
+            return `التقرير ${report.periodName} ل${followUpType}`;
+        }
+        return `تقرير ${followUpType}`;
     };
 
     const getReportDateLabel = (report: any) => {
         if (report?.reportCount) {
             const parts = (report.dateStr || '').split(' إلى ');
-            return `من تاريخ ${toHijriFriendly(parts[0])}هـ - ${formatGregorianDate(parts[0])}م إلى ${toHijriFriendly(parts[1])}هـ - ${formatGregorianDate(parts[1])}م`;
+            const from = parts[0] || '';
+            const to = parts[1] || '';
+            return `من تاريخ ${toHijri(from)}هـ - ${from}م إلى تاريخ ${toHijri(to)}هـ - ${to}م`;
         }
-        return `بتاريخ ${toHijriFriendly(report?.dateStr || '')}هـ - ${formatGregorianDate(report?.dateStr || '')}م`;
+        return `بتاريخ ${toHijri(report?.dateStr || '')}هـ - ${report?.dateStr || ''}م`;
+    };
+
+    // Derived Data
+    const employees = useMemo(() => {
+        const report = data.adminReports?.find(r => r.id === currentReportId);
+        if (!report) return [];
+        return report.employeesData;
+    }, [data.adminReports, currentReportId]);
+
+    const displayedMetrics = useMemo(() => {
+        return data.adminMetricsList?.[followUpType] || [];
+    }, [data.adminMetricsList, followUpType]);
+
+    // Auto-save logic for current individual form draft
+    useEffect(() => {
+        if (viewMode === 'individual') {
+            const draft = {
+                form: individualForm,
+                scores: individualScores,
+                evidence: evidenceStatus,
+                reasons: failureReasons,
+                unaccredited: unaccreditedItems,
+                reportDate
+            };
+            localStorage.setItem('individual_report_draft', JSON.stringify(draft));
+        }
+    }, [individualForm, individualScores, evidenceStatus, failureReasons, unaccreditedItems, reportDate, viewMode]);
+
+    // Load draft on mount
+    useEffect(() => {
+        const draft = localStorage.getItem('individual_report_draft');
+        if (draft) {
+            try {
+                const parsed = JSON.parse(draft);
+                setIndividualForm(parsed.form);
+                setIndividualScores(parsed.scores);
+                setEvidenceStatus(parsed.evidence);
+                setFailureReasons(parsed.reasons);
+                setUnaccreditedItems(parsed.unaccredited || {});
+                setReportDate(parsed.reportDate);
+            } catch (e) {
+                console.error("Failed to load draft", e);
+            }
+        }
+    }, []);
+
+    // Archive Logic
+    const [individualArchive, setIndividualArchive] = useState<any[]>(() => {
+        const saved = localStorage.getItem('individual_reports_archive');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    const saveToArchive = () => {
+        const newReport = {
+            id: Date.now().toString(),
+            createdAt: new Date().toISOString(),
+            form: individualForm,
+            scores: individualScores,
+            evidence: evidenceStatus,
+            reasons: failureReasons,
+            unaccredited: unaccreditedItems,
+            reportDate,
+            activities: customActivities[individualForm.reportField]
+        };
+        const updatedArchive = [newReport, ...individualArchive];
+        setIndividualArchive(updatedArchive);
+        localStorage.setItem('individual_reports_archive', JSON.stringify(updatedArchive));
+        alert('تم حفظ التقرير في الأرشيف بنجاح');
+    };
+
+    const deleteFromArchive = (id: string) => {
+        if (confirm('هل أنت متأكد من حذف هذا التقرير؟')) {
+            const updated = individualArchive.filter(r => r.id !== id);
+            setIndividualArchive(updated);
+            localStorage.setItem('individual_reports_archive', JSON.stringify(updated));
+        }
+    };
+
+    const restoreFromArchive = (report: any) => {
+        setIndividualForm(report.form);
+        setIndividualScores(report.scores);
+        setEvidenceStatus(report.evidence);
+        setFailureReasons(report.reasons);
+        setUnaccreditedItems(report.unaccredited || {});
+        setReportDate(report.reportDate);
+
+        if (report.activities) {
+            setCustomActivities({
+                ...customActivities,
+                [report.form.reportField]: report.activities
+            });
+        }
+
+        setShowArchive(false);
+        alert('تم استعادة التقرير للتعديل');
     };
 
     // Actions
@@ -247,13 +263,35 @@ const StaffFollowUpPage: React.FC = React.memo(() => {
         const reportsOfType = (data.adminReports || []).filter(r => r.followUpType === targetType);
         if (reportsOfType.length > 0) {
             setCurrentReportId(reportsOfType[0].id);
-            setWriterState(reportsOfType[0].writer || '');
+            setWriter(reportsOfType[0].writer || '');
         } else {
             setCurrentReportId(null);
-            setWriterState('');
+            setWriter('');
         }
     };
 
+    const createNewReport = () => {
+        const lastReportOfType = (data.adminReports || []).find(r => r.followUpType === followUpType);
+        const inheritedEmployees = lastReportOfType ? lastReportOfType.employeesData.map(e => ({
+            ...e,
+            id: `emp_${Date.now()}_${Math.random()}`,
+            violations_score: 0,
+            violations_notes: [],
+            // Reset scores for all metrics to 0
+            ...displayedMetrics.reduce((acc, m) => ({ ...acc, [m.key]: 0 }), {})
+        })) : [];
+
+        const newId = `admin_report_${Date.now()}`;
+        const newReport: AdminReportContainer = {
+            id: newId,
+            dateStr: new Date().toISOString().split('T')[0],
+            followUpType: followUpType,
+            writer: writer,
+            employeesData: inheritedEmployees
+        };
+        updateData({ adminReports: [newReport, ...(data.adminReports || [])] });
+        setCurrentReportId(newId);
+    };
 
     const aggregateReports = (period: string) => {
         if (!data.adminReports || data.adminReports.length === 0) {
@@ -265,11 +303,11 @@ const StaffFollowUpPage: React.FC = React.memo(() => {
             r.followUpType === followUpType &&
             r.dateStr >= aggDateFrom &&
             r.dateStr <= aggDateTo &&
-            !r.reportCount // CRITICAL: Only aggregate daily reports
+            !r.reportCount // Don't aggregate already aggregated reports to avoid double counting
         );
 
         if (filtered.length === 0) {
-            alert('لا توجد تقارير يومية في هذه الفترة الزمنية لهذا النوع من المتابعة لكي يتم تجميعها في تقرير ' + period);
+            alert('لا توجد تقارير في هذه الفترة الزمنية لهذا النوع من المتابعة');
             return;
         }
 
@@ -325,6 +363,28 @@ const StaffFollowUpPage: React.FC = React.memo(() => {
         }
     };
 
+    const addEmployee = () => {
+        if (!currentReportId) { alert('نرجو إنشاء جدول جديد أولاً'); return; }
+        const name = prompt('أدخل اسم الموظف:');
+        if (!name) return;
+
+        const newEmp: AdminFollowUp = {
+            id: `emp_${Date.now()}`,
+            employeeName: name,
+            gender: 'ذكر',
+            branch: 'المركز الرئيسي',
+            role: followUpType.includes('متابعة') ? followUpType.split('متابعة ')[1] || followUpType : followUpType,
+            violations_score: 0,
+            violations_notes: [],
+            unaccreditedMetrics: []
+        };
+
+        const updatedReports = (data.adminReports || []).map(r => {
+            if (r.id === currentReportId) return { ...r, employeesData: [...r.employeesData, newEmp] };
+            return r;
+        });
+        updateData({ adminReports: updatedReports });
+    };
 
     const updateEmployee = (empId: string, updates: Partial<AdminFollowUp>) => {
         const updatedReports = (data.adminReports || []).map(r => {
@@ -528,80 +588,92 @@ const StaffFollowUpPage: React.FC = React.memo(() => {
 <style>
     table { border-collapse: collapse; width: 100%; direction: rtl; }
     th, td { border: 1px solid #000; padding: 8px; text-align: center; font-family: Arial, sans-serif; }
+    .header { background-color: #800000; color: white; font-weight: bold; font-size: 16px; }
+    .subheader { background-color: #FFD966; color: #4F3F0F; font-weight: bold; }
+    .metric-header { background-color: #f0f0f0; font-weight: bold; font-size: 11px; }
+    .data-row { background-color: #fff; }
+    .data-row:nth-child(even) { background-color: #f9f9f9; }
+    .footer-row { background-color: #FFD966; font-weight: bold; }
+    .total-cell { background-color: #E6B11F; font-weight: bold; }
+    .percent-cell { background-color: #800000; color: white; font-weight: bold; }
+    .signature { border: none; padding: 20px; font-weight: bold; }
     .title-section { border: none; text-align: center; font-size: 18px; font-weight: bold; }
-    .date-section { border: none; text-align: center; font-size: 14px; color: #333; }
-    .subheader { background-color: #f1f5f9; font-weight: bold; }
-    .metric-header { background-color: #f8fafc; font-weight: bold; font-size: 11px; }
-    .footer-row { background-color: #f8fafc; font-weight: bold; }
-    .total-cell { background-color: #f1f5f9; font-weight: bold; }
-    .percent-cell { background-color: #334155; color: white; font-weight: bold; }
+    .date-section { border: none; text-align: center; font-size: 14px; color: #666; }
 </style>
 </head>
 <body>
 <table>
+    <!-- Header Section -->
     <tr>
-        <td colspan="${5 + displayedMetrics.length + 3}" class="title-section" style="font-size: 22px; padding: 10px;">
-            ${profile.schoolName || 'المدرسة'} - ${profile.branch || ''}
+        <td colspan="${5 + displayedMetrics.length + 4}" class="title-section" style="background-color: #800000; color: white; font-size: 20px; padding: 15px;">
+            ${profile.schoolName || 'المدرسة'} ${profile.branch ? `- فرع ${profile.branch}` : ''}
         </td>
     </tr>
     <tr>
-        <td colspan="${5 + displayedMetrics.length + 3}" class="title-section" style="padding: 10px;">
+        <td colspan="${5 + displayedMetrics.length + 4}" class="title-section" style="padding: 10px;">
             ${title}
         </td>
     </tr>
     <tr>
-        <td colspan="${5 + displayedMetrics.length + 3}" class="date-section" style="padding: 8px; font-weight: bold;">
+        <td colspan="${5 + displayedMetrics.length + 4}" class="date-section" style="padding: 8px;">
             ${dateLabel}
         </td>
     </tr>
-    <tr><td colspan="${5 + displayedMetrics.length + 3}" style="border: none; height: 15px;"></td></tr>
+    <tr><td colspan="${5 + displayedMetrics.length + 4}" style="border: none; height: 10px;"></td></tr>
     
+    <!-- Table Header Row 1 -->
     <tr class="subheader">
-        <th rowspan="2">م</th>
-        <th rowspan="2" style="min-width: 200px;">اسم الموظف</th>
+        <th rowspan="2" style="width: 40px;">#</th>
+        <th rowspan="2" style="min-width: 150px;">اسم الموظف</th>
+        <th rowspan="2">النوع</th>
         <th rowspan="2">الوظيفة</th>
         <th rowspan="2">الفرع</th>
-        <th colspan="${displayedMetrics.length}">مجالات التقييم</th>
+        <th colspan="${displayedMetrics.length}">مجالات تقييم الموظفين</th>
         <th rowspan="2">المخالفات</th>
         <th rowspan="2">المجموع</th>
         <th rowspan="2">النسبة %</th>
-        <th rowspan="2">الملاحظات</th>
+        <th rowspan="2" style="min-width: 200px;">الملاحظات والتوصيات</th>
     </tr>
     
+    <!-- Table Header Row 2 - Metrics -->
     <tr class="metric-header">
-        ${displayedMetrics.map(m => `<th style="background-color: ${m.color}30;">${m.label}<br/>(${m.max * rcCount})</th>`).join('')}
+        ${displayedMetrics.map(m => `<th style="background-color: ${m.color}; min-width: 80px;">${m.label}<br/>(${m.max * rcCount})</th>`).join('')}
     </tr>
     
+    <!-- Data Rows -->
     ${employees.map((emp, idx) => {
             const total = calculateTotal(emp);
             const max = calculateMaxTotal(emp);
             const percent = max > 0 ? ((total / max) * 100).toFixed(1) : '0';
             return `
-    <tr>
+    <tr class="data-row">
         <td>${idx + 1}</td>
-        <td style="text-align: right;">${emp.employeeName}</td>
+        <td style="text-align: right; font-weight: bold;">${emp.employeeName}</td>
+        <td>${emp.gender}</td>
         <td>${emp.role}</td>
         <td>${emp.branch}</td>
         ${displayedMetrics.map(m => {
                 const isUnaccredited = (emp.unaccreditedMetrics || []).includes(m.key);
-                return `<td style="background-color: ${m.color}10;">${isUnaccredited ? 'غ.م' : (emp[m.key] || 0)}</td>`;
+                const val = isUnaccredited ? 'غ.م' : (emp[m.key] || 0);
+                return `<td style="background-color: ${m.color}15;">${val}</td>`;
             }).join('')}
-        <td>${emp.violations_score}</td>
-        <td style="font-weight: bold;">${total}</td>
-        <td style="font-weight: bold;">${percent}%</td>
-        <td style="text-align: right;">${emp.recommendations || ''}</td>
+        <td style="${emp.violations_score > 0 ? 'background-color: #fee2e2; color: #dc2626;' : ''}">${emp.violations_score}</td>
+        <td style="background-color: #dbeafe; font-weight: bold;">${total}</td>
+        <td style="background-color: #dbeafe; font-weight: bold;">${percent}%</td>
+        <td style="text-align: right; font-size: 11px;">${(emp.recommendations || '').replace(/[\n\r]/g, ' ')}</td>
     </tr>`;
         }).join('')}
     
+    <!-- Statistics Footer Row -->
     <tr class="footer-row">
-        <td colspan="4">المجموع الكلي والنسبة العامة</td>
+        <td colspan="5" style="text-align: right; font-weight: bold;">الإحصائيات الإجمالية والنسب المئوية المحققة</td>
         ${displayedMetrics.map(m => {
             const sum = getColSum(m.key);
             const pct = getColPercent(m.key, m.max);
-            return `<td style="background-color: ${m.color}20;">${sum}<br/>${pct}%</td>`;
+            return `<td style="background-color: ${m.color}30;">(${sum})<br/>${pct}%</td>`;
         }).join('')}
-        <td>${employees.reduce((acc, e) => acc + (e.violations_score || 0), 0)}</td>
-        <td class="total-cell">${employees.reduce((acc, e) => acc + calculateTotal(e), 0)}</td>
+        <td></td>
+        <td class="total-cell">(${employees.reduce((acc, e) => acc + calculateTotal(e), 0)})</td>
         <td class="percent-cell">${(() => {
                 const tSum = employees.reduce((acc, e) => acc + calculateTotal(e), 0);
                 const tMax = employees.reduce((acc, e) => acc + calculateMaxTotal(e), 0);
@@ -609,38 +681,50 @@ const StaffFollowUpPage: React.FC = React.memo(() => {
             })()}%</td>
         <td></td>
     </tr>
-
-    <tr><td colspan="${5 + displayedMetrics.length + 3}" style="border: none; height: 30px;"></td></tr>
     
+    <!-- Empty Row -->
+    <tr><td colspan="${5 + displayedMetrics.length + 4}" style="border: none; height: 20px;"></td></tr>
+    
+    <!-- Signature Section -->
     <tr>
-        <td colspan="${Math.floor((5 + displayedMetrics.length + 3) / 2)}" style="border: none; text-align: right; font-weight: bold;">
-            كاتب التقرير: ${writer || report.writer || ''}
+        <td colspan="${Math.floor((5 + displayedMetrics.length + 4) / 2)}" class="signature" style="text-align: right;">
+            <strong>كاتب التقرير:</strong> ${writer || report.writer || '......................'}
         </td>
-        <td colspan="${Math.ceil((5 + displayedMetrics.length + 3) / 2)}" style="border: none; text-align: left; font-weight: bold;">
-            مدير الفرع: ${data.profile.branchManager || ''}
+        <td colspan="${Math.ceil((5 + displayedMetrics.length + 4) / 2)}" class="signature" style="text-align: left;">
+            <strong>مدير الفرع:</strong> ${profile.branchManager || '......................'}
+        </td>
+    </tr>
+    
+    <!-- Legend -->
+    <tr>
+        <td colspan="${5 + displayedMetrics.length + 4}" style="border: none; font-size: 10px; color: #666; text-align: center; padding: 10px;">
+            غ.م = غير معتمد (مستبعد من الحساب) | الدرجات الضعيفة أقل من 30%
         </td>
     </tr>
 </table>
 </body>
 </html>`;
 
-        const blob = new Blob(['\uFEFF' + content], { type: 'application/vnd.ms-excel;charset=utf-8' });
+        const BOM = '\uFEFF';
+        const blob = new Blob([BOM + content], { type: 'application/vnd.ms-excel;charset=utf-8' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = `${title}.xls`;
+        link.download = `${title.replace(/\s+/g, '_')}.xls`;
         link.click();
     };
 
-    const exportToText = () => {
+    const exportToTxt = () => {
         const report = data.adminReports?.find(r => r.id === currentReportId);
         if (!report) return;
-
-        let content = `التقرير: ${getReportTitle(report)}\nالتاريخ: ${getReportDateLabel(report)}\n\n`;
+        const title = getReportTitle(report) + ' - ' + getReportDateLabel(report);
+        let content = `${title}\n`;
+        content += `كاتب التقرير: ${writer || report.writer}\n`;
+        content += `${'='.repeat(50)}\n\n`;
         employees.forEach((emp, idx) => {
             const total = calculateTotal(emp);
             const max = calculateMaxTotal(emp);
             const percent = max > 0 ? ((total / max) * 100).toFixed(1) : '0';
-            content += `${idx + 1}. ${emp.employeeName} (${emp.role} - ${emp.branch}) \n`;
+            content += `${idx + 1}. ${emp.employeeName} (${emp.role} - ${emp.branch})\n`;
             displayedMetrics.forEach(m => {
                 if (!(emp.unaccreditedMetrics || []).includes(m.key)) {
                     content += `   - ${m.label}: ${emp[m.key] || 0} / ${m.max * (report.reportCount || 1)}\n`;
@@ -690,781 +774,1600 @@ const StaffFollowUpPage: React.FC = React.memo(() => {
         }
     };
 
-
     return (
         <div className="flex flex-col gap-6" dir="rtl">
-            {/* Top Selector Bar - Hidden in redesign but kept for logic accessibility */}
-            <div className="hidden pointer-events-none h-0 p-0 overflow-hidden">
-                {/* Legacy Selector Hidden */}
+            {/* Top Navigation Toggle */}
+            <div className="flex bg-slate-100 p-1.5 rounded-[2rem] self-center mb-4 shadow-inner border border-slate-200 w-full max-w-2xl">
+                <button
+                    onClick={() => setViewMode('individual')}
+                    className={`flex-1 flex items-center justify-center gap-3 py-4 px-8 rounded-[1.8rem] font-black text-lg transition-all transform active:scale-95 ${viewMode === 'individual'
+                        ? 'bg-white text-blue-600 shadow-xl scale-[1.02]'
+                        : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                >
+                    <UserCircle size={24} /> التقارير الفردية
+                </button>
+                <button
+                    onClick={() => setViewMode('group')}
+                    className={`flex-1 flex items-center justify-center gap-3 py-4 px-8 rounded-[1.8rem] font-black text-lg transition-all transform active:scale-95 ${viewMode === 'group'
+                        ? 'bg-white text-blue-600 shadow-xl scale-[1.02]'
+                        : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                >
+                    <Users size={24} /> التقارير الجماعية
+                </button>
             </div>
 
-            {currentReportId && (
-                <>
-                    {/* Redesigned Search Bar */}
-                    <div className="mb-2 animate-in fade-in slide-in-from-top-4 duration-700">
-                        <div className="relative group max-w-xs mx-auto md:mx-0">
-                            <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-600 transition-all">
-                                <Search size={18} />
+            {viewMode === 'individual' ? (
+                <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+                    {/* 1. Header Form */}
+                    <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-black text-slate-600 mr-2">اسم المدرسة</label>
+                            <input type="text" readOnly className="bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none" value={individualForm.schoolName} />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-black text-slate-600 mr-2">الفرع</label>
+                            <select
+                                className="bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none cursor-pointer"
+                                value={individualForm.branch}
+                                onChange={(e) => setIndividualForm({ ...individualForm, branch: e.target.value })}
+                            >
+                                <option>المركز الرئيسي</option>
+                                <option>فرع الطلاب</option>
+                                <option>فرع الطالبات</option>
+                                <option>فرع البراعم</option>
+                            </select>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-black text-slate-600 mr-2">الفصل الدراسي</label>
+                            <select
+                                className="bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none cursor-pointer"
+                                value={individualForm.semester}
+                                onChange={(e) => setIndividualForm({ ...individualForm, semester: e.target.value })}
+                            >
+                                <option>الأول</option>
+                                <option>الثاني</option>
+                            </select>
+                        </div>
+                        <div className="flex gap-4">
+                            <div className="flex flex-col gap-2 flex-1">
+                                <label className="text-sm font-black text-slate-600 mr-2 flex items-center justify-between">
+                                    <span>مجال التقرير</span>
+                                    <button
+                                        onClick={() => setShowCustomizer(true)}
+                                        className="text-amber-500 hover:text-amber-600 transition-colors flex items-center gap-1.5"
+                                        title="تخصيص القائمة"
+                                    >
+                                        <Palette size={16} />
+                                        <span className="text-[10px] font-black">تحرير القائمة</span>
+                                    </button>
+                                </label>
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                        className="w-full h-14 bg-white rounded-[1.2rem] border-2 border-slate-100 px-5 text-right font-black text-sm text-slate-700 flex items-center justify-between hover:border-blue-300 transition-all select-none"
+                                    >
+                                        <span className="truncate ml-2">{individualForm.reportField}</span>
+                                        <ChevronDown size={20} className={`text-slate-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                                    </button>
+
+                                    {isDropdownOpen && (
+                                        <div className="absolute top-full right-0 left-0 mt-2 bg-white border-2 border-blue-50 rounded-[1.5rem] shadow-2xl z-[150] overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                            <div className="max-h-60 overflow-y-auto custom-scrollbar">
+                                                {reportFields.map((field) => (
+                                                    <button
+                                                        key={field}
+                                                        onClick={() => {
+                                                            setIndividualForm({ ...individualForm, reportField: field });
+                                                            setIsDropdownOpen(false);
+                                                        }}
+                                                        className={`w-full text-right px-6 py-3.5 text-sm font-black transition-all hover:bg-blue-50 hover:text-blue-600 ${individualForm.reportField === field ? 'bg-blue-600 text-white' : 'text-slate-600'}`}
+                                                    >
+                                                        {field}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-black text-slate-600 mr-2">التاريخ (ميلادي)</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="date"
+                                    className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none font-sans"
+                                    value={reportDate}
+                                    onChange={(e) => setReportDate(e.target.value)}
+                                />
+                                <div className="flex-1 bg-blue-50 border-2 border-blue-100 rounded-[1.2rem] p-3.5 flex flex-col justify-center">
+                                    <span className="text-[10px] font-bold text-blue-400">التاريخ الهجري</span>
+                                    <span className="font-black text-blue-700 text-sm">{toHijri(reportDate)}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-black text-slate-600 mr-2">اسم كاتب التقرير</label>
                             <input
                                 type="text"
-                                placeholder="بحث سريع..."
-                                className="w-full bg-white border border-slate-200 rounded-2xl py-3 pr-10 pl-4 text-sm font-bold shadow-sm focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none transition-all placeholder:text-slate-300"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none"
+                                value={individualForm.writer}
+                                onChange={(e) => setIndividualForm({ ...individualForm, writer: e.target.value })}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-black text-slate-600 mr-2">رقم التقرير</label>
+                            <input
+                                type="text"
+                                className="bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none font-sans"
+                                value={individualForm.reportNumber}
+                                onChange={(e) => setIndividualForm({ ...individualForm, reportNumber: e.target.value })}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-black text-slate-600 mr-2">اسم الموظف</label>
+                            <input
+                                type="text"
+                                className="bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none"
+                                value={individualForm.employeeName}
+                                onChange={(e) => setIndividualForm({ ...individualForm, employeeName: e.target.value })}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-black text-slate-600 mr-2">الدور</label>
+                            <input
+                                type="text"
+                                className="bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none"
+                                value={individualForm.role}
+                                onChange={(e) => setIndividualForm({ ...individualForm, role: e.target.value })}
                             />
                         </div>
                     </div>
 
-                    <div className="hidden pointer-events-none h-0 p-0 overflow-hidden">
-                        {/* Legacy Header Hidden */}
+
+                    {/* 1.5 Criteria Customizer Button */}
+                    <div className="flex justify-center my-8">
+                        <button
+                            onClick={() => setShowCriteriaModal(true)}
+                            className="bg-amber-500 text-white px-12 py-5 rounded-[2.2rem] font-black text-xl shadow-xl shadow-amber-100 hover:bg-amber-600 transition-all transform hover:scale-105 active:scale-95 flex items-center gap-3 border-4 border-white"
+                        >
+                            <Palette size={24} />
+                            تخصيص المعايير (البطاقات)
+                        </button>
                     </div>
 
-                    {/* Report Title Header */}
-                    {(() => {
-                        const report = data.adminReports?.find(r => r.id === currentReportId);
-                        if (!report) return null;
-                        return (
-                            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col items-center gap-2 text-center animate-in mb-2">
-                                <h2 className="text-2xl font-black text-slate-800 tracking-tight">
-                                    {getReportTitle(report)}
-                                </h2>
-                                <div className="flex items-center gap-3 bg-slate-50 px-6 py-2 rounded-full border border-slate-100 group">
-                                    <Calendar size={18} className="text-blue-500" />
-                                    {(!report.reportCount) ? (
-                                        <input
-                                            type="date"
-                                            className="bg-transparent font-black text-slate-600 text-sm outline-none focus:ring-2 focus:ring-blue-200 rounded px-2 py-1 transition-all cursor-pointer font-sans"
-                                            value={report.dateStr}
-                                            onChange={(e) => {
-                                                const newDate = e.target.value;
-                                                const updatedReports = (data.adminReports || []).map(r =>
-                                                    r.id === currentReportId ? { ...r, dateStr: newDate } : r
-                                                );
-                                                updateData({ adminReports: updatedReports });
-                                            }}
-                                        />
-                                    ) : (
-                                        <span className="font-black text-slate-600 text-sm">
-                                            {getReportDateLabel(report)}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })()}
-
-                    {/* Smart Table */}
-                    <div className="bg-white rounded-[2.8rem] shadow-2xl border-[8px] border-[#800000] overflow-hidden flex flex-col min-h-[550px] animate-in zoom-in-95 duration-500 relative print:border-0 print:shadow-none">
-                        <div className="overflow-x-auto overflow-y-auto max-h-[750px] staff-follow-table custom-scrollbar">
-                            <table className="w-full border-collapse text-right select-none">
-                                <thead className="sticky top-0 z-30 shadow-xl border-b-2 border-slate-200">
-                                    {/* Row 1: Categories */}
-                                    <tr className="bg-[#FFD966] text-[#4F3F0F] h-12">
-                                        <th rowSpan={2} className="w-12 p-2 border-e border-[#E6B11F] text-center text-xs font-black bg-[#E6B11F]/20 font-sans">#</th>
-                                        <th rowSpan={2} className="w-12 p-2 border-e border-[#E6B11F] text-center">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <input
-                                                    type="checkbox"
-                                                    className="w-5 h-5 rounded cursor-pointer accent-[#D4A017]"
-                                                    checked={selectedEmployees.length === employees.length && employees.length > 0}
-                                                    onChange={() => setSelectedEmployees(selectedEmployees.length === employees.length ? [] : employees.map(e => e.id))}
-                                                />
-                                                {selectedEmployees.length > 0 && (
-                                                    <button onClick={() => deleteEmployees(selectedEmployees)} className="text-red-600 hover:text-red-700 transition-colors" title="حذف المحددين">
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </th>
-                                        <th rowSpan={2} className="min-w-[220px] p-4 border-e border-[#E6B11F] text-sm font-black text-center">اسم الموظف والبيانات</th>
-                                        <th colSpan={displayedMetrics.length} className="p-2 border-e border-[#E6B11F] text-xs font-black text-center tracking-widest shadow-inner">مجالات تقييم الموظفين</th>
-                                        <th rowSpan={2} className="min-w-[80px] p-2 border-e border-[#E6B11F] text-xs font-black text-center shadow-inner">المخالفات</th>
-                                        <th colSpan={2} className="p-2 border-e border-[#E6B11F] text-xs font-black text-center tracking-widest">المجموع الكلي</th>
-                                        <th rowSpan={2} className="min-w-[160px] p-2 border-e border-[#E6B11F] text-xs font-black text-center">الملاحظات والتوصيات</th>
-                                        <th rowSpan={2} className="w-24 p-2 text-xs font-black text-center">إجراءات</th>
-                                    </tr>
-                                    {/* Row 2: Metrics */}
-                                    <tr className="bg-slate-50 text-slate-700 h-32 shadow-md">
-                                        {displayedMetrics.map(m => (
-                                            <th key={m.key} className="p-1 border-e border-slate-200 min-w-[90px] align-bottom transition-all relative overflow-hidden group" style={getMetricStyle(m)}>
-                                                <div className="flex flex-col items-center justify-between h-full gap-2 py-2">
-                                                    <div className={`font-black text-[11px] leading-tight text-center px-1 break-words max-w-[85px] line-clamp-3 mb-auto ${getTextColor(m.color)}`}>
-                                                        {m.label.split(' ').map((word, i, arr) => (
-                                                            <React.Fragment key={i}>
-                                                                {word}{' '}
-                                                                {((i + 1) % 2 === 0 && i !== arr.length - 1) && <br />}
-                                                            </React.Fragment>
-                                                        ))}
-                                                    </div>
-                                                    <div className="flex flex-col items-center gap-1 w-full px-1.5 z-10 mt-auto">
-                                                        <input
-                                                            type="number"
-                                                            className="w-full bg-white/40 backdrop-blur-sm border-2 border-slate-200/50 rounded-lg text-center text-[11px] font-black py-1 outline-none font-sans focus:border-white transition-all text-current"
-                                                            value={toEnglishNum(m.max * (data.adminReports?.find(r => r.id === currentReportId)?.reportCount || 1))}
-                                                            readOnly
-                                                        />
-                                                        <div className="flex items-center gap-1 w-full">
-                                                            <input
-                                                                type="number"
-                                                                placeholder="قيمة"
-                                                                className="w-full bg-white/20 border-none rounded-md text-center text-[9px] font-black py-0.5 outline-none font-sans text-current placeholder:text-current/50"
-                                                                value={fillValues[m.key] || ''}
-                                                                onChange={(e) => setFillValues(prev => ({ ...prev, [m.key]: parseInt(e.target.value) || 0 }))}
-                                                            />
-                                                            <button
-                                                                onClick={() => fillMetricColumn(m.key, Math.min(m.max, fillValues[m.key] || m.max))}
-                                                                className="bg-white/30 text-current rounded-md p-1 hover:bg-white/50 transition-all shadow-sm active:scale-90"
-                                                                title="تعبئة الدرجة للعمود"
-                                                            >
-                                                                <Zap size={10} className="mx-auto" />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                                            </th>
-                                        ))}
-                                        <th className="p-3 border-e border-slate-200 text-[11px] font-black bg-indigo-50/80 text-indigo-900 text-center">المجموع</th>
-                                        <th className="p-3 border-slate-200 text-[11px] font-black bg-indigo-50/80 text-indigo-900 text-center">النسبة %</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {employees.length === 0 ? (
-                                        <tr><td colSpan={100} className="p-32 text-center text-slate-300 font-bold text-lg">لم يتم رصد أي موظفين بعد في هذا الجدول</td></tr>
-                                    ) : employees.map((emp, idx) => {
-                                        const total = calculateTotal(emp);
-                                        const max = calculateMaxTotal(emp);
-                                        const percent = max > 0 ? ((total / max) * 100).toFixed(1) : '0';
-                                        return (
-                                            <tr
-                                                key={emp.id}
-                                                onClick={() => setHighlightedRowId(emp.id)}
-                                                className={`transition-all duration-200 group h-14 ${highlightedRowId === emp.id ? 'bg-blue-50' : (selectedEmployees.includes(emp.id) ? 'bg-indigo-50/50' : 'hover:bg-slate-50/80')}`}
-                                            >
-                                                <td className="p-3 border-e text-center text-xs font-bold text-slate-400 font-sans">{idx + 1}</td>
-                                                <td className="p-3 border-e text-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="w-4 h-4 rounded cursor-pointer transition-transform group-hover:scale-110"
-                                                        checked={selectedEmployees.includes(emp.id)}
-                                                        onChange={() => setSelectedEmployees(prev => prev.includes(emp.id) ? prev.filter(id => id !== emp.id) : [...prev, emp.id])}
-                                                    />
-                                                </td>
-                                                <td className="p-4 border-e bg-inherit">
-                                                    <div className="flex flex-col gap-1.5">
-                                                        <input
-                                                            type="text"
-                                                            className="bg-transparent border-none font-black text-slate-800 text-sm outline-none w-full focus:bg-white focus:ring-2 focus:ring-blue-100 rounded px-1 transition-all"
-                                                            value={emp.employeeName}
-                                                            onChange={(e) => updateEmployee(emp.id, { employeeName: e.target.value })}
-                                                        />
-                                                        <div className="flex flex-wrap gap-1.5 text-[8px] font-black">
-                                                            <select
-                                                                className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border-none outline-none cursor-pointer hover:bg-blue-100 transition-colors"
-                                                                value={emp.gender}
-                                                                onChange={(e) => e.target.value === 'ADD_NEW' ? handleAddOption('gender', emp.id) : updateEmployee(emp.id, { gender: e.target.value })}
-                                                            >
-                                                                <option value="ذكر">ذكر</option>
-                                                                <option value="أنثى">أنثى</option>
-                                                                <option value="ADD_NEW">+ إضافة</option>
-                                                            </select>
-
-                                                            <select
-                                                                className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border-none outline-none cursor-pointer hover:bg-blue-100 transition-colors"
-                                                                value={emp.role}
-                                                                onChange={(e) => e.target.value === 'ADD_NEW' ? handleAddOption('role', emp.id) : updateEmployee(emp.id, { role: e.target.value })}
-                                                            >
-                                                                <option value={emp.role}>{emp.role}</option>
-                                                                <option value="إداري">إداري</option>
-                                                                <option value="معلم">معلم</option>
-                                                                <option value="مدير فرع">مدير فرع</option>
-                                                                <option value="ADD_NEW">+ إضافة</option>
-                                                            </select>
-
-                                                            <select
-                                                                className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border-none outline-none cursor-pointer hover:bg-emerald-100 transition-colors"
-                                                                value={emp.branch}
-                                                                onChange={(e) => e.target.value === 'ADD_NEW' ? handleAddOption('branch', emp.id) : updateEmployee(emp.id, { branch: e.target.value })}
-                                                            >
-                                                                <option value="المركز الرئيسي">المركز الرئيسي</option>
-                                                                <option value="فرع الطلاب">فرع الطلاب</option>
-                                                                <option value="فرع الطالبات">فرع الطالبات</option>
-                                                                <option value="فرع البراعم">فرع البراعم</option>
-                                                                <option value="ADD_NEW">+ إضافة</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                {displayedMetrics.map(m => {
-                                                    const isUnaccredited = (emp.unaccreditedMetrics || []).includes(m.key);
-                                                    const val = Number(emp[m.key]) || 0;
-                                                    // Use the pastel background from metric color with high transparency
-                                                    return (
-                                                        <td key={m.key} className="p-1 border-e relative group/cell" style={{ backgroundColor: `${m.color}15` }}>
-                                                            <div className="flex flex-col items-center gap-1">
-                                                                <div className="w-1.5 h-1.5 rounded-full mb-1" style={{ backgroundColor: m.color }} />
-                                                                <input
-                                                                    type="number"
-                                                                    className={`w-full text-center outline-none bg-transparent font-black text-[14px] font-sans transition-all ${isUnaccredited ? 'opacity-20 pointer-events-none' : ''} ${!isUnaccredited && val <= m.max * 0.3 && val > 0 ? 'text-red-500 scale-110' : 'text-slate-800'}`}
-                                                                    value={emp[m.key] || ''}
-                                                                    placeholder="(0)"
-                                                                    onFocus={(e) => e.target.select()}
-                                                                    onChange={(e) => {
-                                                                        const v = Math.min(m.max, Math.max(0, parseInt(e.target.value) || 0));
-                                                                        updateEmployee(emp.id, { [m.key]: v });
-                                                                    }}
-                                                                />
-                                                                <button
-                                                                    onClick={(e) => { e.stopPropagation(); toggleAccreditation(emp.id, m.key); }}
-                                                                    className={`opacity-0 group-hover/cell:opacity-100 transition-all p-0.5 rounded hover:bg-white shadow-sm ${isUnaccredited ? 'text-rose-500 opacity-100 scale-110' : 'text-slate-300'}`}
-                                                                    title={isUnaccredited ? "إلغاء الاستبعاد" : "استبعاد من الحساب لهذا الموظف"}
-                                                                >
-                                                                    <Star size={11} className={isUnaccredited ? 'fill-rose-500' : ''} />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    );
-                                                })}
-                                                <td
-                                                    className={`p-1 border-e text-center cursor-pointer transition-colors ${emp.violations_score > 0 ? 'bg-red-50/50' : ''}`}
-                                                    onClick={() => setViolationModal({ id: emp.id, notes: emp.violations_notes })}
-                                                >
-                                                    <div className="flex flex-col items-center gap-1">
-                                                        <span className={`text-[14px] font-black font-sans ${emp.violations_score > 0 ? 'text-red-600 scale-110 animate-pulse' : 'text-slate-300'}`}>{emp.violations_score}</span>
-                                                        {emp.violations_notes.length > 0 && <AlertCircle size={12} className="text-red-500" />}
-                                                    </div>
-                                                </td>
-                                                <td className="p-2 border-e text-center font-black text-[14px] text-blue-800 bg-blue-50/40 font-sans">{total}</td>
-                                                <td className="p-2 border-e text-center font-black text-[14px] text-blue-800 bg-blue-50/40 font-sans">{percent}%</td>
-                                                <td className="p-2 border-e text-right text-[11px] text-slate-600 max-w-[180px] cursor-pointer hover:bg-amber-50/50 transition-colors" onClick={() => setNotesModal({ empId: emp.id, text: emp.recommendations || '' })}>
-                                                    <div className="flex items-start gap-1">
-                                                        <span className="flex-1 line-clamp-3 whitespace-pre-wrap">{emp.recommendations || ''}</span>
-                                                        <MessageSquare size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                                                    </div>
-                                                </td>
-                                                <td className="p-3 text-center">
-                                                    <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={(e) => { e.stopPropagation(); generateWhatsAppReport(emp.id); }} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="إرسال تقرير فردي بالواتساب">
-                                                            <Send size={18} />
-                                                        </button>
-                                                        <button onClick={(e) => { e.stopPropagation(); deleteEmployees([emp.id]); }} className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all" title="حذف">
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                                <tfoot className="sticky bottom-0 z-30 bg-[#FFD966] text-[#4F3F0F] font-black text-xs h-16 shadow-[0_-5px_20px_rgba(0,0,0,0.2)]">
-                                    <tr className="border-t-4 border-[#E6B11F]">
-                                        <td colSpan={3} className="px-6 text-right bg-[#E6B11F]/20 border-e border-[#E6B11F] text-sm tracking-wide">الإحصائيات الإجمالية والنسب المئوية المحققة</td>
-                                        {displayedMetrics.map(m => (
-                                            <td key={m.key} className="p-2 border-e border-[#E6B11F] text-center" style={{ backgroundColor: `${m.color}15` }}>
-                                                <div className="flex flex-col items-center gap-0.5">
-                                                    <span className="font-sans text-[13px]">({getColSum(m.key)})</span>
-                                                    <div className="w-10 h-0.5 bg-black opacity-10 rounded-full my-0.5" />
-                                                    <span className="text-[10px] opacity-80 font-sans">{getColPercent(m.key, m.max)}%</span>
-                                                </div>
-                                            </td>
-                                        ))}
-                                        <td className="border-e border-[#E6B11F] bg-rose-50/50"></td>
-                                        <td className="bg-amber-100 border-e border-[#E6B11F] text-center text-[15px] font-sans shadow-inner">
-                                            ({employees.reduce((acc, e) => acc + calculateTotal(e), 0)})
-                                        </td>
-                                        <td className="bg-amber-200 text-center text-[18px] font-sans shadow-inner text-[#800000]">
-                                            {(() => {
-                                                const tSum = employees.reduce((acc, e) => acc + calculateTotal(e), 0);
-                                                const tMax = employees.reduce((acc, e) => acc + calculateMaxTotal(e), 0);
-                                                return tMax > 0 ? ((tSum / tMax) * 100).toFixed(1) : '0';
-                                            })()}%
-                                        </td>
-                                        <td className="bg-[#E6B11F]/20"></td>
-                                        <td className="bg-[#E6B11F]/5"></td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-
-                        {/* Signatures Footer */}
-                        <div className="bg-slate-50 p-10 border-t-2 border-slate-100 flex justify-between items-start gap-20 print:bg-white print:border-slate-200">
-                            <div className="flex flex-col gap-8 flex-1">
-                                <div className="flex items-center gap-3 text-slate-400 group">
-                                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-100 shadow-sm group-hover:text-blue-600 transition-colors">
-                                        <UserCircle size={20} />
-                                    </div>
-                                    <span className="font-black text-sm tracking-widest uppercase opacity-60">كاتب التقرير</span>
-                                </div>
-                                <div className="border-b-4 border-slate-200 border-dotted w-full pb-4 px-2">
-                                    <span className="text-2xl font-black text-slate-800 font-sans">
-                                        {writer || data.adminReports?.find(r => r.id === currentReportId)?.writer}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-col gap-8" style={{ minWidth: '200px' }}>
-                                <div className="flex items-center gap-3 text-slate-400 group">
-                                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-100 shadow-sm group-hover:text-blue-600 transition-colors">
-                                        <Users size={20} />
-                                    </div>
-                                    <span className="font-black text-sm tracking-widest uppercase opacity-60">مدير الفرع</span>
-                                </div>
-                                <div className="border-b-4 border-slate-200 border-dotted w-full pb-4 px-2">
-                                    <span className="text-2xl font-black text-slate-800 font-sans">
-                                        {data.profile.branchManager || '......................'}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Footer Legend */}
-                        <div className="bg-slate-50 p-4 border-t border-slate-200 flex flex-wrap justify-center gap-6 text-[10px] font-black text-slate-500">
-                            <div className="flex items-center gap-2"><div className="w-3 h-3 bg-red-100 border border-red-500 rounded" /> درجات ضعيفة (أقل من 30%)</div>
-                            <div className="flex items-center gap-2"><Star size={12} className="text-rose-500 fill-rose-500" /> مجال مستبعد من حسابات هذا الموظف</div>
-                            <div className="flex items-center gap-2 font-sans opacity-70">123 - الأرقام باللاتينية</div>
-                        </div>
-                    </div>
-                </>
-            )}
-
-            {/* Archive Modal */}
-            {showArchive && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[3rem] w-full max-w-4xl overflow-hidden shadow-2xl border-[10px] border-white flex flex-col max-h-[85vh] animate-in zoom-in-95">
-                        <div className="p-8 bg-slate-900 text-white flex items-center justify-between shadow-xl">
-                            <div className="flex flex-col">
-                                <h3 className="text-3xl font-black tracking-tight">أرشيف التقارير</h3>
-                                <div className="flex items-center gap-4 mt-2">
-                                    <div className="relative">
-                                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-                                        <input
-                                            type="text"
-                                            placeholder="بحث بالتاريخ..."
-                                            className="bg-white/10 border border-white/20 rounded-xl pr-10 pl-4 py-2 text-sm font-bold focus:bg-white/20 outline-none w-48 transition-all"
-                                            value={archiveSearch}
-                                            onChange={(e) => setArchiveSearch(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            <button onClick={() => setShowArchive(false)} className="p-3 hover:bg-white/10 rounded-2xl transition-all active:scale-90 bg-white/5 border border-white/10">
-                                <X size={28} />
-                            </button>
-                        </div>
-
-                        {/* Archive Tabs */}
-                        <div className="flex bg-slate-100 p-2 gap-2">
-                            {[
-                                { id: 'daily', label: 'اليومية' },
-                                { id: 'weekly', label: 'الأسبوعية' },
-                                { id: 'monthly', label: 'الشهرية' },
-                                { id: 'quarterly', label: 'الفصلية' },
-                                { id: 'yearly', label: 'السنوية' }
-                            ].map(tab => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setArchiveTab(tab.id as any)}
-                                    className={`flex-1 py-3 rounded-2xl font-black text-sm transition-all ${archiveTab === tab.id ? 'bg-white text-blue-600 shadow-md scale-105' : 'text-slate-500 hover:bg-white/50'}`}
-                                >
-                                    {tab.label}
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="flex-1 overflow-auto p-8 space-y-4 custom-scrollbar bg-slate-50/50">
-                            {(() => {
-                                const filteredReports = (data.adminReports || []).filter(r => {
-                                    const isTypeMatch = r.followUpType === followUpType;
-                                    if (!isTypeMatch) return false;
-
-                                    const reportPeriod = r.periodName || 'Daily';
-                                    const tabMap: Record<string, string> = {
-                                        'daily': 'Daily',
-                                        'weekly': 'الأسبوعي',
-                                        'monthly': 'الشهري',
-                                        'quarterly': 'الفصلي',
-                                        'yearly': 'السنوي'
-                                    };
-                                    const isTabMatch = archiveTab === 'daily' ? !r.reportCount : reportPeriod === tabMap[archiveTab];
-                                    if (!isTabMatch) return false;
-
-                                    if (archiveSearch && !r.dateStr.includes(archiveSearch)) return false;
-
-                                    return true;
-                                });
-
-                                if (filteredReports.length === 0) {
-                                    return (
-                                        <div className="flex flex-col items-center justify-center py-20 text-slate-300 gap-4">
-                                            <Archive size={64} strokeWidth={1} />
-                                            <span className="font-black text-xl">لا توجد تقارير في هذا القسم</span>
+                    {/* 2. Evaluation Interface */}
+                    <div className="flex flex-col gap-6">
+                        {individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس' ? (
+                            // الحالة أ: المؤشرات
+                            <div className="grid grid-cols-1 gap-8">
+                                {INDICATORS_DATA.map((domain, dIdx) => (
+                                    <div key={dIdx} className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+                                        <div className="bg-slate-800 p-5 flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-white font-black">{dIdx + 1}</div>
+                                            <h3 className="text-xl font-black text-white">{domain.label}</h3>
                                         </div>
-                                    );
-                                }
-
-                                return filteredReports.map(r => (
-                                    <div key={r.id} className="group relative flex items-center justify-between p-6 bg-white border-2 border-slate-100 rounded-[2rem] hover:border-blue-500 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md">
-                                        <div className="flex items-center gap-6 flex-1" onClick={() => { setCurrentReportId(r.id); setFollowUpType(r.followUpType); setWriter(r.writer || ''); setShowArchive(false); }}>
-                                            <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center font-black shadow-inner">
-                                                <Calendar size={24} />
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-black text-lg text-slate-800">{r.dateStr}</span>
-                                                    {r.reportCount && <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-2 py-0.5 rounded-full">تجميعي</span>}
-                                                </div>
-                                                <div className="flex items-center gap-4 text-xs font-bold text-slate-400">
-                                                    <span className="flex items-center gap-1"><UserCircle size={14} /> {r.writer || 'غير محدد'}</span>
-                                                    <span className="flex items-center gap-1"><Users size={14} /> {r.employeesData.length} موظف</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <button onClick={() => deleteReport(r.id)} className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all" title="حذف">
-                                                <Trash2 size={20} />
-                                            </button>
-                                            <button onClick={(e) => { e.stopPropagation(); setCurrentReportId(r.id); setFollowUpType(r.followUpType); setWriter(r.writer || ''); setTimeout(() => generateWhatsAppReport('bulk'), 100); }} className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center hover:bg-green-100 transition-all">
-                                                <Send size={20} className="rotate-180" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ));
-                            })()}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Report Indicators Modal */}
-            {showIndicatorsModal && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[3rem] w-full max-w-lg shadow-2xl border-[8px] border-white flex flex-col animate-in zoom-in-95">
-                        <div className="p-8 bg-blue-600 text-white flex items-center justify-between">
-                            <div>
-                                <h3 className="text-2xl font-black">مؤشرات التقارير</h3>
-                                <p className="text-blue-100 font-bold text-xs">{followUpType}</p>
-                            </div>
-                            <button onClick={() => setShowIndicatorsModal(false)} className="p-3 hover:bg-white/10 rounded-2xl transition-all"><X size={24} /></button>
-                        </div>
-                        <div className="p-8 space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="col-span-1">
-                                    <label className="block text-xs font-black text-slate-400 mb-2 mr-2">من تاريخ</label>
-                                    <input
-                                        type="date"
-                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm font-black outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all font-sans"
-                                        value={aggDateFrom}
-                                        onChange={(e) => setAggDateFrom(e.target.value)}
-                                    />
-                                </div>
-                                <div className="col-span-1">
-                                    <label className="block text-xs font-black text-slate-400 mb-2 mr-2">إلى تاريخ</label>
-                                    <input
-                                        type="date"
-                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm font-black outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all font-sans"
-                                        value={aggDateTo}
-                                        onChange={(e) => setAggDateTo(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 gap-3">
-                                {['أسبوعي', 'شهري', 'فصلي', 'سنوي'].map(period => (
-                                    <button
-                                        key={period}
-                                        onClick={() => { aggregateReports(period); setShowIndicatorsModal(false); }}
-                                        className={`w-full py-4 px-6 rounded-[1.5rem] font-black text-lg flex items-center justify-between transition-all group shadow-sm hover:shadow-md
-                                    ${period === 'أسبوعي' ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white' :
-                                                period === 'شهري' ? 'bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white' :
-                                                    period === 'فصلي' ? 'bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white' :
-                                                        'bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white'}`}
-                                    >
-                                        <span className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/10 transition-colors">
-                                                <FileOutput size={20} />
-                                            </div>
-                                            إنشاء تقرير {period} مجمع
-                                        </span>
-                                        <ChevronLeft size={20} className="opacity-30 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 transition-all" />
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Violation Modal */}
-            {violationModal && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-red-950/40 backdrop-blur-md p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[3rem] w-full max-w-lg shadow-[0_30px_60px_-15px_rgba(220,38,38,0.3)] border-[6px] border-white p-10 space-y-8 animate-in zoom-in-95 duration-300">
-                        <div className="flex items-center justify-between border-b-2 border-slate-50 pb-6">
-                            <div className="flex items-center gap-4">
-                                <div className="w-14 h-14 bg-red-100 text-red-600 rounded-[1.2rem] flex items-center justify-center shadow-inner">
-                                    <AlertCircle size={32} />
-                                </div>
-                                <div>
-                                    <h3 className="text-2xl font-black text-slate-900">سجل المخالفات</h3>
-                                    <p className="text-red-500 text-sm font-bold tracking-tight">رصد السلوكيات والتقصير الإداري</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setViolationModal(null)} className="p-3 hover:bg-slate-100 text-slate-400 rounded-2xl transition-all active:scale-90"><X size={24} /></button>
-                        </div>
-                        <div className="space-y-6">
-                            <div className="space-y-3">
-                                <label className="text-sm font-black text-slate-600 mr-2 flex items-center gap-2">درجة المخالفة <span className="text-xs text-slate-400">(تطرح من المجموع)</span></label>
-                                <input
-                                    type="number"
-                                    className="w-full bg-slate-50 border-3 border-slate-100 rounded-[1.5rem] p-5 font-black text-2xl text-center text-red-600 focus:ring-8 focus:ring-red-100 focus:border-red-500 outline-none transition-all font-sans"
-                                    value={employees.find(e => e.id === violationModal.id)?.violations_score || 0}
-                                    onChange={(e) => updateEmployee(violationModal.id, { violations_score: parseInt(e.target.value) || 0 })}
-                                />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-sm font-black text-slate-600 mr-2">تفاصيل الملاحظات <span className="text-xs text-slate-400">(كل ملاحظة في سطر)</span></label>
-                                <textarea
-                                    className="w-full bg-slate-50 border-3 border-slate-100 rounded-[1.5rem] p-6 font-black h-48 outline-none focus:ring-8 focus:ring-slate-100 focus:border-slate-800 transition-all text-slate-800 leading-relaxed custom-scrollbar"
-                                    placeholder="مثال: تأخر في تسليم التقارير، مخالفة الزي الرسمي..."
-                                    value={violationModal.notes.join('\n')}
-                                    onChange={(e) => updateEmployee(violationModal.id, { violations_notes: e.target.value.split('\n').filter(n => n.trim()) })}
-                                />
-                            </div>
-                            <button onClick={() => setViolationModal(null)} className="w-full bg-slate-900 text-white p-6 rounded-[1.8rem] font-black text-xl shadow-2xl hover:bg-black transition-all transform active:scale-95 shadow-slate-200">اعتماد وحفظ السجل</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Customize Domains Modal */}
-            {showCustomizer && (
-                <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in">
-                    <div className="bg-white rounded-[3rem] w-full max-w-2xl shadow-2xl border-[8px] border-white flex flex-col max-h-[85vh]">
-                        <div className="p-8 bg-amber-500 text-white flex items-center justify-between">
-                            <div>
-                                <h3 className="text-2xl font-black">تخصيص مجالات التقييم</h3>
-                                <p className="text-amber-100 font-bold text-sm">{followUpType}</p>
-                            </div>
-                            <button onClick={() => setShowCustomizer(false)} className="p-3 hover:bg-white/10 rounded-full transition-all"><X size={24} /></button>
-                        </div>
-                        <div className="p-6 flex-1 overflow-auto space-y-4 custom-scrollbar">
-                            <button
-                                onClick={addDomain}
-                                className="w-full p-4 bg-amber-50 border-2 border-amber-200 border-dashed rounded-[1.5rem] text-amber-700 font-black flex items-center justify-center gap-2 hover:bg-amber-100 transition-all font-sans"
-                            >
-                                <Plus size={20} /> إضافة مجال تقييم جديد
-                            </button>
-                            <div className="grid grid-cols-1 gap-3">
-                                {displayedMetrics.map((m, idx) => (
-                                    <div key={m.key} className="flex items-center justify-between p-5 bg-slate-50 rounded-[1.5rem] border border-slate-100 group">
-                                        <div className="flex items-center gap-4 flex-1">
-                                            <div className="flex flex-col gap-1">
-                                                <button onClick={() => reorderDomain(idx, 'up')} disabled={idx === 0} className="p-1 hover:bg-white rounded text-slate-400 disabled:opacity-30"><ChevronUp size={16} /></button>
-                                                <button onClick={() => reorderDomain(idx, 'down')} disabled={idx === displayedMetrics.length - 1} className="p-1 hover:bg-white rounded text-slate-400 disabled:opacity-30"><ChevronDown size={16} /></button>
-                                            </div>
-                                            <div className="w-2 h-10 rounded-full shadow-sm" style={{ backgroundColor: m.color }} />
-                                            <div className="flex flex-col flex-1 pl-4">
-                                                <input
-                                                    type="text"
-                                                    className="font-black text-slate-800 bg-transparent border-none outline-none focus:ring-2 focus:ring-amber-200 rounded px-1 transition-all"
-                                                    value={m.label}
-                                                    onChange={(e) => renameDomain(m.key, e.target.value)}
-                                                />
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-xs font-bold text-slate-400 font-sans">الدرجة القصوى:</span>
-                                                    <input
-                                                        type="number"
-                                                        min="1"
-                                                        max="20"
-                                                        className="w-12 bg-white border border-slate-200 rounded px-2 py-0.5 text-xs font-bold text-slate-700 text-center outline-none focus:ring-2 focus:ring-amber-200 transition-all"
-                                                        value={m.max}
-                                                        onChange={(e) => {
-                                                            const newMax = Math.max(1, Math.min(20, parseInt(e.target.value) || 1));
-                                                            handleMaxChange(m.key, newMax);
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <input
-                                                type="color"
-                                                className="w-10 h-10 rounded-xl cursor-pointer border-4 border-white overflow-hidden shadow-lg p-0"
-                                                value={m.color}
-                                                onChange={(e) => {
-                                                    const updated = displayedMetrics.map(item => item.key === m.key ? { ...item, color: e.target.value } : item);
-                                                    updateData({ adminMetricsList: { ...(data.adminMetricsList || {}), [followUpType]: updated } });
-                                                }}
-                                            />
-                                            <button onClick={() => deleteDomain(m.key)} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100">
-                                                <Trash2 size={20} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="p-6 border-t bg-slate-50 text-center">
-                            <p className="text-[10px] text-slate-400 font-black tracking-wider">التعديلات تطبق فوراً على هذا النوع من المتابعة في كافة الجداول</p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Individual Detail Modal */}
-            {showIndividualModal && (
-                <div className="fixed inset-0 z-[130] flex items-center justify-center bg-blue-950/30 backdrop-blur-md p-4 animate-in fade-in">
-                    <div className="bg-white rounded-[3.5rem] w-full max-w-xl shadow-2xl border-[8px] border-white p-10 flex flex-col gap-8 animate-in slide-in-from-bottom-8 max-h-[90vh] overflow-auto custom-scrollbar">
-                        {/* Search field */}
-                        <div className="flex items-center gap-3">
-                            <div className="relative flex-1">
-                                <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                <input
-                                    type="text"
-                                    placeholder="ابحث عن اسم الموظف..."
-                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl pr-12 pl-4 py-3 text-sm font-bold focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none font-sans"
-                                    value={individualSearch}
-                                    onChange={(e) => {
-                                        setIndividualSearch(e.target.value);
-                                        const found = employees.find(emp => emp.employeeName.includes(e.target.value));
-                                        if (found) setShowIndividualModal(found.id);
-                                    }}
-                                />
-                            </div>
-                            <button onClick={() => { setShowIndividualModal(null); setIndividualSearch(''); }} className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all"><X size={24} /></button>
-                        </div>
-                        {/* Employee selector */}
-                        <div className="flex flex-wrap gap-2 max-h-20 overflow-auto custom-scrollbar">
-                            {employees.filter(e => !individualSearch || e.employeeName.includes(individualSearch)).map(e => (
-                                <button key={e.id} onClick={() => setShowIndividualModal(e.id)} className={`px-3 py-1.5 rounded-full text-xs font-black transition-all ${e.id === showIndividualModal ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                                    {e.employeeName}
-                                </button>
-                            ))}
-                        </div>
-                        {(() => {
-                            const emp = employees.find(e => e.id === showIndividualModal);
-                            if (!emp) return <div className="text-center text-slate-400 py-10 font-black">لم يتم العثور على الموظف</div>;
-                            const total = calculateTotal(emp);
-                            const max = calculateMaxTotal(emp);
-                            const percent = max > 0 ? ((total / max) * 100).toFixed(1) : '0';
-                            return (
-                                <>
-                                    <div className="flex items-center gap-5 border-b pb-6">
-                                        <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-700 rounded-3xl flex items-center justify-center text-white shadow-xl rotate-3">
-                                            <UserCircle size={48} strokeWidth={1.5} />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-3xl font-black text-slate-900">{emp.employeeName}</h3>
-                                            <p className="text-blue-600 font-bold tracking-tighter">{emp.role} - {emp.branch}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="bg-blue-50/50 p-6 rounded-[2rem] border-2 border-blue-50 flex flex-col items-center">
-                                            <span className="text-xs font-black text-blue-400 mb-1">نسبة الإنجاز</span>
-                                            <span className="text-4xl font-black text-blue-700 font-sans tracking-tight">{percent}%</span>
-                                        </div>
-                                        <div className="bg-slate-50 p-6 rounded-[2rem] border-2 border-slate-100 flex flex-col items-center">
-                                            <span className="text-xs font-black text-slate-400 mb-1">الدرجة المحققة</span>
-                                            <span className="text-4xl font-black text-slate-800 font-sans tracking-tight">{total} <span className="text-lg opacity-30">/ {max}</span></span>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <h4 className="font-black text-slate-800 mr-2 flex items-center gap-2"><CheckCircle size={18} className="text-green-500" /> تحليل مجالات التقييم</h4>
-                                        <div className="bg-slate-50/50 rounded-[2rem] border-2 border-slate-50 p-6 space-y-3 max-h-60 overflow-auto custom-scrollbar">
-                                            {displayedMetrics.map(m => {
-                                                if ((emp.unaccreditedMetrics || []).includes(m.key)) return null;
-                                                const v = Number(emp[m.key]) || 0;
-                                                const rcCount = data.adminReports?.find(r => r.id === currentReportId)?.reportCount || 1;
-                                                const mMax = m.max * rcCount;
-                                                const p = mMax > 0 ? (v / mMax) * 100 : 0;
+                                        <div className="p-6 space-y-4">
+                                            {domain.items.map((item, iIdx) => {
+                                                const key = `${domain.label}_${iIdx}`;
+                                                const score = individualScores[key] ?? -1;
                                                 return (
-                                                    <div key={m.key} className="space-y-1.5 px-2">
-                                                        <div className="flex justify-between text-[11px] font-black">
-                                                            <span className="text-slate-600">{m.label}</span>
-                                                            <span className="text-blue-600 font-sans">{v} / {mMax}</span>
-                                                        </div>
-                                                        <div className="w-full h-2 bg-white rounded-full overflow-hidden border">
-                                                            <div className={`h-full transition-all duration-1000 ${p > 75 ? 'bg-green-500' : p > 40 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${Math.min(p, 100)}%` }} />
+                                                    <div key={iIdx} className="flex flex-wrap items-center justify-between gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-all border border-transparent hover:border-slate-100">
+                                                        <span className="text-slate-700 font-bold flex-1 min-w-[300px]">{item}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            {[0, 1, 2, 3, 4].map(num => (
+                                                                <button
+                                                                    key={num}
+                                                                    onClick={() => setIndividualScores({ ...individualScores, [key]: num })}
+                                                                    style={{
+                                                                        backgroundColor: score === num ? (
+                                                                            num === 0 ? '#991b1b' :
+                                                                                num === 1 ? '#ea580c' :
+                                                                                    num === 2 ? '#eab308' :
+                                                                                        num === 3 ? '#2563eb' :
+                                                                                            '#166534'
+                                                                        ) : 'transparent',
+                                                                        color: score === num ? 'white' : '#64748b',
+                                                                        borderColor: score === num ? 'transparent' : '#e2e8f0'
+                                                                    }}
+                                                                    className="w-10 h-10 rounded-full border-2 font-black font-sans transition-all transform active:scale-90"
+                                                                >
+                                                                    {num}
+                                                                </button>
+                                                            ))}
                                                         </div>
                                                     </div>
                                                 );
                                             })}
                                         </div>
                                     </div>
-
-                                    <div className="flex gap-3">
-                                        <button onClick={() => generateWhatsAppReport(emp.id)} className="flex-1 bg-green-600 text-white rounded-[1.8rem] p-5 font-black flex items-center justify-center gap-3 shadow-xl shadow-green-100 hover:bg-green-700 transition-all active:scale-95">
-                                            <Send size={24} /> مشاركة عبر واتساب
-                                        </button>
-                                        <button onClick={() => {
-                                            const report = data.adminReports?.find(r => r.id === currentReportId);
-                                            if (!report) return;
-                                            const rcCount = report.reportCount || 1;
-                                            const title = getReportTitle(report) + ' - ' + getReportDateLabel(report);
-                                            let content = `${title}\n\n`;
-                                            content += `الاسم: ${emp.employeeName}\nالوظيفة: ${emp.role}\nالفرع: ${emp.branch}\n\n`;
-                                            displayedMetrics.forEach(m => {
-                                                if (!(emp.unaccreditedMetrics || []).includes(m.key)) {
-                                                    content += `${m.label}\t${emp[m.key] || 0}\t${m.max * rcCount}\n`;
-                                                }
-                                            });
-                                            content += `\nالمخالفات\t${emp.violations_score}\n`;
-                                            content += `المجموع\t${total}\t${max}\n`;
-                                            content += `النسبة\t${percent}%\n`;
-                                            if (emp.recommendations) content += `\nالملاحظات: ${emp.recommendations}\n`;
-                                            content += `\nكاتب التقرير: ${writer || report.writer}`;
-                                            const BOM = '\uFEFF';
-                                            const blob = new Blob([BOM + content], { type: 'text/tab-separated-values;charset=utf-8' });
-                                            const link = document.createElement('a');
-                                            link.href = URL.createObjectURL(blob);
-                                            link.download = `تقرير_${emp.employeeName}.xls`;
-                                            link.click();
-                                        }} className="w-20 bg-emerald-100 text-emerald-700 rounded-[1.8rem] flex items-center justify-center hover:bg-emerald-200 transition-all font-sans font-black">
-                                            <Download size={20} />
-                                        </button>
+                                ))}
+                            </div>
+                        ) : (
+                            // الحالة ب: الأنشطة
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {(!ACTIVITIES_DATA[individualForm.reportField] || ACTIVITIES_DATA[individualForm.reportField].length === 0) ? (
+                                    <div className="md:col-span-2 flex flex-col items-center justify-center p-20 bg-white/50 rounded-[3rem] border-4 border-dashed border-slate-200">
+                                        <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-6 shadow-inner animate-pulse">
+                                            <AlertCircle size={48} />
+                                        </div>
+                                        <h3 className="text-3xl font-black text-slate-800 italic tracking-tighter shadow-sm">قيد التطوير</h3>
+                                        <p className="text-slate-400 font-bold mt-2">جاري العمل على إضافة المعايير الخاصة بهذا المجال</p>
                                     </div>
-                                </>
+                                ) : (
+                                    (customActivities[individualForm.reportField] || []).map((activity, idx) => {
+                                        const key = `${individualForm.reportField}_${idx}`;
+                                        const score = individualScores[key] ?? -1;
+                                        const status = evidenceStatus[key] || 'لم يتم التحديد';
+                                        const isUnaccredited = unaccreditedItems[key] || false;
+
+                                        return (
+                                            <div key={idx} className={`bg-white p-6 rounded-[2.5rem] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)] border border-slate-100 space-y-5 transition-all hover:shadow-2xl ${isUnaccredited ? 'opacity-60 grayscale-[0.5]' : ''}`}>
+                                                <div className="flex justify-between items-start gap-4">
+                                                    <div className="flex flex-col gap-1 w-full">
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={() => setUnaccreditedItems({ ...unaccreditedItems, [key]: !isUnaccredited })}
+                                                                className={`p-2 rounded-xl transition-all active:scale-90 flex items-center gap-2 ${isUnaccredited ? 'bg-rose-100 text-rose-600' : 'bg-emerald-50 text-emerald-500'}`}
+                                                            >
+                                                                <Star size={18} fill={isUnaccredited ? 'none' : 'currentColor'} />
+                                                                <span className="text-[10px] font-black">{isUnaccredited ? 'غير معتمد' : 'معتمد'}</span>
+                                                            </button>
+                                                            <h4 className="text-lg font-black text-slate-800">{activity.text}</h4>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+                                                                (<span className="text-blue-600">{activity.planned}</span>)
+                                                            </span>
+                                                            <span className="text-xs font-bold text-slate-500 bg-purple-50 px-3 py-1 rounded-full">
+                                                                <span className="text-purple-600">{activity.evidence}</span>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-wrap items-center justify-between gap-5 pt-4 border-t border-slate-50">
+                                                    <div className="flex items-center gap-2">
+                                                        {[0, 1, 2, 3, 4].map(num => (
+                                                            <button
+                                                                key={num}
+                                                                onClick={() => setIndividualScores({ ...individualScores, [key]: num })}
+                                                                disabled={isUnaccredited}
+                                                                style={{
+                                                                    backgroundColor: score === num ? (num === 0 ? '#991b1b' : num === 1 ? '#ea580c' : num === 2 ? '#eab308' : num === 3 ? '#2563eb' : '#166534') : '#f8fafc',
+                                                                    color: score === num ? 'white' : '#94a3b8'
+                                                                }}
+                                                                className="w-10 h-10 rounded-full font-black font-sans text-sm transition-all transform active:scale-90 shadow-sm disabled:opacity-50 border border-slate-100"
+                                                            >
+                                                                {num}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+
+                                                    <button
+                                                        onClick={() => {
+                                                            const states: ('توفر' | 'ناقص' | 'لم يتوفر')[] = ['توفر', 'ناقص', 'لم يتوفر'];
+                                                            const currentIdx = states.indexOf(evidenceStatus[key] as any);
+                                                            const nextIdx = (currentIdx + 1) % states.length;
+                                                            setEvidenceStatus({ ...evidenceStatus, [key]: states[nextIdx] });
+                                                        }}
+                                                        disabled={isUnaccredited}
+                                                        className={`px-6 py-2.5 rounded-2xl font-black text-xs transition-all active:scale-95 shadow-sm border-2 ${evidenceStatus[key] === 'توفر' ? 'bg-emerald-500 text-white border-emerald-600' :
+                                                            evidenceStatus[key] === 'ناقص' ? 'bg-amber-500 text-white border-amber-600' :
+                                                                evidenceStatus[key] === 'لم يتوفر' ? 'bg-rose-600 text-white border-rose-700' :
+                                                                    'bg-slate-100 text-slate-400 border-slate-200'
+                                                            }`}
+                                                    >
+                                                        {evidenceStatus[key] || 'حالة الشاهد'}
+                                                    </button>
+                                                </div>
+
+                                                <div className="pt-2">
+                                                    <label className="text-[10px] font-black text-slate-400 mb-1.5 block pr-4">أسباب عدم التنفيذ</label>
+                                                    <textarea
+                                                        rows={1}
+                                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm font-black text-slate-700 outline-none focus:bg-white focus:border-amber-200 focus:ring-4 focus:ring-amber-50 transition-all resize-none custom-scrollbar overflow-hidden"
+                                                        placeholder="اكتب التبريرات هنا..."
+                                                        value={failureReasons[key] || ''}
+                                                        onChange={(e) => {
+                                                            setFailureReasons({ ...failureReasons, [key]: e.target.value });
+                                                            e.target.style.height = 'auto';
+                                                            e.target.style.height = e.target.scrollHeight + 'px';
+                                                        }}
+                                                        onFocus={(e) => {
+                                                            e.target.style.height = 'auto';
+                                                            e.target.style.height = e.target.scrollHeight + 'px';
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 3. Summary Results */}
+                    <div className="bg-slate-900 rounded-[3rem] p-10 flex flex-wrap items-center justify-between gap-10 shadow-2xl">
+                        <div className="flex gap-10">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-slate-400 font-bold text-sm">إجمالي الدرجات الممكنة</span>
+                                <span className="text-white text-5xl font-black font-sans">
+                                    {individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
+                                        ? INDICATORS_DATA.reduce((acc, d) => acc + d.items.length * 4, 0)
+                                        : (() => {
+                                            const activities = customActivities[individualForm.reportField] || [];
+                                            const totalMax = activities.reduce((acc, _, idx) => {
+                                                const key = `${individualForm.reportField}_${idx}`;
+                                                return unaccreditedItems[key] ? acc : acc + 4;
+                                            }, 0);
+                                            return totalMax;
+                                        })()
+                                    }
+                                </span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-slate-400 font-bold text-sm">إجمالي المنفذ</span>
+                                <span className="text-blue-400 text-5xl font-black font-sans">
+                                    {individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
+                                        ? Object.values(individualScores).reduce((acc, s) => acc + (s === -1 ? 0 : s), 0)
+                                        : (() => {
+                                            const activities = customActivities[individualForm.reportField] || [];
+                                            const obtained = activities.reduce((acc, _, idx) => {
+                                                const key = `${individualForm.reportField}_${idx}`;
+                                                if (unaccreditedItems[key]) return acc;
+                                                return acc + (individualScores[key] ?? 0);
+                                            }, 0);
+                                            return obtained;
+                                        })()
+                                    }
+                                </span>
+                            </div>
+                        </div>
+
+                        {(() => {
+                            const possible = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
+                                ? INDICATORS_DATA.reduce((acc, d) => acc + d.items.length * 4, 0)
+                                : (() => {
+                                    const activities = customActivities[individualForm.reportField] || [];
+                                    const totalMax = activities.reduce((acc, _, idx) => {
+                                        const key = `${individualForm.reportField}_${idx}`;
+                                        return unaccreditedItems[key] ? acc : acc + 4;
+                                    }, 0);
+                                    return totalMax;
+                                })();
+                            const earned = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
+                                ? Object.values(individualScores).reduce((acc, s) => acc + (s === -1 ? 0 : s), 0)
+                                : (() => {
+                                    const activities = customActivities[individualForm.reportField] || [];
+                                    const obtained = activities.reduce((acc, _, idx) => {
+                                        const key = `${individualForm.reportField}_${idx}`;
+                                        if (unaccreditedItems[key]) return acc;
+                                        return acc + (individualScores[key] ?? 0);
+                                    }, 0);
+                                    return obtained;
+                                })();
+                            const percent = possible > 0 ? (earned / possible) * 100 : 0;
+                            const status = percent >= 90 ? { text: 'ممتاز', color: 'bg-green-600' } :
+                                percent >= 80 ? { text: 'جيد جداً', color: 'bg-blue-600' } :
+                                    percent >= 60 ? { text: 'جيد', color: 'bg-yellow-600' } :
+                                        { text: 'القصور كبير', color: 'bg-red-700' };
+
+                            return (
+                                <div className={`px-12 py-8 rounded-[2rem] ${status.color} text-white flex flex-col items-center gap-1 shadow-xl transform hover:scale-105 transition-all`}>
+                                    <span className="text-[4rem] font-black font-sans leading-none">{percent.toFixed(0)}%</span>
+                                    <span className="text-xl font-black">{status.text}</span>
+                                </div>
                             );
                         })()}
-                    </div>
-                </div>
-            )}
-
-            {/* Notes/Recommendations Modal */}
-            {notesModal && (
-                <div className="fixed inset-0 z-[140] flex items-center justify-center bg-amber-950/30 backdrop-blur-md p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[3rem] w-full max-w-lg shadow-2xl border-[6px] border-white p-10 space-y-6 animate-in zoom-in-95 duration-300">
-                        <div className="flex items-center justify-between border-b-2 border-slate-50 pb-6">
-                            <div className="flex items-center gap-4">
-                                <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-[1.2rem] flex items-center justify-center shadow-inner">
-                                    <MessageSquare size={32} />
-                                </div>
-                                <div>
-                                    <h3 className="text-2xl font-black text-slate-900">الملاحظات والتوصيات</h3>
-                                    <p className="text-amber-600 text-sm font-bold">{employees.find(e => e.id === notesModal.empId)?.employeeName}</p>
-                                </div>
+                        <div className="flex flex-col items-center">
+                            <span className="text-slate-500 font-black text-xs mb-2 tracking-[0.2em] uppercase">الإنجاز الكلي</span>
+                            <div className="relative flex items-center justify-center">
+                                <svg className="w-24 h-24 transform -rotate-90">
+                                    <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-800" />
+                                    <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-blue-500 transition-all duration-1000"
+                                        strokeDasharray={251.2}
+                                        strokeDashoffset={251.2 - (251.2 * (() => {
+                                            const possible = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
+                                                ? INDICATORS_DATA.reduce((acc, d) => acc + d.items.length * 4, 0)
+                                                : (() => {
+                                                    const activities = customActivities[individualForm.reportField] || [];
+                                                    const totalMax = activities.reduce((acc, _, idx) => {
+                                                        const key = `${individualForm.reportField}_${idx}`;
+                                                        return unaccreditedItems[key] ? acc : acc + 4;
+                                                    }, 0);
+                                                    return totalMax;
+                                                })();
+                                            const earned = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
+                                                ? Object.values(individualScores).reduce((acc, s) => acc + (s === -1 ? 0 : s), 0)
+                                                : (() => {
+                                                    const activities = customActivities[individualForm.reportField] || [];
+                                                    const obtained = activities.reduce((acc, _, idx) => {
+                                                        const key = `${individualForm.reportField}_${idx}`;
+                                                        if (unaccreditedItems[key]) return acc;
+                                                        return acc + (individualScores[key] ?? 0);
+                                                    }, 0);
+                                                    return obtained;
+                                                })();
+                                            return possible > 0 ? (earned / possible) : 0;
+                                        })())} />
+                                </svg>
+                                <span className="absolute text-xl font-black text-white font-sans">
+                                    {(() => {
+                                        const possible = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
+                                            ? INDICATORS_DATA.reduce((acc, d) => acc + d.items.length * 4, 0)
+                                            : (() => {
+                                                const activities = customActivities[individualForm.reportField] || [];
+                                                const totalMax = activities.reduce((acc, _, idx) => {
+                                                    const key = `${individualForm.reportField}_${idx}`;
+                                                    return unaccreditedItems[key] ? acc : acc + 4;
+                                                }, 0);
+                                                return totalMax;
+                                            })();
+                                        const earned = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
+                                            ? Object.values(individualScores).reduce((acc, s) => acc + (s === -1 ? 0 : s), 0)
+                                            : (() => {
+                                                const activities = customActivities[individualForm.reportField] || [];
+                                                const obtained = activities.reduce((acc, _, idx) => {
+                                                    const key = `${individualForm.reportField}_${idx}`;
+                                                    if (unaccreditedItems[key]) return acc;
+                                                    return acc + (individualScores[key] ?? 0);
+                                                }, 0);
+                                                return obtained;
+                                            })();
+                                        return possible > 0 ? Math.round((earned / possible) * 100) : 0;
+                                    })()}%
+                                </span>
                             </div>
-                            <button onClick={() => setNotesModal(null)} className="p-3 hover:bg-slate-100 text-slate-400 rounded-2xl transition-all active:scale-90"><X size={24} /></button>
                         </div>
-                        <textarea
-                            className="w-full h-40 bg-slate-50 rounded-2xl border-2 border-slate-100 p-4 text-sm font-bold outline-none resize-none focus:ring-4 focus:ring-amber-100 focus:border-amber-400 transition-all"
-                            placeholder="اكتب الملاحظات والتوصيات هنا..."
-                            value={notesModal.text}
-                            onChange={(e) => setNotesModal({ ...notesModal, text: e.target.value })}
-                        />
+                    </div>
+
+                    {/* 4. Notes & Additions */}
+                    <div className="space-y-8">
+                        {/* Violations */}
+                        <div className="bg-red-50/50 p-8 rounded-[2.5rem] border-2 border-red-50 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-xl font-black text-red-900 flex items-center gap-2">
+                                    <AlertCircle className="text-red-600" /> المخالفات
+                                </h3>
+                                <button
+                                    onClick={() => {
+                                        const text = prompt('أدخل نص المخالفة:');
+                                        if (text) setViolationTags([...violationTags, text]);
+                                    }}
+                                    className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-black shadow-lg shadow-red-100"
+                                >
+                                    إضافة عنصر
+                                </button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {violationTags.map((tag, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => {
+                                            const updated = activeViolationTags.includes(tag)
+                                                ? activeViolationTags.filter(t => t !== tag)
+                                                : [...activeViolationTags, tag];
+                                            setActiveViolationTags(updated);
+                                            setViolationsText(updated.join(' - '));
+                                        }}
+                                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeViolationTags.includes(tag) ? 'bg-red-600 text-white' : 'bg-white text-red-600 border border-red-100 hover:bg-red-50'}`}
+                                    >
+                                        {tag}
+                                    </button>
+                                ))}
+                            </div>
+                            <textarea
+                                className="w-full bg-white border-2 border-red-100 rounded-[1.5rem] p-6 font-black h-32 outline-none focus:border-red-500 transition-all text-red-900"
+                                placeholder="اكتب المخالفات هنا..."
+                                value={violationsText}
+                                onChange={(e) => setViolationsText(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Notes & Recommendations */}
+                        <div className="bg-amber-50/50 p-8 rounded-[2.5rem] border-2 border-amber-50 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-xl font-black text-amber-900 flex items-center gap-2">
+                                    <MessageSquare className="text-amber-600" /> الملاحظات والتوصيات
+                                </h3>
+                                <button
+                                    onClick={() => {
+                                        const text = prompt('أدخل نص الملاحظة:');
+                                        if (text) setNoteTags([...noteTags, text]);
+                                    }}
+                                    className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-black shadow-lg shadow-amber-100"
+                                >
+                                    إضافة عنصر
+                                </button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {noteTags.map((tag, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => {
+                                            const updated = activeNoteTags.includes(tag)
+                                                ? activeNoteTags.filter(t => t !== tag)
+                                                : [...activeNoteTags, tag];
+                                            setActiveNoteTags(updated);
+                                            setNotesText(updated.join(' - '));
+                                        }}
+                                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeNoteTags.includes(tag) ? 'bg-amber-600 text-white' : 'bg-white text-amber-600 border border-amber-100 hover:bg-amber-50'}`}
+                                    >
+                                        {tag}
+                                    </button>
+                                ))}
+                            </div>
+                            <textarea
+                                className="w-full bg-white border-2 border-amber-100 rounded-[1.5rem] p-6 font-black h-32 outline-none focus:border-amber-500 transition-all text-amber-900"
+                                placeholder="اكتب الملاحظات والتوصيات هنا..."
+                                value={notesText}
+                                onChange={(e) => setNotesText(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Employee Comment */}
+                        <div className="bg-slate-50 p-8 rounded-[2.5rem] border-2 border-slate-100 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-xl font-black text-slate-900">تعليق الموظف</h3>
+                                <button
+                                    onClick={() => {
+                                        const possible = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
+                                            ? INDICATORS_DATA.reduce((acc, d) => acc + d.items.length * 4, 0)
+                                            : (ACTIVITIES_DATA[individualForm.reportField] || []).length * 4;
+                                        const earned = Object.values(individualScores).reduce((acc, s) => acc + (s === -1 ? 0 : s), 0);
+                                        const percent = possible > 0 ? (earned / possible) * 100 : 0;
+
+                                        if (percent <= 80) {
+                                            if (percent <= 40) setEmployeeComment('تم الاطلاع على التقرير كاملاً بما في ذلك جميع الإيجابيات والملاحظات والتوصيات، وأتعهد بالمتابعة لكل ما ذكر');
+                                            else setEmployeeComment('تم الاطلاع على التقرير كاملاً بما في ذلك جميع الإيجابيات والملاحظات والتوصيات، وسأعمل على الأخذ بكافة ما تم ذكره.');
+                                        } else {
+                                            setEmployeeComment('تم الاطلاع على التقرير كاملاً بما في ذلك جميع الإيجابيات والملاحظات والتوصيات، وسأعمل على الاستمرار في الصدارة و الأخذ بكافة ما تم ذكره.');
+                                        }
+                                    }}
+                                    className="px-6 py-3 bg-slate-900 text-white rounded-xl text-xs font-black shadow-lg shadow-slate-200"
+                                >
+                                    إنشاء تعليق الموظف
+                                </button>
+                            </div>
+                            <textarea
+                                className="w-full bg-white border-2 border-slate-200 rounded-[1.5rem] p-6 font-black h-32 outline-none focus:border-blue-500 transition-all text-slate-800"
+                                placeholder="تعليق الموظف..."
+                                value={employeeComment}
+                                onChange={(e) => setEmployeeComment(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* 5. Final Actions */}
+                    <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-100 flex flex-wrap gap-4 mt-8">
+                        <button
+                            onClick={saveToArchive}
+                            className="flex-1 bg-emerald-600 text-white rounded-[1.8rem] py-5 font-black text-lg shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 flex items-center justify-center gap-3"
+                        >
+                            <Plus size={24} />
+                            حفظ المسودة
+                        </button>
                         <button
                             onClick={() => {
-                                updateEmployee(notesModal.empId, { recommendations: notesModal.text });
-                                setNotesModal(null);
+                                const isIndicators = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس';
+                                let content = `التقرير الفردي لـ: ${individualForm.employeeName || 'غير محدد'}\n`;
+                                content += `المكان: ${individualForm.schoolName || '-'}\n`;
+                                content += `المجال: ${individualForm.reportField}\n`;
+                                content += `التاريخ: ${reportDate}\n\n`;
+
+                                if (isIndicators) {
+                                    content += "المجال\tالمؤشر\tالدرجة\n";
+                                    INDICATORS_DATA.forEach(d => {
+                                        d.items.forEach((item, idx) => {
+                                            const score = individualScores[`${d.label}_${idx}`] ?? '-';
+                                            content += `${d.label}\t${item}\t${score}\n`;
+                                        });
+                                    });
+                                } else {
+                                    const activities = customActivities[individualForm.reportField] || [];
+                                    content += "النشاط\tالمخطط\tالشاهد\tالدرجة\tحالة الشاهد\tأسباب عدم التنفيذ\tالحالة\n";
+                                    activities.forEach((a, i) => {
+                                        const k = `${individualForm.reportField}_${i}`;
+                                        const score = individualScores[k] ?? 0;
+                                        const stat = evidenceStatus[k] || 'توفر';
+                                        const reason = failureReasons[k] || '-';
+                                        const acc = unaccreditedItems[k] ? "غير معتمد" : "معتمد";
+                                        content += `${a.text}\t${a.planned}\t${a.evidence}\t${score}\t${stat}\t${reason}\t${acc}\n`;
+                                    });
+                                }
+
+                                const BOM = '\uFEFF';
+                                const blob = new Blob([BOM + content], { type: 'application/vnd.ms-excel;charset=utf-8' });
+                                const link = document.createElement('a');
+                                link.href = URL.createObjectURL(blob);
+                                link.download = `تقرير_${individualForm.employeeName || 'فردي'}_${reportDate}.xls`;
+                                link.click();
                             }}
-                            className="w-full bg-amber-500 text-white rounded-2xl p-4 font-black text-lg hover:bg-amber-600 transition-all active:scale-95 shadow-xl shadow-amber-100"
+                            className="flex-1 bg-blue-600 text-white rounded-[1.8rem] py-5 font-black text-lg shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3"
                         >
-                            موافق
+                            <Download size={24} />
+                            تصدير إكسل
+                        </button>
+                        <button
+                            onClick={() => setShowArchive(true)}
+                            className="flex-1 bg-slate-800 text-white rounded-[1.8rem] py-5 font-black text-lg shadow-xl shadow-slate-200 hover:bg-slate-900 transition-all active:scale-95 flex items-center justify-center gap-3"
+                        >
+                            <Archive size={24} />
+                            أرشيف التقارير
+                        </button>
+                        <button
+                            onClick={() => {
+                                const isIndicators = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس';
+                                let msg = `*✨ تقرير متابعة فردي ✨*\n`;
+                                msg += `🏛️ *المدرسة:* ${individualForm.schoolName}\n`;
+                                msg += `👤 *الموظف:* ${individualForm.employeeName}\n`;
+                                msg += `📅 *التاريخ:* ${reportDate} (${toHijri(reportDate)})\n`;
+                                msg += `المجال: ${individualForm.reportField}\n`;
+                                msg += `━━━━━━━━━━━━━━━\n\n`;
+
+                                if (isIndicators) {
+                                    INDICATORS_DATA.forEach(d => {
+                                        let ds = 0;
+                                        d.items.forEach((_, i) => ds += (individualScores[`${d.label}_${i}`] || 0));
+                                        msg += `◽ *${d.label}:* ${ds} / ${d.items.length * 4}\n`;
+                                    });
+                                } else {
+                                    (customActivities[individualForm.reportField] || []).forEach((a, i) => {
+                                        const k = `${individualForm.reportField}_${i}`;
+                                        if (unaccreditedItems[k]) return;
+                                        const s = individualScores[k] || 0;
+                                        const icon = s >= 3 ? '🟢' : (s >= 2 ? '🟡' : '🔴');
+                                        msg += `${icon} ${a.text}: ${s}/4\n`;
+                                    });
+                                }
+
+                                if (violationTags.length > 0) msg += `\n⚠️ *المخالفات:* ${violationTags.join('، ')}`;
+                                if (notesText) msg += `\n📝 *الملاحظات:* ${notesText}`;
+
+                                window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                            }}
+                            className="w-full bg-green-600 text-white rounded-[1.8rem] py-5 font-black text-lg shadow-xl shadow-green-100 hover:bg-green-700 transition-all active:scale-95 flex items-center justify-center gap-3"
+                        >
+                            <Share2 size={24} />
+                            مشاركة عبر واتساب
                         </button>
                     </div>
                 </div>
+            ) : (
+                <>
+                    {/* Top Selector Bar */}
+                    <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border-4 border-slate-50 flex flex-wrap items-center gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="flex flex-col gap-2 min-w-[300px] flex-1">
+                            <label className="text-sm font-black text-slate-600 mr-2 flex items-center gap-2">
+                                <ListFilter size={18} className="text-blue-500" /> نوع المتابعة
+                            </label>
+                            <select
+                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all appearance-none"
+                                value={followUpType}
+                                onChange={(e) => handleTypeChange(e.target.value)}
+                            >
+                                {(data.adminFollowUpTypes || []).map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                        </div>
+
+                        <div className="flex flex-col gap-2 min-w-[200px]">
+                            <label className="text-sm font-black text-slate-600 mr-2 flex items-center gap-2">
+                                <UserCircle size={18} className="text-blue-500" /> كاتب التقرير
+                            </label>
+                            <input
+                                type="text"
+                                className="bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all font-sans"
+                                placeholder="اسم كاتب التقرير..."
+                                value={writer}
+                                onChange={(e) => setWriter(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-black text-slate-600 mr-2 flex items-center gap-2">
+                                <FileBarChart2 size={18} className="text-blue-500" /> نوع التقرير
+                            </label>
+                            <div className="flex gap-2">
+                                {['أسبوعي', 'شهري', 'فصلي', 'سنوي'].map(period => (
+                                    <button
+                                        key={period}
+                                        onClick={() => setSelectedReportPeriod(selectedReportPeriod === period ? null : period)}
+                                        className={`px-5 py-3.5 border-2 rounded-[1.2rem] font-black text-xs transition-all shadow-sm active:scale-95 ${selectedReportPeriod === period
+                                            ? 'bg-blue-600 text-white border-blue-600'
+                                            : 'bg-white border-slate-100 text-slate-600 hover:bg-slate-50 hover:border-blue-500'
+                                            }`}
+                                    >
+                                        {period}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {selectedReportPeriod && (
+                            <div className="flex flex-col gap-2 flex-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <label className="text-sm font-black text-slate-600 mr-2 flex items-center gap-2">
+                                    <Calendar size={18} className="text-amber-500" /> فترة التجميع (من تاريخ - إلى تاريخ)
+                                </label>
+                                <div className="flex gap-2 items-center">
+                                    <div className="flex flex-col gap-1 flex-1">
+                                        <span className="text-[10px] font-bold text-slate-400 mr-2">من تاريخ</span>
+                                        <input
+                                            type="date"
+                                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3 font-bold text-xs outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 font-sans transition-all"
+                                            value={aggDateFrom}
+                                            onChange={(e) => setAggDateFrom(e.target.value)}
+                                        />
+                                    </div>
+                                    <span className="text-slate-400 font-bold mt-5">إلى</span>
+                                    <div className="flex flex-col gap-1 flex-1">
+                                        <span className="text-[10px] font-bold text-slate-400 mr-2">إلى تاريخ</span>
+                                        <input
+                                            type="date"
+                                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3 font-bold text-xs outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 font-sans transition-all"
+                                            value={aggDateTo}
+                                            onChange={(e) => setAggDateTo(e.target.value)}
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            aggregateReports(selectedReportPeriod);
+                                            setSelectedReportPeriod(null);
+                                        }}
+                                        className="mt-5 px-6 py-3 bg-amber-500 text-white rounded-[1.2rem] font-black text-xs hover:bg-amber-600 transition-all shadow-lg shadow-amber-100 active:scale-95"
+                                    >
+                                        تجميع
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        <button
+                            onClick={createNewReport}
+                            className="mt-auto h-[58px] px-8 bg-blue-600 text-white rounded-[1.5rem] font-black text-lg shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all flex items-center gap-2 transform hover:scale-[1.02] active:scale-95"
+                        >
+                            <Plus size={22} /> إظهار التقرير
+                        </button>
+                    </div>
+
+                    {currentReportId && (
+                        <>
+                            {/* Header Controls */}
+                            <div className="flex flex-wrap items-center justify-between gap-4 bg-white/60 backdrop-blur-lg p-5 rounded-[2.2rem] border border-white shadow-lg animate-in fade-in slide-in-from-bottom-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <button
+                                        onClick={createNewReport}
+                                        className="flex items-center gap-2 h-11 px-5 bg-blue-600 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all"
+                                    >
+                                        <Plus size={18} /> إضافة جدول
+                                    </button>
+                                    <button
+                                        onClick={() => setShowArchive(true)}
+                                        className="flex items-center gap-2 h-11 px-5 bg-slate-800 text-white rounded-xl text-xs font-black shadow-lg shadow-slate-100 hover:bg-slate-900 transition-all"
+                                    >
+                                        <Archive size={18} /> أرشيف التقارير
+                                    </button>
+                                    <div className="h-8 w-[2px] bg-slate-200 mx-2" />
+                                    <button
+                                        onClick={addEmployee}
+                                        className="flex items-center gap-2 h-11 px-5 bg-teal-600 text-white rounded-xl text-xs font-black shadow-lg shadow-teal-100 hover:bg-teal-700 transition-all"
+                                    >
+                                        <UserPlus size={18} /> إضافة اسم
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const input = document.createElement('input');
+                                            input.type = 'file';
+                                            input.accept = '.txt,.xml,.xlsx';
+                                            input.onchange = (e) => alert('تم استيراد الأسماء بنجاح (محاكاة)');
+                                            input.click();
+                                        }}
+                                        className="flex items-center gap-2 h-11 px-5 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all"
+                                    >
+                                        <FileUp size={18} /> استيراد الأسماء
+                                    </button>
+                                    <button
+                                        onClick={() => { if (employees.length > 0) setShowIndividualModal(employees[0].id); }}
+                                        className="flex items-center gap-2 h-11 px-5 bg-purple-600 text-white rounded-xl text-xs font-black shadow-lg shadow-purple-100 hover:bg-purple-700 transition-all"
+                                    >
+                                        <UserCircle size={18} /> تقرير فردي
+                                    </button>
+                                    <button
+                                        onClick={() => setShowCustomizer(true)}
+                                        className="flex items-center gap-2 h-11 px-5 bg-amber-500 text-white rounded-xl text-xs font-black shadow-lg shadow-amber-100 hover:bg-amber-600 transition-all"
+                                    >
+                                        <Palette size={18} /> تخصيص المجالات
+                                    </button>
+                                    <div className="h-8 w-[2px] bg-slate-200 mx-2" />
+                                    <button
+                                        onClick={exportToExcel}
+                                        className="flex items-center gap-2 h-11 px-5 bg-emerald-600 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all"
+                                    >
+                                        <Download size={18} /> excel الجماعي
+                                    </button>
+                                    <div className="h-8 w-[2px] bg-slate-200 mx-2" />
+                                    <button
+                                        onClick={exportToTxt}
+                                        className="flex items-center gap-2 h-11 px-5 bg-rose-600 text-white rounded-xl text-xs font-black shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all"
+                                    >
+                                        <FileText size={18} /> TXT
+                                    </button>
+                                    <button
+                                        onClick={() => generateWhatsAppReport('bulk')}
+                                        className="flex items-center gap-2 h-11 px-5 bg-green-600 text-white rounded-xl text-xs font-black shadow-lg shadow-green-100 hover:bg-green-700 transition-all"
+                                    >
+                                        <Share2 size={18} /> واتساب
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <div className="relative group">
+                                        <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+                                        <input
+                                            type="text"
+                                            placeholder="بحث سريع عن اسم..."
+                                            className="bg-white border-2 border-slate-100 rounded-2xl pr-12 pl-4 py-3 text-sm font-bold focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none w-72 shadow-inner transition-all font-sans"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Report Title Header */}
+                            {(() => {
+                                const report = data.adminReports?.find(r => r.id === currentReportId);
+                                if (!report) return null;
+                                return (
+                                    <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col items-center gap-2 text-center animate-in mb-2">
+                                        <h2 className="text-2xl font-black text-slate-800 tracking-tight">
+                                            {getReportTitle(report)}
+                                        </h2>
+                                        <div className="flex items-center gap-3 bg-slate-50 px-6 py-2 rounded-full border border-slate-100">
+                                            <Calendar size={18} className="text-blue-500" />
+                                            <span className="font-black text-slate-600 text-sm">
+                                                {getReportDateLabel(report)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Smart Table */}
+                            <div className="bg-white rounded-[2.8rem] shadow-2xl border-[8px] border-[#800000] overflow-hidden flex flex-col min-h-[550px] animate-in zoom-in-95 duration-500 relative print:border-0 print:shadow-none">
+                                <div className="overflow-x-auto overflow-y-auto max-h-[750px] staff-follow-table custom-scrollbar">
+                                    <table className="w-full border-collapse text-right select-none">
+                                        <thead className="sticky top-0 z-30 shadow-xl border-b-2 border-slate-200">
+                                            {/* Row 1: Categories */}
+                                            <tr className="bg-[#FFD966] text-[#4F3F0F] h-12">
+                                                <th rowSpan={2} className="w-12 p-2 border-e border-[#E6B11F] text-center text-xs font-black bg-[#E6B11F]/20 font-sans">#</th>
+                                                <th rowSpan={2} className="w-12 p-2 border-e border-[#E6B11F] text-center">
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="w-5 h-5 rounded cursor-pointer accent-[#D4A017]"
+                                                            checked={selectedEmployees.length === employees.length && employees.length > 0}
+                                                            onChange={() => setSelectedEmployees(selectedEmployees.length === employees.length ? [] : employees.map(e => e.id))}
+                                                        />
+                                                        {selectedEmployees.length > 0 && (
+                                                            <button onClick={() => deleteEmployees(selectedEmployees)} className="text-red-600 hover:text-red-700 transition-colors" title="حذف المحددين">
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </th>
+                                                <th rowSpan={2} className="min-w-[220px] p-4 border-e border-[#E6B11F] text-sm font-black text-center">اسم الموظف والبيانات</th>
+                                                <th colSpan={displayedMetrics.length} className="p-2 border-e border-[#E6B11F] text-xs font-black text-center tracking-widest shadow-inner">مجالات تقييم الموظفين</th>
+                                                <th rowSpan={2} className="min-w-[80px] p-2 border-e border-[#E6B11F] text-xs font-black text-center shadow-inner">المخالفات</th>
+                                                <th colSpan={2} className="p-2 border-e border-[#E6B11F] text-xs font-black text-center tracking-widest">المجموع الكلي</th>
+                                                <th rowSpan={2} className="min-w-[160px] p-2 border-e border-[#E6B11F] text-xs font-black text-center">الملاحظات والتوصيات</th>
+                                                <th rowSpan={2} className="w-24 p-2 text-xs font-black text-center">إجراءات</th>
+                                            </tr>
+                                            {/* Row 2: Metrics */}
+                                            <tr className="bg-slate-50 text-slate-700 h-32 shadow-md">
+                                                {displayedMetrics.map(m => (
+                                                    <th key={m.key} className="p-1 border-e border-slate-200 min-w-[90px] align-bottom transition-all relative overflow-hidden group" style={getMetricStyle(m)}>
+                                                        <div className="flex flex-col items-center justify-between h-full gap-2 py-2">
+                                                            <div className={`font-black text-[11px] leading-tight text-center px-1 break-words max-w-[85px] line-clamp-3 mb-auto ${getTextColor(m.color)}`}>
+                                                                {m.label.split(' ').map((word, i, arr) => (
+                                                                    <React.Fragment key={i}>
+                                                                        {word}{' '}
+                                                                        {((i + 1) % 2 === 0 && i !== arr.length - 1) && <br />}
+                                                                    </React.Fragment>
+                                                                ))}
+                                                            </div>
+                                                            <div className="flex flex-col items-center gap-1 w-full px-1.5 z-10 mt-auto">
+                                                                <input
+                                                                    type="number"
+                                                                    className="w-full bg-white/40 backdrop-blur-sm border-2 border-slate-200/50 rounded-lg text-center text-[11px] font-black py-1 outline-none font-sans focus:border-white transition-all text-current"
+                                                                    value={toEnglishNum(m.max * (data.adminReports?.find(r => r.id === currentReportId)?.reportCount || 1))}
+                                                                    readOnly
+                                                                />
+                                                                <div className="flex items-center gap-1 w-full">
+                                                                    <input
+                                                                        type="number"
+                                                                        placeholder="قيمة"
+                                                                        className="w-full bg-white/20 border-none rounded-md text-center text-[9px] font-black py-0.5 outline-none font-sans text-current placeholder:text-current/50"
+                                                                        value={fillValues[m.key] || ''}
+                                                                        onChange={(e) => setFillValues(prev => ({ ...prev, [m.key]: parseInt(e.target.value) || 0 }))}
+                                                                    />
+                                                                    <button
+                                                                        onClick={() => fillMetricColumn(m.key, Math.min(m.max, fillValues[m.key] || m.max))}
+                                                                        className="bg-white/30 text-current rounded-md p-1 hover:bg-white/50 transition-all shadow-sm active:scale-90"
+                                                                        title="تعبئة الدرجة للعمود"
+                                                                    >
+                                                                        <Zap size={10} className="mx-auto" />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                                                    </th>
+                                                ))}
+                                                <th className="p-3 border-e border-slate-200 text-[11px] font-black bg-indigo-50/80 text-indigo-900 text-center">المجموع</th>
+                                                <th className="p-3 border-slate-200 text-[11px] font-black bg-indigo-50/80 text-indigo-900 text-center">النسبة %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {employees.length === 0 ? (
+                                                <tr><td colSpan={100} className="p-32 text-center text-slate-300 font-bold text-lg">لم يتم رصد أي موظفين بعد في هذا الجدول</td></tr>
+                                            ) : employees.filter(e => e.employeeName?.includes(searchTerm)).map((emp, idx) => {
+                                                const total = calculateTotal(emp);
+                                                const max = calculateMaxTotal(emp);
+                                                const percent = max > 0 ? ((total / max) * 100).toFixed(1) : '0';
+                                                return (
+                                                    <tr
+                                                        key={emp.id}
+                                                        onClick={() => setHighlightedRowId(emp.id)}
+                                                        className={`transition-all duration-200 group h-14 ${highlightedRowId === emp.id ? 'bg-blue-50' : (selectedEmployees.includes(emp.id) ? 'bg-indigo-50/50' : 'hover:bg-slate-50/80')}`}
+                                                    >
+                                                        <td className="p-3 border-e text-center text-xs font-bold text-slate-400 font-sans">{idx + 1}</td>
+                                                        <td className="p-3 border-e text-center">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="w-4 h-4 rounded cursor-pointer transition-transform group-hover:scale-110"
+                                                                checked={selectedEmployees.includes(emp.id)}
+                                                                onChange={() => setSelectedEmployees(prev => prev.includes(emp.id) ? prev.filter(id => id !== emp.id) : [...prev, emp.id])}
+                                                            />
+                                                        </td>
+                                                        <td className="p-4 border-e bg-inherit">
+                                                            <div className="flex flex-col gap-1.5">
+                                                                <input
+                                                                    type="text"
+                                                                    className="bg-transparent border-none font-black text-slate-800 text-sm outline-none w-full focus:bg-white focus:ring-2 focus:ring-blue-100 rounded px-1 transition-all"
+                                                                    value={emp.employeeName}
+                                                                    onChange={(e) => updateEmployee(emp.id, { employeeName: e.target.value })}
+                                                                />
+                                                                <div className="flex flex-wrap gap-1.5 text-[8px] font-black">
+                                                                    <select
+                                                                        className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border-none outline-none cursor-pointer hover:bg-blue-100 transition-colors"
+                                                                        value={emp.gender}
+                                                                        onChange={(e) => e.target.value === 'ADD_NEW' ? handleAddOption('gender', emp.id) : updateEmployee(emp.id, { gender: e.target.value })}
+                                                                    >
+                                                                        <option value="ذكر">ذكر</option>
+                                                                        <option value="أنثى">أنثى</option>
+                                                                        <option value="ADD_NEW">+ إضافة</option>
+                                                                    </select>
+
+                                                                    <select
+                                                                        className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border-none outline-none cursor-pointer hover:bg-blue-100 transition-colors"
+                                                                        value={emp.role}
+                                                                        onChange={(e) => e.target.value === 'ADD_NEW' ? handleAddOption('role', emp.id) : updateEmployee(emp.id, { role: e.target.value })}
+                                                                    >
+                                                                        <option value={emp.role}>{emp.role}</option>
+                                                                        <option value="إداري">إداري</option>
+                                                                        <option value="معلم">معلم</option>
+                                                                        <option value="مدير فرع">مدير فرع</option>
+                                                                        <option value="ADD_NEW">+ إضافة</option>
+                                                                    </select>
+
+                                                                    <select
+                                                                        className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border-none outline-none cursor-pointer hover:bg-emerald-100 transition-colors"
+                                                                        value={emp.branch}
+                                                                        onChange={(e) => e.target.value === 'ADD_NEW' ? handleAddOption('branch', emp.id) : updateEmployee(emp.id, { branch: e.target.value })}
+                                                                    >
+                                                                        <option value="المركز الرئيسي">المركز الرئيسي</option>
+                                                                        <option value="فرع الطلاب">فرع الطلاب</option>
+                                                                        <option value="فرع الطالبات">فرع الطالبات</option>
+                                                                        <option value="فرع البراعم">فرع البراعم</option>
+                                                                        <option value="ADD_NEW">+ إضافة</option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        {displayedMetrics.map(m => {
+                                                            const isUnaccredited = (emp.unaccreditedMetrics || []).includes(m.key);
+                                                            const val = Number(emp[m.key]) || 0;
+                                                            // Use the pastel background from metric color with high transparency
+                                                            return (
+                                                                <td key={m.key} className="p-1 border-e relative group/cell" style={{ backgroundColor: `${m.color}15` }}>
+                                                                    <div className="flex flex-col items-center gap-1">
+                                                                        <div className="w-1.5 h-1.5 rounded-full mb-1" style={{ backgroundColor: m.color }} />
+                                                                        <input
+                                                                            type="number"
+                                                                            className={`w-full text-center outline-none bg-transparent font-black text-[14px] font-sans transition-all ${isUnaccredited ? 'opacity-20 pointer-events-none' : ''} ${!isUnaccredited && val <= m.max * 0.3 && val > 0 ? 'text-red-500 scale-110' : 'text-slate-800'}`}
+                                                                            value={emp[m.key] || ''}
+                                                                            placeholder="(0)"
+                                                                            onFocus={(e) => e.target.select()}
+                                                                            onChange={(e) => {
+                                                                                const v = Math.min(m.max, Math.max(0, parseInt(e.target.value) || 0));
+                                                                                updateEmployee(emp.id, { [m.key]: v });
+                                                                            }}
+                                                                        />
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); toggleAccreditation(emp.id, m.key); }}
+                                                                            className={`opacity-0 group-hover/cell:opacity-100 transition-all p-0.5 rounded hover:bg-white shadow-sm ${isUnaccredited ? 'text-rose-500 opacity-100 scale-110' : 'text-slate-300'}`}
+                                                                            title={isUnaccredited ? "إلغاء الاستبعاد" : "استبعاد من الحساب لهذا الموظف"}
+                                                                        >
+                                                                            <Star size={11} className={isUnaccredited ? 'fill-rose-500' : ''} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            );
+                                                        })}
+                                                        <td
+                                                            className={`p-1 border-e text-center cursor-pointer transition-colors ${emp.violations_score > 0 ? 'bg-red-50/50' : ''}`}
+                                                            onClick={() => setViolationModal({ id: emp.id, notes: emp.violations_notes })}
+                                                        >
+                                                            <div className="flex flex-col items-center gap-1">
+                                                                <span className={`text-[14px] font-black font-sans ${emp.violations_score > 0 ? 'text-red-600 scale-110 animate-pulse' : 'text-slate-300'}`}>{emp.violations_score}</span>
+                                                                {emp.violations_notes.length > 0 && <AlertCircle size={12} className="text-red-500" />}
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-2 border-e text-center font-black text-[14px] text-blue-800 bg-blue-50/40 font-sans">{total}</td>
+                                                        <td className="p-2 border-e text-center font-black text-[14px] text-blue-800 bg-blue-50/40 font-sans">{percent}%</td>
+                                                        <td className="p-2 border-e text-right text-[11px] text-slate-600 max-w-[180px] cursor-pointer hover:bg-amber-50/50 transition-colors" onClick={() => setNotesModal({ empId: emp.id, text: emp.recommendations || '' })}>
+                                                            <div className="flex items-start gap-1">
+                                                                <span className="flex-1 line-clamp-3 whitespace-pre-wrap">{emp.recommendations || ''}</span>
+                                                                <MessageSquare size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-3 text-center">
+                                                            <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <button onClick={(e) => { e.stopPropagation(); generateWhatsAppReport(emp.id); }} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="إرسال تقرير فردي بالواتساب">
+                                                                    <Send size={18} />
+                                                                </button>
+                                                                <button onClick={(e) => { e.stopPropagation(); deleteEmployees([emp.id]); }} className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all" title="حذف">
+                                                                    <Trash2 size={18} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                        <tfoot className="sticky bottom-0 z-30 bg-[#FFD966] text-[#4F3F0F] font-black text-xs h-16 shadow-[0_-5px_20px_rgba(0,0,0,0.2)]">
+                                            <tr className="border-t-4 border-[#E6B11F]">
+                                                <td colSpan={3} className="px-6 text-right bg-[#E6B11F]/20 border-e border-[#E6B11F] text-sm tracking-wide">الإحصائيات الإجمالية والنسب المئوية المحققة</td>
+                                                {displayedMetrics.map(m => (
+                                                    <td key={m.key} className="p-2 border-e border-[#E6B11F] text-center" style={{ backgroundColor: `${m.color}15` }}>
+                                                        <div className="flex flex-col items-center gap-0.5">
+                                                            <span className="font-sans text-[13px]">({getColSum(m.key)})</span>
+                                                            <div className="w-10 h-0.5 bg-black opacity-10 rounded-full my-0.5" />
+                                                            <span className="text-[10px] opacity-80 font-sans">{getColPercent(m.key, m.max)}%</span>
+                                                        </div>
+                                                    </td>
+                                                ))}
+                                                <td className="border-e border-[#E6B11F] bg-rose-50/50"></td>
+                                                <td className="bg-amber-100 border-e border-[#E6B11F] text-center text-[15px] font-sans shadow-inner">
+                                                    ({employees.reduce((acc, e) => acc + calculateTotal(e), 0)})
+                                                </td>
+                                                <td className="bg-amber-200 text-center text-[18px] font-sans shadow-inner text-[#800000]">
+                                                    {(() => {
+                                                        const tSum = employees.reduce((acc, e) => acc + calculateTotal(e), 0);
+                                                        const tMax = employees.reduce((acc, e) => acc + calculateMaxTotal(e), 0);
+                                                        return tMax > 0 ? ((tSum / tMax) * 100).toFixed(1) : '0';
+                                                    })()}%
+                                                </td>
+                                                <td className="bg-[#E6B11F]/20"></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+
+                                {/* Signatures Footer */}
+                                <div className="flex flex-col gap-8 flex-1">
+                                    <div className="flex items-center gap-3 text-slate-400 group">
+                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-100 shadow-sm group-hover:text-blue-600 transition-colors">
+                                            <UserCircle size={20} />
+                                        </div>
+                                        <span className="font-black text-sm tracking-widest uppercase opacity-60">كاتب التقرير</span>
+                                    </div>
+                                    <div className="border-b-4 border-slate-200 border-dotted w-full pb-4 px-2">
+                                        <span className="text-2xl font-black text-slate-800 font-sans">
+                                            {writer || data.adminReports?.find(r => r.id === currentReportId)?.writer}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-8" style={{ minWidth: '200px' }}>
+                                    <div className="flex items-center gap-3 text-slate-400 group">
+                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-100 shadow-sm group-hover:text-blue-600 transition-colors">
+                                            <Users size={20} />
+                                        </div>
+                                        <span className="font-black text-sm tracking-widest uppercase opacity-60">مدير الفرع</span>
+                                    </div>
+                                    <div className="border-b-4 border-slate-200 border-dotted w-full pb-4 px-2">
+                                        <span className="text-2xl font-black text-slate-800 font-sans">
+                                            {data.profile.branchManager || '......................'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Footer Legend */}
+                            <div className="bg-slate-50 p-4 border-t border-slate-200 flex flex-wrap justify-center gap-6 text-[10px] font-black text-slate-500">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 bg-red-100 border border-red-500 rounded" /> درجات ضعيفة (أقل من 30%)
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Star size={12} className="text-rose-500 fill-rose-500" /> مجال مستبعد من حسابات هذا الموظف
+                                </div>
+                                <div className="flex items-center gap-2 font-sans opacity-70">123 - الأرقام باللاتينية</div>
+                            </div>
+                        </>
+                    )}
+                </>
             )}
+
+            {/* Archive Modal */}
+            {
+                showArchive && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+                        <div className="bg-white rounded-[3rem] w-full max-w-3xl overflow-hidden shadow-2xl border-[10px] border-white flex flex-col max-h-[85vh] animate-in zoom-in-95">
+                            <div className="p-10 bg-slate-900 text-white flex items-center justify-between shadow-2xl">
+                                <div className="flex flex-col">
+                                    <h3 className="text-3xl font-black tracking-tight">أرشيف تقارير المتابعة</h3>
+                                    <p className="text-slate-400 font-bold mt-1">تصفح وإدارة الجوال السابقة</p>
+                                </div>
+                                <button onClick={() => setShowArchive(false)} className="p-3 hover:bg-white/10 rounded-2xl transition-all active:scale-90 bg-white/5 border border-white/10">
+                                    <X size={28} />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-auto p-10 space-y-4 custom-scrollbar">
+                                {viewMode === 'group' ? (
+                                    (data.adminReports || []).length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-20 text-slate-300 gap-4">
+                                            <Archive size={64} strokeWidth={1} />
+                                            <span className="font-black text-xl">الأرشيف فارغ حالياً</span>
+                                        </div>
+                                    ) : (data.adminReports || []).filter(r => r.followUpType === followUpType).map(r => {
+                                        const reportTypeLabel = r.periodName ? r.periodName : 'يومي';
+                                        return (
+                                            <div key={r.id} className="group relative flex items-center justify-between p-6 bg-slate-50 border-2 border-indigo-100 rounded-[2rem] hover:border-indigo-500 hover:bg-white transition-all duration-300 cursor-pointer overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1">
+                                                <div className="flex items-center gap-6" onClick={() => { setCurrentReportId(r.id); setFollowUpType(r.followUpType); setWriter(r.writer || ''); setShowArchive(false); }}>
+                                                    <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-3xl flex items-center justify-center font-black shadow-inner group-hover:scale-110 transition-transform">
+                                                        <Calendar size={28} />
+                                                    </div>
+                                                    <div className="flex flex-col gap-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`text-xs font-black px-2 py-0.5 rounded-full ${reportTypeLabel === 'يومي' ? 'bg-green-100 text-green-700' :
+                                                                reportTypeLabel === 'الأسبوعي' ? 'bg-blue-100 text-blue-700' :
+                                                                    reportTypeLabel === 'الشهري' ? 'bg-purple-100 text-purple-700' :
+                                                                        reportTypeLabel === 'الفصلي' ? 'bg-amber-100 text-amber-700' :
+                                                                            'bg-red-100 text-red-700'
+                                                                }`}>{reportTypeLabel}</span>
+                                                            <span className="font-black text-xl text-slate-800">{r.dateStr}</span>
+                                                        </div>
+                                                        <span className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-0.5 rounded-full inline-block w-fit">{r.followUpType}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <button onClick={() => deleteReport(r.id)} className="p-4 text-rose-500 hover:bg-rose-50 rounded-2xl transition-all active:scale-90">
+                                                        <Trash2 size={24} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    individualArchive.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-20 text-slate-300 gap-4">
+                                            <Archive size={64} strokeWidth={1} />
+                                            <span className="font-black text-xl">الأرشيف الفردي فارغ</span>
+                                        </div>
+                                    ) : individualArchive.map(r => (
+                                        <div key={r.id} className="group relative flex items-center justify-between p-6 bg-slate-50 border-2 border-emerald-100 rounded-[2rem] hover:border-emerald-500 hover:bg-white transition-all duration-300 cursor-pointer overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1">
+                                            <div className="flex items-center gap-6" onClick={() => restoreFromArchive(r)}>
+                                                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-3xl flex items-center justify-center font-black shadow-inner group-hover:scale-110 transition-transform">
+                                                    <UserCircle size={28} />
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-black text-xl text-slate-800">{r.form.employeeName || 'تقرير بدون اسم'}</span>
+                                                        <span className="text-xs font-bold text-slate-400">{r.reportDate}</span>
+                                                    </div>
+                                                    <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-0.5 rounded-full inline-block w-fit">{r.form.reportField}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <button onClick={() => deleteFromArchive(r.id)} className="p-4 text-rose-500 hover:bg-rose-50 rounded-2xl transition-all active:scale-90">
+                                                    <Trash2 size={24} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Violation Modal */}
+            {
+                violationModal && (
+                    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-red-950/40 backdrop-blur-md p-4 animate-in fade-in duration-300">
+                        <div className="bg-white rounded-[3rem] w-full max-w-lg shadow-[0_30px_60px_-15px_rgba(220,38,38,0.3)] border-[6px] border-white p-10 space-y-8 animate-in zoom-in-95 duration-300">
+                            <div className="flex items-center justify-between border-b-2 border-slate-50 pb-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-red-100 text-red-600 rounded-[1.2rem] flex items-center justify-center shadow-inner">
+                                        <AlertCircle size={32} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-2xl font-black text-slate-900">سجل المخالفات</h3>
+                                        <p className="text-red-500 text-sm font-bold tracking-tight">رصد السلوكيات والتقصير الإداري</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setViolationModal(null)} className="p-3 hover:bg-slate-100 text-slate-400 rounded-2xl transition-all active:scale-90"><X size={24} /></button>
+                            </div>
+                            <div className="space-y-6">
+                                <div className="space-y-3">
+                                    <label className="text-sm font-black text-slate-600 mr-2 flex items-center gap-2">درجة المخالفة <span className="text-xs text-slate-400">(تطرح من المجموع)</span></label>
+                                    <input
+                                        type="number"
+                                        className="w-full bg-slate-50 border-3 border-slate-100 rounded-[1.5rem] p-5 font-black text-2xl text-center text-red-600 focus:ring-8 focus:ring-red-100 focus:border-red-500 outline-none transition-all font-sans"
+                                        value={employees.find(e => e.id === violationModal.id)?.violations_score || 0}
+                                        onChange={(e) => updateEmployee(violationModal.id, { violations_score: parseInt(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-sm font-black text-slate-600 mr-2">تفاصيل الملاحظات <span className="text-xs text-slate-400">(كل ملاحظة في سطر)</span></label>
+                                    <textarea
+                                        className="w-full bg-slate-50 border-3 border-slate-100 rounded-[1.5rem] p-6 font-black h-48 outline-none focus:ring-8 focus:ring-slate-100 focus:border-slate-800 transition-all text-slate-800 leading-relaxed custom-scrollbar"
+                                        placeholder="مثال: تأخر في تسليم التقارير، مخالفة الزي الرسمي..."
+                                        value={violationModal.notes.join('\n')}
+                                        onChange={(e) => updateEmployee(violationModal.id, { violations_notes: e.target.value.split('\n').filter(n => n.trim()) })}
+                                    />
+                                </div>
+                                <button onClick={() => setViolationModal(null)} className="w-full bg-slate-900 text-white p-6 rounded-[1.8rem] font-black text-xl shadow-2xl hover:bg-black transition-all transform active:scale-95 shadow-slate-200">اعتماد وحفظ السجل</button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Customize Domains Modal */}
+            {
+                showCustomizer && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-md p-4 animate-in fade-in">
+                        <div className="bg-white rounded-[3rem] w-full max-w-2xl shadow-2xl border-[8px] border-white flex flex-col max-h-[85vh] animate-in zoom-in-95">
+                            <div className="p-8 bg-amber-500 text-white flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-2xl font-black">إدارة مجالات التقارير</h3>
+                                    <p className="text-amber-100 font-bold text-sm">تعديل قائمة الـ 22 مجالاً للمتابعة</p>
+                                </div>
+                                <button onClick={() => setShowCustomizer(false)} className="p-3 hover:bg-white/10 rounded-full transition-all"><X size={24} /></button>
+                            </div>
+                            <div className="p-6 flex-1 overflow-auto space-y-4 custom-scrollbar">
+                                <button
+                                    onClick={() => {
+                                        const name = prompt('أدخل مسمى المجال الجديد:');
+                                        if (name) setReportFields([...reportFields, name]);
+                                    }}
+                                    className="w-full p-6 bg-amber-50 border-2 border-amber-200 border-dashed rounded-[1.5rem] text-amber-700 font-black flex items-center justify-center gap-3 hover:bg-amber-100 transition-all"
+                                >
+                                    <Plus size={24} /> إضافة مجال جديد بالكامل
+                                </button>
+                                <div className="grid grid-cols-1 gap-3">
+                                    {reportFields.map((field, idx) => (
+                                        <div key={idx} className="flex items-center justify-between p-5 bg-slate-50 rounded-[1.5rem] border border-slate-100 group">
+                                            <div className="flex items-center gap-4 flex-1">
+                                                <span className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 font-sans font-black shadow-sm group-hover:bg-amber-500 group-hover:text-white transition-all">{idx + 1}</span>
+                                                <input
+                                                    type="text"
+                                                    className="flex-1 font-black text-slate-800 bg-transparent border-none outline-none focus:ring-2 focus:ring-amber-200 rounded px-3 py-2 transition-all"
+                                                    value={field}
+                                                    onChange={(e) => {
+                                                        const newFields = [...reportFields];
+                                                        newFields[idx] = e.target.value;
+                                                        setReportFields(newFields);
+                                                    }}
+                                                />
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm('هل أنت متأكد من حذف هذا المجال؟ سيختفي من القائمة تماماً.')) {
+                                                        setReportFields(reportFields.filter((_, i) => i !== idx));
+                                                    }
+                                                }}
+                                                className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                            >
+                                                <Trash2 size={24} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="p-8 bg-slate-50 flex justify-end gap-4 border-t">
+                                <button onClick={() => setShowCustomizer(false)} className="px-10 py-4 bg-amber-500 text-white rounded-[1.5rem] font-black text-xl shadow-xl shadow-amber-100 transition-all hover:scale-105 active:scale-95">إغلاق وحفظ</button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Individual Detail Modal */}
+            {
+                showIndividualModal && (
+                    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-blue-950/30 backdrop-blur-md p-4 animate-in fade-in">
+                        <div className="bg-white rounded-[3.5rem] w-full max-w-xl shadow-2xl border-[8px] border-white p-10 flex flex-col gap-8 animate-in slide-in-from-bottom-8 max-h-[90vh] overflow-auto custom-scrollbar">
+                            {/* Search field */}
+                            <div className="flex items-center gap-3">
+                                <div className="relative flex-1">
+                                    <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                    <input
+                                        type="text"
+                                        placeholder="ابحث عن اسم الموظف..."
+                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl pr-12 pl-4 py-3 text-sm font-bold focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none font-sans"
+                                        value={individualSearch}
+                                        onChange={(e) => {
+                                            setIndividualSearch(e.target.value);
+                                            const found = employees.find(emp => emp.employeeName.includes(e.target.value));
+                                            if (found) setShowIndividualModal(found.id);
+                                        }}
+                                    />
+                                </div>
+                                <button onClick={() => { setShowIndividualModal(null); setIndividualSearch(''); }} className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all"><X size={24} /></button>
+                            </div>
+                            {/* Employee selector */}
+                            <div className="flex flex-wrap gap-2 max-h-20 overflow-auto custom-scrollbar">
+                                {employees.filter(e => !individualSearch || e.employeeName.includes(individualSearch)).map(e => (
+                                    <button key={e.id} onClick={() => setShowIndividualModal(e.id)} className={`px-3 py-1.5 rounded-full text-xs font-black transition-all ${e.id === showIndividualModal ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                        {e.employeeName}
+                                    </button>
+                                ))}
+                            </div>
+                            {(() => {
+                                const emp = employees.find(e => e.id === showIndividualModal);
+                                if (!emp) return <div className="text-center text-slate-400 py-10 font-black">لم يتم العثور على الموظف</div>;
+                                const total = calculateTotal(emp);
+                                const max = calculateMaxTotal(emp);
+                                const percent = max > 0 ? ((total / max) * 100).toFixed(1) : '0';
+                                return (
+                                    <>
+                                        <div className="flex items-center gap-5 border-b pb-6">
+                                            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-700 rounded-3xl flex items-center justify-center text-white shadow-xl rotate-3">
+                                                <UserCircle size={48} strokeWidth={1.5} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-3xl font-black text-slate-900">{emp.employeeName}</h3>
+                                                <p className="text-blue-600 font-bold tracking-tighter">{emp.role} - {emp.branch}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-blue-50/50 p-6 rounded-[2rem] border-2 border-blue-50 flex flex-col items-center">
+                                                <span className="text-xs font-black text-blue-400 mb-1">نسبة الإنجاز</span>
+                                                <span className="text-4xl font-black text-blue-700 font-sans tracking-tight">{percent}%</span>
+                                            </div>
+                                            <div className="bg-slate-50 p-6 rounded-[2rem] border-2 border-slate-100 flex flex-col items-center">
+                                                <span className="text-xs font-black text-slate-400 mb-1">الدرجة المحققة</span>
+                                                <span className="text-4xl font-black text-slate-800 font-sans tracking-tight">{total} <span className="text-lg opacity-30">/ {max}</span></span>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <h4 className="font-black text-slate-800 mr-2 flex items-center gap-2"><CheckCircle size={18} className="text-green-500" /> تحليل مجالات التقييم</h4>
+                                            <div className="bg-slate-50/50 rounded-[2rem] border-2 border-slate-50 p-6 space-y-3 max-h-60 overflow-auto custom-scrollbar">
+                                                {displayedMetrics.map(m => {
+                                                    if ((emp.unaccreditedMetrics || []).includes(m.key)) return null;
+                                                    const v = Number(emp[m.key]) || 0;
+                                                    const rcCount = data.adminReports?.find(r => r.id === currentReportId)?.reportCount || 1;
+                                                    const mMax = m.max * rcCount;
+                                                    const p = mMax > 0 ? (v / mMax) * 100 : 0;
+                                                    return (
+                                                        <div key={m.key} className="space-y-1.5 px-2">
+                                                            <div className="flex justify-between text-[11px] font-black">
+                                                                <span className="text-slate-600">{m.label}</span>
+                                                                <span className="text-blue-600 font-sans">{v} / {mMax}</span>
+                                                            </div>
+                                                            <div className="w-full h-2 bg-white rounded-full overflow-hidden border">
+                                                                <div className={`h-full transition-all duration-1000 ${p > 75 ? 'bg-green-500' : p > 40 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${Math.min(p, 100)}%` }} />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-3">
+                                            <button onClick={() => generateWhatsAppReport(emp.id)} className="flex-1 bg-green-600 text-white rounded-[1.8rem] p-5 font-black flex items-center justify-center gap-3 shadow-xl shadow-green-100 hover:bg-green-700 transition-all active:scale-95">
+                                                <Send size={24} /> مشاركة عبر واتساب
+                                            </button>
+                                            <button onClick={() => {
+                                                const report = data.adminReports?.find(r => r.id === currentReportId);
+                                                if (!report) return;
+                                                const rcCount = report.reportCount || 1;
+                                                const title = getReportTitle(report) + ' - ' + getReportDateLabel(report);
+                                                let content = `${title}\n\n`;
+                                                content += `الاسم: ${emp.employeeName}\nالوظيفة: ${emp.role}\nالفرع: ${emp.branch}\n\n`;
+                                                displayedMetrics.forEach(m => {
+                                                    if (!(emp.unaccreditedMetrics || []).includes(m.key)) {
+                                                        content += `${m.label}\t${emp[m.key] || 0}\t${m.max * rcCount}\n`;
+                                                    }
+                                                });
+                                                content += `\nالمخالفات\t${emp.violations_score}\n`;
+                                                content += `المجموع\t${total}\t${max}\n`;
+                                                content += `النسبة\t${percent}%\n`;
+                                                if (emp.recommendations) content += `\nالملاحظات: ${emp.recommendations}\n`;
+                                                content += `\nكاتب التقرير: ${writer || report.writer}`;
+                                                const BOM = '\uFEFF';
+                                                const blob = new Blob([BOM + content], { type: 'text/tab-separated-values;charset=utf-8' });
+                                                const link = document.createElement('a');
+                                                link.href = URL.createObjectURL(blob);
+                                                link.download = `تقرير_${emp.employeeName}.xls`;
+                                                link.click();
+                                            }} className="w-20 bg-emerald-100 text-emerald-700 rounded-[1.8rem] flex items-center justify-center hover:bg-emerald-200 transition-all font-sans font-black">
+                                                <Download size={20} />
+                                            </button>
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Notes/Recommendations Modal */}
+            {
+                notesModal && (
+                    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-amber-950/30 backdrop-blur-md p-4 animate-in fade-in duration-300">
+                        <div className="bg-white rounded-[3rem] w-full max-w-lg shadow-2xl border-[6px] border-white p-10 space-y-6 animate-in zoom-in-95 duration-300">
+                            <div className="flex items-center justify-between border-b-2 border-slate-50 pb-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-[1.2rem] flex items-center justify-center shadow-inner">
+                                        <MessageSquare size={32} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-2xl font-black text-slate-900">الملاحظات والتوصيات</h3>
+                                        <p className="text-amber-600 text-sm font-bold">{employees.find(e => e.id === notesModal.empId)?.employeeName}</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setNotesModal(null)} className="p-3 hover:bg-slate-100 text-slate-400 rounded-2xl transition-all active:scale-90"><X size={24} /></button>
+                            </div>
+                            <textarea
+                                className="w-full h-40 bg-slate-50 rounded-2xl border-2 border-slate-100 p-4 text-sm font-bold outline-none resize-none focus:ring-4 focus:ring-amber-100 focus:border-amber-400 transition-all"
+                                placeholder="اكتب الملاحظات والتوصيات هنا..."
+                                value={notesModal.text}
+                                onChange={(e) => setNotesModal({ ...notesModal, text: e.target.value })}
+                            />
+                            <button
+                                onClick={() => {
+                                    updateEmployee(notesModal.empId, { recommendations: notesModal.text });
+                                    setNotesModal(null);
+                                }}
+                                className="w-full bg-amber-500 text-white rounded-2xl p-4 font-black text-lg hover:bg-amber-600 transition-all active:scale-95 shadow-xl shadow-amber-100"
+                            >
+                                موافق
+                            </button>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Criteria Customizer Modal (Cards) */}
+            {
+                showCriteriaModal && (
+                    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/70 backdrop-blur-md p-4 animate-in fade-in duration-300">
+                        <div className="bg-white rounded-[3rem] w-full max-w-4xl overflow-hidden shadow-2xl border-[8px] border-white flex flex-col max-h-[90vh] animate-in zoom-in-95">
+                            <div className="p-8 bg-amber-500 text-white flex items-center justify-between shadow-lg">
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-3">
+                                        <Palette size={32} strokeWidth={2.5} />
+                                        <h3 className="text-3xl font-black tracking-tight">تخصيص معايير البطاقات</h3>
+                                    </div>
+                                    <p className="text-amber-100 font-bold mt-1 opacity-90">تعديل الأنشطة والأدلة للمجال: {individualForm.reportField}</p>
+                                </div>
+                                <button onClick={() => setShowCriteriaModal(false)} className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-2xl transition-all active:scale-90 border border-white/20">
+                                    <X size={28} />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-auto p-10 space-y-6 custom-scrollbar bg-slate-50/40">
+                                <div className="grid grid-cols-1 gap-4">
+                                    {(customActivities[individualForm.reportField] || []).map((activity, idx) => (
+                                        <div key={idx} className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-sm hover:shadow-xl hover:border-amber-200 transition-all group animate-in slide-in-from-bottom-3" style={{ animationDelay: `${idx * 40}ms` }}>
+                                            <div className="flex items-center gap-5">
+                                                <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center font-black text-xl border-2 border-slate-50 shadow-inner group-hover:bg-amber-50 group-hover:text-amber-500 transition-all">{idx + 1}</div>
+                                                <div className="flex-1 space-y-1">
+                                                    <label className="text-[10px] font-black text-slate-400 mr-2 flex items-center gap-1">نص المعيار <span className="text-amber-500">*</span></label>
+                                                    <input
+                                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-black text-slate-800 focus:border-amber-500 focus:bg-white focus:ring-4 focus:ring-amber-50 outline-none transition-all"
+                                                        value={activity.text}
+                                                        onChange={(e) => {
+                                                            const newAct = [...(customActivities[individualForm.reportField] || [])];
+                                                            newAct[idx] = { ...newAct[idx], text: e.target.value };
+                                                            setCustomActivities({ ...customActivities, [individualForm.reportField]: newAct });
+                                                        }}
+                                                        placeholder="مثلاً: الإشراف على صلاة الظهر..."
+                                                    />
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        const newAct = [...(customActivities[individualForm.reportField] || [])];
+                                                        newAct.splice(idx, 1);
+                                                        setCustomActivities({ ...customActivities, [individualForm.reportField]: newAct });
+                                                    }}
+                                                    className="mt-6 p-4 text-rose-300 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all active:scale-90"
+                                                >
+                                                    <Trash2 size={24} />
+                                                </button>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4 ml-16">
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-black text-slate-400 mr-2 flex items-center gap-1.5">
+                                                        <Zap size={14} className="text-amber-500" /> الأداة / الأسلوب
+                                                    </label>
+                                                    <input
+                                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3.5 text-xs font-black focus:border-amber-400 focus:bg-white transition-all outline-none"
+                                                        value={activity.planned}
+                                                        onChange={(e) => {
+                                                            const newAct = [...(customActivities[individualForm.reportField] || [])];
+                                                            newAct[idx] = { ...newAct[idx], planned: e.target.value };
+                                                            setCustomActivities({ ...customActivities, [individualForm.reportField]: newAct });
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-black text-slate-400 mr-2 flex items-center gap-1.5">
+                                                        <ClipboardList size={14} className="text-blue-500" /> دليل التنفيذ
+                                                    </label>
+                                                    <input
+                                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3.5 text-xs font-black focus:border-amber-400 focus:bg-white transition-all outline-none"
+                                                        value={activity.evidence}
+                                                        onChange={(e) => {
+                                                            const newAct = [...(customActivities[individualForm.reportField] || [])];
+                                                            newAct[idx] = { ...newAct[idx], evidence: e.target.value };
+                                                            setCustomActivities({ ...customActivities, [individualForm.reportField]: newAct });
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        const current = customActivities[individualForm.reportField] || [];
+                                        setCustomActivities({
+                                            ...customActivities,
+                                            [individualForm.reportField]: [...current, { text: 'معيار جديد', planned: 'بالملاحظة المباشرة', evidence: 'سجل المتابعة' }]
+                                        });
+                                    }}
+                                    className="w-full py-8 border-4 border-dashed border-slate-200 rounded-[3rem] text-slate-400 font-black hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-all flex items-center justify-center gap-4 group"
+                                >
+                                    <div className="w-12 h-12 bg-white rounded-[1.2rem] shadow-sm border border-slate-100 flex items-center justify-center group-hover:scale-110 group-hover:rotate-90 transition-all">
+                                        <Plus size={28} />
+                                    </div>
+                                    <span className="text-xl">إضافة معيار جديد للقائمة</span>
+                                </button>
+                            </div>
+                            <div className="p-10 bg-white border-t border-slate-100 flex justify-end">
+                                <button
+                                    onClick={() => setShowCriteriaModal(false)}
+                                    className="px-16 py-5 bg-amber-500 text-white rounded-[2rem] font-black text-2xl hover:bg-amber-600 transition-all shadow-2xl shadow-amber-100 transform hover:scale-[1.02] active:scale-95"
+                                >
+                                    حفظ جميع التعديلات
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
 
             {/* Custom styles for the page */}
             <style>{`
@@ -1475,23 +2378,39 @@ const StaffFollowUpPage: React.FC = React.memo(() => {
           white-space: nowrap;
         }
         .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
+          width: 6px;
+          height: 6px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-          background: #f8fafc;
-          border-radius: 10px;
+          background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #e2e8f0;
+          background: #cbd5e1;
           border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #cbd5e1;
+          background: #94a3b8;
+        }
+        @keyframes dropdown-cinematic {
+          0% { opacity: 0; transform: translateY(-20px) scale(0.95) rotateX(-10deg); }
+          100% { opacity: 1; transform: translateY(0) scale(1) rotateX(0); }
+        }
+        .dropdown-cinematic {
+          animation: dropdown-cinematic 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+          transform-style: preserve-3d;
+          perspective: 1000px;
+        }
+        .item-3d {
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          transform-style: preserve-3d;
+        }
+        .item-3d:hover {
+          transform: translateZ(20px) scale(1.02);
+          box-shadow: 0 20px 40px rgba(0,0,0,0.1);
         }
       `}</style>
         </div>
     );
-});
+};
 
 export default StaffFollowUpPage;

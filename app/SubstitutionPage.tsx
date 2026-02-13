@@ -10,7 +10,7 @@ import {
 import * as XLSX from 'xlsx';
 import { TimetableEntry, SubstitutionEntry } from '../types';
 
-const SubstitutionPage: React.FC = React.memo(() => {
+const SubstitutionPage: React.FC = () => {
   const { lang, data, updateData } = useGlobal();
   const [activeTab, setActiveTab] = useState<'coverage' | 'timetable'>('coverage');
 
@@ -478,8 +478,8 @@ const SubstitutionPage: React.FC = React.memo(() => {
           {/* END OF CHANGE */}
 
           <div className="bg-white rounded-[2.5rem] shadow-xl border overflow-hidden">
-            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent pb-4">
-              <table className="w-full border-collapse text-center min-w-[1000px] md:min-w-full">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-center min-w-[1000px]">
                 <thead className="sticky top-0 z-40 bg-white shadow-sm">
                   <tr className="bg-slate-100 text-slate-800 font-black border-b-2 border-slate-300 h-14">
                     <th rowSpan={2} className="border-e border-slate-300 p-2 w-12 bg-slate-100">م</th>
@@ -633,8 +633,8 @@ const SubstitutionPage: React.FC = React.memo(() => {
 
           {/* Timetable Grid */}
           <div className="bg-white rounded-[2.5rem] shadow-xl border overflow-hidden relative">
-            <div className="overflow-x-auto overflow-y-auto max-h-[70vh] scroll-smooth scrollbar-thin scrollbar-thumb-emerald-200">
-              <table className="w-full border-collapse text-center table-auto min-w-[1200px] md:min-w-full">
+            <div className="overflow-x-auto overflow-y-auto max-h-[600px] scroll-smooth">
+              <table className="w-full border-collapse text-center table-auto">
                 <thead className="sticky top-0 z-40 bg-white">
                   <tr className="bg-slate-100 text-slate-800 font-black border-b border-slate-300 h-14">
                     <th rowSpan={2} className="px-4 border-e border-slate-300 bg-slate-100 whitespace-nowrap w-12">م</th>
@@ -1056,6 +1056,6 @@ const SubstitutionPage: React.FC = React.memo(() => {
       )}
     </div>
   );
-});
+};
 
 export default SubstitutionPage;

@@ -1,19 +1,33 @@
 import React, { useState, useMemo, useRef, useEffect, memo } from 'react';
 import { useGlobal } from '../context/GlobalState';
 import {
-  Plus, Search, Trash2, Filter, ChevronDown, ChevronUp, Palette, Check, Calendar, Percent, User, Users, Target, Settings2, AlertCircle, X, ChevronRight, Zap, CheckCircle, FilePlus, FolderOpen, Save, ListOrdered, ArrowUpDown, ArrowUp, ArrowDown, SortAsc, Book, School, Type, Sparkles, FilterIcon, BarChart3, LayoutList, Upload, Download, Phone, UserCircle, Activity, Star, FileText, FileSpreadsheet, Share2, Edit, ChevronLeft, UserCheck, GraduationCap, MessageCircle, FileOutput
+  Plus, Search, Trash2, Filter, ChevronDown, ChevronUp, Palette, Check, Calendar, Percent, User, Users, Target, Settings2, AlertCircle, X, ChevronRight, Zap, CheckCircle, FilePlus, FolderOpen, Save, ListOrdered, ArrowUpDown, ArrowUp, ArrowDown, SortAsc, Book, School, Type, Sparkles, FilterIcon, BarChart3, LayoutList, Upload, Download, Phone, UserCircle, Activity, Star, FileText, FileSpreadsheet, Share2, Edit, ChevronLeft, UserCheck, GraduationCap, MessageCircle
 } from 'lucide-react';
-import { TeacherFollowUp, DailyReportContainer, StudentReport, SchoolProfile } from '../types';
+import { TeacherFollowUp, DailyReportContainer, StudentReport } from '../types';
 import DynamicTable from '../components/DynamicTable';
 import * as XLSX from 'xlsx';
 
+// Adding local types for TeacherFollowUpPage sorting and filtering
 // Adding local types for TeacherFollowUpPage sorting and filtering
 type FilterMode = 'all' | 'student' | 'percent' | 'metric' | 'grade' | 'section' | 'specific' | 'blacklist' | 'excellence' | 'date';
 type SortCriteria = 'manual' | 'name' | 'subject' | 'class';
 type SortDirection = 'asc' | 'desc';
 
+const hijriMonths = ['محرم', 'صفر', 'ربيع الأول', 'ربيع الثاني', 'جمادى الأولى', 'جمادى الثانية', 'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'];
+
+const toHijri = (dateStr: string) => {
+  try {
+    const d = new Date(dateStr);
+    const parts = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric', month: 'numeric', year: 'numeric' }).formatToParts(d);
+    const day = parts.find(p => p.type === 'day')?.value || '';
+    const monthNum = parseInt(parts.find(p => p.type === 'month')?.value || '1');
+    const year = parts.find(p => p.type === 'year')?.value || '';
+    return `${day}/ ${hijriMonths[monthNum - 1]}/ ${year}`;
+  } catch { return ''; }
+};
+
 // --- Teachers Follow-up Page (DailyReportsPage) ---
-export const DailyReportsPage: React.FC = React.memo(() => {
+export const DailyReportsPage: React.FC = () => {
   const { lang, data, updateData } = useGlobal();
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
@@ -25,39 +39,6 @@ export const DailyReportsPage: React.FC = React.memo(() => {
   const [violationModal, setViolationModal] = useState<{ id: string, notes: string[] } | null>(null);
   const [activeTeacherFilter, setActiveTeacherFilter] = useState<string>('');
   const [highlightedRowId, setHighlightedRowId] = useState<string | null>(null);
-  const [writer, setWriter] = useState<string>('');
-  const [aggDateFrom, setAggDateFrom] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [aggDateTo, setAggDateTo] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [archiveTab, setArchiveTab] = useState<'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'>('daily');
-  const [archiveSearch, setArchiveSearch] = useState('');
-  const [showIndicatorsModal, setShowIndicatorsModal] = useState(false);
-  const [showSummaryReport, setShowSummaryReport] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // Handle Bottom Menu Actions
-  useEffect(() => {
-    const handleAction = (e: any) => {
-      const { actionId } = e.detail;
-      switch (actionId) {
-        case 'add_table': aggregateReports?.('daily'); break;
-        case 'indicators': setShowIndicatorsModal(true); break;
-        case 'archive': setShowArchive(true); break;
-        case 'add_teacher': addNewTeacher(); break;
-        case 'import': setShowImportModal(true); break;
-        case 'teacher_report': setShowTeacherReport(true); break;
-        case 'metrics': setShowMetricPicker(true); break;
-        case 'filter': setFilterMode(prev => prev === 'all' ? 'metric' : 'all'); break;
-        case 'sort': setShowSortModal(true); break;
-        case 'date': {
-          const btn = document.querySelector('[data-type="date-edit"]');
-          if (btn instanceof HTMLElement) btn.click();
-          break;
-        }
-      }
-    };
-    window.addEventListener('page-action', handleAction);
-    return () => window.removeEventListener('page-action', handleAction);
-  }, []);
 
   // Import Teachers Modal State
   const [showImportModal, setShowImportModal] = useState(false);
@@ -71,56 +52,43 @@ export const DailyReportsPage: React.FC = React.memo(() => {
   const [reportSelectedFields, setReportSelectedFields] = useState<string[]>([]);
   const [showWhatsAppSelect, setShowWhatsAppSelect] = useState(false);
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
-  const [fillValues, setFillValues] = useState<Record<string, number>>({});
 
-  // Utility function to convert Arabic numerals to English
-  const toEnglishNum = (num: number | string): string => {
-    const arabicNums = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    const englishNums = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-    let str = String(num);
-    for (let i = 0; i < arabicNums.length; i++) {
-      str = str.replace(new RegExp(arabicNums[i], 'g'), englishNums[i]);
-    }
-    return str;
-  };
+  // Aggregation (Indicators) State
+  const [showIndicatorsModal, setShowIndicatorsModal] = useState(false);
+  const [aggDateFrom, setAggDateFrom] = useState(new Date().toISOString().split('T')[0]);
+  const [aggDateTo, setAggDateTo] = useState(new Date().toISOString().split('T')[0]);
+  const [aggPeriod, setAggPeriod] = useState<'weekly' | 'monthly' | 'quarterly' | 'yearly'>('weekly');
+
+  // Archive Categories & Search
+  const [archiveCategory, setArchiveCategory] = useState<'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'>('daily');
+  const [archiveSearch, setArchiveSearch] = useState('');
+
+  // Default Writer/Manager (can be persisted in profile or localState)
+  const [reportWriter, setReportWriter] = useState(data.profile.supervisorName || '');
+  const [branchManager, setBranchManager] = useState(data.profile.branchManager || '');
 
 
   const reports = data.dailyReports || [];
-  const metricsList = data.metricsList || [];
 
-  // Auto-create report for today
+  // Set active report on load if not set & Auto-create for today
+  useEffect(() => {
+    if (!activeReportId && reports.length > 0) {
+      setActiveReportId(reports[reports.length - 1].id);
+    }
+  }, [reports, activeReportId]);
+
+  // Auto-create report for today if it doesn't exist
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
-    const exists = (data.dailyReports || []).find(r => r.dateStr === today);
-    if (!exists) {
-      const lastReport = (data.dailyReports || []).slice().reverse().find(r => r.teachersData);
-      const inheritedWriter = lastReport?.writer || '';
-      const inheritedTeachers = lastReport ? lastReport.teachersData.map(t => ({
-        ...t,
-        id: `teacher_${Date.now()}_${Math.random()}`,
-        violations_score: 0,
-        violations_notes: [],
-        ...metricsList.reduce((acc, m) => ({ ...acc, [m.key]: 0 }), {})
-      })) : [];
-
-      const newId = Date.now().toString();
-      const newReport: DailyReportContainer = {
-        id: newId,
-        dateStr: today,
-        dayName: new Intl.DateTimeFormat('ar-EG', { weekday: 'long' }).format(new Date()),
-        writer: inheritedWriter,
-        teachersData: inheritedTeachers as TeacherFollowUp[]
-      };
-      updateData({ dailyReports: [newReport, ...(data.dailyReports || [])] });
-      setActiveReportId(newId);
-      setWriter(inheritedWriter);
-    } else {
-      if (!activeReportId) {
-        setActiveReportId(exists.id);
-        setWriter(exists.writer || '');
-      }
+    const hasTodayReport = reports.some(r => r.dateStr === today && r.periodType === 'daily');
+    if (!hasTodayReport && reports.length > 0) {
+      // Small delay to avoid race conditions or multiple triggers
+      const timer = setTimeout(() => {
+        handleCreateReport();
+      }, 1000);
+      return () => clearTimeout(timer);
     }
-  }, [data.dailyReports, metricsList, updateData, activeReportId]);
+  }, [reports]);
 
   const currentReport = reports.find(r => r.id === activeReportId);
 
@@ -130,12 +98,7 @@ export const DailyReportsPage: React.FC = React.memo(() => {
   const teachers = useMemo(() => {
     let list = currentReport ? [...currentReport.teachersData] : [];
 
-    // Search Filtering
-    if (searchTerm) {
-      list = list.filter(t => t.teacherName.toLowerCase().includes(searchTerm.toLowerCase()));
-    }
-
-    // Existing Filter Mode Logic
+    // Filtering
     if (filterMode === 'student' && activeTeacherFilter) {
       list = list.filter(t => t.teacherName.includes(activeTeacherFilter));
     }
@@ -165,7 +128,9 @@ export const DailyReportsPage: React.FC = React.memo(() => {
     });
 
     return list;
-  }, [currentReport, sortConfig, filterMode, activeTeacherFilter, searchTerm]);
+  }, [currentReport, sortConfig, filterMode, activeTeacherFilter]);
+
+  const metricsList = data.metricsList || [];
 
   const metricsConfig = useMemo(() => metricsList.map(m => ({
     key: m.key,
@@ -181,42 +146,6 @@ export const DailyReportsPage: React.FC = React.memo(() => {
     const b = parseInt(hexColor.slice(5, 7), 16);
     const brightness = (r * 299 + g * 587 + b * 114) / 1000;
     return brightness > 155 ? 'text-slate-800' : 'text-white';
-  };
-
-  // Hijri date helper with month names
-  const hijriMonths = ['محرم', 'صفر', 'ربيع الأول', 'ربيع الثاني', 'جمادى الأولى', 'جمادى الثانية', 'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'];
-  const toHijriFriendly = (dateStr: string) => {
-    if (!dateStr) return '';
-    try {
-      if (dateStr.includes(' to ')) {
-        const [start, end] = dateStr.split(' to ');
-        return `${toHijriFriendly(start)} - ${toHijriFriendly(end)}`;
-      }
-      const gDate = new Date(dateStr);
-      if (isNaN(gDate.getTime())) return dateStr;
-      const hijri = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-uma', {
-        day: 'numeric', month: 'numeric', year: 'numeric'
-      }).format(gDate);
-      const parts = toEnglishNum(hijri).split('/');
-      const monthIdx = parseInt(parts[1]) - 1;
-      return `${parts[0]}/ ${hijriMonths[monthIdx]}/ ${parts[2]}هـ`;
-    } catch (e) { return dateStr; }
-  };
-
-  const getReportTitle = (report: DailyReportContainer) => {
-    if (report.reportCount) {
-      if (report.dayName === 'أسبوعي') return 'التقرير الأسبوعي لمتابعة أداء المعلمين';
-      if (report.dayName === 'شهري') return 'التقرير الشهري لمتابعة أداء المعلمين';
-      if (report.dayName === 'فصلي') return 'التقرير الفصلي لمتابعة أداء المعلمين';
-      if (report.dayName === 'سنوي') return 'التقرير السنوي لمتابعة أداء المعلمين';
-    }
-    return `تقرير متابعة أداء المعلمين ليوم ${report.dayName}`;
-  };
-
-  const getReportDateLabel = (report: DailyReportContainer) => {
-    const greg = report.dateStr.includes(' to ') ? (report.dateStr.replace(' to ', ' إلى ')) : report.dateStr;
-    const hijri = toHijriFriendly(report.dateStr);
-    return `التاريخ: ${hijri} الموافق: ${greg}م`;
   };
 
   const subjects = ["مربية", "القرآن الكريم", "التربية الإسلامية", "اللغة العربية", "اللغة الإنجليزية", "الرياضيات", "العلوم", "الكيمياء", "الفيزياء", "الأحياء", "الاجتماعيات", "الحاسوب", "المكتبة", "الفنية", "المختص الاجتماعي", "الأنشطة", "غيرها"];
@@ -240,100 +169,30 @@ export const DailyReportsPage: React.FC = React.memo(() => {
 
   const handleCreateReport = () => {
     const today = new Date().toISOString().split('T')[0];
-    const lastReport = (data.dailyReports || []).find(r => r.teachersData);
-    const inheritedWriter = lastReport?.writer || '';
-    const inheritedTeachers = lastReport ? lastReport.teachersData.map(t => ({
-      ...t,
-      id: `teacher_${Date.now()}_${Math.random()}`,
-      violations_score: 0,
-      violations_notes: [],
-      ...metricsList.reduce((acc, m) => ({ ...acc, [m.key]: 0 }), {})
-    })) : [];
-
-    const newId = Date.now().toString();
-    const newReport: DailyReportContainer = {
-      id: newId,
-      dateStr: today,
-      dayName: new Intl.DateTimeFormat('ar-EG', { weekday: 'long' }).format(new Date()),
-      writer: inheritedWriter,
-      teachersData: inheritedTeachers as TeacherFollowUp[]
-    };
-    updateData({ dailyReports: [newReport, ...(data.dailyReports || [])] });
-    setActiveReportId(newId);
-    setWriter(inheritedWriter);
-  };
-
-  const deleteReport = (reportId: string) => {
-    if (!confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذا التقرير نهائياً؟' : 'Are you sure you want to delete this report permanently?')) return;
-    const updated = (data.dailyReports || []).filter(r => r.id !== reportId);
-    updateData({ dailyReports: updated });
-    if (activeReportId === reportId) setActiveReportId(updated[0]?.id || null);
-  };
-
-  const aggregateReports = (type: string) => {
-    const from = new Date(aggDateFrom);
-    const to = new Date(aggDateTo);
-    const filteredDays = (data.dailyReports || []).filter(r => {
-      const d = new Date(r.dateStr);
-      return d >= from && d <= to && !r.reportCount;
-    });
-
-    if (filteredDays.length === 0) {
-      alert(lang === 'ar' ? 'لا توجد تقارير يومية في هذه الفترة' : 'No daily reports found in this period');
-      return;
+    const exists = reports.some(r => r.dateStr === today);
+    if (exists) {
+      if (!confirm(lang === 'ar' ? 'الجدول لهذا اليوم موجود بالفعل، فهل أنت متأكد من تكرار الجدول لهذا اليوم؟' : 'The schedule for today already exists, are you sure you want to duplicate it?')) return;
     }
 
-    // Merge teachers
-    const teacherMap: Record<string, { name: string, subject: string, class: string, scores: Record<string, number>, violations_score: number, reportCount: number }> = {};
-    filteredDays.forEach(day => {
-      day.teachersData.forEach(t => {
-        const key = t.teacherName.trim();
-        if (!teacherMap[key]) {
-          teacherMap[key] = {
-            name: t.teacherName,
-            subject: t.subjectCode,
-            class: t.className,
-            scores: {},
-            violations_score: 0,
-            reportCount: 0
-          };
-          metricsList.forEach(m => teacherMap[key].scores[m.key] = 0);
-        }
-        teacherMap[key].reportCount++;
-        metricsList.forEach(m => teacherMap[key].scores[m.key] += (Number((t as any)[m.key]) || 0));
-        teacherMap[key].violations_score += (t.violations_score || 0);
-      });
-    });
+    const lastReport = reports[reports.length - 1];
+    const newTeachers = lastReport ? lastReport.teachersData.map(t => ({
+      ...t,
+      attendance: 0, appearance: 0, preparation: 0, supervision_queue: 0, supervision_rest: 0, supervision_end: 0,
+      correction_books: 0, correction_notebooks: 0, correction_followup: 0, teaching_aids: 0, extra_activities: 0,
+      radio: 0, creativity: 0, zero_period: 0, violations_score: 0, violations_notes: [], gender: 'ذكر'
+    })) : [];
 
-    const aggregatedTeachers = Object.values(teacherMap).map((tm, idx) => {
-      const t: any = {
-        id: `agg_teacher_${idx}_${Date.now()}`,
-        teacherName: tm.name,
-        subjectCode: tm.subject,
-        className: tm.class,
-        violations_score: Math.round(tm.violations_score / tm.reportCount),
-        order: idx + 1,
-        gender: 'ذكر'
-      };
-      metricsList.forEach(m => {
-        t[m.key] = Math.round(tm.scores[m.key] / tm.reportCount);
-      });
-      return t as TeacherFollowUp;
-    });
-
-    const newId = `agg_report_${Date.now()}`;
     const newReport: DailyReportContainer = {
-      id: newId,
-      dateStr: `${aggDateFrom} to ${aggDateTo}`,
-      dayName: type,
-      writer: writer,
-      reportCount: filteredDays.length,
-      teachersData: aggregatedTeachers
+      id: Date.now().toString(),
+      dayName: new Intl.DateTimeFormat('ar-EG', { weekday: 'long' }).format(new Date()),
+      dateStr: today,
+      teachersData: newTeachers as TeacherFollowUp[],
+      writer: reportWriter,
+      branchManager: branchManager,
+      periodType: 'daily'
     };
-
-    updateData({ dailyReports: [newReport, ...(data.dailyReports || [])] });
-    setActiveReportId(newId);
-    setShowSummaryReport(type);
+    updateData({ dailyReports: [...reports, newReport] });
+    setActiveReportId(newReport.id);
   };
 
   const addNewTeacher = () => {
@@ -349,96 +208,6 @@ export const DailyReportsPage: React.FC = React.memo(() => {
 
     const updatedReports = reports.map(r => r.id === activeReportId ? { ...r, teachersData: [...r.teachersData, newTeacher] } : r);
     updateData({ dailyReports: updatedReports });
-  };
-
-  const handleExcelExport = () => {
-    const report = data.dailyReports?.find(r => r.id === activeReportId);
-    if (!report) return;
-
-    const profile = (data.profile || {}) as SchoolProfile;
-    const title = getReportTitle(report);
-    const dateLabel = getReportDateLabel(report);
-    const rcCount = report.reportCount || 1;
-
-    let content = `
-<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-<head>
-<meta charset="UTF-8">
-<style>
-    table { border-collapse: collapse; width: 100%; direction: rtl; }
-    th, td { border: 1px solid #000; padding: 8px; text-align: center; font-family: Arial, sans-serif; }
-    .title-section { border: none; text-align: center; font-size: 18px; font-weight: bold; }
-    .date-section { border: none; text-align: center; font-size: 14px; color: #333; }
-    .subheader { background-color: #f1f5f9; font-weight: bold; }
-    .metric-header { background-color: #f8fafc; font-weight: bold; font-size: 11px; }
-    .footer-row { background-color: #f8fafc; font-weight: bold; }
-</style>
-</head>
-<body>
-<table>
-    <tr><td colspan="${5 + metricsList.length + 3}" class="title-section" style="font-size: 20px;">${profile.schoolName || 'المدرسة'}</td></tr>
-    <tr><td colspan="${5 + metricsList.length + 3}" class="title-section" style="font-size: 18px;">${title}</td></tr>
-    <tr><td colspan="${5 + metricsList.length + 3}" class="date-section">${dateLabel}</td></tr>
-    <tr><td colspan="${5 + metricsList.length + 3}" style="border: none; height: 10px;"></td></tr>
-    <tr class="subheader">
-        <th rowspan="2">م</th>
-        <th rowspan="2" style="min-width: 150px;">اسم المعلم</th>
-        <th rowspan="2">النوع</th>
-        <th rowspan="2">المادة</th>
-        <th rowspan="2">الصف</th>
-        <th colspan="${metricsList.length}">مجالات التقييم</th>
-        <th rowspan="2">المخالفات</th>
-        <th rowspan="2">المجموع</th>
-        <th rowspan="2">النسبة %</th>
-    </tr>
-    <tr class="metric-header">
-        ${metricsList.map(m => `<th style="background-color: ${m.color}20;">${m.label}<br/>(${m.max * rcCount})</th>`).join('')}
-    </tr>
-    ${teachers.map((t, idx) => {
-      const total = calculateTotal(t);
-      const max = calculateMaxTotal(t);
-      const percent = max > 0 ? ((total / max) * 100).toFixed(1) : '0';
-      return `
-    <tr>
-        <td>${idx + 1}</td>
-        <td style="text-align: right;">${t.teacherName}</td>
-        <td>${t.gender || 'ذكر'}</td>
-        <td>${t.subjectCode || ''}</td>
-        <td>${t.className || ''}</td>
-        ${metricsList.map(m => {
-        const isUnaccredited = (t.unaccreditedMetrics || []).includes(m.key);
-        return `<td style="background-color: ${m.color}10;">${isUnaccredited ? 'غ.م' : (t as any)[m.key] || 0}</td>`;
-      }).join('')}
-        <td style="color: red;">${t.violations_score || 0}</td>
-        <td style="font-weight: bold;">${total}</td>
-        <td style="font-weight: bold;">${percent}%</td>
-    </tr>`;
-    }).join('')}
-    <tr class="footer-row">
-        <td colspan="5">المجموع الكلي والنسبة العامة</td>
-        ${metricsList.map(m => `<td>${getColSum(m.key)}<br/>${getColPercent(m.key, m.max)}%</td>`).join('')}
-        <td>${teachers.reduce((acc, t) => acc + (t.violations_score || 0), 0)}</td>
-        <td style="background-color: #f1f5f9;">${teachers.reduce((acc, t) => acc + calculateTotal(t), 0)}</td>
-        <td style="background-color: #334155; color: white;">${(() => {
-        const tSum = teachers.reduce((acc, t) => acc + calculateTotal(t), 0);
-        const tMax = teachers.reduce((acc, t) => acc + calculateMaxTotal(t), 0);
-        return tMax > 0 ? ((tSum / tMax) * 100).toFixed(1) : '0';
-      })()}%</td>
-    </tr>
-    <tr><td colspan="${5 + metricsList.length + 3}" style="border: none; height: 20px;"></td></tr>
-    <tr>
-        <td colspan="${Math.floor((5 + metricsList.length + 3) / 2)}" style="border: none; text-align: right; font-weight: bold;">كاتب التقرير: ${writer || report.writer || ''}</td>
-        <td colspan="${Math.ceil((5 + metricsList.length + 3) / 2)}" style="border: none; text-align: left; font-weight: bold;">مدير الفرع: ${profile.branchManager || ''}</td>
-    </tr>
-</table>
-</body>
-</html>`;
-
-    const blob = new Blob(['\uFEFF' + content], { type: 'application/vnd.ms-excel;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${title}.xls`;
-    link.click();
   };
 
   const updateTeacher = (teacherId: string, updates: Record<string, any>) => {
@@ -569,6 +338,141 @@ export const DailyReportsPage: React.FC = React.memo(() => {
     }, 0);
   };
 
+  const exportToExcel = () => {
+    if (!currentReport) return;
+
+    const profile = data.profile;
+    const metricsCols = displayedMetrics.filter(m => m.key !== 'violations_score');
+    const title = `${lang === 'ar' ? 'التقرير' : 'Report'} ${(currentReport.periodType === 'daily' || !currentReport.periodType) ? (lang === 'ar' ? 'اليومي' : 'Daily') : (lang === 'ar' ? (currentReport.periodType === 'weekly' ? 'الأسبوعي' : currentReport.periodType === 'monthly' ? 'الشهري' : currentReport.periodType === 'quarterly' ? 'الفصلي' : 'السنوي') : currentReport.periodType)}`;
+    const dateLabel = `${toHijri(currentReport.dateStr)}هـ - ${currentReport.dateStr}م`;
+
+    let content = `
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="UTF-8">
+<style>
+    table { border-collapse: collapse; width: 100%; direction: rtl; }
+    th, td { border: 1px solid #000; padding: 8px; text-align: center; font-family: Arial, sans-serif; }
+    .header { background-color: #2563eb; color: white; font-weight: bold; font-size: 16px; }
+    .subheader { background-color: #FFD966; color: #000; font-weight: bold; }
+    .metric-header { background-color: #f8fafc; font-weight: bold; font-size: 11px; }
+    .footer-row { background-color: #f8fafc; font-weight: bold; }
+    .total-cell { background-color: #dbeafe; font-weight: bold; color: #1d4ed8; }
+    .percent-cell { background-color: #dbeafe; font-weight: bold; color: #1e40af; }
+    .violation-cell { background-color: #fee2e2; color: #dc2626; font-weight: bold; }
+    .signature { border: none; padding: 20px; font-weight: bold; }
+    .title-section { border: none; text-align: center; font-size: 18px; font-weight: bold; }
+    .date-section { border: none; text-align: center; font-size: 14px; color: #666; }
+</style>
+</head>
+<body>
+<table>
+    <tr>
+        <td colspan="${8 + metricsCols.length}" class="title-section" style="background-color: #2563eb; color: white; font-size: 20px; padding: 15px;">
+            ${profile.schoolName || 'المدرسة'} ${profile.branch ? `- فرع ${profile.branch}` : ''}
+        </td>
+    </tr>
+    <tr>
+        <td colspan="${8 + metricsCols.length}" class="title-section" style="padding: 10px;">
+            ${title} لأداء المعلمين والمعلمات
+        </td>
+    </tr>
+    <tr>
+        <td colspan="${8 + metricsCols.length}" class="date-section" style="padding: 8px;">
+            بتاريخ: ${dateLabel}
+        </td>
+    </tr>
+    <tr><td colspan="${8 + metricsCols.length}" style="border: none; height: 10px;"></td></tr>
+    
+    <tr class="subheader">
+        <th rowspan="2">م</th>
+        <th rowspan="2" style="min-width: 150px;">اسم المعلم</th>
+        <th rowspan="2">النوع</th>
+        <th rowspan="2">المادة</th>
+        <th rowspan="2">الصف</th>
+        <th colspan="${metricsCols.length}">مجالات تقييم المعلمين</th>
+        <th rowspan="2">المخالفات</th>
+        <th rowspan="2">المجموع</th>
+        <th rowspan="2">النسبة %</th>
+    </tr>
+    <tr class="metric-header">
+        ${metricsCols.map(m => `<th style="background-color: ${m.color}; min-width: 80px;">${m.label}</th>`).join('')}
+    </tr>
+
+    ${teachers.map((t, idx) => {
+      const total = calculateTotal(t);
+      const max = calculateMaxTotal(t);
+      const percent = max > 0 ? ((total / max) * 100).toFixed(1) : '0';
+      return `
+    <tr>
+        <td>${idx + 1}</td>
+        <td style="text-align: right; font-weight: bold;">${t.teacherName}</td>
+        <td>${t.gender || ''}</td>
+        <td>${t.subjectCode}</td>
+        <td>${t.className}</td>
+        ${metricsCols.map(m => {
+        const isUnaccredited = (t.unaccreditedMetrics || []).includes(m.key);
+        const val = isUnaccredited ? 'غ.م' : (t[m.key] || 0);
+        return `<td style="background-color: ${m.color}15;">${val}</td>`;
+      }).join('')}
+        <td class="violation-cell">${t.violations_score || 0}</td>
+        <td class="total-cell">${total}</td>
+        <td class="percent-cell">${percent}%</td>
+    </tr>`;
+    }).join('')}
+
+    <tr class="footer-row">
+        <td colspan="5" style="text-align: right;">المجموع الكلي</td>
+        ${metricsCols.map(m => {
+      const sum = teachers.reduce((acc, t) => acc + (Number(t[m.key]) || 0), 0);
+      return `<td style="background-color: ${m.color}30;">${sum}</td>`;
+    }).join('')}
+        <td class="violation-cell">${teachers.reduce((acc, t) => acc + (t.violations_score || 0), 0)}</td>
+        <td class="total-cell">${teachers.reduce((acc, t) => acc + calculateTotal(t), 0)}</td>
+        <td class="percent-cell">
+            ${(() => {
+        const tSum = teachers.reduce((acc, t) => acc + calculateTotal(t), 0);
+        const tMax = teachers.reduce((acc, t) => acc + calculateMaxTotal(t), 0);
+        return tMax > 0 ? ((tSum / tMax) * 100).toFixed(1) : '0';
+      })()}%
+        </td>
+    </tr>
+
+    <tr class="footer-row">
+        <td colspan="5" style="text-align: right;">النسبة العامة</td>
+        ${metricsCols.map(m => {
+        const sum = teachers.reduce((acc, t) => acc + (Number(t[m.key]) || 0), 0);
+        const count = teachers.length;
+        const pct = count > 0 ? ((sum / (count * m.max)) * 100).toFixed(1) : '0';
+        return `<td style="background-color: ${m.color}30;">${pct}%</td>`;
+      }).join('')}
+        <td></td>
+        <td></td>
+        <td></td>
+    </tr>
+
+    <tr><td colspan="${8 + metricsCols.length}" style="border: none; height: 20px;"></td></tr>
+
+    <tr>
+        <td colspan="${Math.floor((8 + metricsCols.length) / 2)}" class="signature" style="text-align: right;">
+            <strong>كاتب التقرير:</strong> ${reportWriter || '......................'}
+        </td>
+        <td colspan="${Math.ceil((8 + metricsCols.length) / 2)}" class="signature" style="text-align: left;">
+            <strong>مدير الفرع:</strong> ${branchManager || '......................'}
+        </td>
+    </tr>
+</table>
+</body>
+</html>`;
+
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + content], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Teacher_Performance_Report_${currentReport.dateStr}.xls`;
+    link.click();
+  };
+
   const toggleAccreditation = (teacherId: string | 'bulk', metricKey: string) => {
     if (!activeReportId) return;
     const updatedReports = reports.map(r => {
@@ -624,10 +528,8 @@ export const DailyReportsPage: React.FC = React.memo(() => {
 
   const getColPercent = (key: string, max: number) => {
     const sum = getColSum(key);
-    const accreditedEmployees = teachers.filter(t => !(t.unaccreditedMetrics || []).includes(key));
-    const accreditedCount = accreditedEmployees.length;
-    if (accreditedCount === 0) return '0';
-    return ((sum / (accreditedCount * max)) * 100).toFixed(1);
+    const accreditedCount = teachers.filter(t => !(t.unaccreditedMetrics || []).includes(key)).length;
+    return accreditedCount > 0 ? ((sum / (accreditedCount * max)) * 100).toFixed(1) : '0';
   };
 
   // MultiSelect Component
@@ -795,6 +697,80 @@ export const DailyReportsPage: React.FC = React.memo(() => {
     }
   };
 
+  const aggregateReports = () => {
+    const period = aggPeriod;
+    const from = aggDateFrom;
+    const to = aggDateTo;
+
+    const filtered = (data.dailyReports || []).filter(r =>
+      r.periodType === 'daily' &&
+      r.dateStr >= from &&
+      r.dateStr <= to
+    );
+
+    if (filtered.length === 0) {
+      alert('لا توجد تقارير يومية في هذه الفترة الزمنية');
+      return;
+    }
+
+    // Group by teacher name
+    const aggregatedData: Record<string, TeacherFollowUp> = {};
+    filtered.forEach(report => {
+      report.teachersData.forEach(teacher => {
+        const name = teacher.teacherName.trim();
+        if (!name) return;
+
+        if (!aggregatedData[name]) {
+          aggregatedData[name] = {
+            ...teacher,
+            id: `agg_${Date.now()}_${name}`,
+            violations_score: 0,
+            violations_notes: []
+          };
+          // Initialize metrics to 0
+          metricsList.forEach(m => { (aggregatedData[name] as any)[m.key] = 0; });
+        }
+
+        const target = aggregatedData[name];
+        metricsList.forEach(m => {
+          if (m.key !== 'violations_score') {
+            (target as any)[m.key] = (Number((target as any)[m.key]) || 0) + (Number((teacher as any)[m.key]) || 0);
+          }
+        });
+        target.violations_score += (teacher.violations_score || 0);
+        if (teacher.violations_notes) {
+          target.violations_notes = [...new Set([...target.violations_notes, ...teacher.violations_notes])];
+        }
+      });
+    });
+
+    const periodMap: Record<string, string> = { 'weekly': 'أسبوعي', 'monthly': 'شهري', 'quarterly': 'فصلي', 'yearly': 'سنوي' };
+    const newId = `agg_${Date.now()}`;
+    const newReport: DailyReportContainer = {
+      id: newId,
+      dayName: 'تقرير مجمع',
+      dateStr: `${from} إلى ${to}`,
+      teachersData: Object.values(aggregatedData),
+      periodType: period,
+      dateFrom: from,
+      dateTo: to,
+      writer: reportWriter,
+      branchManager: branchManager
+    };
+
+    updateData({ dailyReports: [newReport, ...(data.dailyReports || [])] });
+    setActiveReportId(newId);
+    setShowIndicatorsModal(false);
+    alert(`تم إنشاء التقرير الـ ${periodMap[period]} بنجاح`);
+  };
+
+  const deleteReport = (reportId: string) => {
+    if (confirm('هل أنت متأكد من حذف هذا التقرير؟')) {
+      const newList = (data.dailyReports || []).filter(r => r.id !== reportId);
+      updateData({ dailyReports: newList });
+      if (activeReportId === reportId) setActiveReportId(newList.length > 0 ? newList[0].id : null);
+    }
+  };
   const processImportedFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !activeReportId) return;
@@ -922,46 +898,79 @@ export const DailyReportsPage: React.FC = React.memo(() => {
 
 
   return (
-    <div className="space-y-0 font-arabic">
-      <div className="hidden pointer-events-none h-0 p-0 overflow-hidden">
-        {/* Legacy Buttons Hidden */}
-      </div>
+    <div className="space-y-4 font-arabic">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Report Writer & Statistics Buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const name = prompt('أدخل مسمى كاتب التقرير الحالي:', reportWriter);
+                if (name !== null) setReportWriter(name);
+              }}
+              className="flex items-center gap-2 bg-white border-2 border-slate-100 rounded-2xl px-5 py-3 text-slate-700 font-black hover:border-blue-200 hover:bg-blue-50/30 transition-all group scale-95"
+            >
+              <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+                <User size={16} />
+              </div>
+              {reportWriter || 'كاتب التقرير'}
+            </button>
 
-      <div className="mb-0">
-        <div className="relative group max-w-xs">
-          <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-600 transition-all">
-            <Search size={16} />
+            <button
+              onClick={() => setShowIndicatorsModal(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl px-6 py-3 font-black shadow-lg shadow-blue-100 hover:shadow-blue-200 hover:-translate-y-0.5 transition-all active:scale-95"
+            >
+              <BarChart3 size={18} />
+              مؤشرات التقارير
+            </button>
           </div>
-          <input
-            type="text"
-            placeholder="ابحث عن اسم المعلم..."
-            className="w-full bg-white border-2 border-slate-100 rounded-full py-2 pr-10 pl-4 text-sm font-bold shadow-sm focus:border-blue-600 focus:ring-2 focus:ring-blue-50 outline-none transition-all placeholder:text-slate-300"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+
+          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+            <button onClick={handleCreateReport} className="flex items-center gap-2 bg-white text-blue-600 rounded-xl px-4 py-2 text-sm font-black shadow-sm border border-blue-100 hover:bg-blue-600 hover:text-white transition-all">
+              <Plus size={16} /> جدول جديد
+            </button>
+            <button onClick={() => setShowArchive(true)} className="flex items-center gap-2 bg-slate-200 text-slate-700 rounded-xl px-4 py-2 text-sm font-black hover:bg-slate-300 transition-all">
+              <FolderOpen size={16} /> الأرشيف
+            </button>
+          </div>
+          <button onClick={addNewTeacher} className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-xl font-bold border border-purple-200 hover:bg-purple-100 transition-all text-xs sm:text-sm"><UserCircle size={16} /> إضافة معلم</button>
+          <button onClick={() => setShowImportModal(true)} className="flex items-center gap-2 bg-orange-50 text-orange-700 px-4 py-2 rounded-xl font-bold border border-orange-200 hover:bg-orange-100 transition-all text-xs sm:text-sm"><Upload size={16} /> استيراد أسماء المعلمين</button>
+          <button onClick={() => setShowTeacherReport(true)} className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-xl font-bold border border-green-200 hover:bg-green-100 transition-all text-xs sm:text-sm"><FileText size={16} /> تقرير معلم</button>
+          <button onClick={() => setShowMetricPicker(true)} className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-xl font-bold border border-blue-200 hover:bg-blue-100 transition-all text-xs sm:text-sm"><Settings2 size={16} /> تخصيص المجالات</button>
+          <button onClick={exportToExcel} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl font-bold shadow-md hover:bg-green-700 transition-all text-xs sm:text-sm"><FileSpreadsheet size={16} /> تصدير إكسل</button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <button onClick={() => setFilterMode(prev => prev === 'all' ? 'metric' : 'all')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold border transition-all text-xs sm:text-sm ${filterMode === 'metric' ? 'bg-orange-100 text-orange-600 border-orange-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+              <Filter size={16} /> {filterMode === 'metric' ? 'عرض مخصص' : 'عرض الجميع'}
+            </button>
+          </div>
+
+          <button onClick={() => setShowSortModal(true)} className="p-2.5 bg-slate-50 text-slate-600 rounded-xl border border-slate-200 hover:bg-white"><ListOrdered size={18} /></button>
+          {currentReport && (
+            <div className="flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-2 rounded-xl border border-blue-100">
+              <Calendar size={16} />
+              <span className="text-xs font-black">{currentReport.dayName} {currentReport.dateStr}</span>
+              <button className="hover:bg-blue-200 rounded p-0.5"><Edit size={12} /></button>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="hidden pointer-events-none h-0 p-0 overflow-hidden">
-        {/* Secondary Legacy Buttons Hidden */}
-      </div>
-
-      <div className="bg-white rounded-[2.5rem] border-4 border-[#911d1d] shadow-xl overflow-hidden relative transition-all">
+      <div className="bg-white rounded-2xl border shadow-sm overflow-hidden relative">
         <div className="overflow-x-auto overflow-y-auto max-h-[75vh] scroll-smooth custom-scrollbar">
           <table className={`w-full text-center border-collapse ${filterMode === 'metric' ? '' : 'min-w-[1400px]'}`}>
             <thead>
-              {currentReport && (
-                <tr className="bg-white">
-                  <th colSpan={20} className="p-3 border-b border-slate-200">
-                    <div className="flex flex-col items-center gap-1">
-                      <h2 className="text-lg font-black text-slate-800">{getReportTitle(currentReport)}</h2>
-                      <div className="text-xs font-bold text-slate-500 bg-slate-50 px-4 py-1 rounded-full border border-slate-100">
-                        {getReportDateLabel(currentReport)}
-                      </div>
-                    </div>
-                  </th>
-                </tr>
-              )}
+              <tr className="bg-blue-600 text-white font-black text-lg">
+                <th colSpan={20} className="p-4 rounded-t-2xl">
+                  {lang === 'ar' ? 'التقرير' : 'Report'} {(currentReport?.periodType === 'daily' || !currentReport?.periodType) ? (lang === 'ar' ? 'اليومي' : 'Daily') :
+                    currentReport.periodType === 'weekly' ? (lang === 'ar' ? 'الأسبوعي' : 'Weekly') :
+                      currentReport.periodType === 'monthly' ? (lang === 'ar' ? 'الشهري' : 'Monthly') :
+                        currentReport.periodType === 'quarterly' ? (lang === 'ar' ? 'الفصلي' : 'Quarterly') : (lang === 'ar' ? 'السنوي' : 'Yearly')}
+                  {lang === 'ar' ? ' لأداء المعلمين والمعلمات بتاريخ ' : ' for teacher performance on '} {toHijri(currentReport?.dateStr || '')}هـ - {currentReport?.dateStr}م
+                </th>
+              </tr>
               <tr className="border-b border-slate-300">
                 <th rowSpan={2} className="p-2 border-e border-slate-300 w-12 sticky top-0 bg-[#FFD966] z-20">
                   <div className="flex flex-col items-center gap-1">
@@ -1259,117 +1268,145 @@ export const DailyReportsPage: React.FC = React.memo(() => {
                 );
               })}
             </tbody>
-            {teachers.length > 0 && (
-              <tfoot className="bg-slate-50 text-slate-800 font-bold text-xs sticky bottom-0 z-20 shadow-lg border-t-2 border-slate-200">
-                <tr>
-                  <td colSpan={filterMode === 'metric' ? 2 : 5} className="p-2 text-left px-4 border-e">المجموع الكلي</td>
-                  {displayedMetrics.map(m => (
-                    <td key={m.key} className="p-2 border-e transition-colors" style={getMetricStyle(m)}>
-                      <div className={`flex flex-col font-black font-sans ${getTextColor(m.color)}`}>
-                        <span>{getColSum(m.key)}</span>
-                      </div>
-                    </td>
-                  ))}
-                  <td className="p-2 border-e"></td>
-                  <td className="p-2 border-e text-blue-700 font-sans">{teachers.reduce((acc, t) => acc + calculateTotal(t), 0)}</td>
-                  <td className="p-2 border-e font-sans">
-                    {(() => {
-                      const totalSum = teachers.reduce((acc, t) => acc + calculateTotal(t), 0);
-                      const totalMax = teachers.reduce((acc, t) => acc + calculateMaxTotal(t), 0);
-                      return totalMax > 0 ? ((totalSum / totalMax) * 100).toFixed(1) : '0';
-                    })()}%
-                  </td>
-                </tr>
-                <tr>
-                  <td colSpan={filterMode === 'metric' ? 2 : 5} className="p-2 text-left px-4 border-e">النسبة العامة</td>
-                  {displayedMetrics.map(m => (
-                    <td key={m.key} className="p-2 border-e transition-colors" style={getMetricStyle(m)}>
-                      <div className={`flex flex-col ${getTextColor(m.color)} opacity-80 font-sans`}>
-                        <span className="text-[10px] font-bold">{getColPercent(m.key, m.max)}%</span>
-                      </div>
-                    </td>
-                  ))}
-                  <td className="p-2 border-e"></td>
-                  <td className="p-2 border-e"></td>
-                  <td className="p-2 border-e"></td>
-                </tr>
-                <tr className="bg-white">
-                  <td colSpan={filterMode === 'metric' ? 2 : 5} className="p-3 text-right border-none">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-xs font-black text-slate-400">كاتب التقرير</span>
-                      <span className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-1 min-w-[200px] inline-block">
-                        {writer || currentReport?.writer || '........................'}
-                      </span>
+            <tfoot className="bg-slate-50 text-slate-800 font-bold text-xs sticky bottom-0 z-20 shadow-lg border-t-2 border-slate-200">
+              <tr>
+                <td colSpan={filterMode === 'metric' ? 2 : 5} className="p-2 text-left px-4 border-e">المجموع الكلي</td>
+                {displayedMetrics.filter(m => m.key !== 'violations_score').map(m => (
+                  <td key={m.key} className="p-2 border-e transition-colors" style={getMetricStyle(m)}>
+                    <div className={`flex flex-col font-black font-sans ${getTextColor(m.color)}`}>
+                      <span>{getColSum(m.key)}</span>
                     </div>
                   </td>
-                  <td colSpan={20} className="p-3 text-left border-none">
-                    <div className="flex flex-col gap-0.5 items-end">
-                      <span className="text-xs font-black text-slate-400">مدير الفرع</span>
-                      <span className="text-sm font-black text-slate-800 border-b-2 border-slate-100 pb-1 min-w-[200px] inline-block text-center">
-                        {(data.profile as SchoolProfile)?.branchManager || '........................'}
-                      </span>
+                ))}
+                <td className="p-2 border-e font-sans text-red-600 font-black">
+                  {teachers.reduce((acc, t) => acc + (t.violations_score || 0), 0)}
+                </td>
+                <td className="p-2 border-e text-blue-700 font-sans font-black">
+                  {teachers.reduce((acc, t) => acc + calculateTotal(t), 0)}
+                </td>
+                <td className="p-2 border-e font-sans text-blue-800 font-black">
+                  {(() => {
+                    const totalSum = teachers.reduce((acc, t) => acc + calculateTotal(t), 0);
+                    const totalMax = teachers.reduce((acc, t) => acc + calculateMaxTotal(t), 0);
+                    return totalMax > 0 ? ((totalSum / totalMax) * 100).toFixed(1) : '0';
+                  })()}%
+                </td>
+                <td className="p-2"></td>
+              </tr>
+              <tr>
+                <td colSpan={filterMode === 'metric' ? 2 : 5} className="p-2 text-left px-4 border-e">النسبة العامة</td>
+                {displayedMetrics.filter(m => m.key !== 'violations_score').map(m => (
+                  <td key={m.key} className="p-2 border-e transition-colors" style={getMetricStyle(m)}>
+                    <div className={`flex flex-col ${getTextColor(m.color)} opacity-80 font-sans`}>
+                      <span className="text-[10px] font-bold">{getColPercent(m.key, m.max)}%</span>
                     </div>
                   </td>
-                </tr>
-              </tfoot>
-            )}
+                ))}
+                <td className="p-2 border-e text-red-600 font-sans">
+                  {(() => {
+                    const totalViolations = teachers.reduce((acc, t) => acc + (t.violations_score || 0), 0);
+                    const totalTeachers = teachers.length;
+                    return totalTeachers > 0 ? (totalViolations / totalTeachers).toFixed(1) : '0';
+                  })()}
+                </td>
+                <td className="p-2 border-e"></td>
+                <td className="p-2 border-e"></td>
+                <td className="p-2"></td>
+              </tr>
+            </tfoot>
           </table>
+        </div>
+
+        {/* Signatures Area */}
+        <div className="bg-slate-50 border-t-2 border-slate-200 p-6 flex justify-between items-center font-black">
+          <div className="flex flex-col items-center gap-2 min-w-[200px]">
+            <span className="text-slate-500 text-sm">كاتب التقرير</span>
+            <div className="text-xl text-blue-700 border-b-2 border-dotted border-blue-200 pb-1 w-full text-center">
+              {reportWriter || '...................'}
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-1 opacity-40">
+            <div className="w-20 h-20 border-4 border-slate-200 rounded-full flex items-center justify-center border-dashed">
+              <span className="text-[10px] text-slate-400 rotate-12 text-center">ختم الإدارة</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-2 min-w-[200px]">
+            <span className="text-slate-500 text-sm">مدير الفرع</span>
+            <div className="text-xl text-slate-800 border-b-2 border-dotted border-slate-300 pb-1 w-full text-center">
+              {branchManager || '...................'}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Indicators Modal */}
+      {/* Indicators / Aggregation Modal */}
       {showIndicatorsModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-lg shadow-2xl animate-in zoom-in duration-300 border border-slate-100">
-            <div className="flex items-center justify-between mb-8">
-              <button onClick={() => setShowIndicatorsModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"><X size={24} /></button>
-              <h3 className="text-2xl font-black text-slate-800 flex items-center gap-2">
-                <Target className="text-orange-600" size={28} />
-                <span>مؤشرات التقارير</span>
-              </h3>
+        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl animate-in zoom-in duration-300 border-4 border-blue-50/50">
+            <div className="flex flex-col items-center mb-6">
+              <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mb-4 text-blue-600 shadow-inner">
+                <BarChart3 size={32} />
+              </div>
+              <h3 className="text-2xl font-black text-slate-800">مؤشرات التقارير</h3>
+              <p className="text-slate-500 text-sm mt-1 font-bold">تجميع البيانات لفترة زمنية محددة</p>
             </div>
 
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-400 px-1">من تاريخ</label>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { id: 'weekly', label: 'أسبوعي', emoji: '📅' },
+                  { id: 'monthly', label: 'شهري', emoji: '🗓️' },
+                  { id: 'quarterly', label: 'فصلي', emoji: '📊' },
+                  { id: 'yearly', label: 'سنوي', emoji: '🏆' }
+                ].map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => setAggPeriod(p.id as any)}
+                    className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 group ${aggPeriod === p.id ? 'bg-blue-600 border-blue-600 text-white shadow-lg scale-105' : 'bg-slate-50 border-slate-100 text-slate-600 hover:border-blue-200 hover:bg-white'}`}
+                  >
+                    <span className="text-xl group-hover:scale-125 transition-transform">{p.emoji}</span>
+                    <span className="font-bold text-sm tracking-tight">{p.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-4 bg-slate-50 p-6 rounded-[1.5rem] border-2 border-slate-100/50">
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-slate-400 block px-1">تاريخ البداية</label>
                   <input
                     type="date"
-                    className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 focus:border-orange-500 outline-none transition-all"
+                    className="w-full p-4 rounded-xl border-2 border-white bg-white shadow-sm font-bold text-slate-700 focus:border-blue-500 outline-none transition-all"
                     value={aggDateFrom}
-                    onChange={(e) => setAggDateFrom(e.target.value)}
+                    onChange={e => setAggDateFrom(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-400 px-1">إلى تاريخ</label>
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-slate-400 block px-1">تاريخ النهاية</label>
                   <input
                     type="date"
-                    className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 focus:border-orange-500 outline-none transition-all"
+                    className="w-full p-4 rounded-xl border-2 border-white bg-white shadow-sm font-bold text-slate-700 focus:border-blue-500 outline-none transition-all"
                     value={aggDateTo}
-                    onChange={(e) => setAggDateTo(e.target.value)}
+                    onChange={e => setAggDateTo(e.target.value)}
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { id: 'أسبوعي', label: 'تقرير أسبوعي', color: 'bg-blue-600' },
-                  { id: 'شهري', label: 'تقرير شهري', color: 'bg-purple-600' },
-                  { id: 'فصلي', label: 'تقرير فصلي', color: 'bg-indigo-600' },
-                  { id: 'سنوي', label: 'تقرير سنوي', color: 'bg-emerald-600' }
-                ].map(item => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      aggregateReports(item.id);
-                      setShowIndicatorsModal(false);
-                    }}
-                    className={`p-4 ${item.color} text-white rounded-2xl font-black shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2`}
-                  >
-                    <FileOutput size={18} />
-                    <span>{item.label}</span>
-                  </button>
-                ))}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowIndicatorsModal(false)}
+                  className="flex-1 p-4 bg-slate-100 text-slate-600 rounded-2xl font-black hover:bg-slate-200 transition-all active:scale-95"
+                >
+                  إلغاء
+                </button>
+                <button
+                  onClick={aggregateReports}
+                  className="flex-[1.5] p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-blue-200 hover:shadow-blue-300 hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <Zap size={18} fill="currentColor" />
+                  إنشاء التقرير
+                </button>
               </div>
             </div>
           </div>
@@ -1378,82 +1415,97 @@ export const DailyReportsPage: React.FC = React.memo(() => {
 
       {/* Archive Modal */}
       {showArchive && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] p-0 w-full max-w-2xl shadow-2xl animate-in zoom-in duration-300 border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden">
-            <div className="p-8 border-b border-slate-50 bg-slate-50/50">
-              <div className="flex items-center justify-between mb-6">
-                <button onClick={() => setShowArchive(false)} className="p-2 hover:bg-white rounded-full transition-colors text-slate-400 shadow-sm border border-transparent hover:border-slate-100"><X size={24} /></button>
-                <h3 className="text-2xl font-black text-slate-800 flex items-center gap-2">
-                  <FolderOpen className="text-blue-600" size={28} />
-                  <span>أرشيف التقارير</span>
-                </h3>
+        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-2xl shadow-2xl animate-in zoom-in duration-300 border-4 border-blue-50/50 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-2xl font-black text-slate-800">أرشيف التقارير</h3>
+                <p className="text-slate-400 text-sm font-bold">إدارة جميع التقارير المحفوظة</p>
               </div>
-
-              <div className="flex flex-wrap items-center gap-2 mb-6 p-1.5 bg-white rounded-2xl shadow-sm border border-slate-100">
-                {[
-                  { id: 'daily', label: 'يومية' },
-                  { id: 'weekly', label: 'أسبوعية' },
-                  { id: 'monthly', label: 'شهرية' },
-                  { id: 'quarterly', label: 'فصلية' },
-                  { id: 'yearly', label: 'سنوية' }
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setArchiveTab(tab.id as any)}
-                    className={`flex-1 py-3 px-4 rounded-xl font-bold transition-all text-sm ${archiveTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-slate-400 hover:text-slate-600'}`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="البحث عن تاريخ (مثلاً: 2025-06-30)..."
-                  className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-bold text-slate-700 focus:border-blue-500 outline-none transition-all pr-12 shadow-sm"
-                  value={archiveSearch}
-                  onChange={(e) => setArchiveSearch(e.target.value)}
-                />
-                <Search size={22} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
-              </div>
+              <button onClick={() => setShowArchive(false)} className="p-3 bg-slate-100 hover:bg-red-50 hover:text-red-500 rounded-2xl transition-all">
+                <X size={20} />
+              </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-8 space-y-3 custom-scrollbar">
-              {(data.dailyReports || [])
-                .filter(r => {
-                  const isMatch = r.dateStr.includes(archiveSearch);
-                  if (archiveTab === 'daily') return isMatch && !r.reportCount;
-                  return isMatch && r.dayName === (archiveTab === 'weekly' ? 'أسبوعي' : archiveTab === 'monthly' ? 'شهري' : archiveTab === 'quarterly' ? 'فصلي' : 'سنوي');
-                })
+            {/* Category Tabs */}
+            <div className="flex gap-2 mb-6 p-2 bg-slate-50 rounded-[1.5rem] border-2 border-slate-100 overflow-x-auto no-scrollbar">
+              {[
+                { id: 'daily', label: 'يومية', icon: <Calendar size={16} /> },
+                { id: 'weekly', label: 'أسبوعية', icon: <LayoutList size={16} /> },
+                { id: 'monthly', label: 'شهرية', icon: <FileText size={16} /> },
+                { id: 'quarterly', label: 'فصلية', icon: <BarChart3 size={16} /> },
+                { id: 'yearly', label: 'سنوية', icon: <Star size={16} /> }
+              ].map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => setArchiveCategory(cat.id as any)}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all whitespace-nowrap ${archiveCategory === cat.id ? 'bg-white text-blue-600 shadow-md ring-1 ring-black/5' : 'text-slate-500 hover:bg-white/50'}`}
+                >
+                  {cat.icon}
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Search */}
+            <div className="relative mb-4">
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                type="text"
+                placeholder="ابحث بالتاريخ أو اسم اليوم..."
+                className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
+                value={archiveSearch}
+                onChange={e => setArchiveSearch(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-3 overflow-y-auto flex-1 pr-2 custom-scrollbar">
+              {reports
+                .filter(r => (r.periodType || 'daily') === archiveCategory)
+                .filter(r => r.dateStr.includes(archiveSearch) || (r.dayName || '').includes(archiveSearch))
                 .map(r => (
                   <div
                     key={r.id}
-                    className={`group w-full flex items-center gap-3 p-4 rounded-2xl transition-all border-2 ${activeReportId === r.id ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-50 hover:border-slate-100 shadow-sm'}`}
+                    className={`group flex items-center justify-between p-5 rounded-2xl border-2 transition-all hover:shadow-lg hover:-translate-y-1 ${activeReportId === r.id ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-100' : 'bg-white border-slate-100 hover:border-blue-100'}`}
                   >
                     <button
-                      onClick={() => { setActiveReportId(r.id); setShowArchive(false); if (r.writer) setWriter(r.writer); }}
-                      className="flex-1 flex items-center justify-between text-right"
+                      onClick={() => { setActiveReportId(r.id); setShowArchive(false); }}
+                      className="flex-1 text-right flex flex-col"
                     >
-                      <div className="flex flex-col">
-                        <span className={`font-black text-sm ${activeReportId === r.id ? 'text-blue-700' : 'text-slate-700'}`}>{r.dateStr}</span>
-                        <span className="text-[10px] font-bold text-slate-400">{r.dayName} {r.reportCount ? `(مجمع من ${r.reportCount} يوم)` : ''}</span>
-                      </div>
-                      <ChevronLeft size={20} className={`transition-transform duration-300 ${activeReportId === r.id ? 'text-blue-600 transform -translate-x-2' : 'text-slate-300 group-hover:text-slate-400'}`} />
+                      <span className={`font-black text-lg ${activeReportId === r.id ? 'text-blue-700' : 'text-slate-800'}`}>{r.dateStr}</span>
+                      <span className="text-slate-400 text-sm font-bold">{r.dayName}</span>
                     </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteReport(r.id); }}
-                      className="p-3 bg-red-50 text-red-600 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-red-100"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => deleteReport(r.id)}
+                        className="p-3 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                        title="حذف"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => { setActiveReportId(r.id); setShowArchive(false); }}
+                        className={`px-6 py-2 rounded-xl font-bold transition-all ${activeReportId === r.id ? 'bg-blue-600 text-white shadow-blue-200 shadow-md' : 'bg-slate-100 text-slate-600 group-hover:bg-blue-600 group-hover:text-white'}`}
+                      >
+                        عرض
+                      </button>
+                    </div>
                   </div>
                 ))}
             </div>
-            <button onClick={() => setShowArchive(false)} className="w-full mt-auto p-6 bg-slate-50 rounded-b-[2.5rem] font-black text-slate-500 hover:bg-slate-100 transition-all border-t border-slate-100">إغلاق الأرشيف</button>
           </div>
         </div>
       )}
+
+      {reports.filter(r => (r.periodType || 'daily') === archiveCategory).length === 0 && (
+        <div className="text-center py-12 flex flex-col items-center gap-4">
+          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300">
+            <FolderOpen size={32} />
+          </div>
+          <p className="text-slate-400 font-bold">{lang === 'ar' ? 'لا توجد تقارير في هذا القسم' : 'No reports in this section'}</p>
+        </div>
+      )}
+
 
       {/* Sort Modal */}
       {
@@ -1597,18 +1649,31 @@ export const DailyReportsPage: React.FC = React.memo(() => {
 
                       <div className="flex items-center gap-2 flex-1">
                         <label className="text-[10px] font-bold text-slate-400">اللون:</label>
-                        <div className="flex items-center gap-2">
-                          <div className={`relative w-10 h-10 rounded-xl border-2 border-slate-200 flex items-center justify-center overflow-hidden hover:border-blue-400 transition-all bg-white`}>
+                        <div className="flex flex-wrap gap-1">
+                          {[
+                            '#E2EFDA', '#FCE4D6', '#DDEBF7', '#FFF2CC', '#E1F5FE', '#F3E5F5', '#E8F5E9', '#FFFDE7', '#F5F5F5', '#EF9A9A'
+                          ].map(color => (
+                            <button
+                              key={color}
+                              onClick={() => {
+                                const newList = metricsList.map(item => item.key === m.key ? { ...item, color: color } : item);
+                                updateData({ metricsList: newList });
+                              }}
+                              className={`w-5 h-5 rounded-full border border-slate-200 transition-all ${metricsList.find(i => i.key === m.key)?.color === color ? 'scale-125 ring-2 ring-blue-400' : 'hover:scale-110'}`}
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                          <div className={`relative w-5 h-5 rounded-full border border-slate-200 flex items-center justify-center overflow-hidden`}>
                             <input
                               type="color"
-                              className="absolute inset-0 opacity-0 cursor-pointer scale-[3]"
+                              className="absolute inset-0 opacity-0 cursor-pointer scale-150"
                               value={metricsList.find(i => i.key === m.key)?.color || '#ffffff'}
                               onChange={(e) => {
                                 const newList = metricsList.map(item => item.key === m.key ? { ...item, color: e.target.value } : item);
                                 updateData({ metricsList: newList });
                               }}
                             />
-                            <Palette size={18} className="text-slate-400 pointer-events-none" />
+                            <Palette size={10} className="text-slate-400 pointer-events-none" />
                           </div>
                         </div>
                       </div>
@@ -1995,10 +2060,10 @@ export const DailyReportsPage: React.FC = React.memo(() => {
       />
     </div >
   );
-});
+};
 
-// --- Violations Page ---
-export const ViolationsPage: React.FC = React.memo(() => {
+
+export const ViolationsPage: React.FC = () => {
   const { lang, data, updateData } = useGlobal();
   const [activeMode, setActiveMode] = useState<'students' | 'teachers'>('students');
 
@@ -2318,8 +2383,8 @@ export const ViolationsPage: React.FC = React.memo(() => {
       )}
 
       <div className="bg-white rounded-[2.5rem] shadow-xl border overflow-visible">
-        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent">
-          <table className="w-full border-collapse min-w-[800px] md:min-w-full">
+        <div className="overflow-x-auto overflow-y-visible">
+          <table className="w-full text-center text-sm border-collapse min-w-[1200px]">
             <thead className="bg-[#FFD966] text-slate-800 font-black">
               {activeMode === 'teachers' ? (
                 <tr>
@@ -2496,7 +2561,7 @@ export const ViolationsPage: React.FC = React.memo(() => {
       </div>
     </div>
   );
-});
+};
 
 // Memoized Row for performance optimization
 const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShowNotesModal, toggleStar, isHighlighted, onRowClick, setWaSelector, isSelected, onSelect, onDelete, index, showBulkActions }: {
@@ -2670,7 +2735,7 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
   );
 });
 
-export const StudentsReportsPage: React.FC = React.memo(() => {
+export const StudentsReportsPage: React.FC = () => {
   const { data, updateData, lang } = useGlobal();
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [filterValue, setFilterValue] = useState('');
@@ -4120,4 +4185,6 @@ export const StudentsReportsPage: React.FC = React.memo(() => {
       )}
     </div>
   );
-});
+};
+
+export default DailyReportsPage;

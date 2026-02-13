@@ -95,9 +95,12 @@ export interface DailyReportContainer {
   id: string;
   dayName: string;
   dateStr: string;
-  writer?: string;
-  reportCount?: number;
   teachersData: TeacherFollowUp[];
+  writer?: string;
+  branchManager?: string;
+  periodType?: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export interface AdminFollowUp {

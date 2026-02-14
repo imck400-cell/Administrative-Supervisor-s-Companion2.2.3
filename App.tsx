@@ -12,6 +12,7 @@ import {
   Lock, LayoutDashboard, ClipboardCheck, UserX, UserPlus,
   Users, Sparkles, Database, FileSearch, ArrowUp, ArrowDown, Briefcase
 } from 'lucide-react';
+import GlobalScrollArrows from './components/GlobalScrollArrows';
 
 const LoginPage: React.FC = () => {
   const { login } = useGlobal();
@@ -110,5 +111,10 @@ const MainApp: React.FC = () => {
   );
 };
 
-const App: React.FC = () => <GlobalProvider><MainApp /></GlobalProvider>;
+const App: React.FC = () => (
+  <GlobalProvider>
+    <MainApp />
+    <GlobalScrollArrows />
+  </GlobalProvider>
+);
 export default App;

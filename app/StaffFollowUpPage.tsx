@@ -59,6 +59,7 @@ const StaffFollowUpPage: React.FC = () => {
     const [employeeComment, setEmployeeComment] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [unaccreditedItems, setUnaccreditedItems] = useState<Record<string, boolean>>({});
+    const [executedCounts, setExecutedCounts] = useState<Record<string, number>>({});
 
     const [reportFields, setReportFields] = useState<string[]>(() => {
         const saved = localStorage.getItem('admin_report_fields');
@@ -101,6 +102,25 @@ const StaffFollowUpPage: React.FC = () => {
     useEffect(() => {
         localStorage.setItem('admin_custom_activities', JSON.stringify(customActivities));
     }, [customActivities]);
+
+    // Initialize Executed Counts when report field changes
+    useEffect(() => {
+        const activities = customActivities[individualForm.reportField] || [];
+        const newCounts: Record<string, number> = {};
+        let hasNew = false;
+        activities.forEach((a, i) => {
+            const key = `${individualForm.reportField}_${i}`;
+            // If we don't have a value yet, default to planned
+            if (executedCounts[key] === undefined) {
+                newCounts[key] = parseInt(a.planned) || 0;
+                hasNew = true;
+            }
+        });
+
+        if (hasNew) {
+            setExecutedCounts(prev => ({ ...prev, ...newCounts }));
+        }
+    }, [individualForm.reportField, customActivities]);
 
     // Utility function to convert Arabic numerals to English
     const toEnglishNum = (num: number | string): string => {
@@ -1000,13 +1020,16 @@ const StaffFollowUpPage: React.FC = () => {
                                     (customActivities[individualForm.reportField] || []).map((activity, idx) => {
                                         const key = `${individualForm.reportField}_${idx}`;
                                         const score = individualScores[key] ?? -1;
+                                        const executed = executedCounts[key] !== undefined ? executedCounts[key] : (parseInt(activity.planned) || 0);
                                         const status = evidenceStatus[key] || 'لم يتم التحديد';
                                         const isUnaccredited = unaccreditedItems[key] || false;
 
                                         return (
                                             <div key={idx} className={`bg-white p-6 rounded-[2.5rem] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)] border border-slate-100 space-y-5 transition-all hover:shadow-2xl ${isUnaccredited ? 'opacity-60 grayscale-[0.5]' : ''}`}>
-                                                <div className="flex justify-between items-start gap-4">
-                                                    <div className="flex flex-col gap-1 w-full">
+
+                                                {/* Header: Activity Name + Logic */}
+                                                <div className="flex flex-col gap-3">
+                                                    <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-2">
                                                             <button
                                                                 onClick={() => setUnaccreditedItems({ ...unaccreditedItems, [key]: !isUnaccredited })}
@@ -1017,51 +1040,99 @@ const StaffFollowUpPage: React.FC = () => {
                                                             </button>
                                                             <h4 className="text-lg font-black text-slate-800">{activity.text}</h4>
                                                         </div>
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-                                                                (<span className="text-blue-600">{activity.planned}</span>)
+                                                    </div>
+
+                                                    {/* Row 1: Planned & Executed */}
+                                                    <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-black text-slate-400">المخطط:</span>
+                                                            <span className="text-sm font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-lg border border-blue-100">
+                                                                {activity.planned}
                                                             </span>
-                                                            <span className="text-xs font-bold text-slate-500 bg-purple-50 px-3 py-1 rounded-full">
-                                                                <span className="text-purple-600">{activity.evidence}</span>
-                                                            </span>
+                                                        </div>
+                                                        <div className="w-px h-6 bg-slate-200 mx-2"></div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-black text-slate-400">المنفذ:</span>
+                                                            <div className="flex items-center gap-1">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        if (executed > 0) {
+                                                                            setExecutedCounts({ ...executedCounts, [key]: executed - 1 });
+                                                                        }
+                                                                    }}
+                                                                    disabled={isUnaccredited}
+                                                                    className="w-8 h-8 rounded-full bg-white border-2 border-slate-200 text-slate-700 font-black text-sm flex items-center justify-center hover:bg-slate-100 hover:border-blue-400 hover:text-blue-600 transition-all active:scale-90 select-none shadow-sm cursor-pointer"
+                                                                    title="اضغط للإنقاص"
+                                                                >
+                                                                    {executed}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const max = parseInt(activity.planned) || 0;
+                                                                        if (executed < max) {
+                                                                            setExecutedCounts({ ...executedCounts, [key]: executed + 1 });
+                                                                        }
+                                                                    }}
+                                                                    disabled={isUnaccredited}
+                                                                    className="w-6 h-6 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center hover:bg-emerald-100 hover:text-emerald-600 transition-all active:scale-90"
+                                                                    title="زيادة"
+                                                                >
+                                                                    <Plus size={14} strokeWidth={3} />
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
 
+                                                {/* Rows 2 & 3 Combined Container */}
                                                 <div className="flex flex-wrap items-center justify-between gap-5 pt-4 border-t border-slate-50">
-                                                    <div className="flex items-center gap-2">
-                                                        {[0, 1, 2, 3, 4].map(num => (
-                                                            <button
-                                                                key={num}
-                                                                onClick={() => setIndividualScores({ ...individualScores, [key]: num })}
-                                                                disabled={isUnaccredited}
-                                                                style={{
-                                                                    backgroundColor: score === num ? (num === 0 ? '#991b1b' : num === 1 ? '#ea580c' : num === 2 ? '#eab308' : num === 3 ? '#2563eb' : '#166534') : '#f8fafc',
-                                                                    color: score === num ? 'white' : '#94a3b8'
-                                                                }}
-                                                                className="w-10 h-10 rounded-full font-black font-sans text-sm transition-all transform active:scale-90 shadow-sm disabled:opacity-50 border border-slate-100"
-                                                            >
-                                                                {num}
-                                                            </button>
-                                                        ))}
+
+                                                    {/* Evidence Row */}
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-black text-slate-400">الشاهد:</span>
+                                                            <span className="text-xs font-bold text-slate-600 bg-slate-50 px-3 py-1 rounded-lg">
+                                                                {activity.evidence}
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => {
+                                                                const states: ('توفر' | 'ناقص' | 'لم يتوفر')[] = ['توفر', 'ناقص', 'لم يتوفر'];
+                                                                const currentIdx = states.indexOf(evidenceStatus[key] as any);
+                                                                const nextIdx = (currentIdx + 1) % states.length;
+                                                                setEvidenceStatus({ ...evidenceStatus, [key]: states[nextIdx] });
+                                                            }}
+                                                            disabled={isUnaccredited}
+                                                            className={`px-4 py-2 rounded-xl font-black text-[10px] transition-all active:scale-95 shadow-sm border ${evidenceStatus[key] === 'توفر' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                                                                evidenceStatus[key] === 'ناقص' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                                                                    evidenceStatus[key] === 'لم يتوفر' ? 'bg-rose-50 text-rose-600 border-rose-200' :
+                                                                        'bg-slate-50 text-slate-400 border-slate-200'
+                                                                }`}
+                                                        >
+                                                            {evidenceStatus[key] || 'حالة الشاهد'}
+                                                        </button>
                                                     </div>
 
-                                                    <button
-                                                        onClick={() => {
-                                                            const states: ('توفر' | 'ناقص' | 'لم يتوفر')[] = ['توفر', 'ناقص', 'لم يتوفر'];
-                                                            const currentIdx = states.indexOf(evidenceStatus[key] as any);
-                                                            const nextIdx = (currentIdx + 1) % states.length;
-                                                            setEvidenceStatus({ ...evidenceStatus, [key]: states[nextIdx] });
-                                                        }}
-                                                        disabled={isUnaccredited}
-                                                        className={`px-6 py-2.5 rounded-2xl font-black text-xs transition-all active:scale-95 shadow-sm border-2 ${evidenceStatus[key] === 'توفر' ? 'bg-emerald-500 text-white border-emerald-600' :
-                                                            evidenceStatus[key] === 'ناقص' ? 'bg-amber-500 text-white border-amber-600' :
-                                                                evidenceStatus[key] === 'لم يتوفر' ? 'bg-rose-600 text-white border-rose-700' :
-                                                                    'bg-slate-100 text-slate-400 border-slate-200'
-                                                            }`}
-                                                    >
-                                                        {evidenceStatus[key] || 'حالة الشاهد'}
-                                                    </button>
+                                                    {/* Score Row */}
+                                                    <div className="flex flex-col gap-2 items-end">
+                                                        <span className="text-[10px] font-black text-slate-400">نسبة التنفيذ</span>
+                                                        <div className="flex items-center gap-1.5">
+                                                            {[0, 1, 2, 3, 4].map(num => (
+                                                                <button
+                                                                    key={num}
+                                                                    onClick={() => setIndividualScores({ ...individualScores, [key]: num })}
+                                                                    disabled={isUnaccredited}
+                                                                    style={{
+                                                                        backgroundColor: score === num ? (num === 0 ? '#991b1b' : num === 1 ? '#ea580c' : num === 2 ? '#eab308' : num === 3 ? '#2563eb' : '#166534') : '#f8fafc',
+                                                                        color: score === num ? 'white' : '#94a3b8'
+                                                                    }}
+                                                                    className="w-9 h-9 rounded-full font-black font-sans text-xs transition-all transform active:scale-90 shadow-sm disabled:opacity-50 border border-slate-100 hover:border-blue-200"
+                                                                >
+                                                                    {num}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
                                                 </div>
 
                                                 <div className="pt-2">
@@ -1354,34 +1425,140 @@ const StaffFollowUpPage: React.FC = () => {
                         <button
                             onClick={() => {
                                 const isIndicators = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس';
-                                let content = `التقرير الفردي لـ: ${individualForm.employeeName || 'غير محدد'}\n`;
-                                content += `المكان: ${individualForm.schoolName || '-'}\n`;
-                                content += `المجال: ${individualForm.reportField}\n`;
-                                content += `التاريخ: ${reportDate}\n\n`;
+
+                                // Helper for consistent styling
+                                const styleHeader = 'background-color: #e0e7ff; color: #1e3a8a; font-weight: bold; border: 1px solid #94a3b8; padding: 10px; text-align: center; font-family: Arial, sans-serif;';
+                                const styleCell = 'border: 1px solid #cbd5e1; padding: 8px; text-align: center; vertical-align: middle; font-family: Arial, sans-serif;';
+                                const styleCellLeft = 'border: 1px solid #cbd5e1; padding: 8px; text-align: left; vertical-align: middle; font-family: Arial, sans-serif;';
+                                const styleTitle = 'font-size: 18px; font-weight: bold; text-align: center; padding: 15px; background-color: #f8fafc; border: 1px solid #cbd5e1;';
+                                const styleLabel = 'font-weight: bold; background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 8px;';
+
+                                const activitesList = isIndicators ? [] : (customActivities[individualForm.reportField] || []);
+                                const indicatorsList = isIndicators ? INDICATORS_DATA : [];
+
+                                let html = `
+                                    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                                    <head>
+                                        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+                                        <!--[if gte mso 9]>
+                                        <xml>
+                                            <x:ExcelWorkbook>
+                                                <x:ExcelWorksheets>
+                                                    <x:ExcelWorksheet>
+                                                        <x:Name>تقرير ${individualForm.employeeName}</x:Name>
+                                                        <x:WorksheetOptions>
+                                                            <x:DisplayRightToLeft/>
+                                                        </x:WorksheetOptions>
+                                                    </x:ExcelWorksheet>
+                                                </x:ExcelWorksheets>
+                                            </x:ExcelWorkbook>
+                                        </xml>
+                                        <![endif]-->
+                                    </head>
+                                    <body style="direction: rtl;">
+                                        <table style="border-collapse: collapse; width: 100%;">
+                                            <tr>
+                                                <td colspan="7" style="${styleTitle}">
+                                                    تقرير متابعة ${individualForm.reportField}
+                                                    <br/>
+                                                    <span style="font-size: 14px; font-weight: normal;">
+                                                        ( ${individualForm.schoolName} - ${individualForm.branch} )
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="4" style="${styleLabel}">الاسم: ${individualForm.employeeName}</td>
+                                                <td colspan="3" style="${styleLabel}">التاريخ: ${reportDate}</td>
+                                            </tr>
+                                            <tr style="height: 20px;"><td colspan="7"></td></tr>
+                                            <tr>
+                                                <th style="${styleHeader} width: 50px;">م</th>
+                                                <th style="${styleHeader} width: 300px;">النشاط / المؤشر</th>
+                                                <th style="${styleHeader} width: 80px;">المخطط</th>
+                                                <th style="${styleHeader} width: 80px;">المنفذ</th>
+                                                <th style="${styleHeader} width: 150px;">الشواهد</th>
+                                                <th style="${styleHeader} width: 100px;">توفر الشاهد</th>
+                                                <th style="${styleHeader} width: 250px;">أسباب عدم التنفيذ</th>
+                                            </tr>
+                                `;
 
                                 if (isIndicators) {
-                                    content += "المجال\tالمؤشر\tالدرجة\n";
-                                    INDICATORS_DATA.forEach(d => {
+                                    let seq = 1;
+                                    indicatorsList.forEach(d => {
+                                        html += `<tr><td colspan="7" style="${styleHeader} background-color: #f1f5f9; text-align: right;">${d.label}</td></tr>`;
                                         d.items.forEach((item, idx) => {
                                             const score = individualScores[`${d.label}_${idx}`] ?? '-';
-                                            content += `${d.label}\t${item}\t${score}\n`;
+                                            html += `
+                                                <tr>
+                                                    <td style="${styleCell}">${seq++}</td>
+                                                    <td style="${styleCellLeft} text-align: right;">${item}</td>
+                                                    <td style="${styleCell}">4</td>
+                                                    <td style="${styleCell}">${score}</td>
+                                                    <td style="${styleCell}">-</td>
+                                                    <td style="${styleCell}">-</td>
+                                                    <td style="${styleCell}">-</td>
+                                                </tr>
+                                             `;
                                         });
                                     });
                                 } else {
-                                    const activities = customActivities[individualForm.reportField] || [];
-                                    content += "النشاط\tالمخطط\tالشاهد\tالدرجة\tحالة الشاهد\tأسباب عدم التنفيذ\tالحالة\n";
-                                    activities.forEach((a, i) => {
+                                    activitesList.forEach((a, i) => {
                                         const k = `${individualForm.reportField}_${i}`;
                                         const score = individualScores[k] ?? 0;
+                                        const executed = executedCounts[k] !== undefined ? executedCounts[k] : (parseInt(a.planned) || 0);
                                         const stat = evidenceStatus[k] || 'توفر';
-                                        const reason = failureReasons[k] || '-';
-                                        const acc = unaccreditedItems[k] ? "غير معتمد" : "معتمد";
-                                        content += `${a.text}\t${a.planned}\t${a.evidence}\t${score}\t${stat}\t${reason}\t${acc}\n`;
+                                        const reason = failureReasons[k] || '';
+                                        const isUnacc = unaccreditedItems[k];
+
+                                        const bgRow = i % 2 === 0 ? '#ffffff' : '#f8fafc';
+
+                                        html += `
+                                            <tr style="background-color: ${bgRow};">
+                                                <td style="${styleCell}">${i + 1}</td>
+                                                <td style="${styleCellLeft} text-align: right; ${isUnacc ? 'text-decoration: line-through; color: #94a3b8;' : ''}">
+                                                    ${a.text} ${isUnacc ? '(غير معتمد)' : ''}
+                                                </td>
+                                                <td style="${styleCell}">${a.planned}</td>
+                                                <td style="${styleCell}">${isUnacc ? '-' : executed}</td>
+                                                <td style="${styleCell}">${a.evidence}</td>
+                                                <td style="${styleCell} ${stat === 'توفر' ? 'color: green;' : stat === 'ناقص' ? 'color: orange;' : 'color: red;'}">
+                                                    ${stat}
+                                                </td>
+                                                <td style="${styleCell}">${reason}</td>
+                                            </tr>
+                                        `;
                                     });
                                 }
 
-                                const BOM = '\uFEFF';
-                                const blob = new Blob([BOM + content], { type: 'application/vnd.ms-excel;charset=utf-8' });
+                                // Violations Row
+                                const allViolations = [...activeViolationTags, violationsText].filter(Boolean).join(' - ');
+                                if (allViolations) {
+                                    html += `
+                                        <tr>
+                                            <td colspan="1" style="${styleHeader} background-color: #fef2f2; color: #991b1b;">المخالفات</td>
+                                            <td colspan="6" style="${styleCellLeft} background-color: #fef2f2; color: #991b1b;">${allViolations}</td>
+                                        </tr>
+                                    `;
+                                }
+
+                                // Notes Row
+                                const allNotes = [...activeNoteTags, notesText].filter(Boolean).join(' - ');
+                                if (allNotes) {
+                                    html += `
+                                        <tr>
+                                            <td colspan="1" style="${styleHeader} background-color: #fffbeb; color: #92400e;">الملاحظات والتوصيات</td>
+                                            <td colspan="6" style="${styleCellLeft} background-color: #fffbeb; color: #92400e;">${allNotes}</td>
+                                        </tr>
+                                    `;
+                                }
+
+                                html += `
+                                        </table>
+                                    </body>
+                                    </html>
+                                `;
+
+                                const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
                                 const link = document.createElement('a');
                                 link.href = URL.createObjectURL(blob);
                                 link.download = `تقرير_${individualForm.employeeName || 'فردي'}_${reportDate}.xls`;
@@ -1420,13 +1597,19 @@ const StaffFollowUpPage: React.FC = () => {
                                         const k = `${individualForm.reportField}_${i}`;
                                         if (unaccreditedItems[k]) return;
                                         const s = individualScores[k] || 0;
+                                        const executed = executedCounts[k] !== undefined ? executedCounts[k] : (parseInt(a.planned) || 0);
                                         const icon = s >= 3 ? '🟢' : (s >= 2 ? '🟡' : '🔴');
-                                        msg += `${icon} ${a.text}: ${s}/4\n`;
+                                        msg += `${icon} ${a.text}\n`;
+                                        msg += `   └ المخطط: ${a.planned} | المنفذ: ${executed} | الدرجة: ${s}/4\n`;
                                     });
                                 }
 
                                 if (violationTags.length > 0) msg += `\n⚠️ *المخالفات:* ${violationTags.join('، ')}`;
                                 if (notesText) msg += `\n📝 *الملاحظات:* ${notesText}`;
+
+                                // Footer with School & Branch
+                                msg += `\n\n━━━━━━━━━━━━━━━\n`;
+                                msg += `${individualForm.schoolName || ''} - ${individualForm.branch || ''}`;
 
                                 window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
                             }}

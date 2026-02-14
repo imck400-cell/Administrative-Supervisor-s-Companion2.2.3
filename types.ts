@@ -113,6 +113,7 @@ export interface AdminFollowUp {
   violations_notes: string[];
   order?: number;
   unaccreditedMetrics?: string[];
+  executedCounts?: Record<string, number>;
   [key: string]: any;
 }
 

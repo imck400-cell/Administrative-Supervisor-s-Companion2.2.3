@@ -89,9 +89,9 @@ const FrequentNamesPicker = ({ logs, onSelectQuery, isOpen, onClose }: { logs: a
           {frequentList.length === 0 ? (
             <p className="text-center p-8 text-slate-400 italic">لا توجد بيانات سابقة</p>
           ) : (
-            frequentList.map((item, idx) => (
+            frequentList.map((item) => (
               <button
-                key={idx}
+                key={item.id}
                 onClick={() => { onSelectQuery(item.studentName); onClose(); }}
                 className="w-full text-right p-3 hover:bg-blue-50 rounded-xl font-bold flex justify-between items-center transition-colors border-b border-slate-50 last:border-none"
               >
@@ -253,7 +253,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
   });
 
   const [isAddAbsentModalOpen, setIsAddAbsentModalOpen] = useState(false);
-  const [absentEntries, setAbsentEntries] = useState<{ name: string, subject: string, studentData?: StudentReport }[]>([{ name: '', subject: '' }]);
+  const [absentEntries, setAbsentEntries] = useState<{ id: string, name: string, subject: string, studentData?: StudentReport }[]>([{ id: Date.now().toString(), name: '', subject: '' }]);
   const [activeSearchIdx, setActiveSearchIdx] = useState<number | null>(null);
 
   const absenceFormInitial = { date: today, semester: 'الأول', status: 'expected', reason: '', commStatus: 'لم يتم التواصل', commType: 'هاتف', replier: 'الأب', result: 'لم يتم الرد', notes: '', prevAbsenceCount: 0 };
@@ -545,7 +545,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
               </div>
               <div className="flex-1 overflow-y-auto p-8 space-y-4">
                 {absentEntries.map((entry, idx) => (
-                  <div key={idx} className="flex flex-col md:flex-row gap-4 p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 relative group">
+                  <div key={entry.id} className="flex flex-col md:flex-row gap-4 p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 relative group">
                     <div className="flex-1 relative">
                       <label className="text-[10px] font-black text-slate-400 mr-2 block mb-1">اسم الطالب</label>
                       <input
@@ -592,7 +592,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                   </div>
                 ))}
                 <button
-                  onClick={() => setAbsentEntries([...absentEntries, { name: '', subject: '' }])}
+                  onClick={() => setAbsentEntries([...absentEntries, { id: Date.now().toString() + Math.random(), name: '', subject: '' }])}
                   className="w-full p-4 border-2 border-dashed border-blue-200 rounded-2xl text-blue-600 font-black flex items-center justify-center gap-2 hover:bg-blue-50 transition-all"
                 >
                   <Plus size={20} /> إضافة حقل لاسم جديد
@@ -3116,8 +3116,8 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
           <div className="bg-white p-4 md:p-8 rounded-[2rem] md:rounded-[3rem] border shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-2 h-full bg-blue-600"></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-              {structure[activeTab].items.map((item, idx) => (
-                <button key={idx} onClick={() => handleSubTabClick(item)} className="group flex items-center justify-between p-4 md:p-6 rounded-[1.2rem] md:rounded-[1.5rem] bg-slate-50 border-2 border-slate-50 hover:border-blue-500 hover:bg-white transition-all text-right shadow-sm hover:shadow-xl">
+              {structure[activeTab].items.map((item) => (
+                <button key={item} onClick={() => handleSubTabClick(item)} className="group flex items-center justify-between p-4 md:p-6 rounded-[1.2rem] md:rounded-[1.5rem] bg-slate-50 border-2 border-slate-50 hover:border-blue-500 hover:bg-white transition-all text-right shadow-sm hover:shadow-xl">
                   <div className="flex items-center gap-2 md:gap-3 overflow-hidden">
                     <div className="w-8 md:w-10 h-8 md:h-10 rounded-xl bg-white flex-shrink-0 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
                       <FileText size={16} />

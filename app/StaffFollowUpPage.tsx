@@ -1032,7 +1032,7 @@ const StaffFollowUpPage: React.FC = () => {
                                         const isUnaccredited = unaccreditedItems[key] || false;
 
                                         return (
-                                            <div key={idx} className={`bg-white p-6 rounded-[2.5rem] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)] border border-slate-100 space-y-5 transition-all hover:shadow-2xl ${isUnaccredited ? 'opacity-60 grayscale-[0.5]' : ''}`}>
+                                            <div key={key} className={`bg-white p-6 rounded-[2.5rem] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)] border border-slate-100 space-y-5 transition-all hover:shadow-2xl ${isUnaccredited ? 'opacity-60 grayscale-[0.5]' : ''}`}>
 
                                                 {/* Header: Activity Name + Logic */}
                                                 <div className="flex flex-col gap-3">
@@ -1322,9 +1322,9 @@ const StaffFollowUpPage: React.FC = () => {
                                 </button>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                {violationTags.map((tag, idx) => (
+                                {violationTags.map((tag) => (
                                     <button
-                                        key={idx}
+                                        key={tag}
                                         onClick={() => {
                                             const updated = activeViolationTags.includes(tag)
                                                 ? activeViolationTags.filter(t => t !== tag)
@@ -1363,9 +1363,9 @@ const StaffFollowUpPage: React.FC = () => {
                                 </button>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                {noteTags.map((tag, idx) => (
+                                {noteTags.map((tag) => (
                                     <button
-                                        key={idx}
+                                        key={tag}
                                         onClick={() => {
                                             const updated = activeNoteTags.includes(tag)
                                                 ? activeNoteTags.filter(t => t !== tag)

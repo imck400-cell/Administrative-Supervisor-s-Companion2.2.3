@@ -144,7 +144,7 @@ const DynamicTable: React.FC<DynamicTableProps> = ({ title, columns, data, onAdd
               </tr>
             ) : (
               data.map((row, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                <tr key={row.id || idx} className="hover:bg-slate-50/50 transition-colors">
                   {columns.map(col => {
                     const val = row[col.key];
                     let className = "px-6 py-4 text-sm text-slate-700";

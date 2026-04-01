@@ -3423,9 +3423,9 @@ export const StudentsReportsPage: React.FC = () => {
                       </div>
                       {suggestions.length > 0 && (
                         <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-40 overflow-y-auto">
-                          {suggestions.map((name, idx) => (
+                          {suggestions.map((name) => (
                             <button
-                              key={idx}
+                              key={name}
                               onClick={() => addStudentToFilter(name)}
                               className="w-full text-right p-2 text-[10px] font-bold hover:bg-blue-50 border-b border-slate-50 last:border-none"
                             >

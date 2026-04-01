@@ -60,7 +60,7 @@ interface GlobalContextType {
   currentUser: AuthUser | null;
   userFilter: string;
   setUserFilter: (userId: string) => void;
-  login: (code: string) => User | null;
+  login: (username: string, code: string) => User | null;
   completeLogin: (user: User, school: string, year: string) => void;
   logout: () => void;
 }
@@ -373,7 +373,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const arrayKeys = ['substitutions', 'timetable', 'dailyReports', 'violations', 'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports'];
       arrayKeys.forEach(k => dataBuffer[k] = {});
 
-      const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
+      const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions', 'users'];
 
       sharedKeys.forEach(key => {
         const q = doc(db, 'schools', school, 'shared', key);
@@ -388,7 +388,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
 
       const targetUsers = currentUser.role === 'admin' 
-        ? defaultData.users.filter(u => u.schools.includes(school)).map(u => u.id)
+        ? data.users.filter(u => u.schools.includes(school)).map(u => u.id)
         : [currentUser.id];
 
       targetUsers.forEach(uid => {
@@ -433,7 +433,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     if (isAuthenticated && currentUser) {
       const school = currentUser.selectedSchool;
-      const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
+      const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions', 'users'];
 
       for (const key of Object.keys(newData) as Array<keyof AppData>) {
         if (sharedKeys.includes(key)) {
@@ -473,8 +473,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  const login = (code: string) => {
-    const user = data.users.find(u => u.code === code);
+  const login = (username: string, code: string) => {
+    const user = data.users.find(u => u.name === username && u.code === code);
     return user || null;
   };
 

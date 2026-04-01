@@ -24,8 +24,25 @@ const AdvancedLoginPage: React.FC = () => {
   const [code, setCode] = useState('');
   const [username, setUsername] = useState('');
   const [schoolName, setSchoolName] = useState('');
-  const [academicYear, setAcademicYear] = useState('2024-2025');
+  const [academicYear, setAcademicYear] = useState('');
   const [error, setError] = useState('');
+
+  // Auto-fill school and year when username and code match a user
+  useEffect(() => {
+    if (username && code) {
+      const user = data.users.find(u => u.name === username && u.code === code);
+      if (user) {
+        if (user.schools && user.schools.length > 0) {
+          setSchoolName(user.schools[0]);
+        }
+        if (user.academicYears && user.academicYears.length > 0) {
+          setAcademicYear(user.academicYears[0]);
+        } else {
+          setAcademicYear('2024-2025'); // Default fallback
+        }
+      }
+    }
+  }, [username, code, data.users]);
 
   const selectedUser = useMemo(() => {
     return data.users.find(u => u.name === username) || null;
@@ -38,8 +55,8 @@ const AdvancedLoginPage: React.FC = () => {
       return;
     }
 
-    const user = login(code);
-    if (user && user.name === username) {
+    const user = login(username, code);
+    if (user) {
       // Check expiry
       const expiry = new Date(user.expiryDate);
       const now = new Date();
@@ -79,17 +96,13 @@ const AdvancedLoginPage: React.FC = () => {
                 <label className="text-xs font-black text-slate-400 mr-4">اسم المستخدم</label>
                 <div className="relative">
                   <UserIcon className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                  <select
-                    className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold appearance-none outline-none transition-all"
+                  <input
+                    type="text"
+                    className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold outline-none transition-all"
                     value={username}
-                    onChange={(e) => {
-                      setUsername(e.target.value);
-                      setSchoolName(''); // Reset school when user changes
-                    }}
-                  >
-                    <option value="">اختر المستخدم</option>
-                    {data.users.map((u, idx) => <option key={`user-${u.id}-${idx}`} value={u.name}>{u.name}</option>)}
-                  </select>
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="اسم المستخدم"
+                  />
                 </div>
               </div>
 
@@ -113,15 +126,13 @@ const AdvancedLoginPage: React.FC = () => {
                 <label className="text-xs font-black text-slate-400 mr-4">اسم المدرسة</label>
                 <div className="relative">
                   <School className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                  <select
-                    className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold appearance-none outline-none transition-all disabled:opacity-50"
+                  <input
+                    type="text"
+                    className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold outline-none transition-all bg-slate-100 cursor-not-allowed"
                     value={schoolName}
-                    onChange={(e) => setSchoolName(e.target.value)}
-                    disabled={!username}
-                  >
-                    <option value="">اختر المدرسة</option>
-                    {selectedUser?.schools.map((s, idx) => <option key={`school-${s}-${idx}`} value={s}>{s}</option>)}
-                  </select>
+                    readOnly
+                    placeholder="اسم المدرسة (تلقائي)"
+                  />
                 </div>
               </div>
 
@@ -132,10 +143,10 @@ const AdvancedLoginPage: React.FC = () => {
                   <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                   <input
                     type="text"
-                    className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold transition-all outline-none"
+                    className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold outline-none transition-all bg-slate-100 cursor-not-allowed"
                     value={academicYear}
-                    onChange={(e) => setAcademicYear(e.target.value)}
-                    placeholder="العام الدراسي"
+                    readOnly
+                    placeholder="العام الدراسي (تلقائي)"
                   />
                 </div>
               </div>

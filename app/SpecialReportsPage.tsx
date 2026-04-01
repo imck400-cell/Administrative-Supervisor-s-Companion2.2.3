@@ -360,7 +360,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     });
 
     const handleAddExamRow = () => {
-      setAbsentEntries([{ name: '', subject: '' }]);
+      setAbsentEntries([{ id: Date.now().toString(), name: '', subject: '' }]);
       setExamModalDate(today);
       setExamModalSemester(examFilters.semester as any || 'الأول');
       setIsAddAbsentModalOpen(true);

@@ -61,9 +61,9 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings })
 
         <aside className={`fixed sm:sticky top-16 z-40 h-[calc(100vh-4rem)] bg-white border-e transition-all duration-300 shadow-xl sm:shadow-none ${isSidebarOpen ? 'w-64' : 'w-0 overflow-hidden'}`}>
           <nav className="p-4 space-y-2">
-            {menuItems.map((item, idx) => (
+            {menuItems.map((item) => (
               <button 
-                key={idx}
+                key={item.path}
                 onClick={() => handleMenuClick(item)}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-all text-sm font-bold text-right"
               >

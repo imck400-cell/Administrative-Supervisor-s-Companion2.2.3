@@ -681,7 +681,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
               </tr>
               <tr className="bg-slate-50 text-[10px] font-black text-[#7030A0]">
                 {currentSubjects.map((subj, i) => (
-                  <React.Fragment key={i}>
+                  <React.Fragment key={`subject-header-${subj}-${i}`}>
                     <th className="p-2 border-e border-[#7030A0] bg-[#FFD966]/40">الصف/الشعبة</th>
                     <th className="p-2 border-e-2 border-[#7030A0] bg-[#F4CCCC]">الدرجة</th>
                   </React.Fragment>

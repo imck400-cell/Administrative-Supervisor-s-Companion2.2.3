@@ -1322,9 +1322,9 @@ const StaffFollowUpPage: React.FC = () => {
                                 </button>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                {violationTags.map((tag) => (
+                                {violationTags.map((tag, idx) => (
                                     <button
-                                        key={tag}
+                                        key={`${tag}-${idx}`}
                                         onClick={() => {
                                             const updated = activeViolationTags.includes(tag)
                                                 ? activeViolationTags.filter(t => t !== tag)
@@ -1363,9 +1363,9 @@ const StaffFollowUpPage: React.FC = () => {
                                 </button>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                {noteTags.map((tag) => (
+                                {noteTags.map((tag, idx) => (
                                     <button
-                                        key={tag}
+                                        key={`${tag}-${idx}`}
                                         onClick={() => {
                                             const updated = activeNoteTags.includes(tag)
                                                 ? activeNoteTags.filter(t => t !== tag)
@@ -1863,7 +1863,7 @@ const StaffFollowUpPage: React.FC = () => {
                                                         <div className="flex flex-col items-center justify-between h-full gap-2 py-2">
                                                             <div className={`font-black text-[11px] leading-tight text-center px-1 break-words max-w-[85px] line-clamp-3 mb-auto ${getTextColor(m.color)}`}>
                                                                 {m.label.split(' ').map((word, i, arr) => (
-                                                                    <React.Fragment key={i}>
+                                                                    <React.Fragment key={`word-${word}-${i}`}>
                                                                         {word}{' '}
                                                                         {((i + 1) % 2 === 0 && i !== arr.length - 1) && <br />}
                                                                     </React.Fragment>
@@ -2254,7 +2254,7 @@ const StaffFollowUpPage: React.FC = () => {
                                 </button>
                                 <div className="grid grid-cols-1 gap-3">
                                     {reportFields.map((field, idx) => (
-                                        <div key={idx} className="flex items-center justify-between p-5 bg-slate-50 rounded-[1.5rem] border border-slate-100 group">
+                                        <div key={`report-field-${idx}`} className="flex items-center justify-between p-5 bg-slate-50 rounded-[1.5rem] border border-slate-100 group">
                                             <div className="flex items-center gap-4 flex-1">
                                                 <span className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 font-sans font-black shadow-sm group-hover:bg-amber-500 group-hover:text-white transition-all">{idx + 1}</span>
                                                 <input
@@ -2470,7 +2470,7 @@ const StaffFollowUpPage: React.FC = () => {
                             <div className="flex-1 overflow-auto p-10 space-y-6 custom-scrollbar bg-slate-50/40">
                                 <div className="grid grid-cols-1 gap-4">
                                     {(customActivities[individualForm.reportField] || []).map((activity, idx) => (
-                                        <div key={idx} className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-sm hover:shadow-xl hover:border-amber-200 transition-all group animate-in slide-in-from-bottom-3" style={{ animationDelay: `${idx * 40}ms` }}>
+                                        <div key={`custom-activity-${idx}`} className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-sm hover:shadow-xl hover:border-amber-200 transition-all group animate-in slide-in-from-bottom-3" style={{ animationDelay: `${idx * 40}ms` }}>
                                             <div className="flex items-center gap-5">
                                                 <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center font-black text-xl border-2 border-slate-50 shadow-inner group-hover:bg-amber-50 group-hover:text-amber-500 transition-all">{idx + 1}</div>
                                                 <div className="flex-1 space-y-1">

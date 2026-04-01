@@ -2624,31 +2624,31 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
       </td>
       <td className="p-1 border-e border-slate-100">
         <select className="bg-transparent font-bold text-[9px] outline-none w-full appearance-none text-center" value={s.grade} onChange={(e) => updateStudent(s.id, 'grade', e.target.value)}>
-          {optionsAr.grades.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.grades[optionsAr.grades.indexOf(o)]}</option>)}
+          {optionsAr.grades.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{lang === 'ar' ? o : optionsEn.grades[optionsAr.grades.indexOf(o)]}</option>)}
         </select>
       </td>
       <td className="p-1 border-e border-slate-100">
         <select className="bg-transparent font-bold text-[9px] outline-none w-full appearance-none text-center" value={s.section} onChange={(e) => updateStudent(s.id, 'section', e.target.value)}>
-          {optionsAr.sections.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.sections[optionsAr.sections.indexOf(o)]}</option>)}
+          {optionsAr.sections.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{lang === 'ar' ? o : optionsEn.sections[optionsAr.sections.indexOf(o)]}</option>)}
         </select>
       </td>
       <td className="p-1 border-e border-slate-100">
         <select className="bg-transparent font-bold text-[9px] outline-none w-full appearance-none text-center" value={s.gender} onChange={(e) => updateStudent(s.id, 'gender', e.target.value)}>
-          {optionsAr.gender.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.gender[optionsAr.gender.indexOf(o)]}</option>)}
+          {optionsAr.gender.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{lang === 'ar' ? o : optionsEn.gender[optionsAr.gender.indexOf(o)]}</option>)}
         </select>
       </td>
       <td className="p-1 border-e border-slate-100">
         <div className="flex flex-col gap-0.5">
           <input className="w-full text-[9px] text-right bg-transparent outline-none" value={s.address} onChange={(e) => updateStudent(s.id, 'address', e.target.value)} placeholder="..." />
           <select className="text-[8px] bg-slate-50/50 appearance-none text-center" value={s.workOutside} onChange={(e) => updateStudent(s.id, 'workOutside', e.target.value)}>
-            {optionsAr.workOutside.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.workOutside[optionsAr.workOutside.indexOf(o)]}</option>)}
+            {optionsAr.workOutside.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{lang === 'ar' ? o : optionsEn.workOutside[optionsAr.workOutside.indexOf(o)]}</option>)}
           </select>
         </div>
       </td>
       <td className="p-1 border-e border-slate-100">
         <div className="flex flex-col gap-0.5">
           <select className={`text-[9px] font-bold appearance-none text-center outline-none bg-transparent ${s.healthStatus === 'مريض' ? 'text-red-600' : ''}`} value={s.healthStatus} onChange={(e) => updateStudent(s.id, 'healthStatus', e.target.value)}>
-            {optionsAr.health.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.health[optionsAr.health.indexOf(o)]}</option>)}
+            {optionsAr.health.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{lang === 'ar' ? o : optionsEn.health[optionsAr.health.indexOf(o)]}</option>)}
           </select>
           {s.healthStatus === 'مريض' && <input className="text-[8px] text-center border-b outline-none text-red-500" value={s.healthDetails} onChange={(e) => updateStudent(s.id, 'healthDetails', e.target.value)} />}
         </div>
@@ -2657,7 +2657,7 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
         <div className="flex flex-col gap-0.5">
           <input className="text-[9px] font-bold text-right outline-none bg-transparent" value={s.guardianName} onChange={(e) => updateStudent(s.id, 'guardianName', e.target.value)} />
           {s.guardianPhones.map((p: any, i: any) => (
-            <div key={i} className="flex gap-0.5 items-center">
+            <div key={`${p}-${i}`} className="flex gap-0.5 items-center">
               <input className="text-[8px] w-full text-center bg-slate-50/50 outline-none" value={p} onChange={(e) => {
                 const newP = [...s.guardianPhones]; newP[i] = e.target.value; updateStudent(s.id, 'guardianPhones', newP);
               }} />

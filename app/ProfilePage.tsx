@@ -95,7 +95,7 @@ const ProfilePage: React.FC = () => {
               </div>
             ) : (
               (profile.customFields || []).map((field, idx) => (
-                <div key={idx} className="flex flex-col md:flex-row gap-4 animate-in slide-in-from-right-2">
+                <div key={`custom-field-${idx}`} className="flex flex-col md:flex-row gap-4 animate-in slide-in-from-right-2">
                   <div className="flex-1 space-y-1">
                     <label className="text-[10px] font-black text-slate-400 mr-2">العنوان</label>
                     <input

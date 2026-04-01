@@ -516,7 +516,7 @@ const SubstitutionPage: React.FC = () => {
                     </tr>
                   ) : (
                     filteredSubstitutions.map((row: any, idx) => (
-                      <React.Fragment key={row.id}>
+                      <React.Fragment key={`${row.id}-${idx}`}>
                         <tr
                           className={`border-b border-slate-200 h-14 transition-colors ${highlightedCoverageId === row.id ? 'bg-yellow-50' : 'hover:bg-slate-50/50'}`}
                           onClick={() => setHighlightedCoverageId(row.id)}
@@ -871,7 +871,7 @@ const SubstitutionPage: React.FC = () => {
                   <label className="text-xs font-black text-slate-500 mr-2">الحصة</label>
                   <select className="w-full p-4 rounded-2xl border-2 outline-none focus:border-blue-500 font-black text-sm bg-white" value={individualFilter.period} onChange={e => setIndividualFilter({ ...individualFilter, period: e.target.value })}>
                     <option value="">كل الحصص</option>
-                    {periodsAr.map((p, i) => <option key={i} value={`p${i}`}>{p}</option>)}
+                    {periodsAr.map((p, i) => <option key={`period-opt-${i}`} value={`p${i}`}>{p}</option>)}
                   </select>
                 </div>
               </div>
@@ -894,7 +894,7 @@ const SubstitutionPage: React.FC = () => {
                         <th className="p-4 border-e border-slate-200">اليوم</th>
                         {periodsAr.map((p, i) => {
                           if (individualFilter.period && individualFilter.period !== `p${i}`) return null;
-                          return <th key={i} className="p-4 border-e border-slate-200">{p}</th>;
+                          return <th key={`period-header-${i}`} className="p-4 border-e border-slate-200">{p}</th>;
                         })}
                       </tr>
                     </thead>

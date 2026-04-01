@@ -1,0 +1,47 @@
+{
+  "entities": {
+    "UserMapping": {
+      "title": "UserMapping",
+      "description": "Maps Firebase Auth UID to custom user ID and role.",
+      "type": "object",
+      "properties": {
+        "customUserId": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "school": { "type": "string" }
+      },
+      "required": ["customUserId", "role", "school"]
+    },
+    "SharedData": {
+      "title": "SharedData",
+      "description": "Shared application data (profile, templates, etc.).",
+      "type": "object",
+      "properties": {
+        "data": { "type": "object" }
+      },
+      "required": ["data"]
+    },
+    "UserDataCollection": {
+      "title": "UserDataCollection",
+      "description": "User-specific application data arrays.",
+      "type": "object",
+      "properties": {
+        "items": { "type": "array" }
+      },
+      "required": ["items"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": { "$ref": "#/entities/UserMapping" },
+      "description": "User mapping documents."
+    },
+    "/schools/{school}/shared/{key}": {
+      "schema": { "$ref": "#/entities/SharedData" },
+      "description": "Shared school data."
+    },
+    "/schools/{school}/users/{userId}/data/{key}": {
+      "schema": { "$ref": "#/entities/UserDataCollection" },
+      "description": "User-specific data collections."
+    }
+  }
+}

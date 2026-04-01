@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid} (Firebase Auth UID)
+    // Fields:
+    //   - customUserId: string (required)
+    //   - role: string (required, 'admin' or 'user')
+    //   - school: string (required)
+    //
+    // Collection: schools/{school}/shared/{key}
+    // Document ID: {key} (e.g., 'profile', 'taskTemplates')
+    // Fields:
+    //   - data: any (required)
+    //
+    // Collection: schools/{school}/users/{userId}/data/{key}
+    // Document ID: {key} (e.g., 'dailyReports', 'substitutions')
+    // Fields:
+    //   - items: list (required)
+    //
+    // ===============================================================
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function userExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // User mapping document
+    match /users/{uid} {
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+      allow create: if isAuthenticated() && request.auth.uid == uid;
+      allow update: if isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // School data
+    match /schools/{school} {
+      
+      // Shared data (profile, templates, etc.)
+      match /shared/{key} {
+        allow read: if isAuthenticated() && userExists() && getUserData().school == school;
+        allow write: if isAuthenticated() && userExists() && getUserData().school == school && getUserData().role == 'admin';
+      }
+
+      // User-specific data
+      match /users/{userId}/data/{key} {
+        allow read: if isAuthenticated() && userExists() && getUserData().school == school && 
+          (getUserData().role == 'admin' || getUserData().customUserId == userId);
+        allow write: if isAuthenticated() && userExists() && getUserData().school == school && 
+          (getUserData().role == 'admin' || getUserData().customUserId == userId);
+      }
+    }
+  }
+}
+

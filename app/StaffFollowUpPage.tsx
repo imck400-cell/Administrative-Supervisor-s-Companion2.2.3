@@ -12,7 +12,7 @@ import { AdminFollowUp, AdminReportContainer, MetricDefinition } from '../types'
 import { INDICATORS_DATA, ACTIVITIES_DATA } from './evaluationData';
 
 const StaffFollowUpPage: React.FC = () => {
-    const { lang, data, updateData } = useGlobal();
+    const { lang, data, updateData, currentUser, userFilter } = useGlobal();
 
     // Local State
     const [currentReportId, setCurrentReportId] = useState<string | null>(null);
@@ -164,12 +164,17 @@ const StaffFollowUpPage: React.FC = () => {
         return `بتاريخ ${toHijri(report?.dateStr || '')}هـ - ${report?.dateStr || ''}م`;
     };
 
-    // Derived Data
+    const reports = useMemo(() => {
+        const allReports = data.adminReports || [];
+        if (!userFilter) return allReports;
+        return allReports.filter(r => r.userId === userFilter);
+    }, [data.adminReports, userFilter]);
+
     const employees = useMemo(() => {
-        const report = data.adminReports?.find(r => r.id === currentReportId);
+        const report = reports.find(r => r.id === currentReportId);
         if (!report) return [];
         return report.employeesData;
-    }, [data.adminReports, currentReportId]);
+    }, [reports, currentReportId]);
 
     const displayedMetrics = useMemo(() => {
         return data.adminMetricsList?.[followUpType] || [];
@@ -216,7 +221,7 @@ const StaffFollowUpPage: React.FC = () => {
 
     const saveToArchive = () => {
         const newReport = {
-            id: Date.now().toString(),
+            id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             createdAt: new Date().toISOString(),
             form: individualForm,
             scores: individualScores,
@@ -294,16 +299,17 @@ const StaffFollowUpPage: React.FC = () => {
         const lastReportOfType = (data.adminReports || []).find(r => r.followUpType === followUpType);
         const inheritedEmployees = lastReportOfType ? lastReportOfType.employeesData.map(e => ({
             ...e,
-            id: `emp_${Date.now()}_${Math.random()}`,
+            id: `emp_${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             violations_score: 0,
             violations_notes: [],
             // Reset scores for all metrics to 0
             ...displayedMetrics.reduce((acc, m) => ({ ...acc, [m.key]: 0 }), {})
         })) : [];
 
-        const newId = `admin_report_${Date.now()}`;
+        const newId = `admin_report_${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         const newReport: AdminReportContainer = {
             id: newId,
+            userId: currentUser?.id,
             dateStr: new Date().toISOString().split('T')[0],
             followUpType: followUpType,
             writer: writer,
@@ -340,7 +346,7 @@ const StaffFollowUpPage: React.FC = () => {
                 if (!aggregatedData[emp.employeeName]) {
                     aggregatedData[emp.employeeName] = {
                         ...emp,
-                        id: `agg_${Date.now()}_${emp.employeeName}`,
+                        id: `agg_${Date.now()}-${Math.random().toString(36).substring(2, 9)}-${emp.employeeName}`,
                         unaccreditedMetrics: emp.unaccreditedMetrics || []
                     };
                     // Initialize metrics to 0 for aggregation
@@ -359,9 +365,10 @@ const StaffFollowUpPage: React.FC = () => {
         });
 
         const periodMap: Record<string, string> = { 'أسبوعي': 'الأسبوعي', 'شهري': 'الشهري', 'فصلي': 'الفصلي', 'سنوي': 'السنوي' };
-        const newId = `agg_report_${period}_${Date.now()}`;
+        const newId = `agg_report_${period}_${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         const newReport: AdminReportContainer = {
             id: newId,
+            userId: currentUser?.id,
             dateStr: `${aggDateFrom} إلى ${aggDateTo}`,
             followUpType: followUpType,
             writer: writer,
@@ -389,7 +396,7 @@ const StaffFollowUpPage: React.FC = () => {
         if (!name) return;
 
         const newEmp: AdminFollowUp = {
-            id: `emp_${Date.now()}`,
+            id: `emp_${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             employeeName: name,
             gender: 'ذكر',
             branch: 'المركز الرئيسي',

@@ -1,6 +1,55 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Language, AppData, TaskItem, TaskReport } from '../types';
+import { Language, AppData, TaskItem, TaskReport, AuthUser, User } from '../types';
+import { db, auth } from '../firebase';
+import { signInAnonymously } from 'firebase/auth';
+import { doc, setDoc, onSnapshot, getDocFromServer } from 'firebase/firestore';
+
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string;
+    email?: string | null;
+    emailVerified?: boolean;
+    isAnonymous?: boolean;
+    tenantId?: string | null;
+    providerInfo?: any[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 interface GlobalContextType {
   lang: Language;
@@ -8,7 +57,11 @@ interface GlobalContextType {
   data: AppData;
   updateData: (newData: Partial<AppData>) => void;
   isAuthenticated: boolean;
-  login: (pass: string) => boolean;
+  currentUser: AuthUser | null;
+  userFilter: string;
+  setUserFilter: (userId: string) => void;
+  login: (code: string) => User | null;
+  completeLogin: (user: User, school: string, year: string) => void;
   logout: () => void;
 }
 
@@ -206,6 +259,13 @@ export const defaultTaskTemplates: TaskItem[] = [
 ];
 
 const defaultData: AppData = {
+  users: [
+    { id: 'u1', name: 'المشرف العام', code: 'admin123', schools: ['مدرسة الرواد', 'مدرسة النخبة'], academicYears: ['2024-2025'], expiryDate: '2027-01-01', role: 'admin', permissions: { all: true } },
+    { id: 'u2', name: 'مشرف الدور الأول', code: 'user123', schools: ['مدرسة الرواد'], academicYears: ['2024-2025'], expiryDate: '2026-12-31', role: 'user', permissions: { dashboard: true, dailyFollowUp: true } },
+    { id: 'u3', name: 'مشرف الدور الثاني', code: 'user456', schools: ['مدرسة النخبة'], academicYears: ['2024-2025'], expiryDate: '2025-01-01', role: 'user', permissions: { dashboard: true, dailyFollowUp: true } }, // Expired for testing
+  ],
+  availableSchools: ['مدرسة الرواد', 'مدرسة النخبة'],
+  availableYears: ['2024-2025', '2025-2026'],
   profile: {
     ministry: '',
     district: '',
@@ -253,37 +313,194 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [lang, setLang] = useState<Language>('ar');
   const [data, setData] = useState<AppData>(defaultData);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [userFilter, setUserFilter] = useState('all');
 
   useEffect(() => {
+    async function testConnection() {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if(error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration. ");
+        }
+      }
+    }
+    testConnection();
+
     const savedData = localStorage.getItem('rafiquk_data');
     if (savedData) {
       const parsed = JSON.parse(savedData);
       setData({ ...defaultData, ...parsed });
     }
-    const auth = sessionStorage.getItem('rafiquk_auth');
-    if (auth === 'true') setIsAuthenticated(true);
+    const authFlag = sessionStorage.getItem('rafiquk_auth');
+    const savedUser = sessionStorage.getItem('rafiquk_user');
+    if (authFlag === 'true' && savedUser) {
+      setIsAuthenticated(true);
+      setCurrentUser(JSON.parse(savedUser));
+    }
     const savedLang = localStorage.getItem('rafiquk_lang') as Language;
     if (savedLang) setLang(savedLang);
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser) return;
+
+    const school = currentUser.selectedSchool.trim();
+    const unsubscribes: (() => void)[] = [];
+    let isMounted = true;
+
+    signInAnonymously(auth).then(async ({ user }) => {
+      if (!isMounted) return;
+
+      try {
+        await setDoc(doc(db, 'users', user.uid), {
+          customUserId: currentUser.id,
+          role: currentUser.role,
+          school: school
+        });
+        
+        // Small delay to ensure rules engine sees the new document
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.CREATE, `users/${user.uid}`);
+        return; 
+      }
+
+      if (!isMounted) return;
+
+      const dataBuffer: Record<string, Record<string, any[]>> = {};
+      const arrayKeys = ['substitutions', 'timetable', 'dailyReports', 'violations', 'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports'];
+      arrayKeys.forEach(k => dataBuffer[k] = {});
+
+      const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
+
+      sharedKeys.forEach(key => {
+        const q = doc(db, 'schools', school, 'shared', key);
+        const unsub = onSnapshot(q, (snapshot) => {
+          if (snapshot.exists()) {
+            setData(prev => ({ ...prev, [key]: snapshot.data().data }));
+          }
+        }, (error) => {
+          handleFirestoreError(error, OperationType.GET, `schools/${school}/shared/${key}`);
+        });
+        unsubscribes.push(unsub);
+      });
+
+      const targetUsers = currentUser.role === 'admin' 
+        ? defaultData.users.filter(u => u.schools.includes(school)).map(u => u.id)
+        : [currentUser.id];
+
+      targetUsers.forEach(uid => {
+        arrayKeys.forEach(key => {
+          const q = doc(db, 'schools', school, 'users', uid, 'data', key);
+          const unsub = onSnapshot(q, (snapshot) => {
+            const items = snapshot.exists() ? snapshot.data().items : [];
+            dataBuffer[key][uid] = items;
+            
+            const mergedArray = Object.values(dataBuffer[key]).flat();
+            // Deduplicate by ID to prevent duplicate keys in lists
+            const uniqueMergedArray = Array.from(new Map(mergedArray.map(item => [item.id, item])).values());
+            
+            setData(prev => {
+              const updated = { ...prev, [key]: uniqueMergedArray };
+              localStorage.setItem('rafiquk_data', JSON.stringify(updated));
+              return updated;
+            });
+          }, (error) => {
+            handleFirestoreError(error, OperationType.GET, `schools/${school}/users/${uid}/data/${key}`);
+          });
+          unsubscribes.push(unsub);
+        });
+      });
+    }).catch(err => {
+      console.error("Auth Error:", err);
+      if (err.code === 'auth/admin-restricted-operation') {
+        console.warn("Firebase Anonymous Auth is not enabled. Data will not sync to the cloud. Please enable it in the Firebase Console -> Authentication -> Sign-in method.");
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribes.forEach(u => u());
+    };
+  }, [isAuthenticated, currentUser?.id, currentUser?.selectedSchool]);
 
   const updateData = (newData: Partial<AppData>) => {
     const updated = { ...data, ...newData };
     setData(updated);
     localStorage.setItem('rafiquk_data', JSON.stringify(updated));
+
+    if (isAuthenticated && currentUser) {
+      const school = currentUser.selectedSchool;
+      const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
+
+      for (const key of Object.keys(newData) as Array<keyof AppData>) {
+        if (sharedKeys.includes(key)) {
+          if (currentUser.role === 'admin') {
+            setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
+              .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));
+          }
+          continue;
+        }
+
+        const newArray = newData[key] as any[];
+        const oldArray = data[key] as any[];
+        
+        if (!Array.isArray(newArray)) continue;
+
+        const userIds = new Set<string>();
+        newArray.forEach(item => {
+          if (!item.userId) item.userId = currentUser.id;
+          userIds.add(item.userId);
+        });
+        oldArray?.forEach(item => {
+          if (item.userId) userIds.add(item.userId);
+        });
+
+        if (userIds.size === 0) {
+          userIds.add(currentUser.id);
+        }
+
+        for (const uid of userIds) {
+          if (currentUser.role !== 'admin' && uid !== currentUser.id) continue;
+
+          const userItems = newArray.filter(item => item.userId === uid);
+          setDoc(doc(db, 'schools', school, 'users', uid, 'data', key), { items: userItems })
+            .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/users/${uid}/data/${key}`));
+        }
+      }
+    }
   };
 
-  const login = (pass: string) => {
-    if (pass === '123') {
-      setIsAuthenticated(true);
-      sessionStorage.setItem('rafiquk_auth', 'true');
-      return true;
-    }
-    return false;
+  const login = (code: string) => {
+    const user = data.users.find(u => u.code === code);
+    return user || null;
+  };
+
+  const completeLogin = (user: User, school: string, year: string) => {
+    const authUser: AuthUser = {
+      id: user.id,
+      name: user.name,
+      selectedSchool: school,
+      selectedYear: year,
+      role: user.role,
+      permissions: user.permissions
+    };
+    setIsAuthenticated(true);
+    setCurrentUser(authUser);
+    sessionStorage.setItem('rafiquk_auth', 'true');
+    sessionStorage.setItem('rafiquk_user', JSON.stringify(authUser));
+    
+    // Update profile with selected school and year
+    updateData({ profile: { ...data.profile, schoolName: school, year: year } });
   };
 
   const logout = () => {
     setIsAuthenticated(false);
+    setCurrentUser(null);
     sessionStorage.removeItem('rafiquk_auth');
+    sessionStorage.removeItem('rafiquk_user');
   };
 
   const handleSetLang = (l: Language) => {
@@ -294,7 +511,19 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   return (
-    <GlobalContext.Provider value={{ lang, setLang: handleSetLang, data, updateData, isAuthenticated, login, logout }}>
+    <GlobalContext.Provider value={{ 
+      lang, 
+      setLang: handleSetLang, 
+      data, 
+      updateData, 
+      isAuthenticated, 
+      currentUser,
+      userFilter,
+      setUserFilter,
+      login, 
+      completeLogin,
+      logout 
+    }}>
       {children}
     </GlobalContext.Provider>
   );

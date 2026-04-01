@@ -20,6 +20,7 @@ export interface SchoolProfile {
 
 export interface TimetableEntry {
   id: string;
+  userId?: string;
   teacherName: string;
   subject: string;
   days: {
@@ -32,6 +33,7 @@ export interface TimetableEntry {
 
 export interface ExamLog {
   id: string;
+  userId?: string;
   studentId: string;
   studentName: string;
   date: string;
@@ -44,6 +46,7 @@ export interface ExamLog {
 
 export interface SubstitutionEntry {
   id: string;
+  userId?: string;
   absentTeacher: string;
   replacementTeacher: string;
   period: string;
@@ -93,6 +96,7 @@ export interface TeacherFollowUp {
 
 export interface DailyReportContainer {
   id: string;
+  userId?: string;
   dayName: string;
   dateStr: string;
   teachersData: TeacherFollowUp[];
@@ -119,6 +123,7 @@ export interface AdminFollowUp {
 
 export interface AdminReportContainer {
   id: string;
+  userId?: string;
   dateStr: string;
   followUpType: string;
   writer: string;
@@ -161,6 +166,7 @@ export interface StudentReport {
 
 export interface AbsenceLog {
   id: string;
+  userId?: string;
   studentId: string;
   studentName: string;
   grade: string;
@@ -182,6 +188,7 @@ export interface AbsenceLog {
 
 export interface LatenessLog {
   id: string;
+  userId?: string;
   studentId: string;
   studentName: string;
   grade: string;
@@ -199,6 +206,7 @@ export interface LatenessLog {
 
 export interface StudentViolationLog {
   id: string;
+  userId?: string;
   studentId: string;
   studentName: string;
   grade: string;
@@ -217,6 +225,7 @@ export interface StudentViolationLog {
 
 export interface ExitLog {
   id: string;
+  userId?: string;
   studentId: string;
   studentName: string;
   grade: string;
@@ -234,6 +243,7 @@ export interface ExitLog {
 
 export interface DamageLog {
   id: string;
+  userId?: string;
   studentId: string;
   studentName: string;
   grade: string;
@@ -253,6 +263,7 @@ export interface DamageLog {
 
 export interface ParentVisitLog {
   id: string;
+  userId?: string;
   studentId: string;
   studentName: string;
   visitorName: string;
@@ -274,6 +285,7 @@ export interface ParentVisitLog {
 
 export interface GenericSpecialReport {
   id: string;
+  userId?: string;
   category: string;
   subCategory: string;
   title: string;
@@ -302,6 +314,7 @@ export interface TaskRecord {
 
 export interface TaskReport {
   id: string;
+  userId?: string;
   dateStr: string;
   dateHijri: string;
   dayName: string;
@@ -309,7 +322,41 @@ export interface TaskReport {
   tasks: TaskRecord[];
 }
 
+export interface UserPermissions {
+  all?: boolean;
+  dashboard?: boolean;
+  dailyFollowUp?: boolean | string[];
+  adminFollowUp?: boolean | string[];
+  studentAffairs?: boolean | string[];
+  specialReports?: boolean | string[];
+  substitutions?: boolean | string[];
+  schoolProfile?: boolean;
+  specialCodes?: boolean;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  code: string;
+  schools: string[];
+  academicYears?: string[];
+  startDate?: string; // ISO format
+  expiryDate: string; // ISO format
+  role: 'admin' | 'user';
+  permissions?: UserPermissions;
+}
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  selectedSchool: string;
+  selectedYear?: string;
+  role: 'admin' | 'user';
+  permissions?: UserPermissions;
+}
+
 export interface AppData {
+  users: User[];
   profile: SchoolProfile;
   substitutions: SubstitutionEntry[];
   timetable: TimetableEntry[];
@@ -347,4 +394,6 @@ export interface AppData {
   adminReports?: AdminReportContainer[];
   adminMetricsList?: Record<string, MetricDefinition[]>; // key is followUpType
   adminFollowUpTypes?: string[];
+  availableSchools?: string[];
+  availableYears?: string[];
 }

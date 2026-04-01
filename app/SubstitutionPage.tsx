@@ -11,7 +11,7 @@ import * as XLSX from 'xlsx';
 import { TimetableEntry, SubstitutionEntry } from '../types';
 
 const SubstitutionPage: React.FC = () => {
-  const { lang, data, updateData } = useGlobal();
+  const { lang, data, updateData, currentUser, userFilter } = useGlobal();
   const [activeTab, setActiveTab] = useState<'coverage' | 'timetable'>('coverage');
 
   // START OF CHANGE - Coverage State Management
@@ -40,14 +40,22 @@ const SubstitutionPage: React.FC = () => {
 
   // START OF CHANGE - Filtering Logic
   const filteredSubstitutions = useMemo(() => {
-    return (data.substitutions || []).filter(s => s.date === selectedCoverageDate);
-  }, [data.substitutions, selectedCoverageDate]);
+    let list = (data.substitutions || []).filter(s => s.date === selectedCoverageDate);
+    if (userFilter) {
+      list = list.filter(s => s.userId === userFilter);
+    }
+    return list;
+  }, [data.substitutions, selectedCoverageDate, userFilter]);
 
   const uniqueCoverageDates = useMemo(() => {
-    const dates = (data.substitutions || []).map(s => s.date);
+    let list = (data.substitutions || []);
+    if (userFilter) {
+      list = list.filter(s => s.userId === userFilter);
+    }
+    const dates = list.map(s => s.date);
     // Fix: Cast a and b to string as they are inferred as unknown
     return Array.from(new Set(dates)).sort((a, b) => b.localeCompare(a));
-  }, [data.substitutions]);
+  }, [data.substitutions, userFilter]);
   // END OF CHANGE
 
   // --- Timetable Logic ---
@@ -64,9 +72,12 @@ const SubstitutionPage: React.FC = () => {
     period: ''
   });
 
+  const generateId = () => `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
   const handleAddTimetableRow = () => {
     const newEntry: TimetableEntry = {
-      id: Date.now().toString(),
+      id: generateId(),
+      userId: currentUser?.id,
       teacherName: '',
       subject: '',
       days: daysAr.reduce((acc, day) => ({
@@ -123,7 +134,7 @@ const SubstitutionPage: React.FC = () => {
         });
 
         return {
-          id: Date.now().toString() + Math.random(),
+          id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
           teacherName, subject, notes, days: daysMap
         };
       });
@@ -165,7 +176,7 @@ const SubstitutionPage: React.FC = () => {
           });
 
           newEntries.push({
-            id: Date.now().toString() + Math.random(),
+            id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             teacherName, subject, notes, days: daysMap
           });
         }
@@ -198,7 +209,7 @@ const SubstitutionPage: React.FC = () => {
             if (currentTeacher) newEntries.push(currentTeacher);
             const teacherName = line.split(':')[1]?.trim() || '';
             currentTeacher = {
-              id: Date.now().toString() + Math.random(),
+              id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
               teacherName,
               subject: '',
               notes: '',
@@ -239,8 +250,12 @@ const SubstitutionPage: React.FC = () => {
   };
 
   const timetableFiltered = useMemo(() => {
-    return (data.timetable || []).filter(t => true);
-  }, [data.timetable]);
+    let list = (data.timetable || []);
+    if (userFilter) {
+      list = list.filter(t => t.userId === userFilter);
+    }
+    return list;
+  }, [data.timetable, userFilter]);
 
   const individualTimetableResult = useMemo(() => {
     if (!showIndividualModal) return [];
@@ -311,7 +326,8 @@ const SubstitutionPage: React.FC = () => {
   // START OF CHANGE - Using selectedCoverageDate
   const handleAddRow = () => {
     const newEntry: SubstitutionEntry = {
-      id: Date.now().toString(),
+      id: generateId(),
+      userId: currentUser?.id,
       absentTeacher: '',
       replacementTeacher: '',
       period: '',
@@ -515,7 +531,7 @@ const SubstitutionPage: React.FC = () => {
                               onChange={(e) => updateEntry(row.id, 'absentTeacher', e.target.value)}
                             />
                             <datalist id={`teachers-abs-${row.id}`}>
-                              {teacherList.map(name => <option key={name} value={name} />)}
+                              {teacherList.map((name, tIdx) => <option key={`${name}-${tIdx}`} value={name} />)}
                             </datalist>
                           </td>
                           <td className="border-e border-slate-300 p-2 bg-slate-50 font-black text-[10px]">البديل المكلف</td>
@@ -531,7 +547,7 @@ const SubstitutionPage: React.FC = () => {
                                   placeholder="---"
                                 />
                                 <datalist id={`free-teachers-p${num}-${row.id}`}>
-                                  {freeTeachers.map(name => <option key={name} value={name} />)}
+                                  {freeTeachers.map((name, tIdx) => <option key={`${name}-${tIdx}`} value={name} />)}
                                 </datalist>
                               </td>
                             );
@@ -696,7 +712,7 @@ const SubstitutionPage: React.FC = () => {
                             onFocus={() => setSelectedTeacherRow(row.id)}
                             placeholder="..."
                           />
-                          <datalist id={`teacher-list-${row.id}`}>{teacherList.map(n => <option key={n} value={n} />)}</datalist>
+                          <datalist id={`teacher-list-${row.id}`}>{teacherList.map((n, tIdx) => <option key={`${n}-${tIdx}`} value={n} />)}</datalist>
                         </td>
                         <td className={`p-1 border-e border-slate-200 transition-colors ${isRowHighlighted ? 'bg-yellow-100/50' : ''}`}>
                           <input

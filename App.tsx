@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { GlobalProvider, useGlobal } from './context/GlobalState';
 import Layout from './components/Layout';
 import Dashboard from './app/Dashboard';
@@ -8,61 +8,268 @@ import StaffFollowUpPage from './app/StaffFollowUpPage';
 import SpecialReportsPage from './app/SpecialReportsPage';
 import ProfilePage from './app/ProfilePage';
 import DataManagementModal from './components/DataManagementModal';
+import AccessCodesModal from './components/AccessCodesModal';
 import {
   Lock, LayoutDashboard, ClipboardCheck, UserX, UserPlus,
-  Users, Sparkles, Database, FileSearch, ArrowUp, ArrowDown, Briefcase
+  Users, Sparkles, Database, FileSearch, ArrowUp, ArrowDown, Briefcase,
+  School, Calendar, AlertTriangle, Phone, MessageCircle, Key, Eye, EyeOff, Search, ChevronRight, LogOut, User as UserIcon
 } from 'lucide-react';
 import GlobalScrollArrows from './components/GlobalScrollArrows';
+import { motion, AnimatePresence } from 'framer-motion';
+import { User } from './types';
 
-const LoginPage: React.FC = () => {
-  const { login } = useGlobal();
-  const [pass, setPass] = useState('');
-  const [error, setError] = useState(false);
-  const handleSubmit = (e: React.FormEvent) => {
+const AdvancedLoginPage: React.FC = () => {
+  const { login, completeLogin, data } = useGlobal();
+  const [step, setStep] = useState<'login' | 'expired'>('login');
+  const [code, setCode] = useState('');
+  const [username, setUsername] = useState('');
+  const [schoolName, setSchoolName] = useState('');
+  const [academicYear, setAcademicYear] = useState('2024-2025');
+  const [error, setError] = useState('');
+
+  const selectedUser = useMemo(() => {
+    return data.users.find(u => u.name === username) || null;
+  }, [username, data.users]);
+
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!login(pass)) setError(true);
+    if (!username || !code || !schoolName || !academicYear) {
+      setError('يرجى إكمال جميع الحقول');
+      return;
+    }
+
+    const user = login(code);
+    if (user && user.name === username) {
+      // Check expiry
+      const expiry = new Date(user.expiryDate);
+      const now = new Date();
+      if (now > expiry) {
+        setStep('expired');
+        return;
+      }
+
+      completeLogin(user, schoolName, academicYear);
+    } else {
+      setError('كود الدخول غير صحيح لهذا المستخدم');
+      setTimeout(() => setError(''), 3000);
+    }
   };
+
+  const renderStep = () => {
+    switch (step) {
+      case 'login':
+        return (
+          <motion.div 
+            key="login"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="space-y-6"
+          >
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-600 text-white rounded-3xl shadow-lg shadow-blue-200 mb-6 transform rotate-3">
+                <Lock className="w-10 h-10" />
+              </div>
+              <h2 className="text-3xl font-black text-slate-800 tracking-tight">تسجيل الدخول</h2>
+              <p className="text-blue-500 font-bold mt-2 text-sm">أدخل بياناتك للمتابعة</p>
+            </div>
+            <form onSubmit={handleLogin} className="space-y-4">
+              {/* 1. Username */}
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-400 mr-4">اسم المستخدم</label>
+                <div className="relative">
+                  <UserIcon className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                  <select
+                    className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold appearance-none outline-none transition-all"
+                    value={username}
+                    onChange={(e) => {
+                      setUsername(e.target.value);
+                      setSchoolName(''); // Reset school when user changes
+                    }}
+                  >
+                    <option value="">اختر المستخدم</option>
+                    {data.users.map((u, idx) => <option key={`user-${u.id}-${idx}`} value={u.name}>{u.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* 2. Code */}
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-400 mr-4">رقم الكود</label>
+                <div className="relative">
+                  <Key className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                  <input
+                    type="password"
+                    className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl text-center text-xl font-bold transition-all outline-none"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    placeholder="كود الدخول"
+                  />
+                </div>
+              </div>
+
+              {/* 3. School Name */}
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-400 mr-4">اسم المدرسة</label>
+                <div className="relative">
+                  <School className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                  <select
+                    className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold appearance-none outline-none transition-all disabled:opacity-50"
+                    value={schoolName}
+                    onChange={(e) => setSchoolName(e.target.value)}
+                    disabled={!username}
+                  >
+                    <option value="">اختر المدرسة</option>
+                    {selectedUser?.schools.map((s, idx) => <option key={`school-${s}-${idx}`} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* 4. Academic Year */}
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-400 mr-4">العام الدراسي</label>
+                <div className="relative">
+                  <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                  <input
+                    type="text"
+                    className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold transition-all outline-none"
+                    value={academicYear}
+                    onChange={(e) => setAcademicYear(e.target.value)}
+                    placeholder="العام الدراسي"
+                  />
+                </div>
+              </div>
+
+              {error && <p className="text-red-500 text-center font-bold text-sm">{error}</p>}
+              
+              <button className="w-full bg-blue-600 text-white p-5 rounded-[1.5rem] font-black text-xl hover:bg-blue-700 shadow-xl shadow-blue-100 transition-all hover:-translate-y-1 active:translate-y-0 mt-4">
+                دخول النظام
+              </button>
+            </form>
+          </motion.div>
+        );
+      case 'expired':
+        return (
+          <motion.div 
+            key="expired"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="space-y-8 text-center"
+          >
+            <div className="relative inline-block">
+              <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 bg-gradient-to-tr from-amber-500 to-orange-500 rounded-full blur-2xl opacity-20"
+              />
+              <div className="relative inline-flex items-center justify-center w-24 h-24 bg-white border-4 border-orange-50 text-orange-500 rounded-full shadow-2xl mb-2">
+                <AlertTriangle className="w-12 h-12" />
+              </div>
+            </div>
+            
+            <div>
+              <h2 className="text-3xl font-black text-slate-800 tracking-tight">انتهت صلاحية الاشتراك</h2>
+              <div className="mt-4 p-6 bg-orange-50 rounded-3xl border-2 border-orange-100">
+                <p className="text-orange-700 font-bold leading-relaxed">
+                  عذراً، لقد انتهت مدة الصلاحية الخاصة بك.
+                  <br />
+                  لتمديدها يرجى التواصل مع فريق التوافق.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <a 
+                href="tel:967780804012"
+                className="flex flex-col items-center gap-3 p-6 bg-white border-2 border-slate-100 rounded-3xl hover:border-blue-500 hover:shadow-xl transition-all group"
+              >
+                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all">
+                  <Phone size={24} />
+                </div>
+                <span className="font-black text-slate-700">اتصال هاتف</span>
+              </a>
+              <a 
+                href="https://wa.me/967780804012"
+                target="_blank"
+                rel="noreferrer"
+                className="flex flex-col items-center gap-3 p-6 bg-white border-2 border-slate-100 rounded-3xl hover:border-green-500 hover:shadow-xl transition-all group"
+              >
+                <div className="w-12 h-12 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center group-hover:bg-green-600 group-hover:text-white transition-all">
+                  <MessageCircle size={24} />
+                </div>
+                <span className="font-black text-slate-700">واتساب</span>
+              </a>
+            </div>
+
+            <button 
+              onClick={() => setStep('login')}
+              className="px-8 py-3 bg-slate-100 text-slate-500 font-black rounded-2xl hover:bg-slate-200 transition-all"
+            >
+              رجوع
+            </button>
+          </motion.div>
+        );
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0f172a] px-4 font-arabic">
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-md space-y-8 border-4 border-blue-50">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-600 text-white rounded-3xl shadow-lg shadow-blue-200 mb-6 transform rotate-3">
-            <Lock className="w-10 h-10" />
-          </div>
-          <h2 className="text-3xl font-black text-slate-800 tracking-tight"> رفيق المشرف الإداري </h2>
-          <p className="text-blue-500 font-bold mt-2 text-sm">رفيقك في كتابة تقارير الإشراف الإداري</p>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <input
-            type="password"
-            className="w-full p-5 bg-slate-50 border-2 rounded-[1.5rem] text-center text-xl font-bold"
-            value={pass}
-            onChange={(e) => setPass(e.target.value)}
-            placeholder="كلمة المرور"
-          />
-          <button className="w-full bg-blue-600 text-white p-5 rounded-[1.5rem] font-black text-xl hover:bg-blue-700">دخول</button>
-        </form>
+    <div className="min-h-screen flex items-center justify-center bg-[#0f172a] px-4 font-arabic overflow-hidden relative">
+      {/* Animated Background Elements */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <motion.div 
+          animate={{ 
+            y: [0, -100, 0],
+            opacity: [0.1, 0.3, 0.1]
+          }}
+          transition={{ duration: 10, repeat: Infinity }}
+          className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-500 rounded-full blur-[100px]"
+        />
+        <motion.div 
+          animate={{ 
+            y: [0, 100, 0],
+            opacity: [0.1, 0.2, 0.1]
+          }}
+          transition={{ duration: 15, repeat: Infinity }}
+          className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500 rounded-full blur-[120px]"
+        />
+      </div>
+
+      <div className="bg-white p-8 rounded-[3rem] shadow-2xl w-full max-w-md relative z-10 border-8 border-slate-50/50">
+        <AnimatePresence mode="wait">
+          {renderStep()}
+        </AnimatePresence>
       </div>
     </div>
   );
 };
 
 const MainApp: React.FC = () => {
-  const { isAuthenticated, lang } = useGlobal();
+  const { isAuthenticated, currentUser, userFilter, setUserFilter, data, logout } = useGlobal();
   const [view, setView] = useState('dashboard');
   const [isDataModalOpen, setIsDataModalOpen] = useState(false);
+  const [isCodesModalOpen, setIsCodesModalOpen] = useState(false);
 
-  const navItems = useMemo(() => [
-    { id: 'dashboard', label: 'الرئيسية', icon: <LayoutDashboard size={18} /> },
-    { id: 'daily', label: 'متابعة المعلمين', icon: <ClipboardCheck size={18} /> },
-    { id: 'adminReports', label: 'متابعة الموظفين والعاملين', icon: <Briefcase size={18} /> },
-    { id: 'substitute', label: 'جدول التغطية', icon: <UserPlus size={18} /> },
-    { id: 'violations', label: 'التعهدات', icon: <UserX size={18} /> },
-    { id: 'studentReports', label: 'تقارير الطلاب', icon: <Users size={18} /> },
-    { id: 'specialReports', label: 'تقارير خاصة', icon: <FileSearch size={18} /> },
-  ], []);
+  const navItems = useMemo(() => {
+    const items = [
+      { id: 'dashboard', label: 'الرئيسية', icon: <LayoutDashboard size={18} />, permission: 'dashboard' },
+      { id: 'daily', label: 'متابعة المعلمين', icon: <ClipboardCheck size={18} />, permission: 'dailyFollowUp' },
+      { id: 'adminReports', label: 'متابعة الموظفين والعاملين', icon: <Briefcase size={18} />, permission: 'adminFollowUp' },
+      { id: 'substitute', label: 'جدول التغطية', icon: <UserPlus size={18} />, permission: 'substitutions' },
+      { id: 'violations', label: 'التعهدات', icon: <UserX size={18} />, permission: 'studentAffairs' },
+      { id: 'studentReports', label: 'تقارير الطلاب', icon: <Users size={18} />, permission: 'studentAffairs' },
+      { id: 'specialReports', label: 'تقارير خاصة', icon: <FileSearch size={18} />, permission: 'specialReports' },
+      { id: 'profile', label: 'ملف المدرسة', icon: <School size={18} />, permission: 'schoolProfile' },
+    ];
 
-  if (!isAuthenticated) return <LoginPage />;
+    if (currentUser?.role === 'admin' || currentUser?.permissions?.all) return items;
+
+    return items.filter(item => {
+      const p = currentUser?.permissions?.[item.permission as keyof typeof currentUser.permissions];
+      return p === true || (Array.isArray(p) && p.length > 0);
+    });
+  }, [currentUser]);
+
+  if (!isAuthenticated) return <AdvancedLoginPage />;
 
   const renderView = () => {
     switch (view) {
@@ -81,13 +288,56 @@ const MainApp: React.FC = () => {
   return (
     <Layout onNavigate={setView} onOpenSettings={() => setIsDataModalOpen(true)}>
       <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h2 className="text-2xl font-black text-slate-800"> رفيق المشرف الإداري </h2>
-          <p className="text-blue-500 text-sm font-bold"> نظام المتابعة المتطور </p>
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
+            <UserIcon size={32} />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-slate-800"> مرحباً، {currentUser?.name} </h2>
+            <p className="text-blue-500 text-sm font-bold"> {currentUser?.selectedSchool} - {data.profile.year} </p>
+          </div>
         </div>
-        <button onClick={() => setIsDataModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm">
-          <Database className="text-blue-600" size={18} /> إدارة البيانات
-        </button>
+        
+        <div className="flex items-center gap-3 flex-wrap">
+          <button 
+            onClick={logout}
+            className="flex items-center gap-2 px-6 py-3 bg-red-50 border-2 border-red-100 rounded-[1.2rem] text-red-600 font-black text-sm hover:bg-red-600 hover:text-white transition-all shadow-sm"
+          >
+            <LogOut size={18} /> تسجيل الخروج
+          </button>
+          {/* User Filter Dropdown */}
+          <div className="relative group">
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600 pointer-events-none">
+              <Users size={18} />
+            </div>
+            <select 
+              value={userFilter}
+              onChange={(e) => setUserFilter(e.target.value)}
+              className="pr-12 pl-10 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm appearance-none outline-none focus:border-blue-500 transition-all cursor-pointer shadow-sm hover:shadow-md"
+            >
+              <option value="all">كل المستخدمين</option>
+              {data.users.map((u, idx) => (
+                <option key={`filter-user-${u.id}-${idx}`} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {(currentUser?.role === 'admin' || currentUser?.permissions?.specialCodes || currentUser?.permissions?.all) && (
+            <button 
+              onClick={() => setIsCodesModalOpen(true)} 
+              className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all"
+            >
+              <Key className="text-blue-600" size={18} /> الأكواد الخاصة
+            </button>
+          )}
+
+          <button 
+            onClick={() => setIsDataModalOpen(true)} 
+            className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all"
+          >
+            <Database className="text-blue-600" size={18} /> إدارة البيانات
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2 mb-8 bg-white/50 backdrop-blur-md p-2 rounded-2xl border border-white">
@@ -107,14 +357,19 @@ const MainApp: React.FC = () => {
       </div>
 
       <DataManagementModal isOpen={isDataModalOpen} onClose={() => setIsDataModalOpen(false)} />
+      <AccessCodesModal isOpen={isCodesModalOpen} onClose={() => setIsCodesModalOpen(false)} />
     </Layout>
   );
 };
 
+import { ErrorBoundary } from './components/ErrorBoundary';
+
 const App: React.FC = () => (
-  <GlobalProvider>
-    <MainApp />
-    <GlobalScrollArrows />
-  </GlobalProvider>
+  <ErrorBoundary>
+    <GlobalProvider>
+      <MainApp />
+      <GlobalScrollArrows />
+    </GlobalProvider>
+  </ErrorBoundary>
 );
 export default App;

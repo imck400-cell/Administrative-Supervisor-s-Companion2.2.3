@@ -136,9 +136,9 @@ const FilterSection = ({
           </div>
         </div>
         <div className="flex flex-wrap gap-2 mt-2">
-          {tempNames.map((name: string) => (
-            <span key={name} className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-[10px] font-black border border-blue-200">
-              {name} <X size={10} className="cursor-pointer hover:text-red-500" onClick={() => setTempNames(tempNames.filter((n: string) => n !== name))} />
+          {tempNames.map((name: string, idx: number) => (
+            <span key={`${name}-${idx}`} className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-[10px] font-black border border-blue-200">
+              {name} <X size={10} className="cursor-pointer hover:text-red-500" onClick={() => setTempNames(tempNames.filter((n: string, i: number) => i !== idx))} />
             </span>
           ))}
         </div>
@@ -171,7 +171,7 @@ interface SpecialReportsPageProps {
 
 const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, onSubTabOpen, onNavigate }) => {
   // END OF CHANGE
-  const { lang, data, updateData } = useGlobal();
+  const { lang, data, updateData, currentUser, userFilter } = useGlobal();
   const [activeTab, setActiveTab] = useState<MainTab>('supervisor');
   const [activeSubTab, setActiveSubTab] = useState<SubTab | null>(null);
 
@@ -339,6 +339,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const currentSubjects = examStage === 'basic' ? basicSubjects : secondarySubjects;
 
     const filteredLogs = (data.examLogs || []).filter(log => {
+      if (userFilter && log.userId !== userFilter) return false;
       if (log.type !== (activeSubTab === 'الاختبار الشهري' ? 'monthly' : 'final')) return false;
       if (examFilters.semester && log.semester !== examFilters.semester) return false;
       if (examFilters.dateStart && log.date < examFilters.dateStart) return false;
@@ -380,7 +381,8 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
           });
 
           return {
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            userId: currentUser?.id,
             studentId: s?.id || '',
             studentName: entry.name,
             date: examModalDate,
@@ -793,6 +795,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const filtered = (data.absenceLogs || []).filter(l => {
+      if (userFilter && l.userId !== userFilter) return false;
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
       if (filterValues.start && l.date < filterValues.start) return false;
       if (filterValues.end && l.date > filterValues.end) return false;
@@ -829,7 +832,8 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       if (!absenceForm.studentId) return alert('يرجى اختيار طالب أولاً');
       const newLog: AbsenceLog = {
         ...absenceForm as AbsenceLog,
-        id: Date.now().toString(),
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        userId: currentUser?.id,
         day: getDayName(absenceForm.date || today)
       };
       updateData({ absenceLogs: [newLog, ...(data.absenceLogs || [])] });
@@ -1049,7 +1053,8 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                         const prevCount = (data.absenceLogs || []).filter(l => l.studentId === s.id).length;
 
                         return {
-                          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                          id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                          userId: currentUser?.id,
                           studentId: s.id,
                           studentName: s.name,
                           grade: s.grade,
@@ -1504,6 +1509,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const suggestions = (searchQuery.trim() && searchQuery !== latenessForm.studentName) ? students.filter(s => s.name.includes(searchQuery)) : [];
     const nameSugg = nameInput.trim() ? students.filter(s => s.name.includes(nameInput) && !tempNames.includes(s.name)) : [];
     const filtered = (data.studentLatenessLogs || []).filter(l => {
+      if (userFilter && l.userId !== userFilter) return false;
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
       if (filterValues.start && l.date < filterValues.start) return false;
       if (filterValues.end && l.date > filterValues.end) return false;
@@ -1536,7 +1542,8 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       if (!latenessForm.studentId) return alert('يرجى اختيار طالب أولاً');
       const newLog: LatenessLog = {
         ...latenessForm as LatenessLog,
-        id: Date.now().toString(),
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        userId: currentUser?.id,
         day: getDayName(latenessForm.date || today)
       };
       updateData({ studentLatenessLogs: [newLog, ...(data.studentLatenessLogs || [])] });
@@ -1693,6 +1700,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const suggestions = (searchQuery.trim() && searchQuery !== violationForm.studentName) ? students.filter(s => s.name.includes(searchQuery)) : [];
     const nameSugg = nameInput.trim() ? students.filter(s => s.name.includes(nameInput) && !tempNames.includes(s.name)) : [];
     const filtered = (data.studentViolationLogs || []).filter(l => {
+      if (userFilter && l.userId !== userFilter) return false;
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
       if (filterValues.start && l.date < filterValues.start) return false;
       if (filterValues.end && l.date > filterValues.end) return false;
@@ -1723,7 +1731,12 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const saveLog = () => {
       if (!violationForm.studentId) return alert('يرجى اختيار طالب أولاً');
       const total = (violationForm.behaviorViolations?.length || 0) + (violationForm.dutiesViolations?.length || 0) + (violationForm.achievementViolations?.length || 0);
-      const newLog: StudentViolationLog = { ...violationForm as StudentViolationLog, id: Date.now().toString(), totalViolations: total };
+      const newLog: StudentViolationLog = { 
+        ...violationForm as StudentViolationLog, 
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`, 
+        userId: currentUser?.id,
+        totalViolations: total 
+      };
       updateData({ studentViolationLogs: [newLog, ...(data.studentViolationLogs || [])] });
       setViolationForm({ ...violationForm, studentName: '', studentId: '', behaviorViolations: [], dutiesViolations: [], achievementViolations: [], notes: '', pledge: '' });
       setSearchQuery('');
@@ -1894,6 +1907,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const suggestions = (searchQuery.trim() && searchQuery !== exitForm.studentName) ? students.filter(s => s.name.includes(searchQuery)) : [];
     const nameSugg = nameInput.trim() ? students.filter(s => s.name.includes(nameInput) && !tempNames.includes(s.name)) : [];
     const filtered = (data.exitLogs || []).filter(l => {
+      if (userFilter && l.userId !== userFilter) return false;
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
       if (filterValues.start && l.date < filterValues.start) return false;
       if (filterValues.end && l.date > filterValues.end) return false;
@@ -1917,7 +1931,12 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
 
     const saveLog = () => {
       if (!exitForm.studentId) return alert('يرجى اختيار طالب أولاً');
-      const newLog: ExitLog = { ...exitForm as ExitLog, id: Date.now().toString(), day: getDayName(exitForm.date || today) };
+      const newLog: ExitLog = { 
+        ...exitForm as ExitLog, 
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`, 
+        userId: currentUser?.id,
+        day: getDayName(exitForm.date || today) 
+      };
       updateData({ exitLogs: [newLog, ...(data.exitLogs || [])] });
       setExitForm({ ...exitForm, studentName: '', studentId: '', notes: '', status: 'نادر الخروج', action: 'تنبيه 1' });
       setSearchQuery('');
@@ -2011,6 +2030,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const suggestions = (searchQuery.trim() && searchQuery !== damageForm.studentName) ? students.filter(s => s.name.includes(searchQuery)) : [];
     const nameSugg = nameInput.trim() ? students.filter(s => s.name.includes(nameInput) && !tempNames.includes(s.name)) : [];
     const filtered = (data.damageLogs || []).filter(l => {
+      if (userFilter && l.userId !== userFilter) return false;
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
       if (filterValues.start && l.date < filterValues.start) return false;
       if (filterValues.end && l.date > filterValues.end) return false;
@@ -2034,7 +2054,12 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
 
     const saveLog = () => {
       if (!damageForm.studentId) return alert('يرجى اختيار طالب أولاً');
-      const newLog: DamageLog = { ...damageForm as DamageLog, id: Date.now().toString(), day: getDayName(damageForm.date || today) };
+      const newLog: DamageLog = { 
+        ...damageForm as DamageLog, 
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`, 
+        userId: currentUser?.id,
+        day: getDayName(damageForm.date || today) 
+      };
       updateData({ damageLogs: [newLog, ...(data.damageLogs || [])] });
       setDamageForm({ ...damageForm, studentName: '', studentId: '', notes: '', description: '', participants: '', followUpStatus: 'قيد المتابعة', action: 'تنبيه' });
       setSearchQuery('');
@@ -2158,6 +2183,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const suggestions = (searchQuery.trim() && searchQuery !== visitForm.studentName) ? students.filter(s => s.name.includes(searchQuery)) : [];
     const nameSugg = nameInput.trim() ? students.filter(s => s.name.includes(nameInput) && !tempNames.includes(s.name)) : [];
     const filtered = (data.parentVisitLogs || []).filter(l => {
+      if (userFilter && l.userId !== userFilter) return false;
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
       if (filterValues.start && l.date < filterValues.start) return false;
       if (filterValues.end && l.date > filterValues.end) return false;
@@ -2183,7 +2209,8 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       if (!visitForm.studentId) return alert('يرجى اختيار طالب أولاً');
       const newLog: ParentVisitLog = {
         ...visitForm as ParentVisitLog,
-        id: Date.now().toString(),
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        userId: currentUser?.id,
         day: getDayName(visitForm.date || today)
       };
       updateData({ parentVisitLogs: [newLog, ...(data.parentVisitLogs || [])] });
@@ -2420,7 +2447,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const handleAddTaskTemplate = (cat: 'daily' | 'weekly' | 'monthly') => {
       if (!customTaskInput.trim()) return;
       const newTemplate: TaskItem = {
-        id: Date.now().toString(),
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         category: cat,
         text: customTaskInput.trim()
       };
@@ -2452,7 +2479,8 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       const hy = Math.floor((gy - 622) * (33 / 32));
 
       const newReport: TaskReport = {
-        id: Date.now().toString(),
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        userId: currentUser?.id,
         dateStr: d,
         dateHijri: `${hy} هـ`,
         dayName: getDayName(d),
@@ -2543,7 +2571,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     );
 
     if (showPreviousTaskReports) {
-      const reports = data.taskReports || [];
+      const reports = (data.taskReports || []).filter(r => !userFilter || r.userId === userFilter);
       return (
         <div className="bg-[#f8fafc] p-6 md:p-10 rounded-[3rem] border-4 border-slate-200 shadow-2xl animate-in fade-in duration-500 font-arabic text-right min-h-[600px]">
           <div className="flex justify-between items-center mb-8 bg-white p-6 rounded-[2rem] shadow-sm">

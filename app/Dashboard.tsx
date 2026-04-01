@@ -6,12 +6,14 @@ import {
   TrendingUp, Calendar, Clock, Filter, ChevronDown,
   UserCheck, UserX, BookOpen, Star, AlertTriangle, Search,
   ClipboardCheck, Sparkles, GraduationCap, ShieldAlert,
-  UserCheck as UserPlusIcon, CalendarDays, Activity, Medal, School, User,
+  CalendarDays, Activity, Medal, School, User,
   FileSpreadsheet, Share2, ChevronLeft, ChevronRight, Triangle,
   ArrowLeftRight, History, Home, MapPin, Briefcase, HeartPulse, UserPlus, Hammer, MessageSquare,
   FileSearch, X
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+
+const UserPlusIcon = UserPlus;
 
 type DataCategory = 'students' | 'teachers' | 'violations' | 'substitutions' | 'special_reports' | 'staff_followup';
 type TimeRange = 'daily' | 'weekly' | 'monthly' | 'custom' | 'all';
@@ -24,7 +26,7 @@ interface CardConfig {
 }
 
 const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[] }> = ({ setView, recentActions = [] }) => {
-  const { lang, data } = useGlobal();
+  const { lang, data, userFilter } = useGlobal();
 
   const today = new Date().toISOString().split('T')[0];
   const [globalTimeRange, setGlobalTimeRange] = useState<TimeRange>('all');
@@ -174,11 +176,11 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
   const processedData = useMemo(() => {
     const results: Record<string, any[]> = {
       students: (data.studentReports || []).map(s => {
-        const hasAbsence = (data.absenceLogs || []).some(l => l.studentId === s.id);
-        const hasLateness = (data.studentLatenessLogs || []).some(l => l.studentId === s.id);
-        const hasExit = (data.exitLogs || []).some(l => l.studentId === s.id);
-        const hasViolation = (data.studentViolationLogs || []).some(l => l.studentId === s.id);
-        const hasDamage = (data.damageLogs || []).some(l => l.studentId === s.id);
+        const hasAbsence = (data.absenceLogs || []).some(l => l.studentId === s.id && (!userFilter || l.userId === userFilter));
+        const hasLateness = (data.studentLatenessLogs || []).some(l => l.studentId === s.id && (!userFilter || l.userId === userFilter));
+        const hasExit = (data.exitLogs || []).some(l => l.studentId === s.id && (!userFilter || l.userId === userFilter));
+        const hasViolation = (data.studentViolationLogs || []).some(l => l.studentId === s.id && (!userFilter || l.userId === userFilter));
+        const hasDamage = (data.damageLogs || []).some(l => l.studentId === s.id && (!userFilter || l.userId === userFilter));
 
         return {
           ...s,
@@ -191,19 +193,19 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
           damageSummary: hasDamage ? 'has_data' : ''
         };
       }),
-      teachers: (data.dailyReports.flatMap(r => r.teachersData)).map(t => ({ ...t, displayName: t.teacherName, type: 'teacher' })),
-      violations: (data.violations || []).map(v => ({ ...v, displayName: v.studentName || v.teacherName, type: 'violation' })),
-      substitutions: (data.substitutions || []).map(s => ({ ...s, displayName: s.absentTeacher, type: 'substitution' })),
+      teachers: (data.dailyReports.filter(r => !userFilter || r.userId === userFilter).flatMap(r => r.teachersData)).map(t => ({ ...t, displayName: t.teacherName, type: 'teacher' })),
+      violations: (data.violations || []).filter(v => !userFilter || v.userId === userFilter).map(v => ({ ...v, displayName: v.studentName || v.teacherName, type: 'violation' })),
+      substitutions: (data.substitutions || []).filter(s => !userFilter || s.userId === userFilter).map(s => ({ ...s, displayName: s.absentTeacher, type: 'substitution' })),
       special_reports: [
-        ...(data.absenceLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'الغياب اليومي', icon: <UserX size={12} /> })),
-        ...(data.studentLatenessLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'التأخر', icon: <Clock size={12} /> })),
-        ...(data.exitLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'خروج طالب أثناء الدراسة', icon: <UserPlusIcon size={12} /> })),
-        ...(data.damageLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل الإتلاف المدرسي', icon: <Hammer size={12} /> })),
-        ...(data.studentViolationLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'المخالفات الطلابية', icon: <ShieldAlert size={12} /> })),
-        ...(data.parentVisitLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل زيارة أولياء الأمور والتواصل بهم', icon: <Users size={12} /> })),
-        ...(data.genericSpecialReports || []).map(l => ({ ...l, displayName: l.title, cat: l.category === 'supervisor' ? 'supervisor' : l.category === 'staff' ? 'staff' : l.category === 'tests' ? 'tests' : 'supervisor', sub: l.subCategory, icon: <FileText size={12} /> })),
+        ...(data.absenceLogs || []).filter(l => !userFilter || l.userId === userFilter).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'الغياب اليومي', icon: <UserX size={12} /> })),
+        ...(data.studentLatenessLogs || []).filter(l => !userFilter || l.userId === userFilter).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'التأخر', icon: <Clock size={12} /> })),
+        ...(data.exitLogs || []).filter(l => !userFilter || l.userId === userFilter).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'خروج طالب أثناء الدراسة', icon: <UserPlusIcon size={12} /> })),
+        ...(data.damageLogs || []).filter(l => !userFilter || l.userId === userFilter).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل الإتلاف المدرسي', icon: <Hammer size={12} /> })),
+        ...(data.studentViolationLogs || []).filter(l => !userFilter || l.userId === userFilter).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'المخالفات الطلابية', icon: <ShieldAlert size={12} /> })),
+        ...(data.parentVisitLogs || []).filter(l => !userFilter || l.userId === userFilter).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل زيارة أولياء الأمور والتواصل بهم', icon: <Users size={12} /> })),
+        ...(data.genericSpecialReports || []).filter(l => !userFilter || l.userId === userFilter).map(l => ({ ...l, displayName: l.title, cat: l.category === 'supervisor' ? 'supervisor' : l.category === 'staff' ? 'staff' : l.category === 'tests' ? 'tests' : 'supervisor', sub: l.subCategory, icon: <FileText size={12} /> })),
       ],
-      staff_followup: (data.adminReports || []).flatMap(r => r.employeesData.map(e => ({ ...e, displayName: e.employeeName, type: 'staff_followup', followUpType: r.followUpType, date: r.dateStr })))
+      staff_followup: (data.adminReports || []).filter(r => !userFilter || r.userId === userFilter).flatMap(r => r.employeesData.map(e => ({ ...e, displayName: e.employeeName, type: 'staff_followup', followUpType: r.followUpType, date: r.dateStr })))
     };
 
     Object.keys(results).forEach(key => {
@@ -463,15 +465,15 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
                       onChange={(e) => updateCard(card.id, { subType: e.target.value, subSubTypes: [] })}
                       className={`text-[9px] font-bold ${design.text} bg-transparent outline-none w-full cursor-pointer`}
                     >
-                      {getSubTypes(card.category).map(sub => <option key={sub.id} value={sub.id}>{sub.label}</option>)}
+                      {getSubTypes(card.category).map((sub, sIdx) => <option key={`${sub.id}-${sIdx}`} value={sub.id}>{sub.label}</option>)}
                     </select>
                   </div>
 
                   {subSubOptions.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1 p-1 bg-white/30 rounded-xl max-h-12 overflow-y-auto scrollbar-hide">
-                      {subSubOptions.map(ss => (
+                      {subSubOptions.map((ss, ssIdx) => (
                         <button
-                          key={ss.id}
+                          key={`${ss.id}-${ssIdx}`}
                           onClick={() => toggleSubSubValue(card.id, ss.id)}
                           className={`px-2 py-0.5 rounded-full text-[7px] font-black transition-all border ${card.subSubTypes.includes(ss.id) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white/50 text-slate-500 border-white/20 hover:bg-white'}`}
                         >
@@ -585,7 +587,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
               }))
             ].slice(0, 12).map((btn, i) => (
               <button
-                key={i}
+                key={`quick-${btn.label}-${i}`}
                 onClick={() => setView?.(btn.view)}
                 className="flex flex-col items-center justify-center p-6 rounded-[2rem] border-2 border-slate-50 bg-slate-50 hover:bg-white hover:border-blue-600 hover:shadow-2xl hover:-translate-y-2 transition-all gap-3 group"
               >

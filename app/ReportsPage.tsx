@@ -28,7 +28,7 @@ const toHijri = (dateStr: string) => {
 
 // --- Teachers Follow-up Page (DailyReportsPage) ---
 export const DailyReportsPage: React.FC = () => {
-  const { lang, data, updateData } = useGlobal();
+  const { lang, data, updateData, currentUser, userFilter } = useGlobal();
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
@@ -68,7 +68,11 @@ export const DailyReportsPage: React.FC = () => {
   const [branchManager, setBranchManager] = useState(data.profile.branchManager || '');
 
 
-  const reports = data.dailyReports || [];
+  const reports = useMemo(() => {
+    const allReports = data.dailyReports || [];
+    if (!userFilter) return allReports;
+    return allReports.filter(r => r.userId === userFilter);
+  }, [data.dailyReports, userFilter]);
 
   // Set active report on load if not set & Auto-create for today
   useEffect(() => {
@@ -183,7 +187,8 @@ export const DailyReportsPage: React.FC = () => {
     })) : [];
 
     const newReport: DailyReportContainer = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      userId: currentUser?.id,
       dayName: new Intl.DateTimeFormat('ar-EG', { weekday: 'long' }).format(new Date()),
       dateStr: today,
       teachersData: newTeachers as TeacherFollowUp[],
@@ -198,7 +203,8 @@ export const DailyReportsPage: React.FC = () => {
   const addNewTeacher = () => {
     if (!activeReportId) return;
     const newTeacher: any = {
-      id: Date.now().toString(), teacherName: '', subjectCode: '', className: '',
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      teacherName: '', subjectCode: '', className: '',
       violations_notes: [], order: teachers.length + 1,
       gender: 'ذكر'
     };
@@ -748,6 +754,7 @@ export const DailyReportsPage: React.FC = () => {
     const newId = `agg_${Date.now()}`;
     const newReport: DailyReportContainer = {
       id: newId,
+      userId: currentUser?.id,
       dayName: 'تقرير مجمع',
       dateStr: `${from} إلى ${to}`,
       teachersData: Object.values(aggregatedData),
@@ -2058,6 +2065,12 @@ export const DailyReportsPage: React.FC = () => {
         className="hidden"
         onChange={processImportedFile}
       />
+
+      <datalist id="teacher-names-list">
+        {allTeacherNames.map((name, idx) => (
+          <option key={`teacher-name-${idx}`} value={name} />
+        ))}
+      </datalist>
     </div >
   );
 };
@@ -3039,7 +3052,7 @@ export const StudentsReportsPage: React.FC = () => {
       const ws = wb.Sheets[wsname];
       const dataXLSX = XLSX.utils.sheet_to_json(ws);
       const imported = dataXLSX.map((row: any) => ({
-        id: Date.now().toString() + Math.random(),
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         name: row['اسم الطالب'] || '',
         gender: row['النوع'] || optionsAr.gender[0],
         grade: row['الصف'] || optionsAr.grades[0],

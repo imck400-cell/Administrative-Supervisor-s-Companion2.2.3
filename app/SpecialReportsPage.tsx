@@ -496,9 +496,9 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                 onChange={(e) => setCurrentExamMonthTerm(e.target.value)}
               >
                 {activeSubTab === 'الاختبار الشهري' ? (
-                  ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'].map(m => <option key={m} value={m}>{m}</option>)
+                  ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'].map((m, idx) => <option key={`${m}-${idx}`} value={m}>{m}</option>)
                 ) : (
-                  ['الأول', 'الثاني'].map(t => <option key={t} value={t}>{t}</option>)
+                  ['الأول', 'الثاني'].map((t, idx) => <option key={`${t}-${idx}`} value={t}>{t}</option>)
                 )}
               </select>
             </div>
@@ -580,7 +580,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                         onChange={(e) => updateAbsentEntry(idx, 'subject', e.target.value)}
                       >
                         <option value="">اختر المادة...</option>
-                        {currentSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                        {currentSubjects.map((s, sIdx) => <option key={`${s}-${sIdx}`} value={s}>{s}</option>)}
                       </select>
                     </div>
                     <button
@@ -629,9 +629,9 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
               <select className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-black" value={examFilters.month} onChange={e => setExamFilters({ ...examFilters, month: e.target.value })}>
                 <option value="">الكل</option>
                 {activeSubTab === 'الاختبار الشهري' ? (
-                  ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'].map(m => <option key={m} value={m}>{m}</option>)
+                  ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'].map((m, idx) => <option key={`${m}-${idx}`} value={m}>{m}</option>)
                 ) : (
-                  ['الأول', 'الثاني'].map(t => <option key={t} value={t}>{t}</option>)
+                  ['الأول', 'الثاني'].map((t, idx) => <option key={`${t}-${idx}`} value={t}>{t}</option>)
                 )}
               </select>
             </div>
@@ -650,7 +650,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 mr-2">المادة</label>
               <select className="w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-black" value={examFilters.subject} onChange={e => setExamFilters({ ...examFilters, subject: e.target.value })}>
-                <option value="">الكل</option>{currentSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                <option value="">الكل</option>{currentSubjects.map((s, sIdx) => <option key={`${s}-${sIdx}`} value={s}>{s}</option>)}
               </select>
             </div>
             <div className="space-y-1">
@@ -674,8 +674,8 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                 <th rowSpan={2} className="p-4 border-e-2 border-[#7030A0] w-12">م</th>
                 <th rowSpan={2} className="p-4 border-e-2 border-[#7030A0] w-64 text-right">اسم الطالب الغائب</th>
                 <th rowSpan={2} className="p-4 border-e-2 border-[#7030A0] w-32">التاريخ</th>
-                {currentSubjects.map(subj => (
-                  <th key={subj} colSpan={2} className="p-2 border-e-2 border-[#7030A0] font-black">{subj}</th>
+                {currentSubjects.map((subj, sIdx) => (
+                  <th key={`${subj}-${sIdx}`} colSpan={2} className="p-2 border-e-2 border-[#7030A0] font-black">{subj}</th>
                 ))}
                 <th rowSpan={2} className="p-4 w-12"></th>
               </tr>
@@ -703,8 +703,8 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                     <td className="border-e-2 border-[#7030A0] p-1">
                       <input type="date" className="w-full p-2 text-center text-[10px] font-bold outline-none bg-transparent" value={log.date} onChange={e => updateExamLog(log.id, 'date', e.target.value)} />
                     </td>
-                    {currentSubjects.map(subj => (
-                      <React.Fragment key={subj}>
+                    {currentSubjects.map((subj, sIdx) => (
+                      <React.Fragment key={`${subj}-${sIdx}`}>
                         <td className={`border-e border-[#7030A0]/20 p-1 transition-colors ${log.subjectsData[subj]?.status === 'not_tested' ? 'bg-amber-50' : ''}`}>
                           <input className="w-full p-1 text-center text-[11px] font-bold outline-none bg-transparent focus:bg-white rounded" value={log.subjectsData[subj]?.class} onChange={e => updateSubjectData(log.id, subj, 'class', e.target.value)} placeholder="مثال: 9-أ" />
                         </td>

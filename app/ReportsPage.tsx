@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, memo } from 'react';
+import { toast } from 'sonner';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useGlobal } from '../context/GlobalState';
 import {
   Plus, Search, Trash2, Filter, ChevronDown, ChevronUp, Palette, Check, Calendar, Percent, User, Users, Target, Settings2, AlertCircle, X, ChevronRight, Zap, CheckCircle, FilePlus, FolderOpen, Save, ListOrdered, ArrowUpDown, ArrowUp, ArrowDown, SortAsc, Book, School, Type, Sparkles, FilterIcon, BarChart3, LayoutList, Upload, Download, Phone, UserCircle, Activity, Star, FileText, FileSpreadsheet, Share2, Edit, ChevronLeft, UserCheck, GraduationCap, MessageCircle
@@ -39,6 +41,18 @@ export const DailyReportsPage: React.FC = () => {
   const [violationModal, setViolationModal] = useState<{ id: string, notes: string[] } | null>(null);
   const [activeTeacherFilter, setActiveTeacherFilter] = useState<string>('');
   const [highlightedRowId, setHighlightedRowId] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+  });
 
   // Import Teachers Modal State
   const [showImportModal, setShowImportModal] = useState(false);
@@ -175,7 +189,27 @@ export const DailyReportsPage: React.FC = () => {
     const today = new Date().toISOString().split('T')[0];
     const exists = reports.some(r => r.dateStr === today);
     if (exists) {
-      if (!confirm(lang === 'ar' ? 'الجدول لهذا اليوم موجود بالفعل، فهل أنت متأكد من تكرار الجدول لهذا اليوم؟' : 'The schedule for today already exists, are you sure you want to duplicate it?')) return;
+      if (confirmDialog.isOpen) return; // Prevent multiple dialogs
+      setConfirmDialog({
+        isOpen: true,
+        title: 'تكرار الجدول',
+        message: lang === 'ar' ? 'الجدول لهذا اليوم موجود بالفعل، فهل أنت متأكد من تكرار الجدول لهذا اليوم؟' : 'The schedule for today already exists, are you sure you want to duplicate it?',
+        onConfirm: () => {
+          const newId = `rep_${Date.now()}`;
+          const newReport: DailyReportContainer = {
+            id: newId,
+            userId: currentUser?.id,
+            dateStr: today,
+            dayName: new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'long' }).format(new Date()),
+            teachersData: [],
+            periodType: 'daily'
+          };
+          updateData({ dailyReports: [...(data.dailyReports || []), newReport] });
+          setActiveReportId(newId);
+          toast.success(lang === 'ar' ? 'تم إنشاء جدول جديد' : 'New schedule created');
+        }
+      });
+      return;
     }
 
     const lastReport = reports[reports.length - 1];
@@ -232,7 +266,22 @@ export const DailyReportsPage: React.FC = () => {
 
   const deleteTeacher = (teacherId: string) => {
     if (!activeReportId) return;
-    if (!confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذا المعلم؟' : 'Are you sure you want to delete this teacher?')) return;
+    setConfirmDialog({
+      isOpen: true,
+      title: 'حذف معلم',
+      message: lang === 'ar' ? 'هل أنت متأكد من حذف هذا المعلم؟' : 'Are you sure you want to delete this teacher?',
+      type: 'danger',
+      onConfirm: () => {
+        const updatedReports = (data.dailyReports || []).map(r => {
+          if (r.id === activeReportId) {
+            return { ...r, teachersData: r.teachersData.filter(t => t.id !== teacherId) };
+          }
+          return r;
+        });
+        updateData({ dailyReports: updatedReports });
+        toast.success(lang === 'ar' ? 'تم حذف المعلم' : 'Teacher deleted');
+      }
+    });
     const updatedReports = reports.map(r => {
       if (r.id === activeReportId) {
         return {
@@ -248,7 +297,23 @@ export const DailyReportsPage: React.FC = () => {
 
   const deleteSelectedTeachers = () => {
     if (!activeReportId || selectedTeacherIds.length === 0) return;
-    if (!confirm(lang === 'ar' ? `هل أنت متأكد من حذف ${selectedTeacherIds.length} معلم؟` : `Are you sure you want to delete ${selectedTeacherIds.length} teachers?`)) return;
+    setConfirmDialog({
+      isOpen: true,
+      title: 'حذف معلمين',
+      message: lang === 'ar' ? `هل أنت متأكد من حذف ${selectedTeacherIds.length} معلم؟` : `Are you sure you want to delete ${selectedTeacherIds.length} teachers?`,
+      type: 'danger',
+      onConfirm: () => {
+        const updatedReports = (data.dailyReports || []).map(r => {
+          if (r.id === activeReportId) {
+            return { ...r, teachersData: r.teachersData.filter(t => !selectedTeacherIds.includes(t.id)) };
+          }
+          return r;
+        });
+        updateData({ dailyReports: updatedReports });
+        setSelectedTeacherIds([]);
+        toast.success(lang === 'ar' ? 'تم حذف المعلمين المحددين' : 'Selected teachers deleted');
+      }
+    });
     const updatedReports = reports.map(r => {
       if (r.id === activeReportId) {
         return {
@@ -293,7 +358,28 @@ export const DailyReportsPage: React.FC = () => {
 
   const fillAllMax = () => {
     if (!activeReportId) return;
-    if (!confirm(lang === 'ar' ? 'هل أنت متأكد من تعبئة جميع الدرجات بالحد الأقصى؟' : 'Fill all max?')) return;
+    setConfirmDialog({
+      isOpen: true,
+      title: 'تعبئة الدرجات',
+      message: lang === 'ar' ? 'هل أنت متأكد من تعبئة جميع الدرجات بالحد الأقصى؟' : 'Fill all max?',
+      onConfirm: () => {
+        const updatedReports = (data.dailyReports || []).map(r => {
+          if (r.id === activeReportId) {
+            const newTeachers = r.teachersData.map(t => {
+              const newScores = { ...t.scores };
+              metricsConfig.forEach(m => {
+                if (m.key !== 'violations_score') newScores[m.key] = m.max;
+              });
+              return { ...t, scores: newScores };
+            });
+            return { ...r, teachersData: newTeachers };
+          }
+          return r;
+        });
+        updateData({ dailyReports: updatedReports });
+        toast.success(lang === 'ar' ? 'تمت التعبئة بنجاح' : 'Filled successfully');
+      }
+    });
     const updatedReports = reports.map(r => {
       if (r.id === activeReportId) {
         return {
@@ -715,7 +801,7 @@ export const DailyReportsPage: React.FC = () => {
     );
 
     if (filtered.length === 0) {
-      alert('لا توجد تقارير يومية في هذه الفترة الزمنية');
+      toast.error('لا توجد تقارير يومية في هذه الفترة الزمنية');
       return;
     }
 
@@ -768,15 +854,22 @@ export const DailyReportsPage: React.FC = () => {
     updateData({ dailyReports: [newReport, ...(data.dailyReports || [])] });
     setActiveReportId(newId);
     setShowIndicatorsModal(false);
-    alert(`تم إنشاء التقرير الـ ${periodMap[period]} بنجاح`);
+    toast.success(`تم إنشاء التقرير الـ ${periodMap[period]} بنجاح`);
   };
 
   const deleteReport = (reportId: string) => {
-    if (confirm('هل أنت متأكد من حذف هذا التقرير؟')) {
-      const newList = (data.dailyReports || []).filter(r => r.id !== reportId);
-      updateData({ dailyReports: newList });
-      if (activeReportId === reportId) setActiveReportId(newList.length > 0 ? newList[0].id : null);
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'حذف التقرير',
+      message: 'هل أنت متأكد من حذف هذا التقرير؟',
+      type: 'danger',
+      onConfirm: () => {
+        const newList = (data.dailyReports || []).filter(r => r.id !== reportId);
+        updateData({ dailyReports: newList });
+        if (activeReportId === reportId) setActiveReportId(newList.length > 0 ? newList[0].id : null);
+        toast.success('تم حذف التقرير بنجاح');
+      }
+    });
   };
   const processImportedFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -824,7 +917,7 @@ export const DailyReportsPage: React.FC = () => {
       } else if (selectedFileType === 'pdf') {
         // For PDF, we'll try to extract text (basic approach)
         // Note: Full PDF parsing requires additional libraries
-        alert('لاستيراد ملفات PDF، يرجى تحويلها إلى Excel أو TXT أولاً');
+        toast.error('لاستيراد ملفات PDF، يرجى تحويلها إلى Excel أو TXT أولاً');
         setShowImportModal(false);
         return;
       } else if (selectedFileType === 'txt') {
@@ -846,7 +939,7 @@ export const DailyReportsPage: React.FC = () => {
       );
 
       if (teacherNames.length === 0) {
-        alert('لم يتم العثور على أسماء معلمين في الملف');
+        toast.error('لم يتم العثور على أسماء معلمين في الملف');
         setShowImportModal(false);
         return;
       }
@@ -873,7 +966,7 @@ export const DailyReportsPage: React.FC = () => {
         });
 
       if (newTeachers.length === 0) {
-        alert('جميع الأسماء موجودة بالفعل في الجدول');
+        toast.info('جميع الأسماء موجودة بالفعل في الجدول');
         setShowImportModal(false);
         return;
       }
@@ -890,11 +983,11 @@ export const DailyReportsPage: React.FC = () => {
       });
 
       updateData({ dailyReports: updatedReports });
-      alert(`تم استيراد ${newTeachers.length} معلم بنجاح`);
+      toast.success(`تم استيراد ${newTeachers.length} معلم بنجاح`);
       setShowImportModal(false);
     } catch (error) {
       console.error('Error importing file:', error);
-      alert('حدث خطأ أثناء استيراد الملف');
+      toast.error('حدث خطأ أثناء استيراد الملف');
     }
 
     // Reset file input
@@ -1119,7 +1212,7 @@ export const DailyReportsPage: React.FC = () => {
                 const percent = maxTotal > 0 ? ((total / maxTotal) * 100).toFixed(1) : '0';
                 return (
                   <tr
-                    key={t.id}
+                    key={`${t.id}-${idx}`}
                     className={`border-b transition-colors h-10 ${highlightedRowId === t.id ? 'bg-yellow-50' : (selectedTeacherIds.includes(t.id) ? 'bg-blue-50' : 'hover:bg-slate-50')}`}
                     onClick={() => setHighlightedRowId(t.id)}
                   >
@@ -1150,7 +1243,7 @@ export const DailyReportsPage: React.FC = () => {
                       <input
                         list="teacher-names-list"
                         className="w-full text-right font-bold outline-none bg-transparent text-xs"
-                        value={t.teacherName}
+                        value={t.teacherName || ''}
                         onChange={e => {
                           const newName = e.target.value;
                           const trimmed = newName.trim();
@@ -1196,17 +1289,17 @@ export const DailyReportsPage: React.FC = () => {
                       )
                     }
                     {
-                      displayedMetrics.filter(m => m.key !== 'violations_score').map(m => {
+                      displayedMetrics.filter(m => m.key !== 'violations_score').map((m, mIdx) => {
                         const isUnaccredited = (t.unaccreditedMetrics || []).includes(m.key);
                         return (
-                          <td key={m.key} className={`p-1 border-e relative group ${isUnaccredited ? 'bg-red-50/30' : ''}`}>
+                          <td key={`${m.key}-${mIdx}`} className={`p-1 border-e relative group ${isUnaccredited ? 'bg-red-50/30' : ''}`}>
                             <div className="flex flex-col items-center gap-0.5 h-full">
                               <input
                                 id={`input-${t.id}-${m.key}`}
                                 type="number"
                                 disabled={isUnaccredited}
                                 className={`w-full text-center outline-none bg-transparent font-bold text-xs focus:bg-blue-50 focus:ring-1 focus:ring-blue-200 rounded font-sans ${isUnaccredited ? 'opacity-30 pointer-events-none' : ''} ${!isUnaccredited && (Number((t as any)[m.key]) || 0) <= m.max * 0.25 ? 'text-red-600' : 'text-slate-800'}`}
-                                value={(t as any)[m.key]}
+                                value={(t as any)[m.key] || 0}
                                 onChange={e => {
                                   const val = Math.min(m.max, Math.max(0, parseInt(e.target.value) || 0));
                                   updateTeacher(t.id, { [m.key]: val });
@@ -1239,7 +1332,7 @@ export const DailyReportsPage: React.FC = () => {
                         <input
                           type="number"
                           className="w-full text-center text-red-600 font-bold outline-none bg-transparent text-xs font-sans"
-                          value={t.violations_score}
+                          value={t.violations_score || 0}
                           onChange={e => updateTeacher(t.id, { violations_score: parseInt(e.target.value) || 0 })}
                           onClick={(e) => e.stopPropagation()}
                           onFocus={(e) => e.target.select()}
@@ -1278,8 +1371,8 @@ export const DailyReportsPage: React.FC = () => {
             <tfoot className="bg-slate-50 text-slate-800 font-bold text-xs sticky bottom-0 z-20 shadow-lg border-t-2 border-slate-200">
               <tr>
                 <td colSpan={filterMode === 'metric' ? 2 : 5} className="p-2 text-left px-4 border-e">المجموع الكلي</td>
-                {displayedMetrics.filter(m => m.key !== 'violations_score').map(m => (
-                  <td key={m.key} className="p-2 border-e transition-colors" style={getMetricStyle(m)}>
+                {displayedMetrics.filter(m => m.key !== 'violations_score').map((m, mIdx) => (
+                  <td key={`${m.key}-footer-${mIdx}`} className="p-2 border-e transition-colors" style={getMetricStyle(m)}>
                     <div className={`flex flex-col font-black font-sans ${getTextColor(m.color)}`}>
                       <span>{getColSum(m.key)}</span>
                     </div>
@@ -1625,13 +1718,20 @@ export const DailyReportsPage: React.FC = () => {
                         placeholder="مسمى المجال.."
                       />
                       <button
-                        onClick={() => {
-                          if (confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذا المجال؟ سيتم حذفه من كافة السجلات.' : 'Are you sure you want to delete this domain? It will be removed from all records.')) {
-                            const newList = metricsList.filter(item => item.key !== m.key);
-                            updateData({ metricsList: newList });
-                            setSelectedMetrics(prev => prev.filter(k => k !== m.key));
-                          }
-                        }}
+                          onClick={() => {
+                            setConfirmDialog({
+                              isOpen: true,
+                              title: 'حذف مجال',
+                              message: lang === 'ar' ? 'هل أنت متأكد من حذف هذا المجال؟ سيتم حذفه من كافة السجلات.' : 'Are you sure you want to delete this domain? It will be removed from all records.',
+                              type: 'danger',
+                              onConfirm: () => {
+                                const newList = metricsList.filter(item => item.key !== m.key);
+                                updateData({ metricsList: newList });
+                                setSelectedMetrics(prev => prev.filter(k => k !== m.key));
+                                toast.success('تم حذف المجال بنجاح');
+                              }
+                            });
+                          }}
                         className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                         title="حذف المجال"
                       >
@@ -2071,6 +2171,18 @@ export const DailyReportsPage: React.FC = () => {
           <option key={`teacher-name-${idx}`} value={name} />
         ))}
       </datalist>
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type={confirmDialog.type}
+        onConfirm={() => {
+          confirmDialog.onConfirm();
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        }}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div >
   );
 };
@@ -2079,6 +2191,18 @@ export const DailyReportsPage: React.FC = () => {
 export const ViolationsPage: React.FC = () => {
   const { lang, data, updateData } = useGlobal();
   const [activeMode, setActiveMode] = useState<'students' | 'teachers'>('students');
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+  });
 
   // Filtering states
   const today = new Date().toISOString().split('T')[0];
@@ -2187,9 +2311,16 @@ export const ViolationsPage: React.FC = () => {
   };
 
   const deleteViolation = (id: string) => {
-    if (confirm('هل أنت متأكد من الحذف؟')) {
-      updateData({ violations: data.violations.filter(v => v.id !== id) });
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'حذف سجل',
+      message: 'هل أنت متأكد من الحذف؟',
+      type: 'danger',
+      onConfirm: () => {
+        updateData({ violations: data.violations.filter(v => v.id !== id) });
+        toast.success('تم الحذف بنجاح');
+      }
+    });
   };
 
   const handleSignature = (id: string) => {
@@ -2572,6 +2703,17 @@ export const ViolationsPage: React.FC = () => {
           </table>
         </div>
       </div>
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type={confirmDialog.type}
+        onConfirm={() => {
+          confirmDialog.onConfirm();
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        }}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };
@@ -2667,17 +2809,17 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
       </td>
       <td className="p-1 border-e border-slate-100 bg-[#FFF2CC]/5">
         <select className={`text-[9px] w-full appearance-none text-center outline-none bg-transparent ${s.academicReading.includes('ضعيف') ? 'text-red-600 font-black' : ''}`} value={s.academicReading} onChange={(e) => updateStudent(s.id, 'academicReading', e.target.value)}>
-          {optionsAr.level.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.level[optionsAr.level.indexOf(o)]}</option>)}
+          {optionsAr.level.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{lang === 'ar' ? o : optionsEn.level[optionsAr.level.indexOf(o)]}</option>)}
         </select>
       </td>
       <td className="p-1 border-e border-slate-100 bg-[#FFF2CC]/5">
         <select className={`text-[9px] w-full appearance-none text-center outline-none bg-transparent ${s.academicWriting.includes('ضعيف') ? 'text-red-600 font-black' : ''}`} value={s.academicWriting} onChange={(e) => updateStudent(s.id, 'academicWriting', e.target.value)}>
-          {optionsAr.level.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.level[optionsAr.level.indexOf(o)]}</option>)}
+          {optionsAr.level.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{lang === 'ar' ? o : optionsEn.level[optionsAr.level.indexOf(o)]}</option>)}
         </select>
       </td>
       <td className="p-1 border-e border-slate-100 bg-[#FFF2CC]/5">
         <select className={`text-[9px] w-full appearance-none text-center outline-none bg-transparent ${s.academicParticipation.includes('ضعيف') ? 'text-red-600 font-black' : ''}`} value={s.academicParticipation} onChange={(e) => updateStudent(s.id, 'academicParticipation', e.target.value)}>
-          {optionsAr.level.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.level[optionsAr.level.indexOf(o)]}</option>)}
+          {optionsAr.level.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{lang === 'ar' ? o : optionsEn.level[optionsAr.level.indexOf(o)]}</option>)}
         </select>
       </td>
       <td className="p-1 border-e border-slate-100 bg-[#E2F0D9]/10">
@@ -2697,7 +2839,7 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
       </td>
       <td className="p-1 border-e border-slate-100">
         <select className={`text-[9px] font-bold w-full appearance-none text-center outline-none bg-transparent ${s.behaviorLevel.includes('ضعيف') ? 'text-red-600' : ''}`} value={s.behaviorLevel} onChange={(e) => updateStudent(s.id, 'behaviorLevel', e.target.value)}>
-          {optionsAr.behavior.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.behavior[optionsAr.behavior.indexOf(o)]}</option>)}
+          {optionsAr.behavior.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{lang === 'ar' ? o : optionsEn.behavior[optionsAr.behavior.indexOf(o)]}</option>)}
         </select>
       </td>
       <td className="p-1 border-e border-slate-100">
@@ -2750,6 +2892,18 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
 
 export const StudentsReportsPage: React.FC = () => {
   const { data, updateData, lang } = useGlobal();
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+  });
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [filterValue, setFilterValue] = useState('');
   const [selectedStudentNames, setSelectedStudentNames] = useState<string[]>([]);
@@ -2933,7 +3087,17 @@ export const StudentsReportsPage: React.FC = () => {
   };
 
   const deleteStudent = (id: string) => {
-    if (!confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذا الطالب؟' : 'Are you sure you want to delete this student?')) return;
+    setConfirmDialog({
+      isOpen: true,
+      title: lang === 'ar' ? 'حذف طالب' : 'Delete Student',
+      message: lang === 'ar' ? 'هل أنت متأكد من حذف هذا الطالب؟' : 'Are you sure you want to delete this student?',
+      type: 'danger',
+      onConfirm: () => {
+        const updated = (data.studentReports || []).filter(s => s.id !== id);
+        updateData({ studentReports: updated });
+        toast.success(lang === 'ar' ? 'تم حذف الطالب بنجاح' : 'Student deleted successfully');
+      }
+    });
     updateData({ studentReports: studentData.filter(s => s.id !== id) });
     // Reset selection if deleted
     setSelectedStudentIds(prev => prev.filter(sid => sid !== id));
@@ -2941,9 +3105,17 @@ export const StudentsReportsPage: React.FC = () => {
 
   const bulkDeleteStudents = () => {
     if (selectedStudentIds.length === 0) return;
-    if (!confirm(lang === 'ar' ? 'هل أنت متأكد من حذف الأسماء المحددة؟' : 'Are you sure you want to delete the selected names?')) return;
-    updateData({ studentReports: studentData.filter(s => !selectedStudentIds.includes(s.id)) });
-    setSelectedStudentIds([]);
+    setConfirmDialog({
+      isOpen: true,
+      title: lang === 'ar' ? 'حذف الأسماء المحددة' : 'Delete Selected Names',
+      message: lang === 'ar' ? 'هل أنت متأكد من حذف الأسماء المحددة؟' : 'Are you sure you want to delete the selected names?',
+      type: 'danger',
+      onConfirm: () => {
+        updateData({ studentReports: studentData.filter(s => !selectedStudentIds.includes(s.id)) });
+        setSelectedStudentIds([]);
+        toast.success(lang === 'ar' ? 'تم الحذف بنجاح' : 'Deleted successfully');
+      }
+    });
   };
 
   const normalizeArabic = (text: any): string => {
@@ -3003,7 +3175,7 @@ export const StudentsReportsPage: React.FC = () => {
     }
 
     if (deletedCount === 0) {
-      alert(lang === 'ar' ? 'لم يتم العثور على طلاب مطابقين لحذفهم' : 'No matching students found to delete');
+      toast.error(lang === 'ar' ? 'لم يتم العثور على طلاب مطابقين لحذفهم' : 'No matching students found to delete');
       return;
     }
 
@@ -3011,13 +3183,19 @@ export const StudentsReportsPage: React.FC = () => {
       ? `سيتم حذف ${deletedCount} طالب بشكل نهائي. هل أنت متأكد؟`
       : `Are you sure you want to delete ${deletedCount} students permanently?`;
 
-    if (!confirm(confirmMsg)) return;
-
-    updateData({ studentReports: finalData });
-    setShowDeleteStudentsModal(false);
-    setDeletionFilters({ grades: [], sections: [], deleteDuplicates: false });
-    setSelectedStudentIds([]); // Clear selection to be safe
-    alert(lang === 'ar' ? 'تم الحذف بنجاح' : 'Deleted successfully');
+    setConfirmDialog({
+      isOpen: true,
+      title: lang === 'ar' ? 'حذف متقدم' : 'Advanced Delete',
+      message: confirmMsg,
+      type: 'danger',
+      onConfirm: () => {
+        updateData({ studentReports: finalData });
+        setShowDeleteStudentsModal(false);
+        setDeletionFilters({ grades: [], sections: [], deleteDuplicates: false });
+        setSelectedStudentIds([]); // Clear selection to be safe
+        toast.success(lang === 'ar' ? 'تم الحذف بنجاح' : 'Deleted successfully');
+      }
+    });
   };
 
   const handleDeleteDuplicates = () => {
@@ -3025,7 +3203,23 @@ export const StudentsReportsPage: React.FC = () => {
   };
 
   const bulkAutoFill = () => {
-    if (!confirm(lang === 'ar' ? 'سيتم تعبئة الخيار الأول لجميع الحقول في كافة الطلاب. استمرار؟' : 'Auto-fill first option for all students?')) return;
+    setConfirmDialog({
+      isOpen: true,
+      title: lang === 'ar' ? 'تعبئة تلقائية' : 'Auto-fill',
+      message: lang === 'ar' ? 'سيتم تعبئة الخيار الأول لجميع الحقول في كافة الطلاب. استمرار؟' : 'Auto-fill first option for all students?',
+      onConfirm: () => {
+        const updated = (data.studentReports || []).map(s => ({
+          ...s,
+          academicReading: optionsAr.level[0],
+          academicWriting: optionsAr.level[0],
+          academicParticipation: optionsAr.level[0],
+          behaviorLevel: optionsAr.behavior[0],
+          mainNotes: []
+        }));
+        updateData({ studentReports: updated });
+        toast.success(lang === 'ar' ? 'تمت التعبئة بنجاح' : 'Auto-filled successfully');
+      }
+    });
     const updated = studentData.map(s => ({
       ...s,
       healthStatus: optionsAr.health[0],
@@ -3081,7 +3275,7 @@ export const StudentsReportsPage: React.FC = () => {
         setShowImportConfirmModal(true);
       } else {
         updateData({ studentReports: [...studentData, ...imported as any] });
-        alert(lang === 'ar' ? 'تم استيراد البيانات بنجاح' : 'Data imported successfully');
+        toast.success(lang === 'ar' ? 'تم استيراد البيانات بنجاح' : 'Data imported successfully');
       }
     };
     reader.readAsBinaryString(file);
@@ -3337,7 +3531,7 @@ export const StudentsReportsPage: React.FC = () => {
       setShowIndividualReportModal(false);
       setCurrentDetailStudent(null);
       setDetailModalSearch('');
-      alert('تم تحديث بيانات الطالب بنجاح');
+      toast.success('تم تحديث بيانات الطالب بنجاح');
     }
   };
 
@@ -4149,7 +4343,7 @@ export const StudentsReportsPage: React.FC = () => {
                   updateData({ studentReports: [...studentData, ...pendingImportData] });
                   setShowImportConfirmModal(false);
                   setPendingImportData([]);
-                  alert(lang === 'ar' ? 'تم استيراد كافة البيانات بنجاح' : 'All data imported successfully');
+                  toast.success(lang === 'ar' ? 'تم استيراد كافة البيانات بنجاح' : 'All data imported successfully');
                 }}
                 className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-blue-50 border-2 border-slate-100 hover:border-blue-200 rounded-2xl transition-all group"
               >
@@ -4172,7 +4366,7 @@ export const StudentsReportsPage: React.FC = () => {
                   updateData({ studentReports: [...studentData, ...filtered] });
                   setShowImportConfirmModal(false);
                   setPendingImportData([]);
-                  alert(lang === 'ar' ? `تم استيراد ${filtered.length} سجل جديد وتجاهل المكرر` : `Imported ${filtered.length} new records and skipped duplicates`);
+                  toast.success(lang === 'ar' ? `تم استيراد ${filtered.length} سجل جديد وتجاهل المكرر` : `Imported ${filtered.length} new records and skipped duplicates`);
                 }}
                 className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-emerald-50 border-2 border-slate-100 hover:border-emerald-200 rounded-2xl transition-all group"
               >
@@ -4196,6 +4390,17 @@ export const StudentsReportsPage: React.FC = () => {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type={confirmDialog.type}
+        onConfirm={() => {
+          confirmDialog.onConfirm();
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        }}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

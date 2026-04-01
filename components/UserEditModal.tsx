@@ -3,6 +3,7 @@ import { useGlobal } from '../context/GlobalState';
 import { X, Wand2, Check, Shield, User, Calendar, School, Key, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User as UserType, UserPermissions } from '../types';
+import ConfirmDialog from './ConfirmDialog';
 
 interface UserEditModalProps {
   isOpen: boolean;
@@ -38,6 +39,18 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
   const { data, updateData } = useGlobal();
   const [formData, setFormData] = useState<UserType | null>(null);
   const [selectAll, setSelectAll] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+  });
 
   useEffect(() => {
     if (user) {
@@ -123,10 +136,16 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
 
   const handleDelete = () => {
     if (!formData) return;
-    if (window.confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
-      updateData({ users: data.users.filter(u => u.id !== formData.id) });
-      onClose();
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'حذف المستخدم',
+      message: 'هل أنت متأكد من حذف هذا المستخدم؟',
+      type: 'danger',
+      onConfirm: () => {
+        updateData({ users: data.users.filter(u => u.id !== formData.id) });
+        onClose();
+      }
+    });
   };
 
   const toggleSchool = (school: string) => {
@@ -361,6 +380,17 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
             </div>
           </div>
         </motion.div>
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          type={confirmDialog.type}
+          onConfirm={() => {
+            confirmDialog.onConfirm();
+            setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+          }}
+          onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        />
       </div>
     </AnimatePresence>
   );

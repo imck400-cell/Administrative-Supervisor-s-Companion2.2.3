@@ -7,6 +7,7 @@ import {
   Calendar, Layers, RefreshCcw
 } from 'lucide-react';
 import { AppData } from '../types';
+import ConfirmDialog from './ConfirmDialog';
 
 interface BackupVersion {
   id: string;
@@ -24,6 +25,18 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
   const [isLoading, setIsLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: 'error' | 'success', text: string } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+  });
   
   // START OF CHANGE
   const [pendingData, setPendingData] = useState<any>(null);
@@ -192,13 +205,19 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
   // END OF CHANGE
 
   const handleRestore = (backup: BackupVersion) => {
-    if (!confirm('هل أنت متأكد من استعادة هذه النسخة؟ سيتم فقدان البيانات الحالية غير المحفوظة.')) return;
-    
-    // Archive current before restoring
-    archiveCurrentData();
-    
-    localStorage.setItem('rafiquk_data', backup.data);
-    window.location.reload();
+    setConfirmDialog({
+      isOpen: true,
+      title: 'استعادة النسخة الاحتياطية',
+      message: 'هل أنت متأكد من استعادة هذه النسخة؟ سيتم فقدان البيانات الحالية غير المحفوظة.',
+      type: 'warning',
+      onConfirm: () => {
+        // Archive current before restoring
+        archiveCurrentData();
+        
+        localStorage.setItem('rafiquk_data', backup.data);
+        window.location.reload();
+      }
+    });
   };
 
   // Drag & Drop handlers
@@ -463,6 +482,18 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
           <p className="text-[10px] text-slate-400 font-bold">بإشراف المستشار الإداري والتربوي إبراهيم دخان</p>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type={confirmDialog.type}
+        onConfirm={() => {
+          confirmDialog.onConfirm();
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        }}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

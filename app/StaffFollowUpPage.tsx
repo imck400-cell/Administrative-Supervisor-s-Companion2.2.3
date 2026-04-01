@@ -1,5 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { toast } from 'sonner';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useGlobal } from '../context/GlobalState';
 import {
     Plus, Archive, UserPlus, FileUp, UserCircle, Palette,
@@ -58,6 +60,18 @@ const StaffFollowUpPage: React.FC = () => {
     const [notesText, setNotesText] = useState('');
     const [employeeComment, setEmployeeComment] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [confirmDialog, setConfirmDialog] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+        type?: 'danger' | 'warning' | 'info';
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { },
+    });
     const [unaccreditedItems, setUnaccreditedItems] = useState<Record<string, boolean>>({});
     const [executedCounts, setExecutedCounts] = useState<Record<string, number>>({});
 
@@ -234,15 +248,22 @@ const StaffFollowUpPage: React.FC = () => {
         const updatedArchive = [newReport, ...individualArchive];
         setIndividualArchive(updatedArchive);
         localStorage.setItem('individual_reports_archive', JSON.stringify(updatedArchive));
-        alert('تم حفظ التقرير في الأرشيف بنجاح');
+        toast.success('تم حفظ التقرير في الأرشيف بنجاح');
     };
 
     const deleteFromArchive = (id: string) => {
-        if (confirm('هل أنت متأكد من حذف هذا التقرير؟')) {
-            const updated = individualArchive.filter(r => r.id !== id);
-            setIndividualArchive(updated);
-            localStorage.setItem('individual_reports_archive', JSON.stringify(updated));
-        }
+        setConfirmDialog({
+            isOpen: true,
+            title: 'حذف من الأرشيف',
+            message: 'هل أنت متأكد من حذف هذا التقرير؟',
+            type: 'danger',
+            onConfirm: () => {
+                const updated = individualArchive.filter(r => r.id !== id);
+                setIndividualArchive(updated);
+                localStorage.setItem('individual_reports_archive', JSON.stringify(updated));
+                toast.success('تم حذف التقرير من الأرشيف');
+            }
+        });
     };
 
     const restoreFromArchive = (report: any) => {
@@ -261,7 +282,7 @@ const StaffFollowUpPage: React.FC = () => {
         }
 
         setShowArchive(false);
-        alert('تم استعادة التقرير للتعديل');
+        toast.success('تم استعادة التقرير للتعديل');
     };
 
     // Actions
@@ -321,7 +342,7 @@ const StaffFollowUpPage: React.FC = () => {
 
     const aggregateReports = (period: string) => {
         if (!data.adminReports || data.adminReports.length === 0) {
-            alert('لا توجد تقارير سابقة لتجميعها');
+            toast.error('لا توجد تقارير سابقة لتجميعها');
             return;
         }
 
@@ -333,7 +354,7 @@ const StaffFollowUpPage: React.FC = () => {
         );
 
         if (filtered.length === 0) {
-            alert('لا توجد تقارير في هذه الفترة الزمنية لهذا النوع من المتابعة');
+            toast.error('لا توجد تقارير في هذه الفترة الزمنية لهذا النوع من المتابعة');
             return;
         }
 
@@ -379,19 +400,26 @@ const StaffFollowUpPage: React.FC = () => {
 
         updateData({ adminReports: [newReport, ...(data.adminReports || [])] });
         setCurrentReportId(newId);
-        alert(`تم إنشاء التقرير الـ ${period} بنجاح من ${reportCount} تقرير سابق في الفترة المحددة`);
+        toast.success(`تم إنشاء التقرير الـ ${period} بنجاح من ${reportCount} تقرير سابق في الفترة المحددة`);
     };
 
     const deleteReport = (reportId: string) => {
-        if (confirm('هل أنت متأكد من حذف هذا التقرير؟')) {
-            const newList = (data.adminReports || []).filter(r => r.id !== reportId);
-            updateData({ adminReports: newList });
-            if (currentReportId === reportId) setCurrentReportId(null);
-        }
+        setConfirmDialog({
+            isOpen: true,
+            title: 'حذف التقرير',
+            message: 'هل أنت متأكد من حذف هذا التقرير؟',
+            type: 'danger',
+            onConfirm: () => {
+                const newList = (data.adminReports || []).filter(r => r.id !== reportId);
+                updateData({ adminReports: newList });
+                if (currentReportId === reportId) setCurrentReportId(null);
+                toast.success('تم حذف التقرير بنجاح');
+            }
+        });
     };
 
     const addEmployee = () => {
-        if (!currentReportId) { alert('نرجو إنشاء جدول جديد أولاً'); return; }
+        if (!currentReportId) { toast.error('نرجو إنشاء جدول جديد أولاً'); return; }
         const name = prompt('أدخل اسم الموظف:');
         if (!name) return;
 
@@ -425,14 +453,21 @@ const StaffFollowUpPage: React.FC = () => {
     };
 
     const deleteEmployees = (ids: string[]) => {
-        if (confirm(`حذف ${ids.length} موظف؟`)) {
-            const updatedReports = (data.adminReports || []).map(r => {
-                if (r.id === currentReportId) return { ...r, employeesData: r.employeesData.filter(e => !ids.includes(e.id)) };
-                return r;
-            });
-            updateData({ adminReports: updatedReports });
-            setSelectedEmployees(prev => prev.filter(id => !ids.includes(id)));
-        }
+        setConfirmDialog({
+            isOpen: true,
+            title: 'حذف موظفين',
+            message: `حذف ${ids.length} موظف؟`,
+            type: 'danger',
+            onConfirm: () => {
+                const updatedReports = (data.adminReports || []).map(r => {
+                    if (r.id === currentReportId) return { ...r, employeesData: r.employeesData.filter(e => !ids.includes(e.id)) };
+                    return r;
+                });
+                updateData({ adminReports: updatedReports });
+                setSelectedEmployees(prev => prev.filter(id => !ids.includes(id)));
+                toast.success('تم الحذف بنجاح');
+            }
+        });
     };
 
     const toggleAccreditation = (empId: string | 'bulk', metricKey: string) => {
@@ -792,13 +827,20 @@ const StaffFollowUpPage: React.FC = () => {
     };
 
     const deleteDomain = (key: string) => {
-        if (confirm('حذف هذا المجال؟ سيؤدي ذلك لحذف درجاته في هذا الجدول.')) {
-            const updatedMetrics = {
-                ...(data.adminMetricsList || {}),
-                [followUpType]: displayedMetrics.filter(m => m.key !== key)
-            };
-            updateData({ adminMetricsList: updatedMetrics });
-        }
+        setConfirmDialog({
+            isOpen: true,
+            title: 'حذف مجال',
+            message: 'حذف هذا المجال؟ سيؤدي ذلك لحذف درجاته في هذا الجدول.',
+            type: 'danger',
+            onConfirm: () => {
+                const updatedMetrics = {
+                    ...(data.adminMetricsList || {}),
+                    [followUpType]: displayedMetrics.filter(m => m.key !== key)
+                };
+                updateData({ adminMetricsList: updatedMetrics });
+                toast.success('تم حذف المجال بنجاح');
+            }
+        });
     };
 
     return (
@@ -1910,7 +1952,7 @@ const StaffFollowUpPage: React.FC = () => {
                                                 const percent = max > 0 ? ((total / max) * 100).toFixed(1) : '0';
                                                 return (
                                                     <tr
-                                                        key={emp.id}
+                                                        key={`${emp.id}-${idx}`}
                                                         onClick={() => setHighlightedRowId(emp.id)}
                                                         className={`transition-all duration-200 group h-14 ${highlightedRowId === emp.id ? 'bg-blue-50' : (selectedEmployees.includes(emp.id) ? 'bg-indigo-50/50' : 'hover:bg-slate-50/80')}`}
                                                     >
@@ -1968,12 +2010,12 @@ const StaffFollowUpPage: React.FC = () => {
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        {displayedMetrics.map(m => {
+                                                        {displayedMetrics.map((m, mIdx) => {
                                                             const isUnaccredited = (emp.unaccreditedMetrics || []).includes(m.key);
                                                             const val = Number(emp[m.key]) || 0;
                                                             // Use the pastel background from metric color with high transparency
                                                             return (
-                                                                <td key={m.key} className="p-1 border-e relative group/cell" style={{ backgroundColor: `${m.color}15` }}>
+                                                                <td key={`${m.key}-${mIdx}`} className="p-1 border-e relative group/cell" style={{ backgroundColor: `${m.color}15` }}>
                                                                     <div className="flex flex-col items-center gap-1">
                                                                         <div className="w-1.5 h-1.5 rounded-full mb-1" style={{ backgroundColor: m.color }} />
                                                                         <input
@@ -2032,8 +2074,8 @@ const StaffFollowUpPage: React.FC = () => {
                                         <tfoot className="sticky bottom-0 z-30 bg-[#FFD966] text-[#4F3F0F] font-black text-xs h-16 shadow-[0_-5px_20px_rgba(0,0,0,0.2)]">
                                             <tr className="border-t-4 border-[#E6B11F]">
                                                 <td colSpan={3} className="px-6 text-right bg-[#E6B11F]/20 border-e border-[#E6B11F] text-sm tracking-wide">الإحصائيات الإجمالية والنسب المئوية المحققة</td>
-                                                {displayedMetrics.map(m => (
-                                                    <td key={m.key} className="p-2 border-e border-[#E6B11F] text-center" style={{ backgroundColor: `${m.color}15` }}>
+                                                {displayedMetrics.map((m, mIdx) => (
+                                                    <td key={`${m.key}-footer-${mIdx}`} className="p-2 border-e border-[#E6B11F] text-center" style={{ backgroundColor: `${m.color}15` }}>
                                                         <div className="flex flex-col items-center gap-0.5">
                                                             <span className="font-sans text-[13px]">({getColSum(m.key)})</span>
                                                             <div className="w-10 h-0.5 bg-black opacity-10 rounded-full my-0.5" />
@@ -2124,10 +2166,10 @@ const StaffFollowUpPage: React.FC = () => {
                                             <Archive size={64} strokeWidth={1} />
                                             <span className="font-black text-xl">الأرشيف فارغ حالياً</span>
                                         </div>
-                                    ) : (data.adminReports || []).filter(r => r.followUpType === followUpType).map(r => {
+                                    ) : (data.adminReports || []).filter(r => r.followUpType === followUpType).map((r, idx) => {
                                         const reportTypeLabel = r.periodName ? r.periodName : 'يومي';
                                         return (
-                                            <div key={r.id} className="group relative flex items-center justify-between p-6 bg-slate-50 border-2 border-indigo-100 rounded-[2rem] hover:border-indigo-500 hover:bg-white transition-all duration-300 cursor-pointer overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1">
+                                            <div key={`${r.id}-${idx}`} className="group relative flex items-center justify-between p-6 bg-slate-50 border-2 border-indigo-100 rounded-[2rem] hover:border-indigo-500 hover:bg-white transition-all duration-300 cursor-pointer overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1">
                                                 <div className="flex items-center gap-6" onClick={() => { setCurrentReportId(r.id); setFollowUpType(r.followUpType); setWriter(r.writer || ''); setShowArchive(false); }}>
                                                     <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-3xl flex items-center justify-center font-black shadow-inner group-hover:scale-110 transition-transform">
                                                         <Calendar size={28} />
@@ -2159,8 +2201,8 @@ const StaffFollowUpPage: React.FC = () => {
                                             <Archive size={64} strokeWidth={1} />
                                             <span className="font-black text-xl">الأرشيف الفردي فارغ</span>
                                         </div>
-                                    ) : individualArchive.map(r => (
-                                        <div key={r.id} className="group relative flex items-center justify-between p-6 bg-slate-50 border-2 border-emerald-100 rounded-[2rem] hover:border-emerald-500 hover:bg-white transition-all duration-300 cursor-pointer overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1">
+                                    ) : individualArchive.map((r, idx) => (
+                                        <div key={`${r.id}-${idx}`} className="group relative flex items-center justify-between p-6 bg-slate-50 border-2 border-emerald-100 rounded-[2rem] hover:border-emerald-500 hover:bg-white transition-all duration-300 cursor-pointer overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1">
                                             <div className="flex items-center gap-6" onClick={() => restoreFromArchive(r)}>
                                                 <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-3xl flex items-center justify-center font-black shadow-inner group-hover:scale-110 transition-transform">
                                                     <UserCircle size={28} />
@@ -2219,7 +2261,7 @@ const StaffFollowUpPage: React.FC = () => {
                                     <textarea
                                         className="w-full bg-slate-50 border-3 border-slate-100 rounded-[1.5rem] p-6 font-black h-48 outline-none focus:ring-8 focus:ring-slate-100 focus:border-slate-800 transition-all text-slate-800 leading-relaxed custom-scrollbar"
                                         placeholder="مثال: تأخر في تسليم التقارير، مخالفة الزي الرسمي..."
-                                        value={violationModal.notes.join('\n')}
+                                        value={(violationModal.notes || []).join('\n')}
                                         onChange={(e) => updateEmployee(violationModal.id, { violations_notes: e.target.value.split('\n').filter(n => n.trim()) })}
                                     />
                                 </div>
@@ -2270,9 +2312,16 @@ const StaffFollowUpPage: React.FC = () => {
                                             </div>
                                             <button
                                                 onClick={() => {
-                                                    if (confirm('هل أنت متأكد من حذف هذا المجال؟ سيختفي من القائمة تماماً.')) {
-                                                        setReportFields(reportFields.filter((_, i) => i !== idx));
-                                                    }
+                                                    setConfirmDialog({
+                                                        isOpen: true,
+                                                        title: 'حذف مجال التقرير',
+                                                        message: 'هل أنت متأكد من حذف هذا المجال؟ سيختفي من القائمة تماماً.',
+                                                        type: 'danger',
+                                                        onConfirm: () => {
+                                                            setReportFields(reportFields.filter((_, i) => i !== idx));
+                                                            toast.success('تم حذف المجال بنجاح');
+                                                        }
+                                                    });
                                                 }}
                                                 className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                                             >
@@ -2477,7 +2526,7 @@ const StaffFollowUpPage: React.FC = () => {
                                                     <label className="text-[10px] font-black text-slate-400 mr-2 flex items-center gap-1">نص المعيار <span className="text-amber-500">*</span></label>
                                                     <input
                                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-black text-slate-800 focus:border-amber-500 focus:bg-white focus:ring-4 focus:ring-amber-50 outline-none transition-all"
-                                                        value={activity.text}
+                                                        value={activity.text || ''}
                                                         onChange={(e) => {
                                                             const newAct = [...(customActivities[individualForm.reportField] || [])];
                                                             newAct[idx] = { ...newAct[idx], text: e.target.value };
@@ -2504,7 +2553,7 @@ const StaffFollowUpPage: React.FC = () => {
                                                     </label>
                                                     <input
                                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3.5 text-xs font-black focus:border-amber-400 focus:bg-white transition-all outline-none"
-                                                        value={activity.planned}
+                                                        value={activity.planned || ''}
                                                         onChange={(e) => {
                                                             const newAct = [...(customActivities[individualForm.reportField] || [])];
                                                             newAct[idx] = { ...newAct[idx], planned: e.target.value };
@@ -2518,7 +2567,7 @@ const StaffFollowUpPage: React.FC = () => {
                                                     </label>
                                                     <input
                                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3.5 text-xs font-black focus:border-amber-400 focus:bg-white transition-all outline-none"
-                                                        value={activity.evidence}
+                                                        value={activity.evidence || ''}
                                                         onChange={(e) => {
                                                             const newAct = [...(customActivities[individualForm.reportField] || [])];
                                                             newAct[idx] = { ...newAct[idx], evidence: e.target.value };
@@ -2558,6 +2607,16 @@ const StaffFollowUpPage: React.FC = () => {
                     </div>
                 )
             }
+
+            {/* Confirm Dialog */}
+            <ConfirmDialog
+                isOpen={confirmDialog.isOpen}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                onConfirm={confirmDialog.onConfirm}
+                onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+                type={confirmDialog.type}
+            />
 
             {/* Custom styles for the page */}
             <style>{`

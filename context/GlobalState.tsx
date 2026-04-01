@@ -343,17 +343,17 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (savedLang) setLang(savedLang);
 
     // Fetch shared users and profile for all available schools to enable login sync
+    const schoolsToSync = [...new Set([...(data.availableSchools || []), ...(defaultData.availableSchools || [])])];
+    
     signInAnonymously(auth).then(() => {
-      const schoolsToSync = data.availableSchools || defaultData.availableSchools;
       schoolsToSync.forEach(school => {
-        ['users', 'profile'].forEach(key => {
+        ['users', 'profile', 'availableSchools', 'availableYears'].forEach(key => {
           const q = doc(db, 'schools', school, 'shared', key);
           onSnapshot(q, (snapshot) => {
             if (snapshot.exists()) {
               const remoteData = snapshot.data().data;
               setData(prev => {
                 if (key === 'users') {
-                  // Merge users, avoiding duplicates by ID
                   const existingUsers = prev.users || [];
                   const newUsers = Array.isArray(remoteData) ? remoteData : [];
                   const merged = [...existingUsers];
@@ -363,6 +363,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     else merged.push(nu);
                   });
                   return { ...prev, users: merged };
+                } else if (key === 'availableSchools' || key === 'availableYears') {
+                   // Merge arrays
+                   const existing = prev[key] || [];
+                   const incoming = Array.isArray(remoteData) ? remoteData : [];
+                   const merged = [...new Set([...existing, ...incoming])];
+                   return { ...prev, [key]: merged };
                 } else {
                   return { ...prev, [key]: remoteData };
                 }
@@ -372,7 +378,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
       });
     });
-  }, []);
+  }, [data.availableSchools]);
 
   useEffect(() => {
     if (!isAuthenticated || !currentUser) return;
@@ -404,7 +410,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const arrayKeys = ['substitutions', 'timetable', 'dailyReports', 'violations', 'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports'];
       arrayKeys.forEach(k => dataBuffer[k] = {});
 
-      const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions', 'users'];
+      const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions', 'users', 'availableSchools', 'availableYears'];
 
       sharedKeys.forEach(key => {
         const q = doc(db, 'schools', school, 'shared', key);
@@ -464,7 +470,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     if (isAuthenticated && currentUser) {
       const school = currentUser.selectedSchool;
-      const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions', 'users'];
+      const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions', 'users', 'availableSchools', 'availableYears'];
 
       for (const key of Object.keys(newData) as Array<keyof AppData>) {
         if (sharedKeys.includes(key)) {

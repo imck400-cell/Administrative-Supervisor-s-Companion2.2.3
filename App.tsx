@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import GlobalScrollArrows from './components/GlobalScrollArrows';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Toaster } from 'sonner';
 import { User } from './types';
 
 const AdvancedLoginPage: React.FC = () => {
@@ -29,15 +30,20 @@ const AdvancedLoginPage: React.FC = () => {
 
   // Auto-fill school and year when username matches a user
   useEffect(() => {
-    if (username) {
-      const user = data.users.find(u => u.name === username);
+    if (username.trim()) {
+      const normalizedInput = username.trim().toLowerCase();
+      const user = data.users.find(u => 
+        u.name.trim().toLowerCase() === normalizedInput || 
+        u.id.trim().toLowerCase() === normalizedInput
+      );
+      
       if (user) {
         if (user.schools && user.schools.length > 0) {
           setSchoolName(user.schools[0]);
         }
         if (user.academicYears && user.academicYears.length > 0) {
           setAcademicYear(user.academicYears[0]);
-        } else {
+        } else if (!academicYear) {
           setAcademicYear('2024-2025'); // Default fallback
         }
       }
@@ -45,7 +51,11 @@ const AdvancedLoginPage: React.FC = () => {
   }, [username, data.users]);
 
   const selectedUser = useMemo(() => {
-    return data.users.find(u => u.name === username) || null;
+    const normalizedInput = username.trim().toLowerCase();
+    return data.users.find(u => 
+      u.name.trim().toLowerCase() === normalizedInput || 
+      u.id.trim().toLowerCase() === normalizedInput
+    ) || null;
   }, [username, data.users]);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -98,11 +108,17 @@ const AdvancedLoginPage: React.FC = () => {
                   <UserIcon className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                   <input
                     type="text"
+                    list="login-usernames"
                     className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold outline-none transition-all"
-                    value={username}
+                    value={username || ''}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="اسم المستخدم"
                   />
+                  <datalist id="login-usernames">
+                    {data.users.map(u => (
+                      <option key={u.id} value={u.name} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
 
@@ -114,7 +130,7 @@ const AdvancedLoginPage: React.FC = () => {
                   <input
                     type="password"
                     className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl text-center text-xl font-bold transition-all outline-none"
-                    value={code}
+                    value={code || ''}
                     onChange={(e) => setCode(e.target.value)}
                     placeholder="كود الدخول"
                   />
@@ -128,11 +144,18 @@ const AdvancedLoginPage: React.FC = () => {
                   <School className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                   <input
                     type="text"
-                    className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold outline-none transition-all bg-slate-100 cursor-not-allowed"
-                    value={schoolName}
-                    readOnly
-                    placeholder="اسم المدرسة (تلقائي)"
+                    list="login-schools"
+                    className={`w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold outline-none transition-all ${selectedUser ? 'bg-slate-100 cursor-not-allowed' : ''}`}
+                    value={schoolName || ''}
+                    onChange={(e) => !selectedUser && setSchoolName(e.target.value)}
+                    readOnly={!!selectedUser}
+                    placeholder="اسم المدرسة"
                   />
+                  <datalist id="login-schools">
+                    {(data.availableSchools || []).map(s => (
+                      <option key={s} value={s} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
 
@@ -143,11 +166,18 @@ const AdvancedLoginPage: React.FC = () => {
                   <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                   <input
                     type="text"
-                    className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold outline-none transition-all bg-slate-100 cursor-not-allowed"
-                    value={academicYear}
-                    readOnly
-                    placeholder="العام الدراسي (تلقائي)"
+                    list="login-years"
+                    className={`w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold outline-none transition-all ${selectedUser ? 'bg-slate-100 cursor-not-allowed' : ''}`}
+                    value={academicYear || ''}
+                    onChange={(e) => !selectedUser && setAcademicYear(e.target.value)}
+                    readOnly={!!selectedUser}
+                    placeholder="العام الدراسي"
                   />
+                  <datalist id="login-years">
+                    {(data.availableYears || []).map(y => (
+                      <option key={y} value={y} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
 
@@ -328,7 +358,7 @@ const MainApp: React.FC = () => {
             >
               <option value="all">كل المستخدمين</option>
               {data.users.map((u, idx) => (
-                <option key={`filter-user-${u.id}-${idx}`} value={u.id}>{u.name}</option>
+                <option key={`filter-user-${u.id || idx}-${idx}`} value={u.id}>{u.name}</option>
               ))}
             </select>
           </div>
@@ -378,6 +408,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 const App: React.FC = () => (
   <ErrorBoundary>
     <GlobalProvider>
+      <Toaster position="top-center" richColors />
       <MainApp />
       <GlobalScrollArrows />
     </GlobalProvider>

@@ -5,6 +5,7 @@ import {
   Copy, Share2, Plus, Trash2, Edit, FileText
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { toast } from 'sonner';
 
 interface Column {
   key: string;
@@ -95,7 +96,7 @@ const DynamicTable: React.FC<DynamicTableProps> = ({ title, columns, data, onAdd
       columns.map(col => `${col.label}: ${row[col.key]}`).join(' | ')
     ).join('\n');
     navigator.clipboard.writeText(text);
-    alert(lang === 'ar' ? 'تم النسخ بنجاح' : 'Copied successfully');
+    toast.success(lang === 'ar' ? 'تم النسخ بنجاح' : 'Copied successfully');
   };
 
   return (

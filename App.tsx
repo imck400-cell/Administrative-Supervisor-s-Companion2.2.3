@@ -27,10 +27,10 @@ const AdvancedLoginPage: React.FC = () => {
   const [academicYear, setAcademicYear] = useState('');
   const [error, setError] = useState('');
 
-  // Auto-fill school and year when username and code match a user
+  // Auto-fill school and year when username matches a user
   useEffect(() => {
-    if (username && code) {
-      const user = data.users.find(u => u.name === username && u.code === code);
+    if (username) {
+      const user = data.users.find(u => u.name === username);
       if (user) {
         if (user.schools && user.schools.length > 0) {
           setSchoolName(user.schools[0]);
@@ -42,7 +42,7 @@ const AdvancedLoginPage: React.FC = () => {
         }
       }
     }
-  }, [username, code, data.users]);
+  }, [username, data.users]);
 
   const selectedUser = useMemo(() => {
     return data.users.find(u => u.name === username) || null;

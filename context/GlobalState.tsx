@@ -341,6 +341,37 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     const savedLang = localStorage.getItem('rafiquk_lang') as Language;
     if (savedLang) setLang(savedLang);
+
+    // Fetch shared users and profile for all available schools to enable login sync
+    signInAnonymously(auth).then(() => {
+      const schoolsToSync = data.availableSchools || defaultData.availableSchools;
+      schoolsToSync.forEach(school => {
+        ['users', 'profile'].forEach(key => {
+          const q = doc(db, 'schools', school, 'shared', key);
+          onSnapshot(q, (snapshot) => {
+            if (snapshot.exists()) {
+              const remoteData = snapshot.data().data;
+              setData(prev => {
+                if (key === 'users') {
+                  // Merge users, avoiding duplicates by ID
+                  const existingUsers = prev.users || [];
+                  const newUsers = Array.isArray(remoteData) ? remoteData : [];
+                  const merged = [...existingUsers];
+                  newUsers.forEach(nu => {
+                    const idx = merged.findIndex(u => u.id === nu.id);
+                    if (idx >= 0) merged[idx] = nu;
+                    else merged.push(nu);
+                  });
+                  return { ...prev, users: merged };
+                } else {
+                  return { ...prev, [key]: remoteData };
+                }
+              });
+            }
+          });
+        });
+      });
+    });
   }, []);
 
   useEffect(() => {

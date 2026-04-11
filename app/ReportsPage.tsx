@@ -91,7 +91,7 @@ export const DailyReportsPage: React.FC = () => {
 
   const reports = useMemo(() => {
     const allReports = data.dailyReports || [];
-    if (!userFilter) return allReports;
+    if (!userFilter || userFilter === 'all') return allReports;
     return allReports.filter(r => r.userId === userFilter);
   }, [data.dailyReports, userFilter]);
 
@@ -208,17 +208,25 @@ export const DailyReportsPage: React.FC = () => {
         message: lang === 'ar' ? 'الجدول لهذا اليوم موجود بالفعل، فهل أنت متأكد من تكرار الجدول لهذا اليوم؟' : 'The schedule for today already exists, are you sure you want to duplicate it?',
         onConfirm: () => {
           const newId = `rep_${Date.now()}`;
+          const existingReport = reports.find(r => r.dateStr === today);
+          const newTeachers = existingReport ? existingReport.teachersData.map(t => ({
+            ...t,
+            attendance: 0, appearance: 0, preparation: 0, supervision_queue: 0, supervision_rest: 0, supervision_end: 0,
+            activity: 0, follow_up: 0, total: 0, percentage: 0,
+            violations_notes: []
+          })) : [];
+
           const newReport: DailyReportContainer = {
             id: newId,
             userId: currentUser?.id,
             dateStr: today,
             dayName: new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'long' }).format(new Date()),
-            teachersData: [],
+            teachersData: newTeachers,
             periodType: 'daily'
           };
           updateData({ dailyReports: [...(data.dailyReports || []), newReport] });
           setActiveReportId(newId);
-          toast.success(lang === 'ar' ? 'تم إنشاء جدول جديد' : 'New schedule created');
+          toast.success(lang === 'ar' ? 'تم تكرار الجدول بنجاح' : 'Schedule duplicated successfully');
         }
       });
       return;
@@ -244,10 +252,21 @@ export const DailyReportsPage: React.FC = () => {
     };
     updateData({ dailyReports: [...(data.dailyReports || []), newReport] });
     setActiveReportId(newReport.id);
+    toast.success(lang === 'ar' ? 'تم إنشاء جدول جديد' : 'New schedule created');
   };
 
   const addNewTeacher = () => {
-    if (!activeReportId) return;
+    let reportId = activeReportId;
+    if (!reportId && reports.length > 0) {
+      reportId = reports[reports.length - 1].id;
+      setActiveReportId(reportId);
+    }
+    
+    if (!reportId) {
+      toast.error(lang === 'ar' ? 'يرجى إنشاء جدول جديد أولاً' : 'Please create a new schedule first');
+      return;
+    }
+
     const newTeacher: any = {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       teacherName: '', subjectCode: '', className: '',
@@ -258,8 +277,9 @@ export const DailyReportsPage: React.FC = () => {
       newTeacher[m.key] = 0;
     });
 
-    const updatedReports = (data.dailyReports || []).map(r => r.id === activeReportId ? { ...r, teachersData: [...r.teachersData, newTeacher] } : r);
+    const updatedReports = (data.dailyReports || []).map(r => r.id === reportId ? { ...r, teachersData: [...r.teachersData, newTeacher] } : r);
     updateData({ dailyReports: updatedReports });
+    toast.success(lang === 'ar' ? 'تم إضافة معلم جديد' : 'New teacher added');
   };
 
   const updateTeacher = (teacherId: string, updates: Record<string, any>) => {

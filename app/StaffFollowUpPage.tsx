@@ -180,7 +180,7 @@ const StaffFollowUpPage: React.FC = () => {
 
     const reports = useMemo(() => {
         const allReports = data.adminReports || [];
-        if (!userFilter) return allReports;
+        if (!userFilter || userFilter === 'all') return allReports;
         return allReports.filter(r => r.userId === userFilter);
     }, [data.adminReports, userFilter]);
 

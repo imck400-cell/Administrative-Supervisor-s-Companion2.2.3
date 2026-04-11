@@ -43,7 +43,7 @@ const SubstitutionPage: React.FC = () => {
   // START OF CHANGE - Filtering Logic
   const filteredSubstitutions = useMemo(() => {
     let list = (data.substitutions || []).filter(s => s.date === selectedCoverageDate);
-    if (userFilter) {
+    if (userFilter && userFilter !== 'all') {
       list = list.filter(s => s.userId === userFilter);
     }
     return list;
@@ -51,7 +51,7 @@ const SubstitutionPage: React.FC = () => {
 
   const uniqueCoverageDates = useMemo(() => {
     let list = (data.substitutions || []);
-    if (userFilter) {
+    if (userFilter && userFilter !== 'all') {
       list = list.filter(s => s.userId === userFilter);
     }
     const dates = list.map(s => s.date);
@@ -297,7 +297,7 @@ const SubstitutionPage: React.FC = () => {
 
   const timetableFiltered = useMemo(() => {
     let list = (data.timetable || []);
-    if (userFilter) {
+    if (userFilter && userFilter !== 'all') {
       list = list.filter(t => t.userId === userFilter);
     }
     return list;

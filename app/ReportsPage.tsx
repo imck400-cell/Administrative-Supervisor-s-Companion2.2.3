@@ -67,6 +67,13 @@ export const DailyReportsPage: React.FC = () => {
   const [showWhatsAppSelect, setShowWhatsAppSelect] = useState(false);
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
 
+  // Special Follow-up State
+  const [showSpecialFollowUp, setShowSpecialFollowUp] = useState(false);
+  const [specialFollowUpMode, setSpecialFollowUpMode] = useState<'teacher' | 'metric' | null>(null);
+  const [specialTeacherId, setSpecialTeacherId] = useState<string>('');
+  const [specialSelectedMetrics, setSpecialSelectedMetrics] = useState<string[]>([]);
+  const [specialSearch, setSpecialSearch] = useState('');
+
   // Aggregation (Indicators) State
   const [showIndicatorsModal, setShowIndicatorsModal] = useState(false);
   const [aggDateFrom, setAggDateFrom] = useState(new Date().toISOString().split('T')[0]);
@@ -95,15 +102,20 @@ export const DailyReportsPage: React.FC = () => {
     }
   }, [reports, activeReportId]);
 
+  const hasAttemptedAutoCreate = useRef(false);
+
   // Auto-create report for today if it doesn't exist
   useEffect(() => {
+    if (hasAttemptedAutoCreate.current) return;
+    
     const today = new Date().toISOString().split('T')[0];
     const hasTodayReport = reports.some(r => r.dateStr === today && r.periodType === 'daily');
+    
     if (!hasTodayReport && reports.length > 0) {
-      // Small delay to avoid race conditions or multiple triggers
+      hasAttemptedAutoCreate.current = true;
       const timer = setTimeout(() => {
         handleCreateReport();
-      }, 1000);
+      }, 1500);
       return () => clearTimeout(timer);
     }
   }, [reports]);
@@ -410,85 +422,92 @@ export const DailyReportsPage: React.FC = () => {
 <head>
 <meta charset="UTF-8">
 <style>
-    table { border-collapse: collapse; width: 100%; direction: rtl; }
-    th, td { border: 1px solid #000; padding: 8px; text-align: center; font-family: Arial, sans-serif; }
-    .header { background-color: #2563eb; color: white; font-weight: bold; font-size: 16px; }
-    .subheader { background-color: #FFD966; color: #000; font-weight: bold; }
-    .metric-header { background-color: #f8fafc; font-weight: bold; font-size: 11px; }
-    .footer-row { background-color: #f8fafc; font-weight: bold; }
-    .total-cell { background-color: #dbeafe; font-weight: bold; color: #1d4ed8; }
-    .percent-cell { background-color: #dbeafe; font-weight: bold; color: #1e40af; }
-    .violation-cell { background-color: #fee2e2; color: #dc2626; font-weight: bold; }
-    .signature { border: none; padding: 20px; font-weight: bold; }
-    .title-section { border: none; text-align: center; font-size: 18px; font-weight: bold; }
-    .date-section { border: none; text-align: center; font-size: 14px; color: #666; }
+    table { border-collapse: collapse; width: 100%; direction: rtl; border: 2px solid #1e40af; }
+    th, td { border: 1px solid #94a3b8; padding: 10px; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 12px; }
+    .header-main { background-color: #1e40af; color: #ffffff; font-weight: bold; font-size: 18px; border: none; }
+    .header-sub { background-color: #3b82f6; color: #ffffff; font-weight: bold; font-size: 14px; border: none; }
+    .subheader { background-color: #f1f5f9; color: #1e293b; font-weight: bold; }
+    .metric-header { background-color: #f8fafc; font-weight: bold; font-size: 11px; color: #475569; }
+    .footer-row { background-color: #f8fafc; font-weight: bold; border-top: 2px solid #1e40af; }
+    .total-cell { background-color: #eff6ff; font-weight: bold; color: #1e40af; font-size: 13px; }
+    .percent-cell { background-color: #f0f9ff; font-weight: bold; color: #0369a1; font-size: 13px; }
+    .violation-cell { background-color: #fef2f2; color: #dc2626; font-weight: bold; }
+    .signature { border: none; padding: 30px 10px; font-weight: bold; font-size: 14px; color: #334155; }
+    .title-section { border: none; text-align: center; font-weight: bold; }
+    .even-row { background-color: #ffffff; }
+    .odd-row { background-color: #f8fafc; }
+    .teacher-name { text-align: right; font-weight: bold; color: #1e293b; padding-right: 15px; }
 </style>
 </head>
 <body>
 <table>
     <tr>
-        <td colspan="${8 + metricsCols.length}" class="title-section" style="background-color: #2563eb; color: white; font-size: 20px; padding: 15px;">
+        <td colspan="${8 + metricsCols.length}" class="header-main" style="padding: 20px;">
             ${profile.schoolName || 'المدرسة'} ${profile.branch ? `- فرع ${profile.branch}` : ''}
         </td>
     </tr>
     <tr>
-        <td colspan="${8 + metricsCols.length}" class="title-section" style="padding: 10px;">
+        <td colspan="${8 + metricsCols.length}" class="header-sub" style="padding: 10px;">
             ${title} لأداء المعلمين والمعلمات
         </td>
     </tr>
     <tr>
-        <td colspan="${8 + metricsCols.length}" class="date-section" style="padding: 8px;">
+        <td colspan="${8 + metricsCols.length}" style="background-color: #f8fafc; color: #64748b; font-weight: bold; padding: 8px; border-bottom: 2px solid #3b82f6;">
             بتاريخ: ${dateLabel}
         </td>
     </tr>
-    <tr><td colspan="${8 + metricsCols.length}" style="border: none; height: 10px;"></td></tr>
+    <tr><td colspan="${8 + metricsCols.length}" style="border: none; height: 15px;"></td></tr>
     
     <tr class="subheader">
-        <th rowspan="2">م</th>
-        <th rowspan="2" style="min-width: 150px;">اسم المعلم</th>
-        <th rowspan="2">النوع</th>
-        <th rowspan="2">المادة</th>
-        <th rowspan="2">الصف</th>
-        <th colspan="${metricsCols.length}">مجالات تقييم المعلمين</th>
-        <th rowspan="2">المخالفات</th>
-        <th rowspan="2">المجموع</th>
-        <th rowspan="2">النسبة %</th>
+        <th rowspan="2" style="background-color: #e2e8f0;">م</th>
+        <th rowspan="2" style="min-width: 180px; background-color: #e2e8f0;">اسم المعلم</th>
+        <th rowspan="2" style="background-color: #e2e8f0;">النوع</th>
+        <th rowspan="2" style="background-color: #e2e8f0;">المادة</th>
+        <th rowspan="2" style="background-color: #e2e8f0;">الصف</th>
+        <th colspan="${metricsCols.length}" style="background-color: #3b82f6; color: white;">مجالات تقييم المعلمين</th>
+        <th rowspan="2" style="background-color: #fee2e2; color: #991b1b;">المخالفات</th>
+        <th rowspan="2" style="background-color: #dbeafe; color: #1e40af;">المجموع</th>
+        <th rowspan="2" style="background-color: #dcfce7; color: #166534;">النسبة %</th>
     </tr>
     <tr class="metric-header">
-        ${metricsCols.map(m => `<th style="background-color: ${m.color}; min-width: 80px;">${m.label}</th>`).join('')}
+        ${metricsCols.map(m => `<th style="background-color: ${m.color}20; color: ${m.color}; min-width: 90px; border-bottom: 2px solid ${m.color};">${m.label}</th>`).join('')}
     </tr>
 
     ${teachers.map((t, idx) => {
       const total = calculateTotal(t);
       const max = calculateMaxTotal(t);
       const percent = max > 0 ? ((total / max) * 100).toFixed(1) : '0';
+      const rowClass = idx % 2 === 0 ? 'even-row' : 'odd-row';
       return `
-    <tr>
-        <td>${idx + 1}</td>
-        <td style="text-align: right; font-weight: bold;">${t.teacherName}</td>
+    <tr class="${rowClass}">
+        <td style="color: #94a3b8;">${idx + 1}</td>
+        <td class="teacher-name">${t.teacherName}</td>
         <td>${t.gender || ''}</td>
-        <td>${t.subjectCode}</td>
-        <td>${t.className}</td>
+        <td style="color: #64748b;">${t.subjectCode}</td>
+        <td style="color: #64748b;">${t.className}</td>
         ${metricsCols.map(m => {
         const isUnaccredited = (t.unaccreditedMetrics || []).includes(m.key);
         const val = isUnaccredited ? 'غ.م' : (t[m.key] || 0);
-        return `<td style="background-color: ${m.color}15;">${val}</td>`;
+        const cellStyle = isUnaccredited ? 'color: #cbd5e1; font-style: italic;' : `font-weight: bold; color: ${m.color};`;
+        return `<td style="${cellStyle} background-color: ${m.color}05;">${val}</td>`;
       }).join('')}
         <td class="violation-cell">${t.violations_score || 0}</td>
         <td class="total-cell">${total}</td>
-        <td class="percent-cell">${percent}%</td>
+        <td class="percent-cell" style="background-color: ${Number(percent) >= 90 ? '#f0fdf4' : Number(percent) >= 70 ? '#fffbeb' : '#fef2f2'}; color: ${Number(percent) >= 90 ? '#166534' : Number(percent) >= 70 ? '#92400e' : '#991b1b'};">
+            ${percent}%
+        </td>
     </tr>`;
     }).join('')}
 
     <tr class="footer-row">
-        <td colspan="5" style="text-align: right;">المجموع الكلي</td>
+        <td colspan="5" style="text-align: right; padding-right: 15px; font-size: 14px;">المجموع الكلي</td>
         ${metricsCols.map(m => {
       const sum = teachers.reduce((acc, t) => acc + (Number(t[m.key]) || 0), 0);
-      return `<td style="background-color: ${m.color}30;">${sum}</td>`;
+      return `<td style="background-color: ${m.color}15; color: ${m.color}; font-size: 13px;">${sum}</td>`;
     }).join('')}
-        <td class="violation-cell">${teachers.reduce((acc, t) => acc + (t.violations_score || 0), 0)}</td>
-        <td class="total-cell">${teachers.reduce((acc, t) => acc + calculateTotal(t), 0)}</td>
-        <td class="percent-cell">
+        <td class="violation-cell" style="font-size: 13px;">${teachers.reduce((acc, t) => acc + (t.violations_score || 0), 0)}</td>
+        <td class="total-cell" style="font-size: 14px;">${teachers.reduce((acc, t) => acc + calculateTotal(t), 0)}</td>
+        <td class="percent-cell" style="font-size: 14px;">
             ${(() => {
         const tSum = teachers.reduce((acc, t) => acc + calculateTotal(t), 0);
         const tMax = teachers.reduce((acc, t) => acc + calculateMaxTotal(t), 0);
@@ -498,26 +517,26 @@ export const DailyReportsPage: React.FC = () => {
     </tr>
 
     <tr class="footer-row">
-        <td colspan="5" style="text-align: right;">النسبة العامة</td>
+        <td colspan="5" style="text-align: right; padding-right: 15px; font-size: 14px; color: #64748b;">النسبة العامة للمجال</td>
         ${metricsCols.map(m => {
         const sum = teachers.reduce((acc, t) => acc + (Number(t[m.key]) || 0), 0);
         const count = teachers.length;
         const pct = count > 0 ? ((sum / (count * m.max)) * 100).toFixed(1) : '0';
-        return `<td style="background-color: ${m.color}30;">${pct}%</td>`;
+        return `<td style="background-color: ${m.color}10; color: ${m.color}; font-size: 12px;">${pct}%</td>`;
       }).join('')}
-        <td></td>
-        <td></td>
-        <td></td>
+        <td colspan="3" style="background-color: #f1f5f9;"></td>
     </tr>
 
-    <tr><td colspan="${8 + metricsCols.length}" style="border: none; height: 20px;"></td></tr>
+    <tr><td colspan="${8 + metricsCols.length}" style="border: none; height: 30px;"></td></tr>
 
     <tr>
         <td colspan="${Math.floor((8 + metricsCols.length) / 2)}" class="signature" style="text-align: right;">
-            <strong>كاتب التقرير:</strong> ${reportWriter || '......................'}
+            <div style="margin-bottom: 10px; color: #64748b;">توقيع كاتب التقرير</div>
+            <div style="font-size: 16px;">${reportWriter || '..........................................'}</div>
         </td>
         <td colspan="${Math.ceil((8 + metricsCols.length) / 2)}" class="signature" style="text-align: left;">
-            <strong>مدير الفرع:</strong> ${branchManager || '......................'}
+            <div style="margin-bottom: 10px; color: #64748b;">توقيع مدير الفرع</div>
+            <div style="font-size: 16px;">${branchManager || '..........................................'}</div>
         </td>
     </tr>
 </table>
@@ -1003,6 +1022,7 @@ export const DailyReportsPage: React.FC = () => {
           <button onClick={addNewTeacher} className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-xl font-bold border border-purple-200 hover:bg-purple-100 transition-all text-xs sm:text-sm"><UserCircle size={16} /> إضافة معلم</button>
           <button onClick={() => setShowImportModal(true)} className="flex items-center gap-2 bg-orange-50 text-orange-700 px-4 py-2 rounded-xl font-bold border border-orange-200 hover:bg-orange-100 transition-all text-xs sm:text-sm"><Upload size={16} /> استيراد أسماء المعلمين</button>
           <button onClick={() => setShowTeacherReport(true)} className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-xl font-bold border border-green-200 hover:bg-green-100 transition-all text-xs sm:text-sm"><FileText size={16} /> تقرير معلم</button>
+          <button onClick={() => setShowSpecialFollowUp(true)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl font-bold shadow-md hover:bg-blue-700 transition-all text-xs sm:text-sm"><Activity size={16} /> متابعة خاصة</button>
           <button onClick={() => setShowMetricPicker(true)} className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-xl font-bold border border-blue-200 hover:bg-blue-100 transition-all text-xs sm:text-sm"><Settings2 size={16} /> تخصيص المجالات</button>
           <button onClick={exportToExcel} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl font-bold shadow-md hover:bg-green-700 transition-all text-xs sm:text-sm"><FileSpreadsheet size={16} /> تصدير إكسل</button>
         </div>
@@ -2017,6 +2037,199 @@ export const DailyReportsPage: React.FC = () => {
           </div>
         )
       }
+      {/* Special Follow-up Modal */}
+      {showSpecialFollowUp && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[130] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl border border-slate-100 flex flex-col">
+            <div className="p-6 border-b flex items-center justify-between bg-slate-50">
+              <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
+                <Activity className="text-blue-600" />
+                <span>المتابعة الخاصة</span>
+              </h2>
+              <button onClick={() => { setShowSpecialFollowUp(false); setSpecialFollowUpMode(null); }} className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full transition-all">
+                <X size={24} />
+              </button>
+            </div>
+
+            {!specialFollowUpMode ? (
+              <div className="p-12 flex flex-col items-center gap-8">
+                <p className="text-xl font-bold text-slate-600">يرجى اختيار نوع المتابعة المطلوبة</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
+                  <button
+                    onClick={() => setSpecialFollowUpMode('teacher')}
+                    className="flex flex-col items-center gap-4 p-8 rounded-[2rem] border-4 border-blue-50 bg-white hover:border-blue-500 hover:shadow-2xl transition-all group"
+                  >
+                    <div className="w-20 h-20 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                      <User size={40} />
+                    </div>
+                    <span className="text-xl font-black text-slate-800">متابعة باسم معلم</span>
+                    <p className="text-sm text-slate-400 font-bold text-center">عرض جميع المعايير لمعلم واحد محدد</p>
+                  </button>
+
+                  <button
+                    onClick={() => setSpecialFollowUpMode('metric')}
+                    className="flex flex-col items-center gap-4 p-8 rounded-[2rem] border-4 border-purple-50 bg-white hover:border-purple-500 hover:shadow-2xl transition-all group"
+                  >
+                    <div className="w-20 h-20 bg-purple-100 rounded-2xl flex items-center justify-center text-purple-600 group-hover:scale-110 transition-transform">
+                      <Target size={40} />
+                    </div>
+                    <span className="text-xl font-black text-slate-800">متابعة بمعيار مخصص</span>
+                    <p className="text-sm text-slate-400 font-bold text-center">عرض معيار واحد أو أكثر لجميع المعلمين</p>
+                  </button>
+                </div>
+              </div>
+            ) : specialFollowUpMode === 'teacher' ? (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="p-6 bg-blue-50/50 border-b flex flex-col md:flex-row items-center gap-4">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      placeholder="ابحث عن اسم المعلم.."
+                      className="w-full p-4 bg-white rounded-2xl border-2 border-blue-100 focus:border-blue-500 outline-none transition-all pr-12 font-bold shadow-sm"
+                      value={specialSearch}
+                      onChange={e => setSpecialSearch(e.target.value)}
+                    />
+                    <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-400" size={20} />
+                  </div>
+                  <div className="flex-1 overflow-x-auto no-scrollbar flex gap-2">
+                    {teachers.filter(t => t.teacherName.includes(specialSearch)).slice(0, 5).map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => setSpecialTeacherId(t.id)}
+                        className={`px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all border-2 ${specialTeacherId === t.id ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-blue-100 text-blue-600 hover:bg-blue-50'}`}
+                      >
+                        {t.teacherName}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                  {specialTeacherId ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {metricsConfig.map(m => {
+                        const teacher = teachers.find(t => t.id === specialTeacherId);
+                        if (!teacher) return null;
+                        const isUnaccredited = (teacher.unaccreditedMetrics || []).includes(m.key);
+                        return (
+                          <div key={m.key} className="flex items-center gap-4 bg-white p-4 rounded-2xl border-2 border-slate-50 hover:border-blue-200 transition-all shadow-sm">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm ${m.color || 'bg-slate-400'}`}>
+                              <Activity size={18} />
+                            </div>
+                            <div className="flex-1">
+                              <div className="text-xs font-black text-slate-400 mb-1">{m.label}</div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  disabled={isUnaccredited}
+                                  className={`flex-1 p-2 bg-slate-50 rounded-xl font-black text-center outline-none focus:ring-2 ring-blue-100 font-sans ${isUnaccredited ? 'opacity-30' : ''}`}
+                                  value={(teacher as any)[m.key] || 0}
+                                  onChange={e => {
+                                    const val = Math.min(m.max, Math.max(0, parseInt(e.target.value) || 0));
+                                    updateTeacher(teacher.id, { [m.key]: val });
+                                  }}
+                                />
+                                <span className="text-xs font-bold text-slate-300">/ {m.max}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4">
+                      <User size={64} className="opacity-20" />
+                      <p className="font-black text-lg">يرجى اختيار معلم لعرض معاييره</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-6 border-t bg-slate-50 flex gap-4">
+                  <button onClick={() => setSpecialFollowUpMode(null)} className="px-8 py-4 bg-white text-slate-500 font-black rounded-2xl border-2 border-slate-100 hover:bg-slate-100 transition-all">رجوع</button>
+                  <button onClick={() => { setShowSpecialFollowUp(false); setSpecialFollowUpMode(null); }} className="flex-1 py-4 bg-blue-600 text-white font-black rounded-2xl shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
+                    <CheckCircle size={20} />
+                    حفظ وإغلاق
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="p-6 bg-purple-50/50 border-b">
+                  <div className="text-xs font-black text-purple-400 mb-3 px-1 uppercase tracking-wider">اختر المعايير المطلوب متابعتها</div>
+                  <div className="flex flex-wrap gap-2">
+                    {metricsConfig.map(m => (
+                      <button
+                        key={m.key}
+                        onClick={() => setSpecialSelectedMetrics(prev => prev.includes(m.key) ? prev.filter(k => k !== m.key) : [...prev, m.key])}
+                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all border-2 flex items-center gap-2 ${specialSelectedMetrics.includes(m.key) ? 'bg-purple-600 border-purple-600 text-white shadow-lg' : 'bg-white border-purple-100 text-purple-600 hover:bg-purple-50'}`}
+                      >
+                        <Activity size={14} />
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                  {specialSelectedMetrics.length > 0 ? (
+                    <div className="space-y-4">
+                      {teachers.map(t => (
+                        <div key={t.id} className="bg-white p-4 rounded-2xl border-2 border-slate-50 hover:border-purple-200 transition-all shadow-sm flex flex-col md:flex-row items-center gap-6">
+                          <div className="flex items-center gap-3 min-w-[200px]">
+                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                              <User size={20} />
+                            </div>
+                            <div className="font-black text-slate-800">{t.teacherName || 'معلم جديد'}</div>
+                          </div>
+                          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+                            {specialSelectedMetrics.map(mKey => {
+                              const m = metricsConfig.find(mc => mc.key === mKey);
+                              if (!m) return null;
+                              const isUnaccredited = (t.unaccreditedMetrics || []).includes(mKey);
+                              return (
+                                <div key={mKey} className="flex flex-col gap-1">
+                                  <label className="text-[10px] font-black text-slate-400 px-1">{m.label}</label>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="number"
+                                      disabled={isUnaccredited}
+                                      className={`w-full p-2 bg-slate-50 rounded-xl font-black text-center outline-none focus:ring-2 ring-purple-100 font-sans ${isUnaccredited ? 'opacity-30' : ''}`}
+                                      value={(t as any)[mKey] || 0}
+                                      onChange={e => {
+                                        const val = Math.min(m.max, Math.max(0, parseInt(e.target.value) || 0));
+                                        updateTeacher(t.id, { [mKey]: val });
+                                      }}
+                                    />
+                                    <span className="text-[10px] font-bold text-slate-300">/ {m.max}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4">
+                      <Target size={64} className="opacity-20" />
+                      <p className="font-black text-lg">يرجى اختيار معيار واحد على الأقل للمتابعة</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-6 border-t bg-slate-50 flex gap-4">
+                  <button onClick={() => setSpecialFollowUpMode(null)} className="px-8 py-4 bg-white text-slate-500 font-black rounded-2xl border-2 border-slate-100 hover:bg-slate-100 transition-all">رجوع</button>
+                  <button onClick={() => { setShowSpecialFollowUp(false); setSpecialFollowUpMode(null); }} className="flex-1 py-4 bg-purple-600 text-white font-black rounded-2xl shadow-lg shadow-purple-100 hover:bg-purple-700 transition-all flex items-center justify-center gap-2">
+                    <CheckCircle size={20} />
+                    حفظ وإغلاق
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* WhatsApp Selection Modal */}
       {
         showWhatsAppSelect && reportTeacherId && (
@@ -2945,7 +3158,7 @@ export const StudentsReportsPage: React.FC = () => {
     gender: ["ذكر", "أنثى"],
     workOutside: ["لا يعمل", "يعمل"],
     health: ["ممتاز", "مريض"],
-    level: ["ممتاز", "متوسط", "جيد", "ضعيف", "ضعيف جداً"],
+    level: ["ممتاز", "متوسط", "جيد", "ضعيف", "ضعيف جدا"],
     behavior: ["ممتاز", "متوسط", "جيد", "جيد جدا", "مقبول", "ضعيف", "ضعيف جدا"],
     mainNotes: ["ممتاز", "كثير الكلام", "كثير الشغب", "عدواني", "تطاول على معلم", "اعتداء على طالب جسدياً", "اعتداء على طالب لفظيا", "أخذ أدوات الغير دون أذنهم", "إتلاف ممتلكات طالب", "إتلاف ممتلكات المدرسة"],
     eduStatus: ["متعلم", "ضعيف", "أمي"],

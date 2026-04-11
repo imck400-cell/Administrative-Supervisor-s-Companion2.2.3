@@ -107,12 +107,12 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
   const getSubSubTypes = (subType: string) => {
     const commonRatings = [
       { id: 'ممتاز', label: 'ممتاز' },
-      { id: 'جيد جدا', label: 'جيد جداً' },
+      { id: 'جيد جدا', label: 'جيد جدا' },
       { id: 'جيد', label: 'جيد' },
       { id: 'متوسط', label: 'متوسط' },
       { id: 'مقبول', label: 'مقبول' },
       { id: 'ضعيف', label: 'ضعيف' },
-      { id: 'ضعيف جدا', label: 'ضعيف جداً' },
+      { id: 'ضعيف جدا', label: 'ضعيف جدا' },
     ];
 
     if (['behaviorLevel', 'academicReading', 'academicWriting', 'academicParticipation'].includes(subType)) {
@@ -263,6 +263,15 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
     return () => clearInterval(timer);
   }, [cycleDuration]);
 
+  const normalizeArabic = (str: string) => {
+    if (!str) return '';
+    return str
+      .replace(/[ًٌٍَُِّْ]/g, '')
+      .replace(/[أإآ]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .trim();
+  };
+
   const getFilteredListForCard = (card: CardConfig) => {
     let list = processedData[card.category] || [];
     const subSubOptions = getSubSubTypes(card.subType);
@@ -293,8 +302,12 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
             if (card.subSubTypes.includes('no_data') && (val === '' || val === 'undefined')) return true;
             return card.subSubTypes.some(selected => {
               if (selected === 'has_data' || selected === 'no_data') return false;
-              if (Array.isArray((i as any)[card.subType])) return (i as any)[card.subType].includes(selected);
-              return val === selected || val.split(', ').includes(selected);
+              if (Array.isArray((i as any)[card.subType])) {
+                return (i as any)[card.subType].some((v: string) => normalizeArabic(v) === normalizeArabic(selected));
+              }
+              const normalizedVal = normalizeArabic(val);
+              const normalizedSelected = normalizeArabic(selected);
+              return normalizedVal === normalizedSelected || val.split(', ').some(v => normalizeArabic(v) === normalizedSelected);
             });
           });
         }

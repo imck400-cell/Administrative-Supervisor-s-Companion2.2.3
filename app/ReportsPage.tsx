@@ -2799,7 +2799,7 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
         <div className="flex flex-col gap-0.5">
           <input className="text-[9px] font-bold text-right outline-none bg-transparent" value={s.guardianName} onChange={(e) => updateStudent(s.id, 'guardianName', e.target.value)} />
           {s.guardianPhones.map((p: any, i: any) => (
-            <div key={`${p}-${i}`} className="flex gap-0.5 items-center">
+            <div key={`phone-${s.id}-${i}`} className="flex gap-0.5 items-center">
               <input className="text-[8px] w-full text-center bg-slate-50/50 outline-none" value={p} onChange={(e) => {
                 const newP = [...s.guardianPhones]; newP[i] = e.target.value; updateStudent(s.id, 'guardianPhones', newP);
               }} />
@@ -3250,15 +3250,24 @@ export const StudentsReportsPage: React.FC = () => {
         name: row['اسم الطالب'] || '',
         gender: row['النوع'] || optionsAr.gender[0],
         grade: row['الصف'] || optionsAr.grades[0],
-        section: row['الشعبة'] || optionsAr.sections[0],
-        address: row['عنوان السكن'] || '',
+        section: String(row['الشعبة'] || optionsAr.sections[0]),
+        address: row['العنوان'] || row['عنوان السكن'] || '',
         workOutside: row['العمل'] || optionsAr.workOutside[0],
         healthStatus: row['الحالة الصحية'] || optionsAr.health[0],
+        healthDetails: row['تفاصيل الصحة'] || '',
         guardianName: row['ولي الأمر'] || '',
-        guardianPhones: [row['الهاتف'] || ''],
-        academicReading: optionsAr.level[0], academicWriting: optionsAr.level[0], academicParticipation: optionsAr.level[0],
-        behaviorLevel: optionsAr.behavior[0], mainNotes: [], otherNotesText: '', guardianEducation: optionsAr.eduStatus[0],
-        guardianFollowUp: optionsAr.followUp[0], guardianCooperation: optionsAr.cooperation[0], notes: '', createdAt: new Date().toISOString()
+        guardianPhones: (row['الهواتف'] || row['الهاتف'] || '').toString().split(', ').filter(Boolean).length > 0 ? (row['الهواتف'] || row['الهاتف'] || '').toString().split(', ') : [''],
+        academicReading: row['القراءة'] || optionsAr.level[0],
+        academicWriting: row['الكتابة'] || optionsAr.level[0],
+        academicParticipation: row['المشاركة'] || optionsAr.level[0],
+        behaviorLevel: row['السلوك'] || optionsAr.behavior[0],
+        mainNotes: (row['الملاحظات'] || '').split(', ').filter(Boolean),
+        otherNotesText: '',
+        guardianEducation: row['تعليم الولي'] || optionsAr.eduStatus[0],
+        guardianFollowUp: row['متابعة الولي'] || optionsAr.followUp[0],
+        guardianCooperation: row['تعاون الولي'] || optionsAr.cooperation[0],
+        notes: row['ملاحظات أخرى'] || '',
+        createdAt: new Date().toISOString()
       }));
 
       // Check for duplicates

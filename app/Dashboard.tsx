@@ -137,6 +137,21 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
     if (['absenceSummary', 'latenessSummary', 'exitSummary', 'violationSummary', 'damageSummary'].includes(subType)) {
       return [{ id: 'has_data', label: 'يوجد سجلات' }, { id: 'no_data', label: 'لا يوجد' }];
     }
+    
+    if (subType === 'mainNotes') {
+      return [
+        { id: 'ممتاز', label: 'ممتاز' },
+        { id: 'كثير الكلام', label: 'كثير الكلام' },
+        { id: 'كثير الشغب', label: 'كثير الشغب' },
+        { id: 'عدواني', label: 'عدواني' },
+        { id: 'تطاول على معلم', label: 'تطاول على معلم' },
+        { id: 'اعتداء على طالب جسدياً', label: 'اعتداء على طالب جسدياً' },
+        { id: 'اعتداء على طالب لفظيا', label: 'اعتداء على طالب لفظيا' },
+        { id: 'أخذ أدوات الغير دون أذنهم', label: 'أخذ أدوات الغير دون أذنهم' },
+        { id: 'إتلاف ممتلكات طالب', label: 'إتلاف ممتلكات طالب' },
+        { id: 'إتلاف ممتلكات المدرسة', label: 'إتلاف ممتلكات المدرسة' },
+      ];
+    }
 
     switch (subType) {
       case 'supervisor':
@@ -231,9 +246,17 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
   }, [data, globalTimeRange, dateRange]);
 
   const [cards, setCards] = useState<CardConfig[]>(() => {
+    const saved = localStorage.getItem('dashboardCards');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
     const cats: DataCategory[] = ['students', 'teachers', 'violations', 'special_reports', 'substitutions', 'students', 'teachers', 'special_reports'];
     return cats.map((cat, i) => ({ id: i + 1, category: cat, subType: 'all', subSubTypes: [] }));
   });
+
+  useEffect(() => {
+    localStorage.setItem('dashboardCards', JSON.stringify(cards));
+  }, [cards]);
 
   useEffect(() => {
     const timer = setInterval(() => setCycleIndex(prev => prev + 1), cycleDuration);
@@ -268,7 +291,11 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
             const val = String((i as any)[card.subType] || '');
             if (card.subSubTypes.includes('has_data') && val !== '' && val !== 'undefined') return true;
             if (card.subSubTypes.includes('no_data') && (val === '' || val === 'undefined')) return true;
-            return card.subSubTypes.some(selected => selected !== 'has_data' && selected !== 'no_data' && val.includes(selected));
+            return card.subSubTypes.some(selected => {
+              if (selected === 'has_data' || selected === 'no_data') return false;
+              if (Array.isArray((i as any)[card.subType])) return (i as any)[card.subType].includes(selected);
+              return val === selected || val.split(', ').includes(selected);
+            });
           });
         }
       } else if (card.category === 'staff_followup') {
@@ -325,8 +352,16 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
     });
   };
 
-  const handleExportExcel = (title: string, list: any[]) => {
-    const worksheet = XLSX.utils.json_to_sheet(list.map(item => ({ 'الاسم': item.displayName, 'الحالة': item.sub || item.stype || '---', 'تاريخ': item.date || item.createdAt || '---' })));
+  const handleExportExcel = (title: string, list: any[], card?: CardConfig) => {
+    const worksheet = XLSX.utils.json_to_sheet(list.map(item => {
+      let stateVal = item.sub || item.stype || '---';
+      if (card && card.subType !== 'all') {
+        const val = (item as any)[card.subType];
+        if (Array.isArray(val)) stateVal = val.join('، ');
+        else if (val !== undefined && val !== null) stateVal = String(val);
+      }
+      return { 'الاسم': item.displayName, 'الحالة': stateVal, 'تاريخ': item.date || item.createdAt || '---' };
+    }));
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
     XLSX.writeFile(workbook, `${title}_Report.xlsx`);
@@ -438,7 +473,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
 
               <div className="absolute top-4 left-4 z-40 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button onClick={() => handleExportWhatsApp(currentSub?.label || currentCat?.label || 'تقرير', list)} className="p-1 bg-white/80 rounded-lg text-green-600 shadow-sm hover:bg-white"><Share2 size={12} /></button>
-                <button onClick={() => handleExportExcel(currentSub?.label || currentCat?.label || 'تقرير', list)} className="p-1 bg-white/80 rounded-lg text-blue-600 shadow-sm hover:bg-white"><FileSpreadsheet size={12} /></button>
+                <button onClick={() => handleExportExcel(currentSub?.label || currentCat?.label || 'تقرير', list, card)} className="p-1 bg-white/80 rounded-lg text-blue-600 shadow-sm hover:bg-white"><FileSpreadsheet size={12} /></button>
               </div>
 
               <div className="flex flex-col gap-1 relative z-10 pt-4 px-1">

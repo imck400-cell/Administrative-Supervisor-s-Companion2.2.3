@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import { useGlobal } from '../context/GlobalState';
 import { Save, Plus, Trash2, School, Building, Calendar, Users, Briefcase, Sparkles } from 'lucide-react';
 
@@ -131,7 +132,7 @@ const ProfilePage: React.FC = () => {
         </div>
 
         <button
-          onClick={() => alert('تم حفظ التغييرات تلقائياً في قاعدة البيانات المحلية')}
+          onClick={() => toast.success('تم حفظ التغييرات تلقائياً في قاعدة البيانات المحلية')}
           className="w-full bg-blue-600 text-white p-5 rounded-2xl font-black text-xl hover:bg-blue-700 shadow-2xl shadow-blue-100 transition-all transform active:scale-[0.98] flex items-center justify-center gap-4 mt-6"
         >
           <Save size={24} />

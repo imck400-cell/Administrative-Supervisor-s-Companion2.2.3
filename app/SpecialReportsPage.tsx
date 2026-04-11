@@ -1,5 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { toast } from 'sonner';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useGlobal } from '../context/GlobalState';
 import {
   Briefcase, Users, FileText, GraduationCap,
@@ -174,6 +176,19 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
   const { lang, data, updateData, currentUser, userFilter } = useGlobal();
   const [activeTab, setActiveTab] = useState<MainTab>('supervisor');
   const [activeSubTab, setActiveSubTab] = useState<SubTab | null>(null);
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+  });
 
   useEffect(() => {
     if (initialSubTab) {
@@ -781,7 +796,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       });
 
       if (list.length === 0) {
-        alert('لا يوجد طلاب لإرسالهم في هذه الفئة.');
+        toast.error('لا يوجد طلاب لإرسالهم في هذه الفئة.');
         return;
       }
 
@@ -829,7 +844,10 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const saveLog = () => {
-      if (!absenceForm.studentId) return alert('يرجى اختيار طالب أولاً');
+      if (!absenceForm.studentId) {
+        toast.error('يرجى اختيار طالب أولاً');
+        return;
+      }
       const newLog: AbsenceLog = {
         ...absenceForm as AbsenceLog,
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -839,7 +857,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       updateData({ absenceLogs: [newLog, ...(data.absenceLogs || [])] });
       setAbsenceForm({ ...absenceFormInitial } as any);
       setSearchQuery('');
-      alert('تم حفظ البيانات بنجاح');
+      toast.success('تم حفظ البيانات بنجاح');
     };
 
     const cols = [
@@ -1045,7 +1063,10 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                         return status === 'absent_excused' || status === 'absent_unexcused';
                       });
 
-                      if (absentees.length === 0) return alert('لا يوجد طلاب غائبين للحفظ (بعذر أو بدون عذر).');
+                      if (absentees.length === 0) {
+                        toast.error('لا يوجد طلاب غائبين للحفظ (بعذر أو بدون عذر).');
+                        return;
+                      }
 
                       const newLogs = absentees.map(s => {
                         const status = attendanceMap[s.id];
@@ -1074,7 +1095,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                       });
 
                       updateData({ absenceLogs: [...newLogs, ...(data.absenceLogs || [])] });
-                      alert(`تم حفظ ${newLogs.length} سجل غياب بنجاح وتمت الأرشفة.`);
+                      toast.success(`تم حفظ ${newLogs.length} سجل غياب بنجاح وتمت الأرشفة.`);
 
                       // Reset
                       setAttendanceMap({});
@@ -1539,7 +1560,10 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const saveLog = () => {
-      if (!latenessForm.studentId) return alert('يرجى اختيار طالب أولاً');
+      if (!latenessForm.studentId) {
+        toast.error('يرجى اختيار طالب أولاً');
+        return;
+      }
       const newLog: LatenessLog = {
         ...latenessForm as LatenessLog,
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -1549,7 +1573,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       updateData({ studentLatenessLogs: [newLog, ...(data.studentLatenessLogs || [])] });
       setLatenessForm({ ...latenessForm, studentName: '', studentId: '', reason: '', pledge: '', notes: '' });
       setSearchQuery('');
-      alert('تم حفظ البيانات بنجاح');
+      toast.success('تم حفظ البيانات بنجاح');
     };
 
     const cols = [
@@ -1729,7 +1753,10 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const saveLog = () => {
-      if (!violationForm.studentId) return alert('يرجى اختيار طالب أولاً');
+      if (!violationForm.studentId) {
+        toast.error('يرجى اختيار طالب أولاً');
+        return;
+      }
       const total = (violationForm.behaviorViolations?.length || 0) + (violationForm.dutiesViolations?.length || 0) + (violationForm.achievementViolations?.length || 0);
       const newLog: StudentViolationLog = { 
         ...violationForm as StudentViolationLog, 
@@ -1740,7 +1767,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       updateData({ studentViolationLogs: [newLog, ...(data.studentViolationLogs || [])] });
       setViolationForm({ ...violationForm, studentName: '', studentId: '', behaviorViolations: [], dutiesViolations: [], achievementViolations: [], notes: '', pledge: '' });
       setSearchQuery('');
-      alert('تم تسجيل المخالفة بنجاح');
+      toast.success('تم تسجيل المخالفة بنجاح');
     };
 
     const cols = [
@@ -1930,7 +1957,10 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const saveLog = () => {
-      if (!exitForm.studentId) return alert('يرجى اختيار طالب أولاً');
+      if (!exitForm.studentId) {
+        toast.error('يرجى اختيار طالب أولاً');
+        return;
+      }
       const newLog: ExitLog = { 
         ...exitForm as ExitLog, 
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`, 
@@ -1940,7 +1970,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       updateData({ exitLogs: [newLog, ...(data.exitLogs || [])] });
       setExitForm({ ...exitForm, studentName: '', studentId: '', notes: '', status: 'نادر الخروج', action: 'تنبيه 1' });
       setSearchQuery('');
-      alert('تم حفظ بيانات الخروج');
+      toast.success('تم حفظ بيانات الخروج');
     };
 
     const cols = [
@@ -2053,7 +2083,10 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const saveLog = () => {
-      if (!damageForm.studentId) return alert('يرجى اختيار طالب أولاً');
+      if (!damageForm.studentId) {
+        toast.error('يرجى اختيار طالب أولاً');
+        return;
+      }
       const newLog: DamageLog = { 
         ...damageForm as DamageLog, 
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`, 
@@ -2063,7 +2096,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       updateData({ damageLogs: [newLog, ...(data.damageLogs || [])] });
       setDamageForm({ ...damageForm, studentName: '', studentId: '', notes: '', description: '', participants: '', followUpStatus: 'قيد المتابعة', action: 'تنبيه' });
       setSearchQuery('');
-      alert('تم حفظ بيانات الإتلاف');
+      toast.success('تم حفظ بيانات الإتلاف');
     };
 
     const cols = [
@@ -2206,7 +2239,10 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const saveLog = () => {
-      if (!visitForm.studentId) return alert('يرجى اختيار طالب أولاً');
+      if (!visitForm.studentId) {
+        toast.error('يرجى اختيار طالب أولاً');
+        return;
+      }
       const newLog: ParentVisitLog = {
         ...visitForm as ParentVisitLog,
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -2216,7 +2252,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       updateData({ parentVisitLogs: [newLog, ...(data.parentVisitLogs || [])] });
       setVisitForm({ ...visitForm, studentName: '', studentId: '', visitorName: '', reason: '', actions: '', notes: '' });
       setSearchQuery('');
-      alert('تم حفظ سجل التواصل/الزيارة');
+      toast.success('تم حفظ سجل التواصل/الزيارة');
     };
 
     const cols = [
@@ -2415,7 +2451,10 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     if (!customViolation.item.trim()) return;
     const current = data.customViolationElements || {};
     const catItems = current[cat as keyof typeof current] || [];
-    if (catItems.includes(customViolation.item.trim())) return alert('هذا العنصر موجود بالفعل');
+    if (catItems.includes(customViolation.item.trim())) {
+      toast.error('هذا العنصر موجود بالفعل');
+      return;
+    }
 
     updateData({
       customViolationElements: {
@@ -2439,9 +2478,15 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const monthlyTemplates = templates.filter(t => t.category === 'monthly');
 
     const resetTasksToDefaults = () => {
-      if (!window.confirm('هل أنت متأكد من استعادة المهام الافتراضية؟ سيؤدي ذلك إلى حذف أي مهام مخصصة قمت بإضافتها.')) return;
-      updateData({ taskTemplates: defaultTaskTemplates });
-      alert('تم استعادة المهام الافتراضية بنجاح');
+      setConfirmDialog({
+        isOpen: true,
+        title: 'استعادة الافتراضي',
+        message: 'هل أنت متأكد من استعادة المهام الافتراضية؟ سيؤدي ذلك إلى حذف أي مهام مخصصة قمت بإضافتها.',
+        onConfirm: () => {
+          updateData({ taskTemplates: defaultTaskTemplates });
+          toast.success('تم استعادة المهام الافتراضية بنجاح');
+        }
+      });
     };
 
     const handleAddTaskTemplate = (cat: 'daily' | 'weekly' | 'monthly') => {
@@ -2462,7 +2507,10 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
 
     const generateTaskTable = () => {
       const selectedTemplates = templates.filter(t => selectedTaskCategories.includes(t.category));
-      if (selectedTemplates.length === 0) return alert('يرجى اختيار فئة واحدة على الأقل');
+      if (selectedTemplates.length === 0) {
+        toast.error('يرجى اختيار فئة واحدة على الأقل');
+        return;
+      }
 
       const records: TaskRecord[] = selectedTemplates.map(t => ({
         id: Math.random().toString(36).substr(2, 9),
@@ -2498,13 +2546,19 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       const exists = reports.find(r => r.dateStr === activeTaskReport.dateStr);
 
       if (exists) {
-        if (!window.confirm('يوجد تقرير بالفعل لهذا التاريخ. هل تريد استبداله؟')) return;
-        updateData({ taskReports: reports.map(r => r.dateStr === activeTaskReport.dateStr ? activeTaskReport : r) });
+        setConfirmDialog({
+          isOpen: true,
+          title: 'تكرار التقرير',
+          message: 'يوجد تقرير بالفعل لهذا التاريخ. هل تريد استبداله؟',
+          onConfirm: () => {
+            updateData({ taskReports: reports.map(r => r.dateStr === activeTaskReport.dateStr ? activeTaskReport : r) });
+            toast.success('تم حفظ جدول المهام بنجاح');
+          }
+        });
       } else {
         updateData({ taskReports: [activeTaskReport, ...reports] });
+        toast.success('تم حفظ جدول المهام بنجاح');
       }
-
-      alert('تم حفظ جدول المهام بنجاح');
     };
 
     const toggleStatus = (taskId: string) => {
@@ -2540,8 +2594,16 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const deleteReport = (reportId: string) => {
-      if (!window.confirm('هل أنت متأكد من حذف هذا التقرير؟')) return;
-      updateData({ taskReports: (data.taskReports || []).filter(r => r.id !== reportId) });
+      setConfirmDialog({
+        isOpen: true,
+        title: 'حذف التقرير',
+        message: 'هل أنت متأكد من حذف هذا التقرير؟',
+        type: 'danger',
+        onConfirm: () => {
+          updateData({ taskReports: (data.taskReports || []).filter(r => r.id !== reportId) });
+          toast.success('تم حذف التقرير بنجاح');
+        }
+      });
     };
 
     const renderCategoryBox = (title: string, category: 'daily' | 'weekly' | 'monthly', items: TaskItem[]) => (
@@ -3131,6 +3193,14 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
           </div>
         </>
       ) : renderCurrentModule()}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        type={confirmDialog.type}
+      />
     </div>
   );
 };

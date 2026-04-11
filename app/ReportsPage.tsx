@@ -230,7 +230,7 @@ export const DailyReportsPage: React.FC = () => {
       branchManager: branchManager,
       periodType: 'daily'
     };
-    updateData({ dailyReports: [...reports, newReport] });
+    updateData({ dailyReports: [...(data.dailyReports || []), newReport] });
     setActiveReportId(newReport.id);
   };
 
@@ -246,13 +246,13 @@ export const DailyReportsPage: React.FC = () => {
       newTeacher[m.key] = 0;
     });
 
-    const updatedReports = reports.map(r => r.id === activeReportId ? { ...r, teachersData: [...r.teachersData, newTeacher] } : r);
+    const updatedReports = (data.dailyReports || []).map(r => r.id === activeReportId ? { ...r, teachersData: [...r.teachersData, newTeacher] } : r);
     updateData({ dailyReports: updatedReports });
   };
 
   const updateTeacher = (teacherId: string, updates: Record<string, any>) => {
     if (!activeReportId) return;
-    const updatedReports = reports.map(r => {
+    const updatedReports = (data.dailyReports || []).map(r => {
       if (r.id === activeReportId) {
         return {
           ...r,
@@ -282,16 +282,6 @@ export const DailyReportsPage: React.FC = () => {
         toast.success(lang === 'ar' ? 'تم حذف المعلم' : 'Teacher deleted');
       }
     });
-    const updatedReports = reports.map(r => {
-      if (r.id === activeReportId) {
-        return {
-          ...r,
-          teachersData: r.teachersData.filter(t => t.id !== teacherId)
-        };
-      }
-      return r;
-    });
-    updateData({ dailyReports: updatedReports });
     setSelectedTeacherIds(prev => prev.filter(id => id !== teacherId));
   };
 
@@ -314,16 +304,6 @@ export const DailyReportsPage: React.FC = () => {
         toast.success(lang === 'ar' ? 'تم حذف المعلمين المحددين' : 'Selected teachers deleted');
       }
     });
-    const updatedReports = reports.map(r => {
-      if (r.id === activeReportId) {
-        return {
-          ...r,
-          teachersData: r.teachersData.filter(t => !selectedTeacherIds.includes(t.id))
-        };
-      }
-      return r;
-    });
-    updateData({ dailyReports: updatedReports });
     setSelectedTeacherIds([]);
   };
 
@@ -380,20 +360,7 @@ export const DailyReportsPage: React.FC = () => {
         toast.success(lang === 'ar' ? 'تمت التعبئة بنجاح' : 'Filled successfully');
       }
     });
-    const updatedReports = reports.map(r => {
-      if (r.id === activeReportId) {
-        return {
-          ...r,
-          teachersData: r.teachersData.map(t => {
-            const filled = { ...t } as TeacherFollowUp;
-            metricsConfig.forEach(m => (filled as any)[m.key] = m.max);
-            return filled;
-          })
-        };
-      }
-      return r;
-    });
-    updateData({ dailyReports: updatedReports });
+    setSelectedTeacherIds([]);
   };
 
   const fillMetricColumn = (metricKey: string, val?: number) => {
@@ -401,7 +368,7 @@ export const DailyReportsPage: React.FC = () => {
     const max = metricsConfig.find(m => m.key === metricKey)?.max || 0;
     const valueToFill = val !== undefined ? val : max;
 
-    const updatedReports = reports.map(r => {
+    const updatedReports = (data.dailyReports || []).map(r => {
       if (r.id === activeReportId) {
         return {
           ...r,
@@ -567,7 +534,7 @@ export const DailyReportsPage: React.FC = () => {
 
   const toggleAccreditation = (teacherId: string | 'bulk', metricKey: string) => {
     if (!activeReportId) return;
-    const updatedReports = reports.map(r => {
+    const updatedReports = (data.dailyReports || []).map(r => {
       if (r.id === activeReportId) {
         let newTeachers = [...r.teachersData];
         if (teacherId === 'bulk') {
@@ -972,7 +939,7 @@ export const DailyReportsPage: React.FC = () => {
       }
 
       // Update the report with new teachers
-      const updatedReports = reports.map(r => {
+      const updatedReports = (data.dailyReports || []).map(r => {
         if (r.id === activeReportId) {
           return {
             ...r,
@@ -2342,7 +2309,9 @@ export const ViolationsPage: React.FC = () => {
 
   const nameSuggestions = useMemo(() => {
     if (!nameInput.trim()) return [];
-    const source = activeMode === 'students' ? studentList.map(s => s.name) : teacherList;
+    const source = activeMode === 'students' 
+      ? Array.from(new Set(studentList.map(s => s.name))) 
+      : Array.from(new Set(teacherList));
     return source.filter(n => n.includes(nameInput) && !tempNames.includes(n)).slice(0, 5);
   }, [nameInput, activeMode, studentList, teacherList, tempNames]);
 

@@ -50,7 +50,7 @@ service cloud.firestore {
       
       // Shared data (profile, templates, etc.)
       match /shared/{key} {
-        allow read: if isAuthenticated() && (key == 'users' || key == 'profile' || (userExists() && getUserData().school == school));
+        allow read: if isAuthenticated() && (key == 'users' || key == 'profile' || key == 'availableSchools' || key == 'availableYears' || (userExists() && getUserData().school == school));
         allow write: if isAuthenticated() && userExists() && getUserData().school == school && getUserData().role == 'admin';
       }
 

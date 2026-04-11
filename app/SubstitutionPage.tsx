@@ -1,5 +1,7 @@
 
 import React, { useState, useMemo, useRef } from 'react';
+import { toast } from 'sonner';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useGlobal } from '../context/GlobalState';
 import {
   Plus, Trash2, CheckCircle, FileText, FileSpreadsheet, Share2,
@@ -72,6 +74,19 @@ const SubstitutionPage: React.FC = () => {
     period: ''
   });
 
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { },
+  });
+
   const generateId = () => `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
   const handleAddTimetableRow = () => {
@@ -109,37 +124,50 @@ const SubstitutionPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const isMerge = confirm(lang === 'ar' ? 'اضغط "موافق" للإضافة للبيانات الحالية، أو "إلغاء" للمسح والبدء من جديد' : 'OK to merge, Cancel to replace');
+    setConfirmDialog({
+      isOpen: true,
+      title: lang === 'ar' ? 'طريقة الاستيراد' : 'Import Method',
+      message: lang === 'ar' ? 'هل تريد إضافة البيانات للموجود حالياً أم استبدالها؟' : 'Do you want to merge with existing data or replace it?',
+      onConfirm: () => processTimetableImport(file, true),
+      type: 'info'
+    });
+  };
 
+  const processTimetableImport = (file: File, isMerge: boolean) => {
     const reader = new FileReader();
     reader.onload = (evt) => {
-      const bstr = evt.target?.result;
-      const wb = XLSX.read(bstr, { type: 'binary' });
-      const wsname = wb.SheetNames[0];
-      const ws = wb.Sheets[wsname];
-      const importedData = XLSX.utils.sheet_to_json(ws);
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const importedData = XLSX.utils.sheet_to_json(ws);
 
-      const newEntries: TimetableEntry[] = (importedData as any[]).map((row) => {
-        const teacherName = row['اسم المعلم'] || '';
-        const subject = row['المادة'] || '';
-        const notes = row['ملاحظات'] || '';
+        const newEntries: TimetableEntry[] = (importedData as any[]).map((row) => {
+          const teacherName = row['اسم المعلم'] || '';
+          const subject = row['المادة'] || '';
+          const notes = row['ملاحظات'] || '';
 
-        const daysMap: Record<string, Record<string, string>> = {};
-        daysAr.forEach(day => {
-          daysMap[day] = {};
-          periodsAr.forEach((pName, pIdx) => {
-            const key = `p${pIdx}`;
-            daysMap[day][key] = row[`${day} - ${pName}`] || '';
+          const daysMap: Record<string, Record<string, string>> = {};
+          daysAr.forEach(day => {
+            daysMap[day] = {};
+            periodsAr.forEach((pName, pIdx) => {
+              const key = `p${pIdx}`;
+              daysMap[day][key] = row[`${day} - ${pName}`] || '';
+            });
           });
+
+          return {
+            id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            teacherName, subject, notes, days: daysMap
+          };
         });
 
-        return {
-          id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-          teacherName, subject, notes, days: daysMap
-        };
-      });
-
-      updateData({ timetable: isMerge ? [...(data.timetable || []), ...newEntries] : newEntries });
+        updateData({ timetable: isMerge ? [...(data.timetable || []), ...newEntries] : newEntries });
+        toast.success(lang === 'ar' ? 'تم الاستيراد بنجاح' : 'Imported successfully');
+      } catch (err) {
+        toast.error(lang === 'ar' ? 'فشل استيراد ملف Excel' : 'Failed to import Excel');
+      }
     };
     reader.readAsBinaryString(file);
   };
@@ -148,8 +176,16 @@ const SubstitutionPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const isMerge = confirm(lang === 'ar' ? 'اضغط "موافق" للإضافة للبيانات الحالية، أو "إلغاء" للمسح والبدء من جديد' : 'OK to merge, Cancel to replace');
+    setConfirmDialog({
+      isOpen: true,
+      title: lang === 'ar' ? 'طريقة الاستيراد' : 'Import Method',
+      message: lang === 'ar' ? 'هل تريد إضافة البيانات للموجود حالياً أم استبدالها؟' : 'Do you want to merge with existing data or replace it?',
+      onConfirm: () => processImportXML(file, true),
+      type: 'info'
+    });
+  };
 
+  const processImportXML = (file: File, isMerge: boolean) => {
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -182,8 +218,9 @@ const SubstitutionPage: React.FC = () => {
         }
 
         updateData({ timetable: isMerge ? [...(data.timetable || []), ...newEntries] : newEntries });
+        toast.success(lang === 'ar' ? 'تم استيراد XML بنجاح' : 'XML Imported successfully');
       } catch (error) {
-        alert('فشل استيراد ملف XML. يرجى التأكد من صحة التنسيق.');
+        toast.error(lang === 'ar' ? 'فشل استيراد ملف XML' : 'Failed to import XML');
       }
     };
     reader.readAsText(file);
@@ -193,8 +230,16 @@ const SubstitutionPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const isMerge = confirm(lang === 'ar' ? 'اضغط "موافق" للإضافة للبيانات الحالية، أو "إلغاء" للمسح والبدء من جديد' : 'OK to merge, Cancel to replace');
+    setConfirmDialog({
+      isOpen: true,
+      title: lang === 'ar' ? 'طريقة الاستيراد' : 'Import Method',
+      message: lang === 'ar' ? 'هل تريد إضافة البيانات للموجود حالياً أم استبدالها؟' : 'Do you want to merge with existing data or replace it?',
+      onConfirm: () => processImportTXT(file, true),
+      type: 'info'
+    });
+  };
 
+  const processImportTXT = (file: File, isMerge: boolean) => {
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -236,15 +281,16 @@ const SubstitutionPage: React.FC = () => {
 
         if (currentTeacher) newEntries.push(currentTeacher);
         updateData({ timetable: isMerge ? [...(data.timetable || []), ...newEntries] : newEntries });
+        toast.success(lang === 'ar' ? 'تم استيراد TXT بنجاح' : 'TXT Imported successfully');
       } catch (error) {
-        alert('فشل استيراد ملف TXT. يرجى التأكد من صحة التنسيق.');
+        toast.error(lang === 'ar' ? 'فشل استيراد ملف TXT' : 'Failed to import TXT');
       }
     };
     reader.readAsText(file);
   };
 
   const handleImportPDF = (e: React.ChangeEvent<HTMLInputElement>) => {
-    alert('استيراد PDF يتطلب معالجة متقدمة. يُفضل تحويل PDF إلى Excel أو TXT أولاً.');
+    toast.info(lang === 'ar' ? 'استيراد PDF يتطلب معالجة متقدمة. يُفضل تحويل PDF إلى Excel أو TXT أولاً.' : 'PDF import requires advanced processing. Please convert PDF to Excel or TXT first.');
     // ملاحظة: استيراد PDF يتطلب مكتبة خاصة مثل pdf.js
     // يمكن إضافة هذه الوظيفة لاحقاً
   };
@@ -363,9 +409,16 @@ const SubstitutionPage: React.FC = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm(lang === 'ar' ? 'هل أنت متأكد من الحذف؟' : 'Are you sure?')) {
-      updateData({ substitutions: data.substitutions.filter(s => s.id !== id) });
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: lang === 'ar' ? 'تأكيد الحذف' : 'Confirm Delete',
+      message: lang === 'ar' ? 'هل أنت متأكد من الحذف؟' : 'Are you sure?',
+      type: 'danger',
+      onConfirm: () => {
+        updateData({ substitutions: data.substitutions.filter(s => s.id !== id) });
+        toast.success(lang === 'ar' ? 'تم الحذف بنجاح' : 'Deleted successfully');
+      }
+    });
   };
 
   const getDayName = (dateStr: string) => {
@@ -1070,6 +1123,14 @@ const SubstitutionPage: React.FC = () => {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        type={confirmDialog.type}
+      />
     </div>
   );
 };

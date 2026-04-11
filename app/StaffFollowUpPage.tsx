@@ -1794,7 +1794,7 @@ const StaffFollowUpPage: React.FC = () => {
                                             const input = document.createElement('input');
                                             input.type = 'file';
                                             input.accept = '.txt,.xml,.xlsx';
-                                            input.onchange = (e) => alert('تم استيراد الأسماء بنجاح (محاكاة)');
+                                            input.onchange = (e) => toast.success('تم استيراد الأسماء بنجاح (محاكاة)');
                                             input.click();
                                         }}
                                         className="flex items-center gap-2 h-11 px-5 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all"

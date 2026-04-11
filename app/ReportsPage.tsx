@@ -1431,7 +1431,7 @@ export const DailyReportsPage: React.FC = () => {
       {/* Indicators / Aggregation Modal */}
       {showIndicatorsModal && (
         <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-md">
-          <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl animate-in zoom-in duration-300 border-4 border-blue-50/50">
+          <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl animate-in zoom-in duration-300 border-4 border-blue-50/50 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div className="flex flex-col items-center mb-6">
               <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mb-4 text-blue-600 shadow-inner">
                 <BarChart3 size={32} />
@@ -2056,7 +2056,7 @@ export const DailyReportsPage: React.FC = () => {
                 <p className="text-xl font-bold text-slate-600">يرجى اختيار نوع المتابعة المطلوبة</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
                   <button
-                    onClick={() => setSpecialFollowUpMode('teacher')}
+                    onClick={() => { setSpecialFollowUpMode('teacher'); setSpecialSearch(''); setSpecialTeacherId(''); }}
                     className="flex flex-col items-center gap-4 p-8 rounded-[2rem] border-4 border-blue-50 bg-white hover:border-blue-500 hover:shadow-2xl transition-all group"
                   >
                     <div className="w-20 h-20 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
@@ -2067,7 +2067,7 @@ export const DailyReportsPage: React.FC = () => {
                   </button>
 
                   <button
-                    onClick={() => setSpecialFollowUpMode('metric')}
+                    onClick={() => { setSpecialFollowUpMode('metric'); setSpecialSelectedMetrics([]); }}
                     className="flex flex-col items-center gap-4 p-8 rounded-[2rem] border-4 border-purple-50 bg-white hover:border-purple-500 hover:shadow-2xl transition-all group"
                   >
                     <div className="w-20 h-20 bg-purple-100 rounded-2xl flex items-center justify-center text-purple-600 group-hover:scale-110 transition-transform">
@@ -2080,66 +2080,96 @@ export const DailyReportsPage: React.FC = () => {
               </div>
             ) : specialFollowUpMode === 'teacher' ? (
               <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="p-6 bg-blue-50/50 border-b flex flex-col md:flex-row items-center gap-4">
-                  <div className="relative flex-1">
+                <div className="p-6 bg-blue-50/50 border-b flex flex-col items-center gap-4">
+                  <div className="w-full max-w-md relative">
                     <input
                       type="text"
-                      placeholder="ابحث عن اسم المعلم.."
+                      placeholder="اكتب اسم المعلم المطلوب.."
                       className="w-full p-4 bg-white rounded-2xl border-2 border-blue-100 focus:border-blue-500 outline-none transition-all pr-12 font-bold shadow-sm"
                       value={specialSearch}
                       onChange={e => setSpecialSearch(e.target.value)}
                     />
                     <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-400" size={20} />
                   </div>
-                  <div className="flex-1 overflow-x-auto no-scrollbar flex gap-2">
-                    {teachers.filter(t => t.teacherName.includes(specialSearch)).slice(0, 5).map(t => (
-                      <button
-                        key={t.id}
-                        onClick={() => setSpecialTeacherId(t.id)}
-                        className={`px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all border-2 ${specialTeacherId === t.id ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-blue-100 text-blue-600 hover:bg-blue-50'}`}
-                      >
-                        {t.teacherName}
-                      </button>
-                    ))}
-                  </div>
+                  
+                  {specialSearch && !specialTeacherId && (
+                    <div className="w-full max-w-md bg-white border rounded-2xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+                      {allTeacherNames.filter(n => n.includes(specialSearch)).slice(0, 5).map(name => {
+                        const t = teachers.find(teacher => teacher.teacherName === name);
+                        return (
+                          <button
+                            key={name}
+                            onClick={() => {
+                              if (t) setSpecialTeacherId(t.id);
+                              setSpecialSearch(name);
+                            }}
+                            className="w-full text-right p-4 hover:bg-blue-50 font-bold text-slate-700 border-b last:border-none flex items-center justify-between"
+                          >
+                            <span>{name}</span>
+                            <ChevronLeft size={16} className="text-blue-400" />
+                          </button>
+                        );
+                      })}
+                      {allTeacherNames.filter(n => n.includes(specialSearch)).length === 0 && (
+                        <div className="p-4 text-center text-slate-400 font-bold">لا يوجد معلم بهذا الاسم</div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
                   {specialTeacherId ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {metricsConfig.map(m => {
-                        const teacher = teachers.find(t => t.id === specialTeacherId);
-                        if (!teacher) return null;
-                        const isUnaccredited = (teacher.unaccreditedMetrics || []).includes(m.key);
-                        return (
-                          <div key={m.key} className="flex items-center gap-4 bg-white p-4 rounded-2xl border-2 border-slate-50 hover:border-blue-200 transition-all shadow-sm">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm ${m.color || 'bg-slate-400'}`}>
-                              <Activity size={18} />
-                            </div>
-                            <div className="flex-1">
-                              <div className="text-xs font-black text-slate-400 mb-1">{m.label}</div>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="number"
-                                  disabled={isUnaccredited}
-                                  className={`flex-1 p-2 bg-slate-50 rounded-xl font-black text-center outline-none focus:ring-2 ring-blue-100 font-sans ${isUnaccredited ? 'opacity-30' : ''}`}
-                                  value={(teacher as any)[m.key] || 0}
-                                  onChange={e => {
-                                    const val = Math.min(m.max, Math.max(0, parseInt(e.target.value) || 0));
-                                    updateTeacher(teacher.id, { [m.key]: val });
-                                  }}
-                                />
-                                <span className="text-xs font-bold text-slate-300">/ {m.max}</span>
+                    <div className="space-y-6">
+                      <div className="bg-blue-600 text-white p-6 rounded-3xl shadow-lg flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                            <User size={32} />
+                          </div>
+                          <div>
+                            <h4 className="text-xl font-black">{teachers.find(t => t.id === specialTeacherId)?.teacherName}</h4>
+                            <p className="text-blue-100 font-bold text-sm">{teachers.find(t => t.id === specialTeacherId)?.subjectCode} - {teachers.find(t => t.id === specialTeacherId)?.className}</p>
+                          </div>
+                        </div>
+                        <button onClick={() => { setSpecialTeacherId(''); setSpecialSearch(''); }} className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all">
+                          <Edit size={20} />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {metricsConfig.map(m => {
+                          const teacher = teachers.find(t => t.id === specialTeacherId);
+                          if (!teacher) return null;
+                          const isUnaccredited = (teacher.unaccreditedMetrics || []).includes(m.key);
+                          return (
+                            <div key={m.key} className="flex items-center gap-4 bg-white p-4 rounded-2xl border-2 border-slate-50 hover:border-blue-200 transition-all shadow-sm">
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm ${m.color || 'bg-slate-400'}`}>
+                                <Activity size={18} />
+                              </div>
+                              <div className="flex-1">
+                                <div className="text-xs font-black text-slate-400 mb-1">{m.label}</div>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    disabled={isUnaccredited}
+                                    className={`flex-1 p-2 bg-slate-50 rounded-xl font-black text-center outline-none focus:ring-2 ring-blue-100 font-sans ${isUnaccredited ? 'opacity-30' : ''}`}
+                                    value={(teacher as any)[m.key] || 0}
+                                    onChange={e => {
+                                      const val = Math.min(m.max, Math.max(0, parseInt(e.target.value) || 0));
+                                      updateTeacher(teacher.id, { [m.key]: val });
+                                    }}
+                                  />
+                                  <span className="text-xs font-bold text-slate-300">/ {m.max}</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4">
-                      <User size={64} className="opacity-20" />
-                      <p className="font-black text-lg">يرجى اختيار معلم لعرض معاييره</p>
+                      <Search size={64} className="opacity-20" />
+                      <p className="font-black text-lg">يرجى البحث عن معلم واختياره لعرض معاييره</p>
                     </div>
                   )}
                 </div>
@@ -3301,11 +3331,12 @@ export const StudentsReportsPage: React.FC = () => {
   };
 
   const normalizeArabic = (text: any): string => {
-    if (!text) return '';
+    if (!text) return "";
     return String(text)
-      .replace(/[أإآ]/g, 'ا')
-      .replace(/ة/g, 'ه')
-      .replace(/ى/g, 'ي')
+      .replace(/[ًٌٍَُِّْـ]/g, "")
+      .replace(/[أإآ]/g, "ا")
+      .replace(/ة/g, "ه")
+      .replace(/ى/g, "ي")
       .trim();
   };
 

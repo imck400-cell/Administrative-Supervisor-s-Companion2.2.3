@@ -266,9 +266,10 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
   const normalizeArabic = (str: string) => {
     if (!str) return '';
     return str
-      .replace(/[ًٌٍَُِّْ]/g, '')
+      .replace(/[ًٌٍَُِّْـ]/g, '')
       .replace(/[أإآ]/g, 'ا')
       .replace(/ة/g, 'ه')
+      .replace(/ى/g, 'ي')
       .trim();
   };
 

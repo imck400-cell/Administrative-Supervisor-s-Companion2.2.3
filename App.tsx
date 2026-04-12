@@ -398,11 +398,11 @@ const MainApp: React.FC = () => {
       <UserFilterModal 
         isOpen={isUserFilterModalOpen} 
         onClose={() => setIsUserFilterModalOpen(false)} 
-        users={data.users.filter(u => u.schools.includes(currentUser?.selectedSchool || ''))}
-        selectedIds={userFilter === 'all' ? data.users.filter(u => u.schools.includes(currentUser?.selectedSchool || '')).map(u => u.id) : userFilter.split(',')}
+        users={(currentUser?.role === 'admin' || currentUser?.permissions?.all) ? data.users : data.users.filter(u => u.schools.includes(currentUser?.selectedSchool || ''))}
+        selectedIds={userFilter === 'all' ? ((currentUser?.role === 'admin' || currentUser?.permissions?.all) ? data.users.map(u => u.id) : data.users.filter(u => u.schools.includes(currentUser?.selectedSchool || '')).map(u => u.id)) : userFilter.split(',')}
         onApply={(ids) => {
-          const schoolUsers = data.users.filter(u => u.schools.includes(currentUser?.selectedSchool || ''));
-          if (ids.length === schoolUsers.length) {
+          const availableUsers = (currentUser?.role === 'admin' || currentUser?.permissions?.all) ? data.users : data.users.filter(u => u.schools.includes(currentUser?.selectedSchool || ''));
+          if (ids.length === availableUsers.length && availableUsers.length > 0) {
             setUserFilter('all');
           } else if (ids.length === 0) {
             setUserFilter(currentUser?.id || 'all');

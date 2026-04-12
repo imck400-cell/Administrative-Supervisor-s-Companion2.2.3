@@ -354,7 +354,8 @@ const MainApp: React.FC = () => {
             <select 
               value={userFilter}
               onChange={(e) => setUserFilter(e.target.value)}
-              className="pr-12 pl-10 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm appearance-none outline-none focus:border-blue-500 transition-all cursor-pointer shadow-sm hover:shadow-md"
+              disabled={currentUser?.role !== 'admin'}
+              className="pr-12 pl-10 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm appearance-none outline-none focus:border-blue-500 transition-all cursor-pointer shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="all">كل المستخدمين</option>
               {data.users.map((u, idx) => (

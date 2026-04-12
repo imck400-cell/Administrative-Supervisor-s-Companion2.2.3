@@ -316,6 +316,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [userFilter, setUserFilter] = useState('all');
 
+  useEffect(() => {
+    if (isAuthenticated && currentUser && currentUser.role !== 'admin') {
+      setUserFilter(currentUser.id);
+    }
+  }, [isAuthenticated, currentUser]);
+
   const activeListeners = React.useRef<Set<string>>(new Set());
 
   useEffect(() => {

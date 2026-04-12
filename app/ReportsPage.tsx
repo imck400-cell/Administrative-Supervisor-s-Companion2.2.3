@@ -232,12 +232,13 @@ export const DailyReportsPage: React.FC = () => {
       return;
     }
 
-    const lastReport = reports[reports.length - 1];
+    const allReports = [...(data.dailyReports || [])].sort((a, b) => new Date(a.dateStr).getTime() - new Date(b.dateStr).getTime());
+    const lastReport = allReports[allReports.length - 1];
     const newTeachers = lastReport ? lastReport.teachersData.map(t => ({
       ...t,
       attendance: 0, appearance: 0, preparation: 0, supervision_queue: 0, supervision_rest: 0, supervision_end: 0,
       correction_books: 0, correction_notebooks: 0, correction_followup: 0, teaching_aids: 0, extra_activities: 0,
-      radio: 0, creativity: 0, zero_period: 0, violations_score: 0, violations_notes: [], gender: 'ذكر'
+      radio: 0, creativity: 0, zero_period: 0, violations_score: 0, violations_notes: [], gender: t.gender || 'ذكر'
     })) : [];
 
     const newReport: DailyReportContainer = {
@@ -3166,6 +3167,7 @@ export const StudentsReportsPage: React.FC = () => {
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [showDeleteStudentsModal, setShowDeleteStudentsModal] = useState(false);
   const [deletionFilters, setDeletionFilters] = useState({ grades: [] as string[], sections: [] as string[], deleteDuplicates: false });
+  const [displayLimit, setDisplayLimit] = useState(50);
 
   const waFieldOptions = [
     { key: 'all', label: 'جميع البيانات' },
@@ -3590,6 +3592,10 @@ export const StudentsReportsPage: React.FC = () => {
 
   const isOnlyMetricView = filterMode === 'metric' && activeMetricFilter.length > 0;
 
+  const paginatedStudents = useMemo(() => {
+    return filteredData.slice(0, displayLimit);
+  }, [filteredData, displayLimit]);
+
   const addStudentToFilter = (name?: string) => {
     const targetName = name || studentInput.trim();
     if (targetName && !selectedStudentNames.includes(targetName)) {
@@ -3974,7 +3980,7 @@ export const StudentsReportsPage: React.FC = () => {
               )}
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredData.length === 0 ? (
+              {paginatedStudents.length === 0 ? (
                 <tr>
                   <td colSpan={isOnlyMetricView ? 4 + activeMetricFilter.length : 24} className="py-10 text-slate-400 italic text-sm">
                     {(filterMode === 'student' || filterMode === 'blacklist' || filterMode === 'excellence') && selectedStudentNames.length === 0
@@ -3983,7 +3989,7 @@ export const StudentsReportsPage: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filteredData.map((s, idx) => (
+                paginatedStudents.map((s, idx) => (
                   <StudentRow
                     key={s.id}
                     s={s}
@@ -4007,6 +4013,16 @@ export const StudentsReportsPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+        {filteredData.length > displayLimit && (
+          <div className="p-4 bg-slate-50 border-t border-slate-100 text-center">
+            <button 
+              onClick={() => setDisplayLimit(prev => prev + 50)}
+              className="px-8 py-2.5 bg-white border-2 border-blue-100 text-blue-600 rounded-xl font-black text-sm hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+            >
+              {lang === 'ar' ? 'تحميل المزيد من الطلاب...' : 'Load more students...'}
+            </button>
+          </div>
+        )}
       </div>
 
       {showListModal && (

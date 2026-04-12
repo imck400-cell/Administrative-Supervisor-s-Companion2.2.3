@@ -73,6 +73,7 @@ export const DailyReportsPage: React.FC = () => {
   const [specialTeacherId, setSpecialTeacherId] = useState<string>('');
   const [specialSelectedMetrics, setSpecialSelectedMetrics] = useState<string[]>([]);
   const [specialSearch, setSpecialSearch] = useState('');
+  const [isMetricsCollapsed, setIsMetricsCollapsed] = useState(false);
 
   // Aggregation (Indicators) State
   const [showIndicatorsModal, setShowIndicatorsModal] = useState(false);
@@ -98,8 +99,13 @@ export const DailyReportsPage: React.FC = () => {
 
   // Set active report on load if not set & Auto-create for today
   useEffect(() => {
-    if (!activeReportId && reports.length > 0) {
-      setActiveReportId(reports[reports.length - 1].id);
+    if (reports.length > 0) {
+      const currentExists = reports.some(r => r.id === activeReportId);
+      if (!currentExists) {
+        setActiveReportId(reports[reports.length - 1].id);
+      }
+    } else {
+      setActiveReportId(null);
     }
   }, [reports, activeReportId]);
 
@@ -2213,19 +2219,46 @@ export const DailyReportsPage: React.FC = () => {
             ) : (
               <div className="flex-1 flex flex-col overflow-hidden">
                 <div className="p-6 bg-purple-50/50 border-b">
-                  <div className="text-xs font-black text-purple-400 mb-3 px-1 uppercase tracking-wider">اختر المعايير المطلوب متابعتها</div>
-                  <div className="flex flex-wrap gap-2">
-                    {metricsConfig.map(m => (
-                      <button
-                        key={m.key}
-                        onClick={() => setSpecialSelectedMetrics(prev => prev.includes(m.key) ? prev.filter(k => k !== m.key) : [...prev, m.key])}
-                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all border-2 flex items-center gap-2 ${specialSelectedMetrics.includes(m.key) ? 'bg-purple-600 border-purple-600 text-white shadow-lg' : 'bg-white border-purple-100 text-purple-600 hover:bg-purple-50'}`}
-                      >
-                        <Activity size={14} />
-                        {m.label}
-                      </button>
-                    ))}
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <div className="text-xs font-black text-purple-400 uppercase tracking-wider">اختر المعايير المطلوب متابعتها</div>
+                    <button 
+                      onClick={() => setIsMetricsCollapsed(!isMetricsCollapsed)}
+                      className="p-2 hover:bg-purple-100 rounded-xl transition-all text-purple-600 flex items-center gap-2 text-xs font-bold"
+                    >
+                      {isMetricsCollapsed ? 'عرض المعايير' : 'طي المعايير'}
+                      <ChevronRight size={16} className={`transition-transform ${isMetricsCollapsed ? 'rotate-90' : '-rotate-90'}`} />
+                    </button>
                   </div>
+                  
+                  {!isMetricsCollapsed ? (
+                    <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                      {metricsConfig.map(m => (
+                        <button
+                          key={m.key}
+                          onClick={() => setSpecialSelectedMetrics(prev => prev.includes(m.key) ? prev.filter(k => k !== m.key) : [...prev, m.key])}
+                          className={`px-4 py-2 rounded-xl text-xs font-black transition-all border-2 flex items-center gap-2 ${specialSelectedMetrics.includes(m.key) ? 'bg-purple-600 border-purple-600 text-white shadow-lg' : 'bg-white border-purple-100 text-purple-600 hover:bg-purple-50'}`}
+                        >
+                          <Activity size={14} />
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                      {specialSelectedMetrics.length > 0 ? (
+                        specialSelectedMetrics.map(mKey => {
+                          const m = metricsConfig.find(mc => mc.key === mKey);
+                          return (
+                            <span key={mKey} className="px-3 py-1 bg-purple-100 text-purple-600 rounded-lg text-[10px] font-black border border-purple-200">
+                              {m?.label}
+                            </span>
+                          );
+                        })
+                      ) : (
+                        <span className="text-xs font-bold text-slate-400 italic">لم يتم اختيار معايير</span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
@@ -3131,7 +3164,7 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
 });
 
 export const StudentsReportsPage: React.FC = () => {
-  const { data, updateData, lang, userFilter } = useGlobal();
+  const { data, updateData, lang, userFilter, currentUser } = useGlobal();
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -3309,6 +3342,7 @@ export const StudentsReportsPage: React.FC = () => {
   const addStudent = () => {
     const newStudent: StudentReport = {
       id: Date.now().toString(),
+      userId: currentUser?.id,
       name: '',
       gender: options.gender[0],
       grade: options.grades[0],

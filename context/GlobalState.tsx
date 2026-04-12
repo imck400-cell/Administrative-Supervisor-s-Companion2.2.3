@@ -418,13 +418,24 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const targetUserIds = React.useMemo(() => {
     if (!isAuthenticated || !currentUser) return "";
     const school = currentUser.selectedSchool.trim();
-    const ids = currentUser.role === 'admin' 
+    
+    // Start with users in the current school if admin, or just the current user
+    let ids = currentUser.role === 'admin' 
       ? data.users.filter(u => u.schools.includes(school)).map(u => u.id)
       : [currentUser.id];
+
+    // CRITICAL: Also include any users selected in the userFilter
+    // This ensures that if an admin selects a user from another school, we actually listen to their data
+    if (userFilter && userFilter !== 'all') {
+      const filterIds = userFilter.split(',');
+      filterIds.forEach(id => {
+        if (!ids.includes(id)) ids.push(id);
+      });
+    }
     
     if (!ids.includes(currentUser.id)) ids.push(currentUser.id);
     return ids.sort().join(',');
-  }, [isAuthenticated, currentUser?.id, currentUser?.selectedSchool, currentUser?.role, data.users]);
+  }, [isAuthenticated, currentUser?.id, currentUser?.selectedSchool, currentUser?.role, data.users, userFilter]);
 
   useEffect(() => {
     if (!isAuthenticated || !currentUser) return;

@@ -185,6 +185,17 @@ const StaffFollowUpPage: React.FC = () => {
         return allReports.filter(r => filterIds.includes(r.userId || ''));
     }, [data.adminReports, userFilter]);
 
+    useEffect(() => {
+        if (reports.length > 0) {
+            const currentExists = reports.some(r => r.id === currentReportId);
+            if (!currentExists) {
+                setCurrentReportId(reports[0].id);
+            }
+        } else {
+            setCurrentReportId(null);
+        }
+    }, [reports, currentReportId]);
+
     const employees = useMemo(() => {
         const report = reports.find(r => r.id === currentReportId);
         if (!report) return [];

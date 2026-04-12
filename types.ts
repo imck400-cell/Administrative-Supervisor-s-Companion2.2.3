@@ -157,6 +157,7 @@ export interface StudentReport {
   createdAt: string;
   isBlacklisted?: boolean;
   isExcellent?: boolean;
+  userId?: string;
   absenceSummary?: string;
   latenessSummary?: string;
   exitSummary?: string;

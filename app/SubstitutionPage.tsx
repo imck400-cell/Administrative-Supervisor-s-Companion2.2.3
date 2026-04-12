@@ -44,7 +44,8 @@ const SubstitutionPage: React.FC = () => {
   const filteredSubstitutions = useMemo(() => {
     let list = (data.substitutions || []).filter(s => s.date === selectedCoverageDate);
     if (userFilter && userFilter !== 'all') {
-      list = list.filter(s => s.userId === userFilter);
+      const filterIds = userFilter.split(',');
+      list = list.filter(s => filterIds.includes(s.userId || ''));
     }
     return list;
   }, [data.substitutions, selectedCoverageDate, userFilter]);
@@ -52,7 +53,8 @@ const SubstitutionPage: React.FC = () => {
   const uniqueCoverageDates = useMemo(() => {
     let list = (data.substitutions || []);
     if (userFilter && userFilter !== 'all') {
-      list = list.filter(s => s.userId === userFilter);
+      const filterIds = userFilter.split(',');
+      list = list.filter(s => filterIds.includes(s.userId || ''));
     }
     const dates = list.map(s => s.date);
     // Fix: Cast a and b to string as they are inferred as unknown
@@ -298,7 +300,8 @@ const SubstitutionPage: React.FC = () => {
   const timetableFiltered = useMemo(() => {
     let list = (data.timetable || []);
     if (userFilter && userFilter !== 'all') {
-      list = list.filter(t => t.userId === userFilter);
+      const filterIds = userFilter.split(',');
+      list = list.filter(t => filterIds.includes(t.userId || ''));
     }
     return list;
   }, [data.timetable, userFilter]);

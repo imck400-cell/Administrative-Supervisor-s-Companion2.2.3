@@ -174,6 +174,8 @@ interface SpecialReportsPageProps {
 const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, onSubTabOpen, onNavigate }) => {
   // END OF CHANGE
   const { lang, data, updateData, currentUser, userFilter } = useGlobal();
+  const filterIds = useMemo(() => (userFilter && userFilter !== 'all') ? userFilter.split(',') : [], [userFilter]);
+  const matchesFilter = (userId?: string) => !userFilter || userFilter === 'all' || (userId && filterIds.includes(userId));
   const [activeTab, setActiveTab] = useState<MainTab>('supervisor');
   const [activeSubTab, setActiveSubTab] = useState<SubTab | null>(null);
 
@@ -354,7 +356,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const currentSubjects = examStage === 'basic' ? basicSubjects : secondarySubjects;
 
     const filteredLogs = (data.examLogs || []).filter(log => {
-      if (userFilter && userFilter !== 'all' && log.userId !== userFilter) return false;
+      if (!matchesFilter(log.userId)) return false;
       if (log.type !== (activeSubTab === 'الاختبار الشهري' ? 'monthly' : 'final')) return false;
       if (examFilters.semester && log.semester !== examFilters.semester) return false;
       if (examFilters.dateStart && log.date < examFilters.dateStart) return false;
@@ -810,7 +812,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const filtered = (data.absenceLogs || []).filter(l => {
-      if (userFilter && userFilter !== 'all' && l.userId !== userFilter) return false;
+      if (!matchesFilter(l.userId)) return false;
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
       if (filterValues.start && l.date < filterValues.start) return false;
       if (filterValues.end && l.date > filterValues.end) return false;
@@ -1530,7 +1532,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const suggestions = (searchQuery.trim() && searchQuery !== latenessForm.studentName) ? students.filter(s => s.name.includes(searchQuery)) : [];
     const nameSugg = nameInput.trim() ? students.filter(s => s.name.includes(nameInput) && !tempNames.includes(s.name)) : [];
     const filtered = (data.studentLatenessLogs || []).filter(l => {
-      if (userFilter && userFilter !== 'all' && l.userId !== userFilter) return false;
+      if (!matchesFilter(l.userId)) return false;
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
       if (filterValues.start && l.date < filterValues.start) return false;
       if (filterValues.end && l.date > filterValues.end) return false;
@@ -1724,7 +1726,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const suggestions = (searchQuery.trim() && searchQuery !== violationForm.studentName) ? students.filter(s => s.name.includes(searchQuery)) : [];
     const nameSugg = nameInput.trim() ? students.filter(s => s.name.includes(nameInput) && !tempNames.includes(s.name)) : [];
     const filtered = (data.studentViolationLogs || []).filter(l => {
-      if (userFilter && userFilter !== 'all' && l.userId !== userFilter) return false;
+      if (!matchesFilter(l.userId)) return false;
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
       if (filterValues.start && l.date < filterValues.start) return false;
       if (filterValues.end && l.date > filterValues.end) return false;
@@ -1934,7 +1936,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const suggestions = (searchQuery.trim() && searchQuery !== exitForm.studentName) ? students.filter(s => s.name.includes(searchQuery)) : [];
     const nameSugg = nameInput.trim() ? students.filter(s => s.name.includes(nameInput) && !tempNames.includes(s.name)) : [];
     const filtered = (data.exitLogs || []).filter(l => {
-      if (userFilter && userFilter !== 'all' && l.userId !== userFilter) return false;
+      if (!matchesFilter(l.userId)) return false;
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
       if (filterValues.start && l.date < filterValues.start) return false;
       if (filterValues.end && l.date > filterValues.end) return false;
@@ -2060,7 +2062,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const suggestions = (searchQuery.trim() && searchQuery !== damageForm.studentName) ? students.filter(s => s.name.includes(searchQuery)) : [];
     const nameSugg = nameInput.trim() ? students.filter(s => s.name.includes(nameInput) && !tempNames.includes(s.name)) : [];
     const filtered = (data.damageLogs || []).filter(l => {
-      if (userFilter && userFilter !== 'all' && l.userId !== userFilter) return false;
+      if (!matchesFilter(l.userId)) return false;
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
       if (filterValues.start && l.date < filterValues.start) return false;
       if (filterValues.end && l.date > filterValues.end) return false;
@@ -2216,7 +2218,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const suggestions = (searchQuery.trim() && searchQuery !== visitForm.studentName) ? students.filter(s => s.name.includes(searchQuery)) : [];
     const nameSugg = nameInput.trim() ? students.filter(s => s.name.includes(nameInput) && !tempNames.includes(s.name)) : [];
     const filtered = (data.parentVisitLogs || []).filter(l => {
-      if (userFilter && userFilter !== 'all' && l.userId !== userFilter) return false;
+      if (!matchesFilter(l.userId)) return false;
       if (appliedNames.length > 0 && !appliedNames.includes(l.studentName)) return false;
       if (filterValues.start && l.date < filterValues.start) return false;
       if (filterValues.end && l.date > filterValues.end) return false;
@@ -2633,7 +2635,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     );
 
     if (showPreviousTaskReports) {
-      const reports = (data.taskReports || []).filter(r => !userFilter || userFilter === 'all' || r.userId === userFilter);
+      const reports = (data.taskReports || []).filter(r => matchesFilter(r.userId));
       return (
         <div className="bg-[#f8fafc] p-6 md:p-10 rounded-[3rem] border-4 border-slate-200 shadow-2xl animate-in fade-in duration-500 font-arabic text-right min-h-[600px]">
           <div className="flex justify-between items-center mb-8 bg-white p-6 rounded-[2rem] shadow-sm">

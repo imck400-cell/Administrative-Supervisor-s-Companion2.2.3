@@ -12,7 +12,7 @@ import AccessCodesModal from './components/AccessCodesModal';
 import {
   Lock, LayoutDashboard, ClipboardCheck, UserX, UserPlus,
   Users, Sparkles, Database, FileSearch, ArrowUp, ArrowDown, Briefcase,
-  School, Calendar, AlertTriangle, Phone, MessageCircle, Key, Eye, EyeOff, Search, ChevronRight, LogOut, User as UserIcon
+  School, Calendar, AlertTriangle, Phone, MessageCircle, Key, Eye, EyeOff, Search, ChevronRight, LogOut, User as UserIcon, X
 } from 'lucide-react';
 import GlobalScrollArrows from './components/GlobalScrollArrows';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -108,17 +108,12 @@ const AdvancedLoginPage: React.FC = () => {
                   <UserIcon className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                   <input
                     type="text"
-                    list="login-usernames"
                     className="w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold outline-none transition-all"
                     value={username || ''}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="اسم المستخدم"
+                    autoComplete="off"
                   />
-                  <datalist id="login-usernames">
-                    {data.users.map(u => (
-                      <option key={u.id} value={u.name} />
-                    ))}
-                  </datalist>
                 </div>
               </div>
 
@@ -289,6 +284,7 @@ const MainApp: React.FC = () => {
   const [view, setView] = useState('dashboard');
   const [isDataModalOpen, setIsDataModalOpen] = useState(false);
   const [isCodesModalOpen, setIsCodesModalOpen] = useState(false);
+  const [isUserFilterModalOpen, setIsUserFilterModalOpen] = useState(false);
 
   const navItems = useMemo(() => {
     const items = [
@@ -347,21 +343,17 @@ const MainApp: React.FC = () => {
             <LogOut size={18} /> تسجيل الخروج
           </button>
           {/* User Filter Dropdown */}
-          <div className="relative group">
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600 pointer-events-none">
-              <Users size={18} />
-            </div>
-            <select 
-              value={userFilter}
-              onChange={(e) => setUserFilter(e.target.value)}
+          <div className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm shadow-sm">
+            <Users size={18} className="text-blue-600" />
+            <button
+              onClick={() => currentUser?.role === 'admin' && setIsUserFilterModalOpen(true)}
               disabled={currentUser?.role !== 'admin'}
-              className="pr-12 pl-10 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm appearance-none outline-none focus:border-blue-500 transition-all cursor-pointer shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`outline-none bg-transparent cursor-pointer min-w-[100px] text-right ${currentUser?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-600'}`}
             >
-              <option value="all">كل المستخدمين</option>
-              {data.users.map((u, idx) => (
-                <option key={`filter-user-${u.id || idx}-${idx}`} value={u.id}>{u.name}</option>
-              ))}
-            </select>
+              {userFilter === 'all' ? 'كل المستخدمين' : 
+               userFilter.split(',').length > 1 ? `${userFilter.split(',').length} مستخدمين` :
+               data.users.find(u => u.id === userFilter)?.name || 'مستخدم غير معروف'}
+            </button>
           </div>
 
           {(currentUser?.role === 'admin' || currentUser?.permissions?.specialCodes || currentUser?.permissions?.all) && (
@@ -373,12 +365,14 @@ const MainApp: React.FC = () => {
             </button>
           )}
 
-          <button 
-            onClick={() => setIsDataModalOpen(true)} 
-            className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all"
-          >
-            <Database className="text-blue-600" size={18} /> إدارة البيانات
-          </button>
+          {(currentUser?.role === 'admin' || currentUser?.permissions?.all) && (
+            <button 
+              onClick={() => setIsDataModalOpen(true)} 
+              className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all"
+            >
+              <Database className="text-blue-600" size={18} /> إدارة البيانات
+            </button>
+          )}
         </div>
       </div>
 
@@ -400,7 +394,91 @@ const MainApp: React.FC = () => {
 
       <DataManagementModal isOpen={isDataModalOpen} onClose={() => setIsDataModalOpen(false)} />
       <AccessCodesModal isOpen={isCodesModalOpen} onClose={() => setIsCodesModalOpen(false)} />
+      
+      <UserFilterModal 
+        isOpen={isUserFilterModalOpen} 
+        onClose={() => setIsUserFilterModalOpen(false)} 
+        users={data.users.filter(u => u.schools.includes(currentUser?.selectedSchool || ''))}
+        selectedIds={userFilter === 'all' ? data.users.filter(u => u.schools.includes(currentUser?.selectedSchool || '')).map(u => u.id) : userFilter.split(',')}
+        onApply={(ids) => {
+          const schoolUsers = data.users.filter(u => u.schools.includes(currentUser?.selectedSchool || ''));
+          if (ids.length === schoolUsers.length) {
+            setUserFilter('all');
+          } else if (ids.length === 0) {
+            setUserFilter(currentUser?.id || 'all');
+          } else {
+            setUserFilter(ids.join(','));
+          }
+        }}
+      />
     </Layout>
+  );
+};
+
+const UserFilterModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  users: User[];
+  selectedIds: string[];
+  onApply: (ids: string[]) => void;
+}> = ({ isOpen, onClose, users, selectedIds, onApply }) => {
+  const [tempSelected, setTempSelected] = useState<string[]>(selectedIds);
+
+  useEffect(() => {
+    if (isOpen) setTempSelected(selectedIds);
+  }, [isOpen, selectedIds]);
+
+  if (!isOpen) return null;
+
+  const toggleUser = (id: string) => {
+    setTempSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const selectAll = () => setTempSelected(users.map(u => u.id));
+  const selectNone = () => setTempSelected([]);
+
+  return (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm font-arabic">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border-4 border-blue-50"
+      >
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <h2 className="text-xl font-black text-slate-800">تصفية المستخدمين</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-red-500"><X size={24} /></button>
+        </div>
+        <div className="p-6 max-h-[60vh] overflow-y-auto space-y-2">
+          <div className="flex gap-2 mb-4">
+            <button onClick={selectAll} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold text-sm">تحديد الكل</button>
+            <button onClick={selectNone} className="flex-1 py-2 bg-slate-50 text-slate-600 rounded-xl font-bold text-sm">إلغاء التحديد</button>
+          </div>
+          {users.map(u => (
+            <label key={u.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all">
+              <span className="font-bold text-slate-700">{u.name}</span>
+              <input 
+                type="checkbox" 
+                checked={tempSelected.includes(u.id)} 
+                onChange={() => toggleUser(u.id)}
+                className="w-5 h-5 rounded-lg border-2 border-slate-200 text-blue-600"
+              />
+            </label>
+          ))}
+        </div>
+        <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
+          <button onClick={onClose} className="flex-1 py-3 bg-white border-2 border-slate-200 text-slate-600 font-black rounded-xl">إلغاء</button>
+          <button 
+            onClick={() => {
+              onApply(tempSelected);
+              onClose();
+            }} 
+            className="flex-1 py-3 bg-blue-600 text-white font-black rounded-xl shadow-lg shadow-blue-100"
+          >
+            تطبيق التصفية
+          </button>
+        </div>
+      </motion.div>
+    </div>
   );
 };
 

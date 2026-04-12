@@ -181,7 +181,8 @@ const StaffFollowUpPage: React.FC = () => {
     const reports = useMemo(() => {
         const allReports = data.adminReports || [];
         if (!userFilter || userFilter === 'all') return allReports;
-        return allReports.filter(r => r.userId === userFilter);
+        const filterIds = userFilter.split(',');
+        return allReports.filter(r => filterIds.includes(r.userId || ''));
     }, [data.adminReports, userFilter]);
 
     const employees = useMemo(() => {

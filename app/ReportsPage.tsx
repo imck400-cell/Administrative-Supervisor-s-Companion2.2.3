@@ -38,7 +38,7 @@ export const DailyReportsPage: React.FC = () => {
   const [showMetricPicker, setShowMetricPicker] = useState(false);
   const [showSortModal, setShowSortModal] = useState(false);
   const [sortConfig, setSortConfig] = useState<{ criteria: SortCriteria, direction: SortDirection }>({ criteria: 'manual', direction: 'asc' });
-  const [violationModal, setViolationModal] = useState<{ id: string, notes: string[] } | null>(null);
+  const [violationModal, setViolationModal] = useState<{ id: string, notes: string[], additionalNotes?: string } | null>(null);
   const [activeTeacherFilter, setActiveTeacherFilter] = useState<string>('');
   const [highlightedRowId, setHighlightedRowId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -92,7 +92,8 @@ export const DailyReportsPage: React.FC = () => {
   const reports = useMemo(() => {
     const allReports = data.dailyReports || [];
     if (!userFilter || userFilter === 'all') return allReports;
-    return allReports.filter(r => r.userId === userFilter);
+    const filterIds = userFilter.split(',');
+    return allReports.filter(r => filterIds.includes(r.userId || ''));
   }, [data.dailyReports, userFilter]);
 
   // Set active report on load if not set & Auto-create for today
@@ -1334,7 +1335,7 @@ export const DailyReportsPage: React.FC = () => {
                     }
                     <td
                       className="p-1 border-e cursor-pointer hover:bg-red-50 transition-colors relative group"
-                      onClick={() => setViolationModal({ id: t.id, notes: t.violations_notes })}
+                      onClick={() => setViolationModal({ id: t.id, notes: t.violations_notes, additionalNotes: t.additional_violation_notes })}
                     >
                       <div className="flex items-center justify-center gap-1">
                         <input
@@ -1350,7 +1351,7 @@ export const DailyReportsPage: React.FC = () => {
                           className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 bg-red-100 text-red-600 rounded"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setViolationModal({ id: t.id, notes: t.violations_notes });
+                            setViolationModal({ id: t.id, notes: t.violations_notes, additionalNotes: t.additional_violation_notes });
                           }}
                         >
                           <AlertCircle size={10} />
@@ -1828,6 +1829,12 @@ export const DailyReportsPage: React.FC = () => {
               <textarea
                 className="w-full p-3 border rounded-xl bg-slate-50 text-right text-sm font-bold min-h-[80px]"
                 placeholder="ملاحظات إضافية..."
+                value={violationModal.additionalNotes || ''}
+                onChange={(e) => {
+                  const newNotes = e.target.value;
+                  setViolationModal({ ...violationModal, additionalNotes: newNotes });
+                  updateTeacher(violationModal.id, { additional_violation_notes: newNotes });
+                }}
               ></textarea>
               <button onClick={() => setViolationModal(null)} className="w-full mt-2 p-3 bg-slate-800 text-white rounded-xl font-bold">حفظ وإغلاق</button>
             </div>
@@ -3124,7 +3131,7 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
 });
 
 export const StudentsReportsPage: React.FC = () => {
-  const { data, updateData, lang } = useGlobal();
+  const { data, updateData, lang, userFilter } = useGlobal();
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -3204,7 +3211,14 @@ export const StudentsReportsPage: React.FC = () => {
     }
   }, []);
 
-  const studentData = data.studentReports || [];
+  const studentData = useMemo(() => {
+    let list = data.studentReports || [];
+    if (userFilter && userFilter !== 'all') {
+      const filterIds = userFilter.split(',');
+      list = list.filter(s => filterIds.includes(s.userId || ''));
+    }
+    return list;
+  }, [data.studentReports, userFilter]);
 
   const optionsAr = {
     gender: ["ذكر", "أنثى"],

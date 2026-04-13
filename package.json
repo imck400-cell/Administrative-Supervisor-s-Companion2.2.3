@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "@tailwindcss/vite": "^4.2.2",
     "clsx": "^2.1.0",
     "firebase": "^12.11.0",
     "framer-motion": "^11.0.0",
@@ -12,6 +13,7 @@
     "react-dom": "^19.0.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.2.0",
+    "tailwindcss": "^4.2.2",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

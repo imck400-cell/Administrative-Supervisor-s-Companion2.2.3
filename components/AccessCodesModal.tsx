@@ -37,6 +37,16 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
     setNewYear('');
   };
 
+  const handleDeleteSchool = (school: string) => {
+    const currentSchools = data.availableSchools || [];
+    updateData({ availableSchools: currentSchools.filter(s => s !== school) });
+  };
+
+  const handleDeleteYear = (year: string) => {
+    const currentYears = data.availableYears || [];
+    updateData({ availableYears: currentYears.filter(y => y !== year) });
+  };
+
   const handleEditUser = (user: User) => {
     setEditingUser(user);
     setIsEditModalOpen(true);
@@ -128,7 +138,15 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {data.availableSchools?.map((s, idx) => (
-                      <span key={`school-${s}-${idx}`} className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold border border-blue-100">{s}</span>
+                      <div key={`school-${s}-${idx}`} className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold border border-blue-100 group">
+                        <span>{s}</span>
+                        <button 
+                          onClick={() => handleDeleteSchool(s)}
+                          className="p-0.5 hover:bg-blue-200 rounded-md transition-colors text-blue-400 hover:text-red-500"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -151,7 +169,15 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {data.availableYears?.map((y, idx) => (
-                      <span key={`year-${y}-${idx}`} className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold border border-slate-200">{y}</span>
+                      <div key={`year-${y}-${idx}`} className="flex items-center gap-1 px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold border border-slate-200 group">
+                        <span>{y}</span>
+                        <button 
+                          onClick={() => handleDeleteYear(y)}
+                          className="p-0.5 hover:bg-slate-200 rounded-md transition-colors text-slate-400 hover:text-red-500"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>

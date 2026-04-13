@@ -438,11 +438,14 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Memoize the set of user IDs we need to listen to
   const targetUserIds = React.useMemo(() => {
     if (!isAuthenticated || !currentUser) return "";
-    const school = currentUser.selectedSchool.trim();
+    const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
     
-    // Start with users in the current school if admin, or just the current user
+    // Start with users in the selected schools if admin, or just the current user
     let ids = currentUser.role === 'admin' 
-      ? data.users.filter(u => u.schools.includes(school)).map(u => u.id)
+      ? data.users.filter(u => 
+          selectedSchools.includes('all') || 
+          u.schools.some(s => selectedSchools.includes(s))
+        ).map(u => u.id)
       : [currentUser.id];
 
     // CRITICAL: Also include any users selected in the userFilter
@@ -475,7 +478,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         await setDoc(doc(db, 'users', user.uid), {
           customUserId: currentUser.id,
           role: currentUser.role,
-          school: school
+          school: currentUser.selectedSchool // This can be a comma-separated list
         });
         
         // Small delay to ensure rules engine sees the new document
@@ -490,92 +493,96 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const arrayKeys = ['substitutions', 'timetable', 'dailyReports', 'violations', 'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports'];
       arrayKeys.forEach(k => dataBuffer[k] = {});
 
-      // Shared keys for the current school
+      // Shared keys for the selected schools
       const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions', 'users', 'availableSchools', 'availableYears'];
+      const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
+      const schoolsToListen = selectedSchools.includes('all') ? data.availableSchools : selectedSchools;
 
-      sharedKeys.forEach(key => {
-        const listenerId = `auth-shared-${school}-${key}`;
-        if (dataListeners.current.has(listenerId)) return;
-        dataListeners.current.add(listenerId);
-
-        const q = doc(db, 'schools', school, 'shared', key);
-        const unsub = onSnapshot(q, (snapshot) => {
-          if (snapshot.exists()) {
-            const remoteData = snapshot.data().data;
-            setData(prev => {
-              if (key === 'users') {
-                // Merge users for the current school
-                const existingUsers = prev.users || [];
-                const newUsers = Array.isArray(remoteData) ? remoteData : [];
-                const merged = [...existingUsers];
-                let changed = false;
-                newUsers.forEach(nu => {
-                  const idx = merged.findIndex(u => u.id === nu.id);
-                  if (idx >= 0) {
-                    if (JSON.stringify(merged[idx]) !== JSON.stringify(nu)) {
-                      merged[idx] = nu;
-                      changed = true;
-                    }
-                  } else {
-                    merged.push(nu);
-                    changed = true;
-                  }
-                });
-                return changed ? { ...prev, users: merged } : prev;
-              } else if (key === 'availableSchools' || key === 'availableYears') {
-                const existing = prev[key] as any[] || [];
-                const incoming = Array.isArray(remoteData) ? remoteData : [];
-                const merged = [...new Set([...existing, ...incoming])];
-                if (merged.length === existing.length && merged.every((v, i) => v === existing[i])) {
-                  return prev;
-                }
-                return { ...prev, [key]: merged };
-              } else {
-                if (JSON.stringify(prev[key]) === JSON.stringify(remoteData)) return prev;
-                return { ...prev, [key]: remoteData };
-              }
-            });
-          }
-        }, (error) => {
-          if (!error.message.includes('permission-denied')) {
-            console.error(`Auth shared sync error [${key}] for school [${school}]:`, error);
-          }
-        });
-        unsubscribes.push(unsub);
-      });
-
-      const uids = targetUserIds.split(',').filter(id => id.length > 0);
-
-      uids.forEach(uid => {
-        arrayKeys.forEach(key => {
-          const listenerId = `auth-user-${school}-${uid}-${key}`;
+      schoolsToListen.forEach(school => {
+        sharedKeys.forEach(key => {
+          const listenerId = `auth-shared-${school}-${key}`;
           if (dataListeners.current.has(listenerId)) return;
           dataListeners.current.add(listenerId);
 
-          const q = doc(db, 'schools', school, 'users', uid, 'data', key);
+          const q = doc(db, 'schools', school, 'shared', key);
           const unsub = onSnapshot(q, (snapshot) => {
-            const items = snapshot.exists() ? snapshot.data().items : [];
-            dataBuffer[key][uid] = items;
-            
-            const mergedArray = Object.values(dataBuffer[key]).flat();
-            const uniqueMergedArray = Array.from(new Map(mergedArray.map(item => [item.id, item])).values());
-            
-            setData(prev => {
-              const currentArray = prev[key] as any[];
-              if (currentArray && currentArray.length === uniqueMergedArray.length && 
-                  JSON.stringify(currentArray) === JSON.stringify(uniqueMergedArray)) {
-                return prev;
-              }
-              const updated = { ...prev, [key]: uniqueMergedArray };
-              localStorage.setItem('rafiquk_data', JSON.stringify(updated));
-              return updated;
-            });
+            if (snapshot.exists()) {
+              const remoteData = snapshot.data().data;
+              setData(prev => {
+                if (key === 'users') {
+                  // Merge users for the current school
+                  const existingUsers = prev.users || [];
+                  const newUsers = Array.isArray(remoteData) ? remoteData : [];
+                  const merged = [...existingUsers];
+                  let changed = false;
+                  newUsers.forEach(nu => {
+                    const idx = merged.findIndex(u => u.id === nu.id);
+                    if (idx >= 0) {
+                      if (JSON.stringify(merged[idx]) !== JSON.stringify(nu)) {
+                        merged[idx] = nu;
+                        changed = true;
+                      }
+                    } else {
+                      merged.push(nu);
+                      changed = true;
+                    }
+                  });
+                  return changed ? { ...prev, users: merged } : prev;
+                } else if (key === 'availableSchools' || key === 'availableYears') {
+                  const existing = prev[key] as any[] || [];
+                  const incoming = Array.isArray(remoteData) ? remoteData : [];
+                  const merged = [...new Set([...existing, ...incoming])];
+                  if (merged.length === existing.length && merged.every((v, i) => v === existing[i])) {
+                    return prev;
+                  }
+                  return { ...prev, [key]: merged };
+                } else {
+                  if (JSON.stringify(prev[key]) === JSON.stringify(remoteData)) return prev;
+                  return { ...prev, [key]: remoteData };
+                }
+              });
+            }
           }, (error) => {
             if (!error.message.includes('permission-denied')) {
-              console.error(`Auth user sync error [${uid}] [${key}] for school [${school}]:`, error);
+              console.error(`Auth shared sync error [${key}] for school [${school}]:`, error);
             }
           });
           unsubscribes.push(unsub);
+        });
+
+        const uids = targetUserIds.split(',').filter(id => id.length > 0);
+
+        uids.forEach(uid => {
+          arrayKeys.forEach(key => {
+            const listenerId = `auth-user-${school}-${uid}-${key}`;
+            if (dataListeners.current.has(listenerId)) return;
+            dataListeners.current.add(listenerId);
+
+            const q = doc(db, 'schools', school, 'users', uid, 'data', key);
+            const unsub = onSnapshot(q, (snapshot) => {
+              const items = snapshot.exists() ? snapshot.data().items : [];
+              dataBuffer[key][uid] = items;
+              
+              const mergedArray = Object.values(dataBuffer[key]).flat();
+              const uniqueMergedArray = Array.from(new Map(mergedArray.map(item => [item.id, item])).values());
+              
+              setData(prev => {
+                const currentArray = prev[key] as any[];
+                if (currentArray && currentArray.length === uniqueMergedArray.length && 
+                    JSON.stringify(currentArray) === JSON.stringify(uniqueMergedArray)) {
+                  return prev;
+                }
+                const updated = { ...prev, [key]: uniqueMergedArray };
+                localStorage.setItem('rafiquk_data', JSON.stringify(updated));
+                return updated;
+              });
+            }, (error) => {
+              if (!error.message.includes('permission-denied')) {
+                console.error(`Auth user sync error [${uid}] [${key}] for school [${school}]:`, error);
+              }
+            });
+            unsubscribes.push(unsub);
+          });
         });
       });
     };
@@ -596,14 +603,17 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     localStorage.setItem('rafiquk_data', JSON.stringify(updated));
 
     if (isAuthenticated && currentUser) {
-      const school = currentUser.selectedSchool;
+      const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
+      const schoolsToUpdate = selectedSchools.includes('all') ? data.availableSchools : selectedSchools;
       const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions', 'users', 'availableSchools', 'availableYears'];
 
       for (const key of Object.keys(newData) as Array<keyof AppData>) {
         if (sharedKeys.includes(key)) {
           if (currentUser.role === 'admin') {
-            setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
-              .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));
+            schoolsToUpdate.forEach(school => {
+              setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
+                .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));
+            });
           }
           continue;
         }
@@ -630,8 +640,16 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           if (currentUser.role !== 'admin' && uid !== currentUser.id) continue;
 
           const userItems = newArray.filter(item => item.userId === uid);
-          setDoc(doc(db, 'schools', school, 'users', uid, 'data', key), { items: userItems })
-            .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/users/${uid}/data/${key}`));
+          // For user data, we usually write to the first school or a specific one?
+          // If admin is in multiple schools, where do they write?
+          // Usually, it should be the school associated with the data.
+          // For now, we'll write to all selected schools if it's shared, but for user data, 
+          // we'll use the first selected school as primary or just the first one.
+          const primarySchool = schoolsToUpdate[0];
+          if (primarySchool) {
+            setDoc(doc(db, 'schools', primarySchool, 'users', uid, 'data', key), { items: userItems })
+              .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${primarySchool}/users/${uid}/data/${key}`));
+          }
         }
       }
     }

@@ -59,6 +59,7 @@ const StaffFollowUpPage: React.FC = () => {
     const [violationsText, setViolationsText] = useState('');
     const [notesText, setNotesText] = useState('');
     const [employeeComment, setEmployeeComment] = useState('');
+    const [isCriteriaCollapsed, setIsCriteriaCollapsed] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [confirmDialog, setConfirmDialog] = useState<{
         isOpen: boolean;
@@ -818,6 +819,198 @@ const StaffFollowUpPage: React.FC = () => {
         link.click();
     };
 
+    const exportIndividualToExcel = () => {
+        const isIndicators = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس';
+
+        // Helper for consistent styling
+        const styleHeader = 'background-color: #e0e7ff; color: #1e3a8a; font-weight: bold; border: 1px solid #94a3b8; padding: 10px; text-align: center; font-family: Arial, sans-serif;';
+        const styleCell = 'border: 1px solid #cbd5e1; padding: 8px; text-align: center; vertical-align: middle; font-family: Arial, sans-serif;';
+        const styleCellLeft = 'border: 1px solid #cbd5e1; padding: 8px; text-align: left; vertical-align: middle; font-family: Arial, sans-serif;';
+        const styleTitle = 'font-size: 18px; font-weight: bold; text-align: center; padding: 15px; background-color: #f8fafc; border: 1px solid #cbd5e1;';
+        const styleLabel = 'font-weight: bold; background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 8px;';
+
+        const activitesList = isIndicators ? [] : (customActivities[individualForm.reportField] || []);
+        const indicatorsList = isIndicators ? INDICATORS_DATA : [];
+
+        let html = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+            <head>
+                <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+                <!--[if gte mso 9]>
+                <xml>
+                    <x:ExcelWorkbook>
+                        <x:ExcelWorksheets>
+                            <x:ExcelWorksheet>
+                                <x:Name>تقرير ${individualForm.employeeName}</x:Name>
+                                <x:WorksheetOptions>
+                                    <x:DisplayRightToLeft/>
+                                </x:WorksheetOptions>
+                            </x:ExcelWorksheet>
+                        </x:ExcelWorksheets>
+                    </x:ExcelWorkbook>
+                </xml>
+                <![endif]-->
+            </head>
+            <body style="direction: rtl;">
+                <table style="border-collapse: collapse; width: 100%;">
+                    <tr>
+                        <td colspan="7" style="${styleTitle}">
+                            تقرير متابعة ${individualForm.reportField}
+                            <br/>
+                            <span style="font-size: 14px; font-weight: normal;">
+                                ( ${individualForm.schoolName} - ${individualForm.branch} )
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="4" style="${styleLabel}">الاسم: ${individualForm.employeeName}</td>
+                        <td colspan="3" style="${styleLabel}">التاريخ: ${reportDate}</td>
+                    </tr>
+                    <tr style="height: 20px;"><td colspan="7"></td></tr>
+                    <tr>
+                        <th style="${styleHeader} width: 50px;">م</th>
+                        <th style="${styleHeader} width: 300px;">النشاط / المؤشر</th>
+                        <th style="${styleHeader} width: 80px;">المخطط</th>
+                        <th style="${styleHeader} width: 80px;">المنفذ</th>
+                        <th style="${styleHeader} width: 150px;">الشواهد</th>
+                        <th style="${styleHeader} width: 100px;">توفر الشاهد</th>
+                        <th style="${styleHeader} width: 250px;">أسباب عدم التنفيذ</th>
+                    </tr>
+        `;
+
+        if (isIndicators) {
+            let seq = 1;
+            indicatorsList.forEach(d => {
+                html += `<tr><td colspan="7" style="${styleHeader} background-color: #f1f5f9; text-align: right;">${d.label}</td></tr>`;
+                d.items.forEach((item, idx) => {
+                    const score = individualScores[`${d.label}_${idx}`] ?? '-';
+                    html += `
+                        <tr>
+                            <td style="${styleCell}">${seq++}</td>
+                            <td style="${styleCellLeft} text-align: right;">${item}</td>
+                            <td style="${styleCell}">4</td>
+                            <td style="${styleCell}">${score}</td>
+                            <td style="${styleCell}">-</td>
+                            <td style="${styleCell}">-</td>
+                            <td style="${styleCell}">-</td>
+                        </tr>
+                     `;
+                });
+            });
+        } else {
+            activitesList.forEach((a, i) => {
+                const k = `${individualForm.reportField}_${i}`;
+                const score = individualScores[k] ?? 0;
+                const executed = executedCounts[k] !== undefined ? executedCounts[k] : (parseInt(a.planned) || 0);
+                const stat = evidenceStatus[k] || 'توفر';
+                const reason = failureReasons[k] || '';
+                const isUnacc = unaccreditedItems[k];
+
+                const bgRow = i % 2 === 0 ? '#ffffff' : '#f8fafc';
+
+                html += `
+                    <tr style="background-color: ${bgRow};">
+                        <td style="${styleCell}">${i + 1}</td>
+                        <td style="${styleCellLeft} text-align: right; ${isUnacc ? 'text-decoration: line-through; color: #94a3b8;' : ''}">
+                            ${a.text} ${isUnacc ? '(غير معتمد)' : ''}
+                        </td>
+                        <td style="${styleCell}">${a.planned}</td>
+                        <td style="${styleCell}">${isUnacc ? '-' : executed}</td>
+                        <td style="${styleCell}">${a.evidence}</td>
+                        <td style="${styleCell} ${stat === 'توفر' ? 'color: green;' : stat === 'ناقص' ? 'color: orange;' : 'color: red;'}">
+                            ${stat}
+                        </td>
+                        <td style="${styleCell}">${reason}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Violations Row
+        const allViolations = [...activeViolationTags, violationsText].filter(Boolean).join(' - ');
+        if (allViolations) {
+            html += `
+                <tr>
+                    <td colspan="1" style="${styleHeader} background-color: #fef2f2; color: #991b1b;">المخالفات</td>
+                    <td colspan="6" style="${styleCellLeft} background-color: #fef2f2; color: #991b1b;">${allViolations}</td>
+                </tr>
+            `;
+        }
+
+        // Notes Row
+        const allNotes = [...activeNoteTags, notesText].filter(Boolean).join(' - ');
+        if (allNotes) {
+            html += `
+                <tr>
+                    <td colspan="1" style="${styleHeader} background-color: #fffbeb; color: #92400e;">الملاحظات والتوصيات</td>
+                    <td colspan="6" style="${styleCellLeft} background-color: #fffbeb; color: #92400e;">${allNotes}</td>
+                </tr>
+            `;
+        }
+
+        html += `
+                </table>
+            </body>
+            </html>
+        `;
+
+        const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `تقرير_${individualForm.employeeName || 'فردي'}_${reportDate}.xls`;
+        link.click();
+    };
+
+    const exportIndividualToTxt = () => {
+        const isIndicators = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس';
+        let content = `تقرير متابعة ${individualForm.reportField}\n`;
+        content += `المدرسة: ${individualForm.schoolName}\n`;
+        content += `الفرع: ${individualForm.branch}\n`;
+        content += `الاسم: ${individualForm.employeeName}\n`;
+        content += `التاريخ: ${reportDate}\n`;
+        content += `${'='.repeat(50)}\n\n`;
+
+        if (isIndicators) {
+            INDICATORS_DATA.forEach(d => {
+                content += `[ ${d.label} ]\n`;
+                d.items.forEach((item, idx) => {
+                    const score = individualScores[`${d.label}_${idx}`] ?? '-';
+                    content += `- ${item}: ${score} / 4\n`;
+                });
+                content += '\n';
+            });
+        } else {
+            (customActivities[individualForm.reportField] || []).forEach((a, i) => {
+                const k = `${individualForm.reportField}_${i}`;
+                const score = individualScores[k] ?? 0;
+                const executed = executedCounts[k] !== undefined ? executedCounts[k] : (parseInt(a.planned) || 0);
+                const stat = evidenceStatus[k] || 'توفر';
+                const reason = failureReasons[k] || '';
+                const isUnacc = unaccreditedItems[k];
+
+                content += `${i + 1}. ${a.text} ${isUnacc ? '(غير معتمد)' : ''}\n`;
+                content += `   المخطط: ${a.planned} | المنفذ: ${isUnacc ? '-' : executed} | الدرجة: ${score}/4\n`;
+                content += `   الشاهد: ${a.evidence} | حالة الشاهد: ${stat}\n`;
+                if (reason) content += `   أسباب عدم التنفيذ: ${reason}\n`;
+                content += `${'-'.repeat(30)}\n`;
+            });
+        }
+
+        const allViolations = [...activeViolationTags, violationsText].filter(Boolean).join(' - ');
+        if (allViolations) content += `\nالمخالفات: ${allViolations}\n`;
+
+        const allNotes = [...activeNoteTags, notesText].filter(Boolean).join(' - ');
+        if (allNotes) content += `الملاحظات والتوصيات: ${allNotes}\n`;
+
+        if (employeeComment) content += `\nتعليق الموظف: ${employeeComment}\n`;
+
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `تقرير_${individualForm.employeeName || 'فردي'}_${reportDate}.txt`;
+        link.click();
+    };
+
     const addDomain = () => {
         const name = prompt('أدخل مسمى المجال الجديد:');
         if (!name) return;
@@ -1021,7 +1214,50 @@ const StaffFollowUpPage: React.FC = () => {
 
                     {/* 2. Evaluation Interface */}
                     <div className="flex flex-col gap-6">
-                        {individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس' ? (
+                        <div className="flex items-center justify-between bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+                            <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+                                <ClipboardList className="text-blue-500" size={28} />
+                                معايير التقييم والمتابعة
+                            </h3>
+                            <button
+                                onClick={() => setIsCriteriaCollapsed(!isCriteriaCollapsed)}
+                                className="w-12 h-12 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center hover:bg-blue-50 hover:text-blue-600 transition-all active:scale-90"
+                            >
+                                {isCriteriaCollapsed ? <ChevronDown size={24} /> : <ChevronUp size={24} />}
+                            </button>
+                        </div>
+
+                        {isCriteriaCollapsed ? (
+                            <div className="bg-white/60 backdrop-blur-md p-8 rounded-[2.5rem] border-2 border-dashed border-slate-200 animate-in fade-in zoom-in-95 duration-300">
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-100">
+                                        <CheckCircle size={20} />
+                                    </div>
+                                    <h4 className="text-xl font-black text-slate-800">المعايير المختارة والمقيمة</h4>
+                                </div>
+                                <div className="flex flex-wrap gap-3">
+                                    {(() => {
+                                        const activities = customActivities[individualForm.reportField] || [];
+                                        const selected = activities.filter((_, idx) => {
+                                            const key = `${individualForm.reportField}_${idx}`;
+                                            return !unaccreditedItems[key] && (individualScores[key] !== undefined && individualScores[key] !== -1);
+                                        });
+
+                                        if (selected.length === 0) {
+                                            return <p className="text-slate-400 font-bold italic">لم يتم اختيار أو تقييم أي معايير بعد...</p>;
+                                        }
+
+                                        return selected.map((activity, idx) => (
+                                            <div key={idx} className="bg-white px-5 py-3 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3 animate-in slide-in-from-right-2" style={{ animationDelay: `${idx * 50}ms` }}>
+                                                <span className="w-6 h-6 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-[10px] font-black">{idx + 1}</span>
+                                                <span className="text-sm font-black text-slate-700">{activity.text}</span>
+                                            </div>
+                                        ));
+                                    })()}
+                                </div>
+                            </div>
+                        ) : (
+                            individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس' ? (
                             // الحالة أ: المؤشرات
                             <div className="grid grid-cols-1 gap-8">
                                 {INDICATORS_DATA.map((domain, dIdx) => (
@@ -1219,8 +1455,9 @@ const StaffFollowUpPage: React.FC = () => {
                                     })
                                 )}
                             </div>
-                        )}
-                    </div>
+                        )
+                    )}
+                </div>
 
                     {/* 3. Summary Results */}
                     <div className="bg-slate-900 rounded-[3rem] p-10 flex flex-wrap items-center justify-between gap-10 shadow-2xl">
@@ -1480,155 +1717,22 @@ const StaffFollowUpPage: React.FC = () => {
                             onClick={saveToArchive}
                             className="flex-1 bg-emerald-600 text-white rounded-[1.8rem] py-5 font-black text-lg shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 flex items-center justify-center gap-3"
                         >
-                            <Plus size={24} />
-                            حفظ المسودة
+                            <Archive size={24} />
+                            أرشفة التقرير
                         </button>
                         <button
-                            onClick={() => {
-                                const isIndicators = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس';
-
-                                // Helper for consistent styling
-                                const styleHeader = 'background-color: #e0e7ff; color: #1e3a8a; font-weight: bold; border: 1px solid #94a3b8; padding: 10px; text-align: center; font-family: Arial, sans-serif;';
-                                const styleCell = 'border: 1px solid #cbd5e1; padding: 8px; text-align: center; vertical-align: middle; font-family: Arial, sans-serif;';
-                                const styleCellLeft = 'border: 1px solid #cbd5e1; padding: 8px; text-align: left; vertical-align: middle; font-family: Arial, sans-serif;';
-                                const styleTitle = 'font-size: 18px; font-weight: bold; text-align: center; padding: 15px; background-color: #f8fafc; border: 1px solid #cbd5e1;';
-                                const styleLabel = 'font-weight: bold; background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 8px;';
-
-                                const activitesList = isIndicators ? [] : (customActivities[individualForm.reportField] || []);
-                                const indicatorsList = isIndicators ? INDICATORS_DATA : [];
-
-                                let html = `
-                                    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-                                    <head>
-                                        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-                                        <!--[if gte mso 9]>
-                                        <xml>
-                                            <x:ExcelWorkbook>
-                                                <x:ExcelWorksheets>
-                                                    <x:ExcelWorksheet>
-                                                        <x:Name>تقرير ${individualForm.employeeName}</x:Name>
-                                                        <x:WorksheetOptions>
-                                                            <x:DisplayRightToLeft/>
-                                                        </x:WorksheetOptions>
-                                                    </x:ExcelWorksheet>
-                                                </x:ExcelWorksheets>
-                                            </x:ExcelWorkbook>
-                                        </xml>
-                                        <![endif]-->
-                                    </head>
-                                    <body style="direction: rtl;">
-                                        <table style="border-collapse: collapse; width: 100%;">
-                                            <tr>
-                                                <td colspan="7" style="${styleTitle}">
-                                                    تقرير متابعة ${individualForm.reportField}
-                                                    <br/>
-                                                    <span style="font-size: 14px; font-weight: normal;">
-                                                        ( ${individualForm.schoolName} - ${individualForm.branch} )
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td colspan="4" style="${styleLabel}">الاسم: ${individualForm.employeeName}</td>
-                                                <td colspan="3" style="${styleLabel}">التاريخ: ${reportDate}</td>
-                                            </tr>
-                                            <tr style="height: 20px;"><td colspan="7"></td></tr>
-                                            <tr>
-                                                <th style="${styleHeader} width: 50px;">م</th>
-                                                <th style="${styleHeader} width: 300px;">النشاط / المؤشر</th>
-                                                <th style="${styleHeader} width: 80px;">المخطط</th>
-                                                <th style="${styleHeader} width: 80px;">المنفذ</th>
-                                                <th style="${styleHeader} width: 150px;">الشواهد</th>
-                                                <th style="${styleHeader} width: 100px;">توفر الشاهد</th>
-                                                <th style="${styleHeader} width: 250px;">أسباب عدم التنفيذ</th>
-                                            </tr>
-                                `;
-
-                                if (isIndicators) {
-                                    let seq = 1;
-                                    indicatorsList.forEach(d => {
-                                        html += `<tr><td colspan="7" style="${styleHeader} background-color: #f1f5f9; text-align: right;">${d.label}</td></tr>`;
-                                        d.items.forEach((item, idx) => {
-                                            const score = individualScores[`${d.label}_${idx}`] ?? '-';
-                                            html += `
-                                                <tr>
-                                                    <td style="${styleCell}">${seq++}</td>
-                                                    <td style="${styleCellLeft} text-align: right;">${item}</td>
-                                                    <td style="${styleCell}">4</td>
-                                                    <td style="${styleCell}">${score}</td>
-                                                    <td style="${styleCell}">-</td>
-                                                    <td style="${styleCell}">-</td>
-                                                    <td style="${styleCell}">-</td>
-                                                </tr>
-                                             `;
-                                        });
-                                    });
-                                } else {
-                                    activitesList.forEach((a, i) => {
-                                        const k = `${individualForm.reportField}_${i}`;
-                                        const score = individualScores[k] ?? 0;
-                                        const executed = executedCounts[k] !== undefined ? executedCounts[k] : (parseInt(a.planned) || 0);
-                                        const stat = evidenceStatus[k] || 'توفر';
-                                        const reason = failureReasons[k] || '';
-                                        const isUnacc = unaccreditedItems[k];
-
-                                        const bgRow = i % 2 === 0 ? '#ffffff' : '#f8fafc';
-
-                                        html += `
-                                            <tr style="background-color: ${bgRow};">
-                                                <td style="${styleCell}">${i + 1}</td>
-                                                <td style="${styleCellLeft} text-align: right; ${isUnacc ? 'text-decoration: line-through; color: #94a3b8;' : ''}">
-                                                    ${a.text} ${isUnacc ? '(غير معتمد)' : ''}
-                                                </td>
-                                                <td style="${styleCell}">${a.planned}</td>
-                                                <td style="${styleCell}">${isUnacc ? '-' : executed}</td>
-                                                <td style="${styleCell}">${a.evidence}</td>
-                                                <td style="${styleCell} ${stat === 'توفر' ? 'color: green;' : stat === 'ناقص' ? 'color: orange;' : 'color: red;'}">
-                                                    ${stat}
-                                                </td>
-                                                <td style="${styleCell}">${reason}</td>
-                                            </tr>
-                                        `;
-                                    });
-                                }
-
-                                // Violations Row
-                                const allViolations = [...activeViolationTags, violationsText].filter(Boolean).join(' - ');
-                                if (allViolations) {
-                                    html += `
-                                        <tr>
-                                            <td colspan="1" style="${styleHeader} background-color: #fef2f2; color: #991b1b;">المخالفات</td>
-                                            <td colspan="6" style="${styleCellLeft} background-color: #fef2f2; color: #991b1b;">${allViolations}</td>
-                                        </tr>
-                                    `;
-                                }
-
-                                // Notes Row
-                                const allNotes = [...activeNoteTags, notesText].filter(Boolean).join(' - ');
-                                if (allNotes) {
-                                    html += `
-                                        <tr>
-                                            <td colspan="1" style="${styleHeader} background-color: #fffbeb; color: #92400e;">الملاحظات والتوصيات</td>
-                                            <td colspan="6" style="${styleCellLeft} background-color: #fffbeb; color: #92400e;">${allNotes}</td>
-                                        </tr>
-                                    `;
-                                }
-
-                                html += `
-                                        </table>
-                                    </body>
-                                    </html>
-                                `;
-
-                                const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
-                                const link = document.createElement('a');
-                                link.href = URL.createObjectURL(blob);
-                                link.download = `تقرير_${individualForm.employeeName || 'فردي'}_${reportDate}.xls`;
-                                link.click();
-                            }}
+                            onClick={exportIndividualToExcel}
                             className="flex-1 bg-blue-600 text-white rounded-[1.8rem] py-5 font-black text-lg shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3"
                         >
                             <Download size={24} />
                             تصدير إكسل
+                        </button>
+                        <button
+                            onClick={exportIndividualToTxt}
+                            className="flex-1 bg-rose-600 text-white rounded-[1.8rem] py-5 font-black text-lg shadow-xl shadow-rose-100 hover:bg-rose-700 transition-all active:scale-95 flex items-center justify-center gap-3"
+                        >
+                            <FileText size={24} />
+                            تصدير TXT
                         </button>
                         <button
                             onClick={() => setShowArchive(true)}
@@ -1793,6 +1897,12 @@ const StaffFollowUpPage: React.FC = () => {
                                         className="flex items-center gap-2 h-11 px-5 bg-slate-800 text-white rounded-xl text-xs font-black shadow-lg shadow-slate-100 hover:bg-slate-900 transition-all"
                                     >
                                         <Archive size={18} /> أرشيف التقارير
+                                    </button>
+                                    <button
+                                        onClick={() => currentReportId && deleteReport(currentReportId)}
+                                        className="flex items-center gap-2 h-11 px-5 bg-rose-100 text-rose-600 rounded-xl text-xs font-black hover:bg-rose-200 transition-all"
+                                    >
+                                        <Trash2 size={18} /> حذف التقرير
                                     </button>
                                     <div className="h-8 w-[2px] bg-slate-200 mx-2" />
                                     <button

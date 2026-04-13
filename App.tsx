@@ -25,9 +25,10 @@ const AdvancedLoginPage: React.FC = () => {
   const [step, setStep] = useState<'login' | 'expired'>('login');
   const [code, setCode] = useState('');
   const [username, setUsername] = useState('');
-  const [schoolName, setSchoolName] = useState('');
+  const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
   const [academicYear, setAcademicYear] = useState('');
   const [error, setError] = useState('');
+  const [showMultiSchool, setShowMultiSchool] = useState(false);
 
   // Auto-fill school and year when username matches a user
   useEffect(() => {
@@ -40,7 +41,7 @@ const AdvancedLoginPage: React.FC = () => {
 
       if (user) {
         if (user.schools && user.schools.length > 0) {
-          setSchoolName(user.schools[0]);
+          setSelectedSchools([user.schools[0]]);
         }
         if (user.academicYears && user.academicYears.length > 0) {
           setAcademicYear(user.academicYears[0]);
@@ -61,7 +62,7 @@ const AdvancedLoginPage: React.FC = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !code || !schoolName || !academicYear) {
+    if (!username || !code || selectedSchools.length === 0 || !academicYear) {
       setError('يرجى إكمال جميع الحقول');
       return;
     }
@@ -76,10 +77,22 @@ const AdvancedLoginPage: React.FC = () => {
         return;
       }
 
-      completeLogin(user, schoolName, academicYear);
+      completeLogin(user, selectedSchools.join(','), academicYear);
     } else {
       setError('كود الدخول غير صحيح لهذا المستخدم');
       setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const toggleSchool = (school: string) => {
+    setSelectedSchools(prev => 
+      prev.includes(school) ? prev.filter(s => s !== school) : [...prev, school]
+    );
+  };
+
+  const selectAllSchools = () => {
+    if (selectedUser) {
+      setSelectedSchools(selectedUser.schools);
     }
   };
 
@@ -138,21 +151,52 @@ const AdvancedLoginPage: React.FC = () => {
                 <label className="text-xs font-black text-slate-400 mr-4">اسم المدرسة</label>
                 <div className="relative">
                   <School className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                  <input
-                    type="text"
-                    list="login-schools"
-                    className={`w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold outline-none transition-all ${selectedUser ? 'bg-slate-100 cursor-not-allowed' : ''}`}
-                    value={schoolName || ''}
-                    onChange={(e) => !selectedUser && setSchoolName(e.target.value)}
-                    readOnly={!!selectedUser}
-                    placeholder="اسم المدرسة"
-                  />
-                  <datalist id="login-schools">
-                    {(data.availableSchools || []).map(s => (
-                      <option key={s} value={s} />
-                    ))}
-                  </datalist>
+                  <div 
+                    onClick={() => selectedUser && (selectedUser.role === 'admin' || selectedUser.permissions.all) && setShowMultiSchool(!showMultiSchool)}
+                    className={`w-full pr-12 pl-4 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold outline-none transition-all cursor-pointer flex items-center justify-between ${!selectedUser ? 'opacity-50' : ''}`}
+                  >
+                    <span className="truncate">
+                      {selectedSchools.length === 0 ? 'اختر المدرسة' : 
+                       selectedSchools.length === 1 ? selectedSchools[0] : 
+                       `${selectedSchools.length} مدارس مختارة`}
+                    </span>
+                  </div>
                 </div>
+
+                <AnimatePresence>
+                  {showMultiSchool && selectedUser && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="bg-white border-2 border-slate-100 rounded-2xl overflow-hidden mt-2 p-4 space-y-2 shadow-inner"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-black text-slate-400">اختر المدارس المتاحة لك:</span>
+                        <button 
+                          type="button"
+                          onClick={selectAllSchools}
+                          className="text-xs font-black text-blue-600 hover:underline"
+                        >
+                          تحديد الكل
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto custom-scrollbar">
+                        {selectedUser.schools.map(school => (
+                          <label key={school} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors">
+                            <input 
+                              type="checkbox"
+                              checked={selectedSchools.includes(school)}
+                              onChange={() => toggleSchool(school)}
+                              className="w-5 h-5 rounded-lg border-2 border-slate-200 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="font-bold text-slate-700">{school}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* 4. Academic Year */}

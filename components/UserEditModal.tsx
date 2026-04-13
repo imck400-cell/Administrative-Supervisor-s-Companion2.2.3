@@ -87,15 +87,58 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
       const newPermissions = { ...prev.permissions };
       
       if (subId) {
+        // Child toggled
         const currentSubs = Array.isArray(newPermissions[key]) ? [...(newPermissions[key] as string[])] : [];
         if (currentSubs.includes(subId)) {
+          // Uncheck child
           newPermissions[key] = currentSubs.filter(id => id !== subId) as any;
+          // Uncheck parent
+          newPermissions.all = false;
         } else {
+          // Check child
           newPermissions[key] = [...currentSubs, subId] as any;
+          
+          // Check if all children of this parent are now checked
+          const parent = permissionsList.find(p => p.id === key);
+          if (parent && parent.subPermissions) {
+            const allChecked = parent.subPermissions.every(s => (newPermissions[key] as string[]).includes(s.id));
+            if (allChecked) {
+              // We could auto-check parent here if we wanted, but the user didn't explicitly ask for it.
+              // However, the user said "عند الضغط على علامة صح لأي معيار ... يتم وضع علامة صح على جميع ما تحته".
+              // This implies the parent is a boolean or a container.
+            }
+          }
         }
       } else {
-        newPermissions[key] = !newPermissions[key] as any;
+        // Parent toggled
+        const isChecking = !newPermissions[key];
+        newPermissions[key] = isChecking as any;
+        
+        // If parent has children, toggle them all
+        const parent = permissionsList.find(p => p.id === key);
+        if (parent && parent.subPermissions) {
+          if (isChecking) {
+            newPermissions[key] = parent.subPermissions.map(s => s.id) as any;
+          } else {
+            newPermissions[key] = [] as any;
+          }
+        }
+
+        if (!isChecking) {
+          newPermissions.all = false;
+        }
       }
+      
+      // Update selectAll state based on whether everything is checked
+      const isAllChecked = permissionsList.every(p => {
+        const val = newPermissions[p.id as keyof UserPermissions];
+        if (p.subPermissions) {
+          return Array.isArray(val) && val.length === p.subPermissions.length;
+        }
+        return !!val;
+      });
+      setSelectAll(isAllChecked);
+      newPermissions.all = isAllChecked;
       
       return { ...prev, permissions: newPermissions };
     });
@@ -106,15 +149,21 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
     setFormData(prev => {
       if (!prev) return null;
       const newPermissions: UserPermissions = { all: checked };
-      if (checked) {
-        permissionsList.forEach(p => {
+      permissionsList.forEach(p => {
+        if (checked) {
           if (p.subPermissions) {
             newPermissions[p.id as keyof UserPermissions] = p.subPermissions.map(s => s.id) as any;
           } else {
             newPermissions[p.id as keyof UserPermissions] = true as any;
           }
-        });
-      }
+        } else {
+          if (p.subPermissions) {
+            newPermissions[p.id as keyof UserPermissions] = [] as any;
+          } else {
+            newPermissions[p.id as keyof UserPermissions] = false as any;
+          }
+        }
+      });
       return { ...prev, permissions: newPermissions };
     });
   };
@@ -331,7 +380,10 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
                       <input 
                         type="checkbox"
                         className="w-5 h-5 rounded-lg border-2 border-slate-200 text-blue-600 focus:ring-blue-500"
-                        checked={!!formData.permissions?.[perm.id as keyof UserPermissions]}
+                        checked={perm.subPermissions 
+                          ? (Array.isArray(formData.permissions?.[perm.id as keyof UserPermissions]) && (formData.permissions?.[perm.id as keyof UserPermissions] as string[]).length === perm.subPermissions.length)
+                          : !!formData.permissions?.[perm.id as keyof UserPermissions]
+                        }
                         onChange={() => handleTogglePermission(perm.id as keyof UserPermissions)}
                       />
                     </label>

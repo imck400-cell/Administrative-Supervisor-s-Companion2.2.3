@@ -11,13 +11,14 @@ import DataManagementModal from './components/DataManagementModal';
 import AccessCodesModal from './components/AccessCodesModal';
 import {
   Lock, LayoutDashboard, ClipboardCheck, UserX, UserPlus,
-  Users, Sparkles, Database, FileSearch, ArrowUp, ArrowDown, Briefcase,
-  School, Calendar, AlertTriangle, Phone, MessageCircle, Key, Eye, EyeOff, Search, ChevronRight, LogOut, User as UserIcon, X
+  Users, Database, FileSearch, Briefcase,
+  School, Calendar, AlertTriangle, Phone, MessageCircle, Key, LogOut, User as UserIcon, X
 } from 'lucide-react';
 import GlobalScrollArrows from './components/GlobalScrollArrows';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster } from 'sonner';
-import { User } from './types';
+import { User, UserPermissions } from './types';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const AdvancedLoginPage: React.FC = () => {
   const { login, completeLogin, data } = useGlobal();
@@ -301,7 +302,7 @@ const MainApp: React.FC = () => {
     if (currentUser?.role === 'admin' || currentUser?.permissions?.all) return items;
 
     return items.filter(item => {
-      const p = currentUser?.permissions?.[item.permission as keyof typeof currentUser.permissions];
+      const p = currentUser?.permissions?.[item.permission as keyof UserPermissions];
       return p === true || (Array.isArray(p) && p.length > 0);
     });
   }, [currentUser]);
@@ -356,7 +357,7 @@ const MainApp: React.FC = () => {
             </button>
           </div>
 
-          {(currentUser?.role === 'admin' || currentUser?.permissions?.all) && (
+          {(currentUser?.role === 'admin' || currentUser?.permissions?.all || currentUser?.permissions?.specialCodes) && (
             <button 
               onClick={() => setIsCodesModalOpen(true)} 
               className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all"
@@ -481,8 +482,6 @@ const UserFilterModal: React.FC<{
     </div>
   );
 };
-
-import { ErrorBoundary } from './components/ErrorBoundary';
 
 const App: React.FC = () => (
   <ErrorBoundary>

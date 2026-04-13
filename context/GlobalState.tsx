@@ -60,6 +60,8 @@ interface GlobalContextType {
   currentUser: AuthUser | null;
   userFilter: string;
   setUserFilter: (userId: string) => void;
+  dateRange: { from: string; to: string };
+  setDateRange: (range: { from: string; to: string }) => void;
   login: (username: string, code: string) => User | null;
   completeLogin: (user: User, school: string, year: string) => void;
   logout: () => void;
@@ -315,6 +317,42 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [userFilter, setUserFilter] = useState('all');
+  const [dateRange, setDateRange] = useState({ from: '', to: '' });
+
+  const filteredData = React.useMemo(() => {
+    const selectedUserIds = userFilter === 'all' ? null : userFilter.split(',');
+    const { from, to } = dateRange;
+
+    const filterItem = (item: any) => {
+      // User filter
+      if (selectedUserIds && item.userId && !selectedUserIds.includes(item.userId)) {
+        return false;
+      }
+      // Date filter
+      if (item.date) {
+        if (from && item.date < from) return false;
+        if (to && item.date > to) return false;
+      }
+      return true;
+    };
+
+    const newData = { ...data };
+    const arrayKeys = [
+      'substitutions', 'timetable', 'dailyReports', 'violations',
+      'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs',
+      'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs',
+      'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports'
+    ];
+
+    arrayKeys.forEach(key => {
+      const k = key as keyof AppData;
+      if (Array.isArray(newData[k])) {
+        (newData as any)[k] = (newData[k] as any[]).filter(filterItem);
+      }
+    });
+
+    return newData;
+  }, [data, userFilter, dateRange]);
 
   useEffect(() => {
     if (isAuthenticated && currentUser && currentUser.role !== 'admin') {
@@ -696,12 +734,14 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     <GlobalContext.Provider value={{ 
       lang, 
       setLang: handleSetLang, 
-      data, 
+      data: filteredData, 
       updateData, 
       isAuthenticated, 
       currentUser,
       userFilter,
       setUserFilter,
+      dateRange,
+      setDateRange,
       login, 
       completeLogin,
       logout 

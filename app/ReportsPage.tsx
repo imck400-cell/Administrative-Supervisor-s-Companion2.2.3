@@ -2992,13 +2992,14 @@ export const ViolationsPage: React.FC = () => {
 };
 
 // Memoized Row for performance optimization
-const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShowNotesModal, toggleStar, isHighlighted, onRowClick, setWaSelector, isSelected, onSelect, onDelete, index, showBulkActions }: {
+const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShowNotesModal, setShowMainNotesSelectionModal, toggleStar, isHighlighted, onRowClick, setWaSelector, isSelected, onSelect, onDelete, index, showBulkActions }: {
   s: StudentReport;
   optionsAr: any;
   optionsEn: any;
   lang: string;
   updateStudent: (id: string, field: string, value: any) => void;
   setShowNotesModal: (s: any) => void;
+  setShowMainNotesSelectionModal: (s: any) => void;
   toggleStar: (id: string, type: any) => void;
   isHighlighted: boolean;
   onRowClick: (id: any) => void;
@@ -3116,16 +3117,20 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
         </select>
       </td>
       <td className="p-1 border-e border-slate-100">
-        <div className="flex flex-wrap gap-0.5 justify-center max-w-[180px]">
-          {optionsAr.mainNotes.map((n: any, nIdx: any) => (
-            <button key={n} onClick={() => {
-              const newN = s.mainNotes.includes(n) ? s.mainNotes.filter((x: any) => x !== n) : [...s.mainNotes, n];
-              updateStudent(s.id, 'mainNotes', newN);
-            }} className={`text-[7px] px-1 py-0.5 rounded border leading-none ${s.mainNotes.includes(n) ? 'bg-red-500 text-white' : 'bg-slate-50 text-slate-400'}`}>
-              {lang === 'ar' ? n : optionsEn.mainNotes[nIdx]}
-            </button>
-          ))}
-          <input className="text-[8px] border-b w-full mt-0.5 text-center outline-none" value={s.otherNotesText} onChange={(e) => updateStudent(s.id, 'otherNotesText', e.target.value)} />
+        <div 
+          onClick={(e) => { e.stopPropagation(); setShowMainNotesSelectionModal({ id: s.id, selected: s.mainNotes }); }}
+          className="cursor-pointer hover:bg-slate-50 p-1 rounded transition-colors min-h-[32px] flex flex-col justify-center"
+        >
+          <div className="text-[9px] font-bold text-blue-600 text-center">
+            {s.mainNotes.length > 0 ? s.mainNotes.join('، ') : (lang === 'ar' ? 'الملاحظات' : 'Notes')}
+          </div>
+          <input 
+            className="text-[8px] border-b w-full mt-0.5 text-center outline-none bg-transparent" 
+            value={s.otherNotesText} 
+            onChange={(e) => updateStudent(s.id, 'otherNotesText', e.target.value)} 
+            onClick={(e) => e.stopPropagation()}
+            placeholder="..."
+          />
         </div>
       </td>
       <td className="p-1 border-e border-slate-100 bg-[#DDEBF7]/5">
@@ -3184,6 +3189,7 @@ export const StudentsReportsPage: React.FC = () => {
   const [activeMetricFilter, setActiveMetricFilter] = useState<string[]>([]);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState<{ id: string, text: string } | null>(null);
+  const [showMainNotesSelectionModal, setShowMainNotesSelectionModal] = useState<{ id: string, selected: string[] } | null>(null);
   const [metricFilterMode, setMetricFilterMode] = useState(false);
   const [showSpecificFilterModal, setShowSpecificFilterModal] = useState(false);
 
@@ -4046,6 +4052,7 @@ export const StudentsReportsPage: React.FC = () => {
                     lang={lang}
                     updateStudent={updateStudent}
                     setShowNotesModal={setShowNotesModal}
+                    setShowMainNotesSelectionModal={setShowMainNotesSelectionModal}
                     toggleStar={toggleStar}
                     isHighlighted={highlightedRow === s.id}
                     onRowClick={setHighlightedRow}
@@ -4190,6 +4197,53 @@ export const StudentsReportsPage: React.FC = () => {
             <div className="flex gap-2">
               <button onClick={() => { updateStudent(showNotesModal.id, 'notes', showNotesModal.text); setShowNotesModal(null); }} className="flex-1 bg-blue-600 text-white p-3 rounded-2xl font-black">{lang === 'ar' ? 'موافق' : 'OK'}</button>
               <button onClick={() => setShowNotesModal(null)} className="p-3 bg-slate-100 rounded-2xl font-black">{lang === 'ar' ? 'إلغاء' : 'Cancel'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMainNotesSelectionModal && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 font-arabic">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200 text-right">
+            <div className="flex justify-between items-center border-b pb-2">
+              <h3 className="font-black text-slate-800">{lang === 'ar' ? 'الملاحظات الأساسية' : 'Main Notes'}</h3>
+              <button onClick={() => setShowMainNotesSelectionModal(null)} className="p-1 hover:bg-slate-100 rounded-full transition-colors"><X size={20} /></button>
+            </div>
+            <div className="grid grid-cols-1 gap-2 max-h-[60vh] overflow-y-auto p-1">
+              {optionsAr.mainNotes.map((note: string, idx: number) => {
+                const isSelected = showMainNotesSelectionModal.selected.includes(note);
+                return (
+                  <button
+                    key={note}
+                    onClick={() => {
+                      const newSelected = isSelected 
+                        ? showMainNotesSelectionModal.selected.filter(n => n !== note)
+                        : [...showMainNotesSelectionModal.selected, note];
+                      setShowMainNotesSelectionModal({ ...showMainNotesSelectionModal, selected: newSelected });
+                    }}
+                    className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all text-right ${
+                      isSelected ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100 hover:border-blue-200 text-slate-600'
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-slate-300'}`}>
+                      {isSelected && <Check size={14} className="text-white" />}
+                    </div>
+                    <span className="font-bold text-sm">{lang === 'ar' ? note : optionsEn.mainNotes[idx]}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex gap-2 pt-2 border-t">
+              <button 
+                onClick={() => { 
+                  updateStudent(showMainNotesSelectionModal.id, 'mainNotes', showMainNotesSelectionModal.selected); 
+                  setShowMainNotesSelectionModal(null); 
+                }} 
+                className="flex-1 bg-blue-600 text-white p-3 rounded-2xl font-black shadow-lg active:scale-95 transition-all"
+              >
+                {lang === 'ar' ? 'حفظ الملاحظات' : 'Save Notes'}
+              </button>
+              <button onClick={() => setShowMainNotesSelectionModal(null)} className="px-6 bg-slate-100 text-slate-500 p-3 rounded-2xl font-black">{lang === 'ar' ? 'إلغاء' : 'Cancel'}</button>
             </div>
           </div>
         </div>

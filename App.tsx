@@ -33,11 +33,11 @@ const AdvancedLoginPage: React.FC = () => {
   useEffect(() => {
     if (username.trim()) {
       const normalizedInput = username.trim().toLowerCase();
-      const user = data.users.find(u => 
-        u.name.trim().toLowerCase() === normalizedInput || 
+      const user = data.users.find(u =>
+        u.name.trim().toLowerCase() === normalizedInput ||
         u.id.trim().toLowerCase() === normalizedInput
       );
-      
+
       if (user) {
         if (user.schools && user.schools.length > 0) {
           setSchoolName(user.schools[0]);
@@ -53,8 +53,8 @@ const AdvancedLoginPage: React.FC = () => {
 
   const selectedUser = useMemo(() => {
     const normalizedInput = username.trim().toLowerCase();
-    return data.users.find(u => 
-      u.name.trim().toLowerCase() === normalizedInput || 
+    return data.users.find(u =>
+      u.name.trim().toLowerCase() === normalizedInput ||
       u.id.trim().toLowerCase() === normalizedInput
     ) || null;
   }, [username, data.users]);
@@ -87,7 +87,7 @@ const AdvancedLoginPage: React.FC = () => {
     switch (step) {
       case 'login':
         return (
-          <motion.div 
+          <motion.div
             key="login"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -178,7 +178,7 @@ const AdvancedLoginPage: React.FC = () => {
               </div>
 
               {error && <p className="text-red-500 text-center font-bold text-sm">{error}</p>}
-              
+
               <button className="w-full bg-blue-600 text-white p-5 rounded-[1.5rem] font-black text-xl hover:bg-blue-700 shadow-xl shadow-blue-100 transition-all hover:-translate-y-1 active:translate-y-0 mt-4">
                 دخول النظام
               </button>
@@ -187,14 +187,14 @@ const AdvancedLoginPage: React.FC = () => {
         );
       case 'expired':
         return (
-          <motion.div 
+          <motion.div
             key="expired"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className="space-y-8 text-center"
           >
             <div className="relative inline-block">
-              <motion.div 
+              <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
                 className="absolute inset-0 bg-gradient-to-tr from-amber-500 to-orange-500 rounded-full blur-2xl opacity-20"
@@ -203,7 +203,7 @@ const AdvancedLoginPage: React.FC = () => {
                 <AlertTriangle className="w-12 h-12" />
               </div>
             </div>
-            
+
             <div>
               <h2 className="text-3xl font-black text-slate-800 tracking-tight">انتهت صلاحية الاشتراك</h2>
               <div className="mt-4 p-6 bg-orange-50 rounded-3xl border-2 border-orange-100">
@@ -216,7 +216,7 @@ const AdvancedLoginPage: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <a 
+              <a
                 href="tel:967780804012"
                 className="flex flex-col items-center gap-3 p-6 bg-white border-2 border-slate-100 rounded-3xl hover:border-blue-500 hover:shadow-xl transition-all group"
               >
@@ -225,7 +225,7 @@ const AdvancedLoginPage: React.FC = () => {
                 </div>
                 <span className="font-black text-slate-700">اتصال هاتف</span>
               </a>
-              <a 
+              <a
                 href="https://wa.me/967780804012"
                 target="_blank"
                 rel="noreferrer"
@@ -238,7 +238,7 @@ const AdvancedLoginPage: React.FC = () => {
               </a>
             </div>
 
-            <button 
+            <button
               onClick={() => setStep('login')}
               className="px-8 py-3 bg-slate-100 text-slate-500 font-black rounded-2xl hover:bg-slate-200 transition-all"
             >
@@ -253,16 +253,16 @@ const AdvancedLoginPage: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-[#0f172a] px-4 font-arabic overflow-hidden relative">
       {/* Animated Background Elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <motion.div 
-          animate={{ 
+        <motion.div
+          animate={{
             y: [0, -100, 0],
             opacity: [0.1, 0.3, 0.1]
           }}
           transition={{ duration: 10, repeat: Infinity }}
           className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-500 rounded-full blur-[100px]"
         />
-        <motion.div 
-          animate={{ 
+        <motion.div
+          animate={{
             y: [0, 100, 0],
             opacity: [0.1, 0.2, 0.1]
           }}
@@ -339,9 +339,9 @@ const MainApp: React.FC = () => {
             <p className="text-blue-500 text-sm font-bold"> {currentUser?.selectedSchool} - {data.profile.year} </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-3 flex-wrap">
-          <button 
+          <button
             onClick={logout}
             className="flex items-center gap-2 px-6 py-3 bg-red-50 border-2 border-red-100 rounded-[1.2rem] text-red-600 font-black text-sm hover:bg-red-600 hover:text-white transition-all shadow-sm"
           >
@@ -355,15 +355,15 @@ const MainApp: React.FC = () => {
               disabled={currentUser?.role !== 'admin'}
               className={`outline-none bg-transparent cursor-pointer min-w-[100px] text-right ${currentUser?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-600'}`}
             >
-              {userFilter === 'all' ? 'كل المستخدمين' : 
-               userFilter.split(',').length > 1 ? `${userFilter.split(',').length} مستخدمين` :
-               data.users.find(u => u.id === userFilter)?.name || 'مستخدم غير معروف'}
+              {userFilter === 'all' ? 'كل المستخدمين' :
+                userFilter.split(',').length > 1 ? `${userFilter.split(',').length} مستخدمين` :
+                  data.users.find(u => u.id === userFilter)?.name || 'مستخدم غير معروف'}
             </button>
           </div>
 
           {canSeeSpecialCodes && (
-            <button 
-              onClick={() => setIsCodesModalOpen(true)} 
+            <button
+              onClick={() => setIsCodesModalOpen(true)}
               className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all"
             >
               <Key className="text-blue-600" size={18} /> الأكواد الخاصة
@@ -371,8 +371,8 @@ const MainApp: React.FC = () => {
           )}
 
           {(currentUser?.role === 'admin' || currentUser?.permissions?.all) && (
-            <button 
-              onClick={() => setIsDataModalOpen(true)} 
+            <button
+              onClick={() => setIsDataModalOpen(true)}
               className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all"
             >
               <Database className="text-blue-600" size={18} /> إدارة البيانات
@@ -399,10 +399,10 @@ const MainApp: React.FC = () => {
 
       <DataManagementModal isOpen={isDataModalOpen} onClose={() => setIsDataModalOpen(false)} />
       <AccessCodesModal isOpen={isCodesModalOpen} onClose={() => setIsCodesModalOpen(false)} />
-      
-      <UserFilterModal 
-        isOpen={isUserFilterModalOpen} 
-        onClose={() => setIsUserFilterModalOpen(false)} 
+
+      <UserFilterModal
+        isOpen={isUserFilterModalOpen}
+        onClose={() => setIsUserFilterModalOpen(false)}
         users={(currentUser?.role === 'admin' || currentUser?.permissions?.all) ? data.users : data.users.filter(u => u.schools.includes(currentUser?.selectedSchool || ''))}
         selectedIds={userFilter === 'all' ? ((currentUser?.role === 'admin' || currentUser?.permissions?.all) ? data.users.map(u => u.id) : data.users.filter(u => u.schools.includes(currentUser?.selectedSchool || '')).map(u => u.id)) : userFilter.split(',')}
         onApply={(ids) => {
@@ -444,7 +444,7 @@ const UserFilterModal: React.FC<{
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm font-arabic">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border-4 border-blue-50"
@@ -461,9 +461,9 @@ const UserFilterModal: React.FC<{
           {users.map(u => (
             <label key={u.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all">
               <span className="font-bold text-slate-700">{u.name}</span>
-              <input 
-                type="checkbox" 
-                checked={tempSelected.includes(u.id)} 
+              <input
+                type="checkbox"
+                checked={tempSelected.includes(u.id)}
                 onChange={() => toggleUser(u.id)}
                 className="w-5 h-5 rounded-lg border-2 border-slate-200 text-blue-600"
               />
@@ -472,11 +472,11 @@ const UserFilterModal: React.FC<{
         </div>
         <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
           <button onClick={onClose} className="flex-1 py-3 bg-white border-2 border-slate-200 text-slate-600 font-black rounded-xl">إلغاء</button>
-          <button 
+          <button
             onClick={() => {
               onApply(tempSelected);
               onClose();
-            }} 
+            }}
             className="flex-1 py-3 bg-blue-600 text-white font-black rounded-xl shadow-lg shadow-blue-100"
           >
             تطبيق التصفية

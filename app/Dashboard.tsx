@@ -26,11 +26,22 @@ interface CardConfig {
 }
 
 const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[] }> = ({ setView, recentActions = [] }) => {
-  const { lang, data, userFilter } = useGlobal();
+  const { lang, data, userFilter, dateRange: globalDateRange } = useGlobal();
 
   const today = new Date().toISOString().split('T')[0];
   const [globalTimeRange, setGlobalTimeRange] = useState<TimeRange>('all');
   const [dateRange, setDateRange] = useState({ start: today, end: today });
+
+  // Sync global date range to local state if it's set
+  useEffect(() => {
+    if (globalDateRange.from || globalDateRange.to) {
+      setGlobalTimeRange('custom');
+      setDateRange({
+        start: globalDateRange.from || today,
+        end: globalDateRange.to || today
+      });
+    }
+  }, [globalDateRange]);
 
   const [cycleIndex, setCycleIndex] = useState(0);
   const [cycleDuration, setCycleDuration] = useState(5000);

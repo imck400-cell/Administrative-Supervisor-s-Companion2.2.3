@@ -42,24 +42,14 @@ const SubstitutionPage: React.FC = () => {
 
   // START OF CHANGE - Filtering Logic
   const filteredSubstitutions = useMemo(() => {
-    let list = (data.substitutions || []).filter(s => s.date === selectedCoverageDate);
-    if (userFilter && userFilter !== 'all') {
-      const filterIds = userFilter.split(',');
-      list = list.filter(s => filterIds.includes(s.userId || ''));
-    }
-    return list;
-  }, [data.substitutions, selectedCoverageDate, userFilter]);
+    return (data.substitutions || []).filter(s => s.date === selectedCoverageDate);
+  }, [data.substitutions, selectedCoverageDate]);
 
   const uniqueCoverageDates = useMemo(() => {
-    let list = (data.substitutions || []);
-    if (userFilter && userFilter !== 'all') {
-      const filterIds = userFilter.split(',');
-      list = list.filter(s => filterIds.includes(s.userId || ''));
-    }
+    const list = (data.substitutions || []);
     const dates = list.map(s => s.date);
-    // Fix: Cast a and b to string as they are inferred as unknown
     return Array.from(new Set(dates)).sort((a, b) => b.localeCompare(a));
-  }, [data.substitutions, userFilter]);
+  }, [data.substitutions]);
   // END OF CHANGE
 
   // --- Timetable Logic ---

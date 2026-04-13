@@ -91,11 +91,8 @@ export const DailyReportsPage: React.FC = () => {
 
 
   const reports = useMemo(() => {
-    const allReports = data.dailyReports || [];
-    if (!userFilter || userFilter === 'all') return allReports;
-    const filterIds = userFilter.split(',');
-    return allReports.filter(r => filterIds.includes(r.userId || ''));
-  }, [data.dailyReports, userFilter]);
+    return data.dailyReports || [];
+  }, [data.dailyReports]);
 
   // Set active report on load if not set & Auto-create for today
   useEffect(() => {

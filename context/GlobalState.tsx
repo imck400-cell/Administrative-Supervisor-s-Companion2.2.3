@@ -319,40 +319,55 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [userFilter, setUserFilter] = useState('all');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
 
-  const filteredData = React.useMemo(() => {
-    const selectedUserIds = userFilter === 'all' ? null : userFilter.split(',');
-    const { from, to } = dateRange;
+    const filteredData = React.useMemo(() => {
+      const selectedUserIds = userFilter === 'all' ? null : userFilter.split(',');
+      const { from, to } = dateRange;
 
-    const filterItem = (item: any) => {
-      // User filter
-      if (selectedUserIds && item.userId && !selectedUserIds.includes(item.userId)) {
-        return false;
-      }
-      // Date filter
-      if (item.date) {
-        if (from && item.date < from) return false;
-        if (to && item.date > to) return false;
-      }
-      return true;
-    };
+      const filterByDate = (item: any) => {
+        const itemDate = item.date || item.dateStr || (item.createdAt ? item.createdAt.substring(0, 10) : null);
+        if (itemDate) {
+          if (from && itemDate < from) return false;
+          if (to && itemDate > to) return false;
+        }
+        return true;
+      };
 
-    const newData = { ...data };
-    const arrayKeys = [
-      'substitutions', 'timetable', 'dailyReports', 'violations',
-      'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs',
-      'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs',
-      'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports'
-    ];
+      const filterByUser = (item: any) => {
+        if (selectedUserIds && item.userId && !selectedUserIds.includes(item.userId)) {
+          return false;
+        }
+        return true;
+      };
 
-    arrayKeys.forEach(key => {
-      const k = key as keyof AppData;
-      if (Array.isArray(newData[k])) {
-        (newData as any)[k] = (newData[k] as any[]).filter(filterItem);
-      }
-    });
+      const newData = { ...data };
+      
+      // Activity arrays - filter by both user and date
+      const activityKeys = [
+        'substitutions', 'dailyReports', 'violations', 'parentVisits',
+        'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs',
+        'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs',
+        'genericSpecialReports', 'taskReports', 'adminReports'
+      ];
 
-    return newData;
-  }, [data, userFilter, dateRange]);
+      // Entity arrays - filter by user only (keep profiles visible regardless of date)
+      const entityKeys = ['studentReports', 'timetable', 'teacherFollowUps'];
+
+      activityKeys.forEach(key => {
+        const k = key as keyof AppData;
+        if (Array.isArray(newData[k])) {
+          (newData as any)[k] = (newData[k] as any[]).filter(item => filterByUser(item) && filterByDate(item));
+        }
+      });
+
+      entityKeys.forEach(key => {
+        const k = key as keyof AppData;
+        if (Array.isArray(newData[k])) {
+          (newData as any)[k] = (newData[k] as any[]).filter(filterByUser);
+        }
+      });
+
+      return newData;
+    }, [data, userFilter, dateRange]);
 
   useEffect(() => {
     if (isAuthenticated && currentUser && currentUser.role !== 'admin') {
@@ -645,6 +660,19 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const schoolsToUpdate = selectedSchools.includes('all') ? data.availableSchools : selectedSchools;
       const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions', 'users', 'availableSchools', 'availableYears'];
 
+      // Helper to check if an item matches the current global filters
+      const matchesCurrentFilter = (item: any) => {
+        const selectedUserIds = userFilter === 'all' ? null : userFilter.split(',');
+        const { from, to } = dateRange;
+        if (selectedUserIds && item.userId && !selectedUserIds.includes(item.userId)) return false;
+        const itemDate = item.date || item.dateStr || (item.createdAt ? item.createdAt.substring(0, 10) : null);
+        if (itemDate) {
+          if (from && itemDate < from) return false;
+          if (to && itemDate > to) return false;
+        }
+        return true;
+      };
+
       for (const key of Object.keys(newData) as Array<keyof AppData>) {
         if (sharedKeys.includes(key)) {
           if (currentUser.role === 'admin') {
@@ -657,17 +685,19 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         const newArray = newData[key] as any[];
-        const oldArray = data[key] as any[];
-        
         if (!Array.isArray(newArray)) continue;
 
+        const oldArray = data[key] as any[] || [];
+        
+        // Merge logic: Keep items that DON'T match the current filter, 
+        // and replace items that DO match the current filter with the new ones from the component.
+        const itemsNotMatchingFilter = oldArray.filter(item => !matchesCurrentFilter(item));
+        const finalArray = [...itemsNotMatchingFilter, ...newArray];
+
         const userIds = new Set<string>();
-        newArray.forEach(item => {
+        finalArray.forEach(item => {
           if (!item.userId) item.userId = currentUser.id;
           userIds.add(item.userId);
-        });
-        oldArray?.forEach(item => {
-          if (item.userId) userIds.add(item.userId);
         });
 
         if (userIds.size === 0) {
@@ -677,12 +707,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         for (const uid of userIds) {
           if (currentUser.role !== 'admin' && uid !== currentUser.id) continue;
 
-          const userItems = newArray.filter(item => item.userId === uid);
-          // For user data, we usually write to the first school or a specific one?
-          // If admin is in multiple schools, where do they write?
-          // Usually, it should be the school associated with the data.
-          // For now, we'll write to all selected schools if it's shared, but for user data, 
-          // we'll use the first selected school as primary or just the first one.
+          const userItems = finalArray.filter(item => item.userId === uid);
           const primarySchool = schoolsToUpdate[0];
           if (primarySchool) {
             setDoc(doc(db, 'schools', primarySchool, 'users', uid, 'data', key), { items: userItems })

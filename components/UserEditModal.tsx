@@ -18,7 +18,8 @@ const permissionsList = [
   { id: 'studentAffairs', label: 'شؤون الطلاب' },
   { id: 'substitutions', label: 'جدول التغطية' },
   { id: 'schoolProfile', label: 'ملف المدرسة' },
-  { id: 'specialCodes', label: 'الأكواد الخاصة' },
+  { id: 'specialCodes', label: 'التحكم بالصلاحيات' },
+  { id: 'userManagement', label: 'التحكم بالمستخدمين' },
   { 
     id: 'specialReports', 
     label: 'تقارير خاصة',

@@ -392,25 +392,26 @@ const MainApp: React.FC = () => {
             <LogOut size={18} /> تسجيل الخروج
           </button>
           {/* User Filter Dropdown */}
-          <div className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm shadow-sm">
-            <Users size={18} className="text-blue-600" />
-            <button
-              onClick={() => currentUser?.role === 'admin' && setIsUserFilterModalOpen(true)}
-              disabled={currentUser?.role !== 'admin'}
-              className={`outline-none bg-transparent cursor-pointer min-w-[100px] text-right ${currentUser?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : 'hover:text-blue-600'}`}
-            >
-              {userFilter === 'all' ? 'كل المستخدمين' :
-                userFilter.split(',').length > 1 ? `${userFilter.split(',').length} مستخدمين` :
-                  data.users.find(u => u.id === userFilter)?.name || 'مستخدم غير معروف'}
-            </button>
-          </div>
+          {(currentUser?.role === 'admin' || currentUser?.permissions?.all || currentUser?.permissions?.userManagement) && (
+            <div className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm shadow-sm">
+              <Users size={18} className="text-blue-600" />
+              <button
+                onClick={() => (currentUser?.role === 'admin' || currentUser?.permissions?.all || currentUser?.permissions?.userManagement) && setIsUserFilterModalOpen(true)}
+                className={`outline-none bg-transparent cursor-pointer min-w-[100px] text-right hover:text-blue-600`}
+              >
+                {userFilter === 'all' ? 'كل المستخدمين' :
+                  userFilter.split(',').length > 1 ? `${userFilter.split(',').length} مستخدمين` :
+                    data.users.find(u => u.id === userFilter)?.name || 'مستخدم غير معروف'}
+              </button>
+            </div>
+          )}
 
           {canSeeSpecialCodes && (
             <button
               onClick={() => setIsCodesModalOpen(true)}
               className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all"
             >
-              <Key className="text-blue-600" size={18} /> الأكواد الخاصة
+              <Key className="text-blue-600" size={18} /> التحكم بالصلاحيات
             </button>
           )}
 

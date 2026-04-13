@@ -333,6 +333,7 @@ export interface UserPermissions {
   substitutions?: boolean | string[];
   schoolProfile?: boolean;
   specialCodes?: boolean;
+  userManagement?: boolean;
 }
 
 export interface User {

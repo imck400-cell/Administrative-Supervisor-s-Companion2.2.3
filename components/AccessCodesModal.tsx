@@ -100,7 +100,7 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
         >
           <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <div>
-              <h2 className="text-2xl font-black text-slate-800">الأكواد الخاصة</h2>
+              <h2 className="text-2xl font-black text-slate-800">التحكم بالصلاحيات</h2>
               <p className="text-slate-500 text-sm font-bold">إدارة المدارس والمستخدمين والصلاحيات</p>
             </div>
             <button 

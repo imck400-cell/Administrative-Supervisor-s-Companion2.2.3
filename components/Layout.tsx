@@ -33,12 +33,15 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings })
 
   return (
     <div className={`min-h-screen flex flex-col font-arabic`}>
-      <header className="bg-white border-b h-16 flex items-center justify-between px-4 sticky top-0 z-50 shadow-sm">
+      <header className="bg-white border-b h-16 flex items-center justify-between px-4 sticky top-0 z-50 shadow-sm relative">
         <div className="flex items-center gap-4">
           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-slate-100 rounded-md transition-colors">
             {isSidebarOpen ? <X /> : <Menu />}
           </button>
-          <h1 className="text-xl font-bold text-blue-600 hidden sm:block"> رفيق المشرف الإداري </h1>
+        </div>
+
+        <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 hidden sm:block">
+          <h1 className="text-xl font-black text-blue-600 whitespace-nowrap"> رفيقك في كتابة التقارير الإدارية </h1>
         </div>
         
         <div className="flex items-center gap-3">

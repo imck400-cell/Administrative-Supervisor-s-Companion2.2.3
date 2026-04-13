@@ -200,16 +200,13 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
   };
 
   const processedData = useMemo(() => {
-    const filterIds = userFilter === 'all' ? [] : userFilter.split(',');
-    const matchesFilter = (userId?: string) => !userFilter || userFilter === 'all' || (userId && filterIds.includes(userId));
-
     const results: Record<string, any[]> = {
       students: (data.studentReports || []).map(s => {
-        const hasAbsence = (data.absenceLogs || []).some(l => l.studentId === s.id && matchesFilter(l.userId));
-        const hasLateness = (data.studentLatenessLogs || []).some(l => l.studentId === s.id && matchesFilter(l.userId));
-        const hasExit = (data.exitLogs || []).some(l => l.studentId === s.id && matchesFilter(l.userId));
-        const hasViolation = (data.studentViolationLogs || []).some(l => l.studentId === s.id && matchesFilter(l.userId));
-        const hasDamage = (data.damageLogs || []).some(l => l.studentId === s.id && matchesFilter(l.userId));
+        const hasAbsence = (data.absenceLogs || []).some(l => l.studentId === s.id);
+        const hasLateness = (data.studentLatenessLogs || []).some(l => l.studentId === s.id);
+        const hasExit = (data.exitLogs || []).some(l => l.studentId === s.id);
+        const hasViolation = (data.studentViolationLogs || []).some(l => l.studentId === s.id);
+        const hasDamage = (data.damageLogs || []).some(l => l.studentId === s.id);
 
         return {
           ...s,
@@ -222,26 +219,29 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
           damageSummary: hasDamage ? 'has_data' : ''
         };
       }),
-      teachers: (data.dailyReports.filter(r => matchesFilter(r.userId)).flatMap(r => r.teachersData)).map(t => ({ ...t, displayName: t.teacherName, type: 'teacher' })),
-      violations: (data.violations || []).filter(v => matchesFilter(v.userId)).map(v => ({ ...v, displayName: v.studentName || v.teacherName, type: 'violation' })),
-      substitutions: (data.substitutions || []).filter(s => matchesFilter(s.userId)).map(s => ({ ...s, displayName: s.absentTeacher, type: 'substitution' })),
+      teachers: (data.dailyReports || []).flatMap(r => (r.teachersData || []).map(t => ({ ...t, date: r.dateStr, displayName: t.teacherName, type: 'teacher' }))),
+      violations: (data.violations || []).map(v => ({ ...v, displayName: v.studentName || v.teacherName, type: 'violation' })),
+      substitutions: (data.substitutions || []).map(s => ({ ...s, displayName: s.absentTeacher, type: 'substitution' })),
       special_reports: [
-        ...(data.absenceLogs || []).filter(l => matchesFilter(l.userId)).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'الغياب اليومي', icon: <UserX size={12} /> })),
-        ...(data.studentLatenessLogs || []).filter(l => matchesFilter(l.userId)).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'التأخر', icon: <Clock size={12} /> })),
-        ...(data.exitLogs || []).filter(l => matchesFilter(l.userId)).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'خروج طالب أثناء الدراسة', icon: <UserPlusIcon size={12} /> })),
-        ...(data.damageLogs || []).filter(l => matchesFilter(l.userId)).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل الإتلاف المدرسي', icon: <Hammer size={12} /> })),
-        ...(data.studentViolationLogs || []).filter(l => matchesFilter(l.userId)).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'المخالفات الطلابية', icon: <ShieldAlert size={12} /> })),
-        ...(data.parentVisitLogs || []).filter(l => matchesFilter(l.userId)).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل زيارة أولياء الأمور والتواصل بهم', icon: <Users size={12} /> })),
-        ...(data.genericSpecialReports || []).filter(l => matchesFilter(l.userId)).map(l => ({ ...l, displayName: l.title, cat: l.category === 'supervisor' ? 'supervisor' : l.category === 'staff' ? 'staff' : l.category === 'tests' ? 'tests' : 'supervisor', sub: l.subCategory, icon: <FileText size={12} /> })),
+        ...(data.absenceLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'الغياب اليومي', icon: <UserX size={12} /> })),
+        ...(data.studentLatenessLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'التأخر', icon: <Clock size={12} /> })),
+        ...(data.exitLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'خروج طالب أثناء الدراسة', icon: <UserPlusIcon size={12} /> })),
+        ...(data.damageLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل الإتلاف المدرسي', icon: <Hammer size={12} /> })),
+        ...(data.studentViolationLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'المخالفات الطلابية', icon: <ShieldAlert size={12} /> })),
+        ...(data.parentVisitLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل زيارة أولياء الأمور والتواصل بهم', icon: <Users size={12} /> })),
+        ...(data.genericSpecialReports || []).map(l => ({ ...l, displayName: l.title, cat: l.category === 'supervisor' ? 'supervisor' : l.category === 'staff' ? 'staff' : l.category === 'tests' ? 'tests' : 'supervisor', sub: l.subCategory, icon: <FileText size={12} /> })),
       ],
-      staff_followup: (data.adminReports || []).filter(r => matchesFilter(r.userId)).flatMap(r => r.employeesData.map(e => ({ ...e, displayName: e.employeeName, type: 'staff_followup', followUpType: r.followUpType, date: r.dateStr })))
+      staff_followup: (data.adminReports || []).flatMap(r => (r.employeesData || []).map(e => ({ ...e, displayName: e.employeeName, type: 'staff_followup', followUpType: r.followUpType, date: r.dateStr })))
     };
 
     Object.keys(results).forEach(key => {
       if (globalTimeRange !== 'all') {
         const now = new Date();
         results[key] = results[key].filter(item => {
-          const itemDate = new Date(item.date || item.createdAt || Date.now());
+          const itemDateStr = item.date || item.dateStr || (item.createdAt ? item.createdAt.substring(0, 10) : null);
+          if (!itemDateStr) return true;
+          
+          const itemDate = new Date(itemDateStr);
           if (globalTimeRange === 'daily') return itemDate.toDateString() === now.toDateString();
           if (globalTimeRange === 'weekly') return (now.getTime() - itemDate.getTime()) <= 7 * 24 * 60 * 60 * 1000;
           if (globalTimeRange === 'monthly') return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();

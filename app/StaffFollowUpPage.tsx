@@ -1153,7 +1153,7 @@ const StaffFollowUpPage: React.FC = () => {
                                 <input
                                     type="date"
                                     className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none font-sans"
-                                    value={reportDate}
+                                    value={reportDate || ''}
                                     onChange={(e) => setReportDate(e.target.value)}
                                 />
                                 <div className="flex-1 bg-blue-50 border-2 border-blue-100 rounded-[1.2rem] p-3.5 flex flex-col justify-center">
@@ -1167,7 +1167,7 @@ const StaffFollowUpPage: React.FC = () => {
                             <input
                                 type="text"
                                 className="bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none"
-                                value={individualForm.writer}
+                                value={individualForm.writer || ''}
                                 onChange={(e) => setIndividualForm({ ...individualForm, writer: e.target.value })}
                             />
                         </div>
@@ -1176,7 +1176,7 @@ const StaffFollowUpPage: React.FC = () => {
                             <input
                                 type="text"
                                 className="bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none font-sans"
-                                value={individualForm.reportNumber}
+                                value={individualForm.reportNumber || ''}
                                 onChange={(e) => setIndividualForm({ ...individualForm, reportNumber: e.target.value })}
                             />
                         </div>
@@ -1185,7 +1185,7 @@ const StaffFollowUpPage: React.FC = () => {
                             <input
                                 type="text"
                                 className="bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none"
-                                value={individualForm.employeeName}
+                                value={individualForm.employeeName || ''}
                                 onChange={(e) => setIndividualForm({ ...individualForm, employeeName: e.target.value })}
                             />
                         </div>
@@ -1194,7 +1194,7 @@ const StaffFollowUpPage: React.FC = () => {
                             <input
                                 type="text"
                                 className="bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none"
-                                value={individualForm.role}
+                                value={individualForm.role || ''}
                                 onChange={(e) => setIndividualForm({ ...individualForm, role: e.target.value })}
                             />
                         </div>

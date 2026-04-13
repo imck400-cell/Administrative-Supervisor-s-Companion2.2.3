@@ -3055,26 +3055,26 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
       </td>
       <td className="p-1 border-e border-slate-100">
         <div className="flex flex-col gap-0.5">
-          <input className="w-full text-[9px] text-right bg-transparent outline-none" value={s.address} onChange={(e) => updateStudent(s.id, 'address', e.target.value)} placeholder="..." />
-          <select className="text-[8px] bg-slate-50/50 appearance-none text-center" value={s.workOutside} onChange={(e) => updateStudent(s.id, 'workOutside', e.target.value)}>
+          <input className="w-full text-[9px] text-right bg-transparent outline-none" value={s.address || ''} onChange={(e) => updateStudent(s.id, 'address', e.target.value)} placeholder="..." />
+          <select className="text-[8px] bg-slate-50/50 appearance-none text-center" value={s.workOutside || ''} onChange={(e) => updateStudent(s.id, 'workOutside', e.target.value)}>
             {optionsAr.workOutside.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{lang === 'ar' ? o : optionsEn.workOutside[optionsAr.workOutside.indexOf(o)]}</option>)}
           </select>
         </div>
       </td>
       <td className="p-1 border-e border-slate-100">
         <div className="flex flex-col gap-0.5">
-          <select className={`text-[9px] font-bold appearance-none text-center outline-none bg-transparent ${s.healthStatus === 'مريض' ? 'text-red-600' : ''}`} value={s.healthStatus} onChange={(e) => updateStudent(s.id, 'healthStatus', e.target.value)}>
+          <select className={`text-[9px] font-bold appearance-none text-center outline-none bg-transparent ${s.healthStatus === 'مريض' ? 'text-red-600' : ''}`} value={s.healthStatus || ''} onChange={(e) => updateStudent(s.id, 'healthStatus', e.target.value)}>
             {optionsAr.health.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{lang === 'ar' ? o : optionsEn.health[optionsAr.health.indexOf(o)]}</option>)}
           </select>
-          {s.healthStatus === 'مريض' && <input className="text-[8px] text-center border-b outline-none text-red-500" value={s.healthDetails} onChange={(e) => updateStudent(s.id, 'healthDetails', e.target.value)} />}
+          {s.healthStatus === 'مريض' && <input className="text-[8px] text-center border-b outline-none text-red-500" value={s.healthDetails || ''} onChange={(e) => updateStudent(s.id, 'healthDetails', e.target.value)} />}
         </div>
       </td>
       <td className="p-1 border-e border-slate-100">
         <div className="flex flex-col gap-0.5">
-          <input className="text-[9px] font-bold text-right outline-none bg-transparent" value={s.guardianName} onChange={(e) => updateStudent(s.id, 'guardianName', e.target.value)} />
+          <input className="text-[9px] font-bold text-right outline-none bg-transparent" value={s.guardianName || ''} onChange={(e) => updateStudent(s.id, 'guardianName', e.target.value)} />
           {s.guardianPhones.map((p: any, i: any) => (
             <div key={`phone-${s.id}-${i}`} className="flex gap-0.5 items-center">
-              <input className="text-[8px] w-full text-center bg-slate-50/50 outline-none" value={p} onChange={(e) => {
+              <input className="text-[8px] w-full text-center bg-slate-50/50 outline-none" value={p || ''} onChange={(e) => {
                 const newP = [...s.guardianPhones]; newP[i] = e.target.value; updateStudent(s.id, 'guardianPhones', newP);
               }} />
             </div>
@@ -3126,7 +3126,7 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
           </div>
           <input 
             className="text-[8px] border-b w-full mt-0.5 text-center outline-none bg-transparent" 
-            value={s.otherNotesText} 
+            value={s.otherNotesText || ''} 
             onChange={(e) => updateStudent(s.id, 'otherNotesText', e.target.value)} 
             onClick={(e) => e.stopPropagation()}
             placeholder="..."
@@ -3134,18 +3134,18 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
         </div>
       </td>
       <td className="p-1 border-e border-slate-100 bg-[#DDEBF7]/5">
-        <select className="text-[8px] w-full appearance-none text-center outline-none bg-transparent" value={s.guardianEducation} onChange={(e) => updateStudent(s.id, 'guardianEducation', e.target.value)}>
-          {optionsAr.eduStatus.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.eduStatus[optionsAr.eduStatus.indexOf(o)]}</option>)}
+        <select className="text-[8px] w-full appearance-none text-center outline-none bg-transparent" value={s.guardianEducation || ''} onChange={(e) => updateStudent(s.id, 'guardianEducation', e.target.value)}>
+          {optionsAr.eduStatus.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{lang === 'ar' ? o : optionsEn.eduStatus[optionsAr.eduStatus.indexOf(o)]}</option>)}
         </select>
       </td>
       <td className="p-1 border-e border-slate-100 bg-[#DDEBF7]/5">
-        <select className={`text-[8px] w-full appearance-none text-center outline-none bg-transparent ${s.guardianFollowUp === 'ضعيفة' ? 'text-red-600 font-bold' : ''}`} value={s.guardianFollowUp} onChange={(e) => updateStudent(s.id, 'guardianFollowUp', e.target.value)}>
-          {optionsAr.followUp.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.followUp[optionsAr.followUp.indexOf(o)]}</option>)}
+        <select className={`text-[8px] w-full appearance-none text-center outline-none bg-transparent ${s.guardianFollowUp === 'ضعيفة' ? 'text-red-600 font-bold' : ''}`} value={s.guardianFollowUp || ''} onChange={(e) => updateStudent(s.id, 'guardianFollowUp', e.target.value)}>
+          {optionsAr.followUp.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{lang === 'ar' ? o : optionsEn.followUp[optionsAr.followUp.indexOf(o)]}</option>)}
         </select>
       </td>
       <td className="p-1 border-e border-slate-100 bg-[#DDEBF7]/5">
-        <select className={`text-[8px] w-full appearance-none text-center outline-none bg-transparent ${s.guardianCooperation === 'عدواني' || s.guardianCooperation === 'ضعيفة' ? 'text-red-600 font-bold' : ''}`} value={s.guardianCooperation} onChange={(e) => updateStudent(s.id, 'guardianCooperation', e.target.value)}>
-          {optionsAr.cooperation.map((o: any) => <option key={o} value={o}>{lang === 'ar' ? o : optionsEn.cooperation[optionsAr.cooperation.indexOf(o)]}</option>)}
+        <select className={`text-[8px] w-full appearance-none text-center outline-none bg-transparent ${s.guardianCooperation === 'عدواني' || s.guardianCooperation === 'ضعيفة' ? 'text-red-600 font-bold' : ''}`} value={s.guardianCooperation || ''} onChange={(e) => updateStudent(s.id, 'guardianCooperation', e.target.value)}>
+          {optionsAr.cooperation.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{lang === 'ar' ? o : optionsEn.cooperation[optionsAr.cooperation.indexOf(o)]}</option>)}
         </select>
       </td>
       <td className="p-1 text-center border-e border-slate-100">
@@ -4501,8 +4501,8 @@ export const StudentsReportsPage: React.FC = () => {
                         {['academicReading', 'academicWriting', 'academicParticipation'].map(field => (
                           <div key={field} className="space-y-2">
                             <span className="text-[9px] font-bold text-slate-400 block text-center">{field === 'academicReading' ? 'القراءة' : field === 'academicWriting' ? 'الكتابة' : 'المشاركة'}</span>
-                            <select className={`w-full p-3 rounded-xl font-black text-xs outline-none border-2 appearance-none text-center ${currentDetailStudent[field as keyof StudentReport]?.toString().includes('ضعيف') ? 'bg-red-50 border-red-200 text-red-600' : 'bg-slate-50 border-slate-100 text-slate-700'}`} value={currentDetailStudent[field as keyof StudentReport] as string} onChange={e => setCurrentDetailStudent({ ...currentDetailStudent, [field]: e.target.value })}>
-                              {optionsAr.level.map(o => <option key={o} value={o}>{o}</option>)}
+                            <select className={`w-full p-3 rounded-xl font-black text-xs outline-none border-2 appearance-none text-center ${currentDetailStudent[field as keyof StudentReport]?.toString().includes('ضعيف') ? 'bg-red-50 border-red-200 text-red-600' : 'bg-slate-50 border-slate-100 text-slate-700'}`} value={(currentDetailStudent[field as keyof StudentReport] as string) || ''} onChange={e => setCurrentDetailStudent({ ...currentDetailStudent, [field]: e.target.value })}>
+                              {optionsAr.level.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{o}</option>)}
                             </select>
                           </div>
                         ))}
@@ -4554,20 +4554,20 @@ export const StudentsReportsPage: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-1">
                           <span className="text-[9px] font-bold text-slate-400 block text-center">تعليم ولي الأمر</span>
-                          <select className="w-full p-3 bg-slate-50 rounded-xl font-bold outline-none text-center text-xs" value={currentDetailStudent.guardianEducation} onChange={e => setCurrentDetailStudent({ ...currentDetailStudent, guardianEducation: e.target.value })}>
-                            {optionsAr.eduStatus.map(o => <option key={o} value={o}>{o}</option>)}
+                          <select className="w-full p-3 bg-slate-50 rounded-xl font-bold outline-none text-center text-xs" value={currentDetailStudent.guardianEducation || ''} onChange={e => setCurrentDetailStudent({ ...currentDetailStudent, guardianEducation: e.target.value })}>
+                            {optionsAr.eduStatus.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{o}</option>)}
                           </select>
                         </div>
                         <div className="space-y-1">
                           <span className="text-[9px] font-bold text-slate-400 block text-center">مستوى المتابعة</span>
-                          <select className={`w-full p-3 rounded-xl font-black text-xs outline-none border-2 text-center ${currentDetailStudent.guardianFollowUp === 'ضعيفة' ? 'bg-red-50 border-red-200 text-red-600' : 'bg-slate-50 border-slate-100'}`} value={currentDetailStudent.guardianFollowUp} onChange={e => setCurrentDetailStudent({ ...currentDetailStudent, guardianFollowUp: e.target.value })}>
-                            {optionsAr.followUp.map(o => <option key={o} value={o}>{o}</option>)}
+                          <select className={`w-full p-3 rounded-xl font-black text-xs outline-none border-2 text-center ${currentDetailStudent.guardianFollowUp === 'ضعيفة' ? 'bg-red-50 border-red-200 text-red-600' : 'bg-slate-50 border-slate-100'}`} value={currentDetailStudent.guardianFollowUp || ''} onChange={e => setCurrentDetailStudent({ ...currentDetailStudent, guardianFollowUp: e.target.value })}>
+                            {optionsAr.followUp.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{o}</option>)}
                           </select>
                         </div>
                         <div className="space-y-1">
                           <span className="text-[9px] font-bold text-slate-400 block text-center">درجة التعاون</span>
-                          <select className={`w-full p-3 rounded-xl font-black text-xs outline-none border-2 text-center ${currentDetailStudent.guardianCooperation === 'عدواني' || currentDetailStudent.guardianCooperation === 'ضعيفة' ? 'bg-red-600 border-red-700 text-white' : 'bg-slate-50 border-slate-100'}`} value={currentDetailStudent.guardianCooperation} onChange={e => setCurrentDetailStudent({ ...currentDetailStudent, guardianCooperation: e.target.value })}>
-                            {optionsAr.cooperation.map(o => <option key={o} value={o}>{o}</option>)}
+                          <select className={`w-full p-3 rounded-xl font-black text-xs outline-none border-2 text-center ${currentDetailStudent.guardianCooperation === 'عدواني' || currentDetailStudent.guardianCooperation === 'ضعيفة' ? 'bg-red-600 border-red-700 text-white' : 'bg-slate-50 border-slate-100'}`} value={currentDetailStudent.guardianCooperation || ''} onChange={e => setCurrentDetailStudent({ ...currentDetailStudent, guardianCooperation: e.target.value })}>
+                            {optionsAr.cooperation.map((o: any, idx: number) => <option key={`${o}-${idx}`} value={o}>{o}</option>)}
                           </select>
                         </div>
                       </div>
@@ -4578,10 +4578,10 @@ export const StudentsReportsPage: React.FC = () => {
                     <div className="p-4 bg-white border-2 border-slate-200 rounded-2xl shadow-sm space-y-4 text-right">
                       <label className="text-[10px] font-black text-slate-600 mr-2">الملاحظات الختامية</label>
                       <div className="space-y-4">
-                        <textarea className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none h-24 text-sm text-right" placeholder="ملاحظات أخرى..." value={currentDetailStudent.notes} onChange={e => setCurrentDetailStudent({ ...currentDetailStudent, notes: e.target.value })} />
+                        <textarea className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none h-24 text-sm text-right" placeholder="ملاحظات أخرى..." value={currentDetailStudent.notes || ''} onChange={e => setCurrentDetailStudent({ ...currentDetailStudent, notes: e.target.value })} />
                         <div className="space-y-1">
                           <span className="text-[9px] font-bold text-slate-400 mr-1 uppercase">ملاحظات برمجية (تلقائية):</span>
-                          <input className="w-full p-3 bg-slate-50 rounded-xl font-bold outline-none border-none italic text-blue-600 text-right" value={currentDetailStudent.otherNotesText} onChange={e => setCurrentDetailStudent({ ...currentDetailStudent, otherNotesText: e.target.value })} />
+                          <input className="w-full p-3 bg-slate-50 rounded-xl font-bold outline-none border-none italic text-blue-600 text-right" value={currentDetailStudent.otherNotesText || ''} onChange={e => setCurrentDetailStudent({ ...currentDetailStudent, otherNotesText: e.target.value })} />
                         </div>
                       </div>
                     </div>

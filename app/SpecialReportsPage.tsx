@@ -714,20 +714,20 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                     <td className="border-e-2 border-[#7030A0] bg-slate-50 font-black">{idx + 1}</td>
                     <td className="border-e-2 border-[#7030A0] p-1">
                       <div className="relative group/name">
-                        <input className="w-full p-2 text-right font-black outline-none bg-transparent focus:bg-white rounded-lg" value={log.studentName} onChange={e => updateExamLog(log.id, 'studentName', e.target.value)} placeholder="اكتب اسم الطالب..." />
+                        <input className="w-full p-2 text-right font-black outline-none bg-transparent focus:bg-white rounded-lg" value={log.studentName || ''} onChange={e => updateExamLog(log.id, 'studentName', e.target.value)} placeholder="اكتب اسم الطالب..." />
                       </div>
                     </td>
                     <td className="border-e-2 border-[#7030A0] p-1">
-                      <input type="date" className="w-full p-2 text-center text-[10px] font-bold outline-none bg-transparent" value={log.date} onChange={e => updateExamLog(log.id, 'date', e.target.value)} />
+                      <input type="date" className="w-full p-2 text-center text-[10px] font-bold outline-none bg-transparent" value={log.date || ''} onChange={e => updateExamLog(log.id, 'date', e.target.value)} />
                     </td>
                     {currentSubjects.map((subj, sIdx) => (
                       <React.Fragment key={`${subj}-${sIdx}`}>
                         <td className={`border-e border-[#7030A0]/20 p-1 transition-colors ${log.subjectsData[subj]?.status === 'not_tested' ? 'bg-amber-50' : ''}`}>
-                          <input className="w-full p-1 text-center text-[11px] font-bold outline-none bg-transparent focus:bg-white rounded" value={log.subjectsData[subj]?.class} onChange={e => updateSubjectData(log.id, subj, 'class', e.target.value)} placeholder="مثال: 9-أ" />
+                          <input className="w-full p-1 text-center text-[11px] font-bold outline-none bg-transparent focus:bg-white rounded" value={log.subjectsData[subj]?.class || ''} onChange={e => updateSubjectData(log.id, subj, 'class', e.target.value)} placeholder="مثال: 9-أ" />
                         </td>
                         <td className="border-e-2 border-[#7030A0] p-1 relative">
                           <div className="flex items-center gap-1">
-                            <input className="w-full p-1 text-center text-[11px] font-black text-red-600 outline-none bg-transparent focus:bg-white rounded" value={log.subjectsData[subj]?.grade} onChange={e => updateSubjectData(log.id, subj, 'grade', e.target.value)} placeholder="0" />
+                            <input className="w-full p-1 text-center text-[11px] font-black text-red-600 outline-none bg-transparent focus:bg-white rounded" value={log.subjectsData[subj]?.grade || ''} onChange={e => updateSubjectData(log.id, subj, 'grade', e.target.value)} placeholder="0" />
                             <button
                               onClick={() => updateSubjectData(log.id, subj, 'status', log.subjectsData[subj]?.status === 'tested' ? 'not_tested' : 'tested')}
                               className={`p-1 rounded-md transition-all ${log.subjectsData[subj]?.status === 'tested' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-300'}`}

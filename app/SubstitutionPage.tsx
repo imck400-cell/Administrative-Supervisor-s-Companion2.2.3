@@ -583,7 +583,7 @@ const SubstitutionPage: React.FC = () => {
                               list={`teachers-abs-${row.id}`}
                               className="w-full p-3 bg-transparent text-center font-black outline-none border-none focus:bg-white"
                               placeholder="اسم الغائب..."
-                              value={row.absentTeacher}
+                              value={row.absentTeacher || ''}
                               onChange={(e) => updateEntry(row.id, 'absentTeacher', e.target.value)}
                             />
                             <datalist id={`teachers-abs-${row.id}`}>
@@ -763,7 +763,7 @@ const SubstitutionPage: React.FC = () => {
                           <input
                             list={`teacher-list-${row.id}`}
                             className={`w-full p-2 text-right font-black outline-none border-none text-xs ${isRowHighlighted ? 'bg-orange-50' : 'bg-transparent'}`}
-                            value={row.teacherName}
+                            value={row.teacherName || ''}
                             onChange={e => updateTimetableField(row.id, ['teacherName'], e.target.value)}
                             onFocus={() => setSelectedTeacherRow(row.id)}
                             placeholder="..."
@@ -773,7 +773,7 @@ const SubstitutionPage: React.FC = () => {
                         <td className={`p-1 border-e border-slate-200 transition-colors ${isRowHighlighted ? 'bg-yellow-100/50' : ''}`}>
                           <input
                             className={`w-full p-2 text-right font-bold outline-none border-none text-xs text-emerald-700 ${isRowHighlighted ? 'bg-yellow-50' : 'bg-transparent'}`}
-                            value={row.subject}
+                            value={row.subject || ''}
                             onChange={e => updateTimetableField(row.id, ['subject'], e.target.value)}
                             onFocus={() => setSelectedTeacherRow(row.id)}
                             placeholder="..."

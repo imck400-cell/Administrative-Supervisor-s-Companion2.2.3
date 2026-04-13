@@ -425,7 +425,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       : [currentUser.id];
 
     // CRITICAL: Also include any users selected in the userFilter
-    // This ensures that if an admin selects a user from another school, we actually listen to their data
     if (userFilter && userFilter !== 'all') {
       const filterIds = userFilter.split(',');
       filterIds.forEach(id => {
@@ -443,6 +442,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const school = currentUser.selectedSchool.trim();
     const unsubscribes: (() => void)[] = [];
     let isMounted = true;
+
+    // Clear listeners so we re-listen for every new targetUserIds change
+    dataListeners.current.clear();
 
     const startListeners = async () => {
       const { user } = await signInAnonymously(auth);

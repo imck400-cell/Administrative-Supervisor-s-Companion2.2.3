@@ -325,9 +325,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       const filterByDate = (item: any) => {
         const itemDate = item.date || item.dateStr || (item.createdAt ? item.createdAt.substring(0, 10) : null);
-        if (itemDate) {
-          if (from && itemDate < from) return false;
-          if (to && itemDate > to) return false;
+        if (itemDate && typeof itemDate === 'string') {
+          // Handle range strings like "2024-01-01 إلى 2024-01-07"
+          const actualDate = itemDate.split(' إلى ')[0];
+          if (from && actualDate < from) return false;
+          if (to && actualDate > to) return false;
         }
         return true;
       };
@@ -651,10 +653,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
 
   const updateData = (newData: Partial<AppData>) => {
-    const updated = { ...data, ...newData };
-    setData(updated);
-    localStorage.setItem('rafiquk_data', JSON.stringify(updated));
-
     if (isAuthenticated && currentUser) {
       const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
       const schoolsToUpdate = selectedSchools.includes('all') ? data.availableSchools : selectedSchools;
@@ -665,16 +663,22 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const selectedUserIds = userFilter === 'all' ? null : userFilter.split(',');
         const { from, to } = dateRange;
         if (selectedUserIds && item.userId && !selectedUserIds.includes(item.userId)) return false;
+        
         const itemDate = item.date || item.dateStr || (item.createdAt ? item.createdAt.substring(0, 10) : null);
-        if (itemDate) {
-          if (from && itemDate < from) return false;
-          if (to && itemDate > to) return false;
+        if (itemDate && typeof itemDate === 'string') {
+          // Handle range strings like "2024-01-01 إلى 2024-01-07"
+          const actualDate = itemDate.split(' إلى ')[0]; 
+          if (from && actualDate < from) return false;
+          if (to && actualDate > to) return false;
         }
         return true;
       };
 
+      const updatedData = { ...data };
+
       for (const key of Object.keys(newData) as Array<keyof AppData>) {
         if (sharedKeys.includes(key)) {
+          updatedData[key] = newData[key] as any;
           if (currentUser.role === 'admin') {
             schoolsToUpdate.forEach(school => {
               setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
@@ -685,7 +689,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         const newArray = newData[key] as any[];
-        if (!Array.isArray(newArray)) continue;
+        if (!Array.isArray(newArray)) {
+          updatedData[key] = newData[key] as any;
+          continue;
+        }
 
         const oldArray = data[key] as any[] || [];
         
@@ -693,6 +700,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // and replace items that DO match the current filter with the new ones from the component.
         const itemsNotMatchingFilter = oldArray.filter(item => !matchesCurrentFilter(item));
         const finalArray = [...itemsNotMatchingFilter, ...newArray];
+        
+        updatedData[key] = finalArray as any;
 
         const userIds = new Set<string>();
         finalArray.forEach(item => {
@@ -715,6 +724,14 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           }
         }
       }
+
+      setData(updatedData);
+      localStorage.setItem('rafiquk_data', JSON.stringify(updatedData));
+    } else {
+      // Fallback for non-authenticated or initial state
+      const updated = { ...data, ...newData };
+      setData(updated);
+      localStorage.setItem('rafiquk_data', JSON.stringify(updated));
     }
   };
 

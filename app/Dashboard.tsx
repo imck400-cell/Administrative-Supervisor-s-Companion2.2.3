@@ -26,7 +26,7 @@ interface CardConfig {
 }
 
 const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[] }> = ({ setView, recentActions = [] }) => {
-  const { lang, data, userFilter, dateRange: globalDateRange } = useGlobal();
+  const { lang, data, userFilter, dateRange: globalDateRange, setDateRange: setGlobalDateRange } = useGlobal();
 
   const today = new Date().toISOString().split('T')[0];
   const [globalTimeRange, setGlobalTimeRange] = useState<TimeRange>('all');
@@ -40,8 +40,33 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
         start: globalDateRange.from || today,
         end: globalDateRange.to || today
       });
+    } else {
+      setGlobalTimeRange('all');
     }
   }, [globalDateRange]);
+
+  // Update global date range when local state changes
+  const handleTimeRangeChange = (t: TimeRange) => {
+    setGlobalTimeRange(t);
+    if (t === 'all') {
+      setGlobalDateRange({ from: '', to: '' });
+    } else if (t === 'daily') {
+      setGlobalDateRange({ from: today, to: today });
+    } else if (t === 'weekly') {
+      const lastWeek = new Date();
+      lastWeek.setDate(lastWeek.getDate() - 7);
+      setGlobalDateRange({ from: lastWeek.toISOString().split('T')[0], to: today });
+    } else if (t === 'monthly') {
+      const firstDay = new Date();
+      firstDay.setDate(1);
+      setGlobalDateRange({ from: firstDay.toISOString().split('T')[0], to: today });
+    }
+  };
+
+  const handleCustomDateChange = (start: string, end: string) => {
+    setDateRange({ start, end });
+    setGlobalDateRange({ from: start, to: end });
+  };
 
   const [cycleIndex, setCycleIndex] = useState(0);
   const [cycleDuration, setCycleDuration] = useState(5000);
@@ -234,30 +259,8 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
       staff_followup: (data.adminReports || []).flatMap(r => (r.employeesData || []).map(e => ({ ...e, displayName: e.employeeName, type: 'staff_followup', followUpType: r.followUpType, date: r.dateStr })))
     };
 
-    Object.keys(results).forEach(key => {
-      if (globalTimeRange !== 'all') {
-        const now = new Date();
-        results[key] = results[key].filter(item => {
-          const itemDateStr = item.date || item.dateStr || (item.createdAt ? item.createdAt.substring(0, 10) : null);
-          if (!itemDateStr) return true;
-          
-          const itemDate = new Date(itemDateStr);
-          if (globalTimeRange === 'daily') return itemDate.toDateString() === now.toDateString();
-          if (globalTimeRange === 'weekly') return (now.getTime() - itemDate.getTime()) <= 7 * 24 * 60 * 60 * 1000;
-          if (globalTimeRange === 'monthly') return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
-          if (globalTimeRange === 'custom') {
-            const start = new Date(dateRange.start);
-            const end = new Date(dateRange.end);
-            end.setHours(23, 59, 59, 999);
-            return itemDate >= start && itemDate <= end;
-          }
-          return true;
-        });
-      }
-    });
-
     return results;
-  }, [data, globalTimeRange, dateRange]);
+  }, [data]);
 
   const [cards, setCards] = useState<CardConfig[]>(() => {
     const saved = localStorage.getItem('dashboardCards');
@@ -458,7 +461,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
             {['all', 'daily', 'weekly', 'monthly', 'custom'].map((t) => (
               <button
                 key={t}
-                onClick={() => setGlobalTimeRange(t as any)}
+                onClick={() => handleTimeRangeChange(t as any)}
                 className={`px-4 py-1.5 rounded-xl text-[10px] font-black transition-all ${globalTimeRange === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
               >
                 {t === 'all' ? 'الكل' : t === 'daily' ? 'يومية' : t === 'weekly' ? 'أسبوعية' : t === 'monthly' ? 'شهرية' : 'مخصص'}
@@ -468,9 +471,9 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
 
           {globalTimeRange === 'custom' && (
             <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border shadow-sm animate-in slide-in-from-right-2">
-              <input type="date" value={dateRange.start} onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })} className="text-[9px] font-black outline-none bg-transparent" />
+              <input type="date" value={dateRange.start} onChange={(e) => handleCustomDateChange(e.target.value, dateRange.end)} className="text-[9px] font-black outline-none bg-transparent" />
               <span className="text-slate-200">|</span>
-              <input type="date" value={dateRange.end} onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })} className="text-[9px] font-black outline-none bg-transparent" />
+              <input type="date" value={dateRange.end} onChange={(e) => handleCustomDateChange(dateRange.start, e.target.value)} className="text-[9px] font-black outline-none bg-transparent" />
             </div>
           )}
         </div>

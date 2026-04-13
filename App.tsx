@@ -12,7 +12,7 @@ import AccessCodesModal from './components/AccessCodesModal';
 import {
   Lock, LayoutDashboard, ClipboardCheck, UserX, UserPlus,
   Users, Database, FileSearch, Briefcase,
-  School, Calendar, AlertTriangle, Phone, MessageCircle, Key, LogOut, User as UserIcon, X
+  School, Calendar, AlertTriangle, Phone, MessageCircle, Key, LogOut, User as UserIcon, X, Check
 } from 'lucide-react';
 import GlobalScrollArrows from './components/GlobalScrollArrows';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -351,8 +351,31 @@ const MainApp: React.FC = () => {
     });
   }, [currentUser]);
 
-  // Strict check: ONLY admin role OR explicit all===true
-  const canSeeSpecialCodes = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+  const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+
+  const filteredUsersForModal = useMemo(() => {
+    const userSchools = currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
+    return data.users.filter(u => {
+      // 1. Hide admins/full-perm from non-admins
+      const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
+      if (!isAdminOrFull && isTargetAdmin) return false;
+
+      // 2. Filter by school for non-admins
+      if (!isAdminOrFull) {
+        // Only show users who share at least one school with the current user's active schools
+        return u.schools.some(s => userSchools.includes(s));
+      }
+
+      return true;
+    });
+  }, [data.users, currentUser, isAdminOrFull]);
+
+  const schoolsToDisplay = useMemo(() => {
+    if (isAdminOrFull) return data.availableSchools || [];
+    return currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
+  }, [data.availableSchools, currentUser, isAdminOrFull]);
+
+  const canSeeSpecialCodes = isAdminOrFull;
 
 
   if (!isAuthenticated) return <AdvancedLoginPage />;
@@ -448,11 +471,11 @@ const MainApp: React.FC = () => {
       <UserFilterModal
         isOpen={isUserFilterModalOpen}
         onClose={() => setIsUserFilterModalOpen(false)}
-        users={(currentUser?.role === 'admin' || currentUser?.permissions?.all) ? data.users : data.users.filter(u => u.schools.includes(currentUser?.selectedSchool || ''))}
-        selectedIds={userFilter === 'all' ? ((currentUser?.role === 'admin' || currentUser?.permissions?.all) ? data.users.map(u => u.id) : data.users.filter(u => u.schools.includes(currentUser?.selectedSchool || '')).map(u => u.id)) : userFilter.split(',')}
+        users={filteredUsersForModal}
+        schools={schoolsToDisplay}
+        selectedIds={userFilter === 'all' ? filteredUsersForModal.map(u => u.id) : userFilter.split(',')}
         onApply={(ids) => {
-          const availableUsers = (currentUser?.role === 'admin' || currentUser?.permissions?.all) ? data.users : data.users.filter(u => u.schools.includes(currentUser?.selectedSchool || ''));
-          if (ids.length === availableUsers.length && availableUsers.length > 0) {
+          if (ids.length === filteredUsersForModal.length && filteredUsersForModal.length > 0) {
             setUserFilter('all');
           } else if (ids.length === 0) {
             setUserFilter(currentUser?.id || 'all');
@@ -469,9 +492,10 @@ const UserFilterModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   users: User[];
+  schools: string[];
   selectedIds: string[];
   onApply: (ids: string[]) => void;
-}> = ({ isOpen, onClose, users, selectedIds, onApply }) => {
+}> = ({ isOpen, onClose, users, schools, selectedIds, onApply }) => {
   const [tempSelected, setTempSelected] = useState<string[]>(selectedIds);
 
   useEffect(() => {
@@ -484,6 +508,17 @@ const UserFilterModal: React.FC<{
     setTempSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
+  const toggleSchool = (schoolName: string) => {
+    const usersInSchool = users.filter(u => u.schools.includes(schoolName)).map(u => u.id);
+    const allSelected = usersInSchool.length > 0 && usersInSchool.every(id => tempSelected.includes(id));
+
+    if (allSelected) {
+      setTempSelected(prev => prev.filter(id => !usersInSchool.includes(id)));
+    } else {
+      setTempSelected(prev => Array.from(new Set([...prev, ...usersInSchool])));
+    }
+  };
+
   const selectAll = () => setTempSelected(users.map(u => u.id));
   const selectNone = () => setTempSelected([]);
 
@@ -492,37 +527,68 @@ const UserFilterModal: React.FC<{
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border-4 border-blue-50"
+        className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border-4 border-blue-50 flex flex-col max-h-[90vh]"
       >
         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <h2 className="text-xl font-black text-slate-800">تصفية المستخدمين</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-red-500"><X size={24} /></button>
         </div>
-        <div className="p-6 max-h-[60vh] overflow-y-auto space-y-2">
-          <div className="flex gap-2 mb-4">
-            <button onClick={selectAll} className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold text-sm">تحديد الكل</button>
-            <button onClick={selectNone} className="flex-1 py-2 bg-slate-50 text-slate-600 rounded-xl font-bold text-sm">إلغاء التحديد</button>
+        <div className="p-6 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
+          <div className="flex gap-2">
+            <button onClick={selectAll} className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-xl font-black text-sm hover:bg-blue-100 transition-all">تحديد الكل</button>
+            <button onClick={selectNone} className="flex-1 py-3 bg-slate-50 text-slate-600 rounded-xl font-black text-sm hover:bg-slate-100 transition-all">إلغاء التحديد</button>
           </div>
-          {users.map(u => (
-            <label key={u.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all">
-              <span className="font-bold text-slate-700">{u.name}</span>
-              <input
-                type="checkbox"
-                checked={tempSelected.includes(u.id)}
-                onChange={() => toggleUser(u.id)}
-                className="w-5 h-5 rounded-lg border-2 border-slate-200 text-blue-600"
-              />
-            </label>
-          ))}
+
+          {schools.map(school => {
+            const usersInSchool = users.filter(u => u.schools.includes(school));
+            if (usersInSchool.length === 0) return null;
+
+            const allSelected = usersInSchool.every(u => tempSelected.includes(u.id));
+
+            return (
+              <div key={school} className="space-y-3">
+                <div
+                  onClick={() => toggleSchool(school)}
+                  className="flex items-center justify-between p-4 bg-blue-50/30 border-2 border-blue-100/50 rounded-2xl cursor-pointer hover:bg-blue-50 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <School className="text-blue-500" size={20} />
+                    <span className="font-black text-blue-700">{school}</span>
+                  </div>
+                  <div className={`w-6 h-6 rounded-lg border-2 border-blue-200 flex items-center justify-center transition-all ${allSelected ? 'bg-blue-600 border-blue-600' : 'bg-white group-hover:border-blue-400'}`}>
+                    {allSelected && <Check size={16} className="text-white" />}
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-2 pr-4">
+                  {usersInSchool.map(u => (
+                    <label key={`${school}-${u.id}`} className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-slate-400 border border-slate-100">
+                          <UserIcon size={16} />
+                        </div>
+                        <span className="font-bold text-slate-700">{u.name}</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={tempSelected.includes(u.id)}
+                        onChange={() => toggleUser(u.id)}
+                        className="w-5 h-5 rounded-lg border-2 border-slate-200 text-blue-600 focus:ring-blue-500"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
         <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
-          <button onClick={onClose} className="flex-1 py-3 bg-white border-2 border-slate-200 text-slate-600 font-black rounded-xl">إلغاء</button>
+          <button onClick={onClose} className="flex-1 py-4 bg-white border-2 border-slate-200 text-slate-600 font-black rounded-2xl hover:bg-slate-100 transition-all">إلغاء</button>
           <button
             onClick={() => {
               onApply(tempSelected);
               onClose();
             }}
-            className="flex-1 py-3 bg-blue-600 text-white font-black rounded-xl shadow-lg shadow-blue-100"
+            className="flex-1 py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all"
           >
             تطبيق التصفية
           </button>

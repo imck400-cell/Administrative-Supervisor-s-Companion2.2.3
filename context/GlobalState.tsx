@@ -322,6 +322,27 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [isAuthenticated, currentUser]);
 
+  // Sync currentUser permissions from Firestore whenever data.users changes
+  // This ensures permission changes take effect immediately without re-login
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser) return;
+    const latestUser = data.users.find(u => u.id === currentUser.id);
+    if (!latestUser) return;
+
+    // Only update if permissions or role actually changed
+    const rolesMatch = latestUser.role === currentUser.role;
+    const permsMatch = JSON.stringify(latestUser.permissions) === JSON.stringify(currentUser.permissions);
+    if (rolesMatch && permsMatch) return;
+
+    const updatedAuthUser: AuthUser = {
+      ...currentUser,
+      role: latestUser.role,
+      permissions: latestUser.permissions,
+    };
+    setCurrentUser(updatedAuthUser);
+    sessionStorage.setItem('rafiquk_user', JSON.stringify(updatedAuthUser));
+  }, [data.users]);
+
   const activeListeners = React.useRef<Set<string>>(new Set());
 
   useEffect(() => {

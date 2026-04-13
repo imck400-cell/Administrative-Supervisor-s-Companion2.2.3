@@ -357,7 +357,7 @@ const MainApp: React.FC = () => {
             </button>
           </div>
 
-          {(currentUser?.role === 'admin' || currentUser?.permissions?.all || currentUser?.permissions?.specialCodes) && (
+          {(currentUser?.role === 'admin' || currentUser?.permissions?.all === true) && (
             <button 
               onClick={() => setIsCodesModalOpen(true)} 
               className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all"

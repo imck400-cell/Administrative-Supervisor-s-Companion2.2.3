@@ -35,11 +35,32 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
   // Sync global date range to local state if it's set
   useEffect(() => {
     if (globalDateRange.from || globalDateRange.to) {
-      setGlobalTimeRange('custom');
       setDateRange({
         start: globalDateRange.from || today,
         end: globalDateRange.to || today
       });
+      
+      // Check if it matches predefined ranges
+      const from = globalDateRange.from;
+      const to = globalDateRange.to;
+      
+      const lastWeek = new Date();
+      lastWeek.setDate(lastWeek.getDate() - 7);
+      const lastWeekStr = lastWeek.toISOString().split('T')[0];
+      
+      const firstDay = new Date();
+      firstDay.setDate(1);
+      const firstDayStr = firstDay.toISOString().split('T')[0];
+
+      if (from === today && to === today) {
+        setGlobalTimeRange('daily');
+      } else if (from === lastWeekStr && to === today) {
+        setGlobalTimeRange('weekly');
+      } else if (from === firstDayStr && to === today) {
+        setGlobalTimeRange('monthly');
+      } else {
+        setGlobalTimeRange('custom');
+      }
     } else {
       setGlobalTimeRange('all');
     }

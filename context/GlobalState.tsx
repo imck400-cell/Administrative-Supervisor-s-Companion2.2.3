@@ -494,14 +494,28 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const targetUserIds = React.useMemo(() => {
     if (!isAuthenticated || !currentUser) return "";
     const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
+    const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
     
-    // Start with users in the selected schools if admin, or just the current user
-    let ids = currentUser.role === 'admin' 
-      ? data.users.filter(u => 
-          selectedSchools.includes('all') || 
-          u.schools.some(s => selectedSchools.includes(s))
-        ).map(u => u.id)
-      : [currentUser.id];
+    let ids: string[] = [];
+
+    if (isAdminOrFull) {
+      ids = data.users.filter(u => 
+        selectedSchools.includes('all') || 
+        u.schools.some(s => selectedSchools.includes(s))
+      ).map(u => u.id);
+    } else {
+      // Non-admins can only see themselves by default, UNLESS userFilter is 'all'
+      // If userFilter is 'all', they should see all non-admin users in their schools
+      if (userFilter === 'all') {
+        ids = data.users.filter(u => {
+          const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
+          if (isTargetAdmin) return false;
+          return u.schools.some(s => selectedSchools.includes(s));
+        }).map(u => u.id);
+      } else {
+        ids = [currentUser.id];
+      }
+    }
 
     // CRITICAL: Also include any users selected in the userFilter
     if (userFilter && userFilter !== 'all') {
@@ -513,7 +527,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     
     if (!ids.includes(currentUser.id)) ids.push(currentUser.id);
     return ids.sort().join(',');
-  }, [isAuthenticated, currentUser?.id, currentUser?.selectedSchool, currentUser?.role, data.users, userFilter]);
+  }, [isAuthenticated, currentUser?.id, currentUser?.selectedSchool, currentUser?.role, currentUser?.permissions, data.users, userFilter]);
 
   useEffect(() => {
     if (!isAuthenticated || !currentUser) return;
@@ -659,17 +673,21 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions', 'users', 'availableSchools', 'availableYears'];
 
       // Helper to check if an item matches the current global filters
-      const matchesCurrentFilter = (item: any) => {
+      const matchesCurrentFilter = (item: any, key: string) => {
         const selectedUserIds = userFilter === 'all' ? null : userFilter.split(',');
         const { from, to } = dateRange;
         if (selectedUserIds && item.userId && !selectedUserIds.includes(item.userId)) return false;
         
-        const itemDate = item.date || item.dateStr || (item.createdAt ? item.createdAt.substring(0, 10) : null);
-        if (itemDate && typeof itemDate === 'string') {
-          // Handle range strings like "2024-01-01 إلى 2024-01-07"
-          const actualDate = itemDate.split(' إلى ')[0]; 
-          if (from && actualDate < from) return false;
-          if (to && actualDate > to) return false;
+        // Only apply date filtering to activity arrays, not entity arrays
+        const entityKeys = ['studentReports', 'timetable', 'teacherFollowUps'];
+        if (!entityKeys.includes(key)) {
+          const itemDate = item.date || item.dateStr || (item.createdAt ? item.createdAt.substring(0, 10) : null);
+          if (itemDate && typeof itemDate === 'string') {
+            // Handle range strings like "2024-01-01 إلى 2024-01-07"
+            const actualDate = itemDate.split(' إلى ')[0]; 
+            if (from && actualDate < from) return false;
+            if (to && actualDate > to) return false;
+          }
         }
         return true;
       };
@@ -698,7 +716,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         
         // Merge logic: Keep items that DON'T match the current filter, 
         // and replace items that DO match the current filter with the new ones from the component.
-        const itemsNotMatchingFilter = oldArray.filter(item => !matchesCurrentFilter(item));
+        const itemsNotMatchingFilter = oldArray.filter(item => !matchesCurrentFilter(item, key));
         const finalArray = [...itemsNotMatchingFilter, ...newArray];
         
         updatedData[key] = finalArray as any;

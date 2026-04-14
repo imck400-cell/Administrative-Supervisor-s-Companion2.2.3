@@ -354,6 +354,23 @@ const MainApp: React.FC = () => {
 
   const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
 
+  const filteredUsersForModal = useMemo(() => {
+    const userSchools = currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
+    return data.users.filter(u => {
+      // 1. Hide admins/full-perm from non-admins
+      const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
+      if (!isAdminOrFull && isTargetAdmin) return false;
+
+      // 2. Filter by school for non-admins
+      if (!isAdminOrFull) {
+        // Only show users who share at least one school with the current user's active schools
+        return u.schools.some(s => userSchools.includes(s));
+      }
+
+      return true;
+    });
+  }, [data.users, currentUser, isAdminOrFull]);
+
   // Build a label that clearly describes the current filter state
   const filterLabel = React.useMemo(() => {
     const selectedIds = userFilter === 'all'
@@ -380,23 +397,6 @@ const MainApp: React.FC = () => {
   }, [userFilter, dateRange, filteredUsersForModal, data.users]);
 
   const hasActiveFilter = dateRange.from !== '' || dateRange.to !== '' || userFilter !== 'all';
-
-  const filteredUsersForModal = useMemo(() => {
-    const userSchools = currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
-    return data.users.filter(u => {
-      // 1. Hide admins/full-perm from non-admins
-      const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
-      if (!isAdminOrFull && isTargetAdmin) return false;
-
-      // 2. Filter by school for non-admins
-      if (!isAdminOrFull) {
-        // Only show users who share at least one school with the current user's active schools
-        return u.schools.some(s => userSchools.includes(s));
-      }
-
-      return true;
-    });
-  }, [data.users, currentUser, isAdminOrFull]);
 
   const schoolsToDisplay = useMemo(() => {
     if (isAdminOrFull) return data.availableSchools || [];

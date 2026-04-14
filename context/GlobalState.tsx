@@ -319,61 +319,102 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [userFilter, setUserFilter] = useState('all');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
 
-    const filteredData = React.useMemo(() => {
-      const selectedUserIds = userFilter === 'all' ? null : userFilter.split(',');
-      const { from, to } = dateRange;
+  // Compute the effective set of user IDs that should be visible.
+  // This is ALWAYS a concrete list — never null — so filtering is always applied.
+  const effectiveUserIds = React.useMemo(() => {
+    if (!isAuthenticated || !currentUser) return [];
 
-      const filterByDate = (item: any) => {
-        const itemDate = item.date || item.dateStr || (item.createdAt ? item.createdAt.substring(0, 10) : null);
-        if (itemDate && typeof itemDate === 'string') {
-          // Handle range strings like "2024-01-01 إلى 2024-01-07"
-          const actualDate = itemDate.split(' إلى ')[0];
-          if (from && actualDate < from) return false;
-          if (to && actualDate > to) return false;
-        }
-        return true;
-      };
+    // If a specific list is chosen, use it directly.
+    if (userFilter !== 'all') {
+      return userFilter.split(',').filter(id => id.length > 0);
+    }
 
-      const filterByUser = (item: any) => {
-        if (selectedUserIds && item.userId && !selectedUserIds.includes(item.userId)) {
-          return false;
-        }
-        return true;
-      };
+    // userFilter === 'all': derive the allowed set from school membership.
+    const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
+    const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
 
-      const newData = { ...data };
-      
-      // Activity arrays - filter by both user and date
-      const activityKeys = [
-        'substitutions', 'dailyReports', 'violations', 'parentVisits',
-        'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs',
-        'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs',
-        'genericSpecialReports', 'taskReports', 'adminReports'
-      ];
+    if (isAdminOrFull) {
+      // Admin sees all users in the selected school(s)
+      const allSchools = selectedSchools.includes('all')
+        ? (data.availableSchools || [])
+        : selectedSchools;
+      return data.users
+        .filter(u => u.schools.some(s => allSchools.includes(s)))
+        .map(u => u.id);
+    } else {
+      // Regular user: see themselves and peers in same school(s)
+      return data.users
+        .filter(u => {
+          const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
+          if (isTargetAdmin) return false;
+          return u.schools.some(s => selectedSchools.includes(s));
+        })
+        .map(u => u.id);
+    }
+  }, [isAuthenticated, currentUser, userFilter, data.users, data.availableSchools]);
 
-      // Entity arrays - filter by user only (keep profiles visible regardless of date)
-      const entityKeys = ['studentReports', 'timetable', 'teacherFollowUps'];
+  const filteredData = React.useMemo(() => {
+    const { from, to } = dateRange;
 
-      activityKeys.forEach(key => {
-        const k = key as keyof AppData;
-        if (Array.isArray(newData[k])) {
-          (newData as any)[k] = (newData[k] as any[]).filter(item => filterByUser(item) && filterByDate(item));
-        }
-      });
+    const filterByDate = (item: any) => {
+      // Try multiple date fields used across the app
+      const rawDate =
+        item.date ||
+        item.dateStr ||
+        (item.createdAt ? item.createdAt.substring(0, 10) : null);
 
-      entityKeys.forEach(key => {
-        const k = key as keyof AppData;
-        if (Array.isArray(newData[k])) {
-          (newData as any)[k] = (newData[k] as any[]).filter(filterByUser);
-        }
-      });
+      if (rawDate && typeof rawDate === 'string') {
+        // Strip range suffixes like "2024-01-01 إلى 2024-01-07"
+        const actualDate = rawDate.split(' ')[0];
+        if (from && actualDate < from) return false;
+        if (to && actualDate > to) return false;
+      }
+      return true;
+    };
 
-      return newData;
-    }, [data, userFilter, dateRange]);
+    const filterByUser = (item: any) => {
+      // Always filter: if item has no userId, keep it (shared data)
+      if (!item.userId) return true;
+      return effectiveUserIds.length === 0 || effectiveUserIds.includes(item.userId);
+    };
+
+    const newData = { ...data };
+
+    // Activity arrays — filter by both user and date
+    const activityKeys = [
+      'substitutions', 'dailyReports', 'violations', 'parentVisits',
+      'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs',
+      'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs',
+      'genericSpecialReports', 'taskReports', 'adminReports'
+    ];
+
+    // Entity arrays — filter by user only (date is irrelevant for profile cards)
+    const entityKeys = ['studentReports', 'timetable', 'teacherFollowUps'];
+
+    activityKeys.forEach(key => {
+      const k = key as keyof AppData;
+      if (Array.isArray(newData[k])) {
+        (newData as any)[k] = (newData[k] as any[]).filter(
+          (item: any) => filterByUser(item) && filterByDate(item)
+        );
+      }
+    });
+
+    entityKeys.forEach(key => {
+      const k = key as keyof AppData;
+      if (Array.isArray(newData[k])) {
+        (newData as any)[k] = (newData[k] as any[]).filter(filterByUser);
+      }
+    });
+
+    return newData;
+  }, [data, effectiveUserIds, dateRange]);
 
   useEffect(() => {
     if (isAuthenticated && currentUser && currentUser.role !== 'admin') {
-      setUserFilter(currentUser.id);
+      // Non-admins default to seeing only themselves; keep userFilter as 'all'
+      // so the effectiveUserIds logic (which already scopes by school) applies.
+      // No override needed — the effectiveUserIds memo handles it.
     }
   }, [isAuthenticated, currentUser]);
 
@@ -672,19 +713,25 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const schoolsToUpdate = selectedSchools.includes('all') ? data.availableSchools : selectedSchools;
       const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions', 'users', 'availableSchools', 'availableYears'];
 
-      // Helper to check if an item matches the current global filters
+      // Helper to check if an item matches the current active filters (user + date).
+      // Uses effectiveUserIds so 'all' still resolves to a concrete list.
       const matchesCurrentFilter = (item: any, key: string) => {
-        const selectedUserIds = userFilter === 'all' ? null : userFilter.split(',');
         const { from, to } = dateRange;
-        if (selectedUserIds && item.userId && !selectedUserIds.includes(item.userId)) return false;
-        
-        // Only apply date filtering to activity arrays, not entity arrays
+
+        // User filter: item belongs to one of the currently-visible users
+        if (item.userId && effectiveUserIds.length > 0 && !effectiveUserIds.includes(item.userId)) {
+          return false;
+        }
+
+        // Date filter: only for activity arrays
         const entityKeys = ['studentReports', 'timetable', 'teacherFollowUps'];
         if (!entityKeys.includes(key)) {
-          const itemDate = item.date || item.dateStr || (item.createdAt ? item.createdAt.substring(0, 10) : null);
-          if (itemDate && typeof itemDate === 'string') {
-            // Handle range strings like "2024-01-01 إلى 2024-01-07"
-            const actualDate = itemDate.split(' إلى ')[0]; 
+          const rawDate =
+            item.date ||
+            item.dateStr ||
+            (item.createdAt ? item.createdAt.substring(0, 10) : null);
+          if (rawDate && typeof rawDate === 'string') {
+            const actualDate = rawDate.split(' ')[0];
             if (from && actualDate < from) return false;
             if (to && actualDate > to) return false;
           }
@@ -692,7 +739,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return true;
       };
 
-      const updatedData = { ...data };
+      // We always work against the raw (unfiltered) data, not filteredData
+      const rawData = data as AppData;
+      const updatedData = { ...rawData };
 
       for (const key of Object.keys(newData) as Array<keyof AppData>) {
         if (sharedKeys.includes(key)) {
@@ -712,13 +761,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           continue;
         }
 
-        const oldArray = data[key] as any[] || [];
-        
-        // Merge logic: Keep items that DON'T match the current filter, 
-        // and replace items that DO match the current filter with the new ones from the component.
+        const oldArray = rawData[key] as any[] || [];
+
+        // Merge: keep items outside the current filter window, replace those inside.
         const itemsNotMatchingFilter = oldArray.filter(item => !matchesCurrentFilter(item, key));
         const finalArray = [...itemsNotMatchingFilter, ...newArray];
-        
+
         updatedData[key] = finalArray as any;
 
         const userIds = new Set<string>();

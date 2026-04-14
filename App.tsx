@@ -354,6 +354,33 @@ const MainApp: React.FC = () => {
 
   const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
 
+  // Build a label that clearly describes the current filter state
+  const filterLabel = React.useMemo(() => {
+    const selectedIds = userFilter === 'all'
+      ? filteredUsersForModal.map(u => u.id)
+      : userFilter.split(',');
+    const { from, to } = dateRange;
+
+    let userLabel = '';
+    if (selectedIds.length === filteredUsersForModal.length && filteredUsersForModal.length > 0) {
+      userLabel = 'كل المستخدمين';
+    } else if (selectedIds.length === 1) {
+      userLabel = data.users.find(u => u.id === selectedIds[0])?.name || 'مستخدم';
+    } else if (selectedIds.length > 1) {
+      userLabel = `${selectedIds.length} مستخدمين`;
+    } else {
+      userLabel = 'لا أحد';
+    }
+
+    if (from || to) {
+      const dateLabel = from && to ? `${from} ← ${to}` : from ? `من ${from}` : `إلى ${to}`;
+      return `${userLabel} | ${dateLabel}`;
+    }
+    return userLabel;
+  }, [userFilter, dateRange, filteredUsersForModal, data.users]);
+
+  const hasActiveFilter = dateRange.from !== '' || dateRange.to !== '' || userFilter !== 'all';
+
   const filteredUsersForModal = useMemo(() => {
     const userSchools = currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
     return data.users.filter(u => {
@@ -375,9 +402,6 @@ const MainApp: React.FC = () => {
     if (isAdminOrFull) return data.availableSchools || [];
     return currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
   }, [data.availableSchools, currentUser, isAdminOrFull]);
-
-  const canSeeSpecialCodes = isAdminOrFull;
-
 
   if (!isAuthenticated) return <AdvancedLoginPage />;
 
@@ -415,22 +439,37 @@ const MainApp: React.FC = () => {
           >
             <LogOut size={18} /> تسجيل الخروج
           </button>
-          {/* User Filter Dropdown */}
+
+          {/* User + Date Filter Button */}
           {(currentUser?.role === 'admin' || currentUser?.permissions?.all || currentUser?.permissions?.userManagement) && (
-            <div className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm shadow-sm">
-              <Users size={18} className="text-blue-600" />
+            <div className="flex items-center gap-1">
               <button
-                onClick={() => (currentUser?.role === 'admin' || currentUser?.permissions?.all || currentUser?.permissions?.userManagement) && setIsUserFilterModalOpen(true)}
-                className={`outline-none bg-transparent cursor-pointer min-w-[100px] text-right hover:text-blue-600`}
+                onClick={() => setIsUserFilterModalOpen(true)}
+                className={`flex items-center gap-2 px-6 py-3 rounded-[1.2rem] font-black text-sm shadow-sm transition-all border-2 ${
+                  hasActiveFilter
+                    ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-white border-slate-100 text-slate-600 hover:border-blue-200 hover:shadow-md'
+                }`}
               >
-                {userFilter === 'all' ? 'كل المستخدمين' :
-                  userFilter.split(',').length > 1 ? `${userFilter.split(',').length} مستخدمين` :
-                    data.users.find(u => u.id === userFilter)?.name || 'مستخدم غير معروف'}
+                <Users size={18} className={hasActiveFilter ? 'text-white' : 'text-blue-600'} />
+                <span className="max-w-[180px] truncate">{filterLabel}</span>
               </button>
+              {hasActiveFilter && (
+                <button
+                  onClick={() => {
+                    setUserFilter('all');
+                    setDateRange({ from: '', to: '' });
+                  }}
+                  title="مسح الفلترة"
+                  className="p-2 bg-red-50 border-2 border-red-100 rounded-xl text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
           )}
 
-          {canSeeSpecialCodes && (
+          {isAdminOrFull && (
             <button
               onClick={() => setIsCodesModalOpen(true)}
               className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all"
@@ -478,9 +517,10 @@ const MainApp: React.FC = () => {
         dateRange={dateRange}
         onApply={(ids, range) => {
           setDateRange(range);
-          if (ids.length === filteredUsersForModal.length && filteredUsersForModal.length > 0) {
-            setUserFilter('all');
-          } else if (ids.length === 0) {
+          // NEVER convert to 'all' — always store the explicit list of IDs.
+          // effectiveUserIds in GlobalState handles the 'all' case correctly.
+          if (ids.length === 0) {
+            // Nothing selected → default to current user only
             setUserFilter(currentUser?.id || 'all');
           } else {
             setUserFilter(ids.join(','));

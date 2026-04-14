@@ -588,7 +588,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         await setDoc(doc(db, 'users', user.uid), {
           customUserId: currentUser.id,
           role: currentUser.role,
-          school: currentUser.selectedSchool // This can be a comma-separated list
+          schools: currentUser.selectedSchool.split(',').map(s => s.trim())
         });
         
         // Small delay to ensure rules engine sees the new document

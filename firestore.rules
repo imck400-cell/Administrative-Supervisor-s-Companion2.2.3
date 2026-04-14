@@ -11,7 +11,7 @@ service cloud.firestore {
     // Fields:
     //   - customUserId: string (required)
     //   - role: string (required, 'admin' or 'user')
-    //   - school: string (required)
+    //   - schools: list (required)
     //
     // Collection: schools/{school}/shared/{key}
     // Document ID: {key} (e.g., 'profile', 'taskTemplates')
@@ -38,6 +38,10 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    function hasSchool(school) {
+      return school in getUserData().schools || 'all' in getUserData().schools;
+    }
+
     // User mapping document
     match /users/{uid} {
       allow read: if isAuthenticated() && request.auth.uid == uid;
@@ -50,15 +54,14 @@ service cloud.firestore {
       
       // Shared data (profile, templates, etc.)
       match /shared/{key} {
-        allow read: if isAuthenticated() && (key == 'users' || key == 'profile' || key == 'availableSchools' || key == 'availableYears' || (userExists() && getUserData().school == school));
-        allow write: if isAuthenticated() && userExists() && getUserData().school == school && getUserData().role == 'admin';
+        allow read: if isAuthenticated() && (key == 'users' || key == 'profile' || key == 'availableSchools' || key == 'availableYears' || (userExists() && hasSchool(school)));
+        allow write: if isAuthenticated() && userExists() && hasSchool(school) && getUserData().role == 'admin';
       }
 
       // User-specific data
       match /users/{userId}/data/{key} {
-        allow read: if isAuthenticated() && userExists() && getUserData().school == school && 
-          (getUserData().role == 'admin' || getUserData().customUserId == userId);
-        allow write: if isAuthenticated() && userExists() && getUserData().school == school && 
+        allow read: if isAuthenticated() && userExists() && hasSchool(school);
+        allow write: if isAuthenticated() && userExists() && hasSchool(school) && 
           (getUserData().role == 'admin' || getUserData().customUserId == userId);
       }
     }

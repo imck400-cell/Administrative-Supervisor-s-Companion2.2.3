@@ -333,7 +333,22 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // userFilter === 'all': derive the allowed set from school membership.
     const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
     const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
-    const isManager = currentUser.permissions?.userManagement === true;
+    const managedIds = currentUser.permissions?.managedUserIds || [];
+    const isManager = currentUser.permissions?.userManagement === true || managedIds.length > 0;
+
+    if (managedIds.length > 0) {
+      // Priority: If user has an explicit managed list, they ONLY see that list (+ themselves)
+      // This applies even if they have an admin role, to honor explicit oversight boundaries.
+      return data.users.filter(u => {
+        if (u.id === currentUser.id) return true; // Always see self
+        
+        // Hide admins/full-perms from people who aren't super-admins
+        const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
+        if (!isAdminOrFull && isTargetAdmin) return false;
+
+        return managedIds.includes(u.id);
+      }).map(u => u.id);
+    }
 
     if (isAdminOrFull) {
       // Admin sees all users in the selected school(s)
@@ -344,16 +359,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .filter(u => u.schools.some(s => allSchools.includes(s)))
         .map(u => u.id);
     } else if (isManager) {
-      // Manager sees themselves and users explicitly assigned to them via managedUserIds
-      const explicitlyManaged = currentUser.permissions?.managedUserIds || [];
-      return data.users.filter(u => {
-        if (u.id === currentUser.id) return true; // Always see self
-        
-        const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
-        if (isTargetAdmin) return false;
-
-        return explicitlyManaged.includes(u.id);
-      }).map(u => u.id);
+      // Generic manager without explicit list (if any)
+      return [currentUser.id];
     } else {
       // Regular users ONLY see themselves
       return [currentUser.id];

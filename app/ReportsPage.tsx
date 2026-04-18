@@ -8,6 +8,7 @@ import {
 import { TeacherFollowUp, DailyReportContainer, StudentReport } from '../types';
 import DynamicTable from '../components/DynamicTable';
 import * as XLSX from 'xlsx';
+import { exportToStyledExcel } from '../src/lib/excelExport';
 
 // Adding local types for TeacherFollowUpPage sorting and filtering
 // Adding local types for TeacherFollowUpPage sorting and filtering
@@ -542,146 +543,69 @@ export const DailyReportsPage: React.FC = () => {
     }, 0);
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (!currentReport) return;
 
-    const profile = data.profile;
     const metricsCols = displayedMetrics.filter(m => m.key !== 'violations_score');
-    const title = `${lang === 'ar' ? 'التقرير' : 'Report'} ${(currentReport.periodType === 'daily' || !currentReport.periodType) ? (lang === 'ar' ? 'اليومي' : 'Daily') : (lang === 'ar' ? (currentReport.periodType === 'weekly' ? 'الأسبوعي' : currentReport.periodType === 'monthly' ? 'الشهري' : currentReport.periodType === 'quarterly' ? 'الفصلي' : 'السنوي') : currentReport.periodType)}`;
-    const dateLabel = `${toHijri(currentReport.dateStr)}هـ - ${currentReport.dateStr}م`;
+    const headers = [
+      'م', 'اسم المعلم', 'النوع', 'المادة', 'الصف',
+      ...metricsCols.map(m => m.label),
+      'المخالفات', 'المجموع', 'النسبة'
+    ];
 
-    let content = `
-<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-<head>
-<meta charset="UTF-8">
-<style>
-    table { border-collapse: collapse; width: 100%; direction: rtl; border: 2px solid #1e40af; }
-    th, td { border: 1px solid #94a3b8; padding: 10px; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 12px; }
-    .header-main { background-color: #1e40af; color: #ffffff; font-weight: bold; font-size: 18px; border: none; }
-    .header-sub { background-color: #3b82f6; color: #ffffff; font-weight: bold; font-size: 14px; border: none; }
-    .subheader { background-color: #f1f5f9; color: #1e293b; font-weight: bold; }
-    .metric-header { background-color: #f8fafc; font-weight: bold; font-size: 11px; color: #475569; }
-    .footer-row { background-color: #f8fafc; font-weight: bold; border-top: 2px solid #1e40af; }
-    .total-cell { background-color: #eff6ff; font-weight: bold; color: #1e40af; font-size: 13px; }
-    .percent-cell { background-color: #f0f9ff; font-weight: bold; color: #0369a1; font-size: 13px; }
-    .violation-cell { background-color: #fef2f2; color: #dc2626; font-weight: bold; }
-    .signature { border: none; padding: 30px 10px; font-weight: bold; font-size: 14px; color: #334155; }
-    .title-section { border: none; text-align: center; font-weight: bold; }
-    .even-row { background-color: #ffffff; }
-    .odd-row { background-color: #f8fafc; }
-    .teacher-name { text-align: right; font-weight: bold; color: #1e293b; padding-right: 15px; }
-</style>
-</head>
-<body>
-<table>
-    <tr>
-        <td colspan="${8 + metricsCols.length}" class="header-main" style="padding: 20px;">
-            ${profile.schoolName || 'المدرسة'} ${profile.branch ? `- فرع ${profile.branch}` : ''}
-        </td>
-    </tr>
-    <tr>
-        <td colspan="${8 + metricsCols.length}" class="header-sub" style="padding: 10px;">
-            ${title} لأداء المعلمين والمعلمات
-        </td>
-    </tr>
-    <tr>
-        <td colspan="${8 + metricsCols.length}" style="background-color: #f8fafc; color: #64748b; font-weight: bold; padding: 8px; border-bottom: 2px solid #3b82f6;">
-            بتاريخ: ${dateLabel}
-        </td>
-    </tr>
-    <tr><td colspan="${8 + metricsCols.length}" style="border: none; height: 15px;"></td></tr>
-    
-    <tr class="subheader">
-        <th rowspan="2" style="background-color: #e2e8f0;">م</th>
-        <th rowspan="2" style="min-width: 180px; background-color: #e2e8f0;">اسم المعلم</th>
-        <th rowspan="2" style="background-color: #e2e8f0;">النوع</th>
-        <th rowspan="2" style="background-color: #e2e8f0;">المادة</th>
-        <th rowspan="2" style="background-color: #e2e8f0;">الصف</th>
-        <th colspan="${metricsCols.length}" style="background-color: #3b82f6; color: white;">مجالات تقييم المعلمين</th>
-        <th rowspan="2" style="background-color: #fee2e2; color: #991b1b;">المخالفات</th>
-        <th rowspan="2" style="background-color: #dbeafe; color: #1e40af;">المجموع</th>
-        <th rowspan="2" style="background-color: #dcfce7; color: #166534;">النسبة %</th>
-    </tr>
-    <tr class="metric-header">
-        ${metricsCols.map(m => `<th style="background-color: ${m.color}20; color: ${m.color}; min-width: 90px; border-bottom: 2px solid ${m.color};">${m.label}</th>`).join('')}
-    </tr>
-
-    ${teachers.map((t, idx) => {
+    const excelData = teachers.map((t, idx) => {
       const total = calculateTotal(t);
       const max = calculateMaxTotal(t);
       const percent = max > 0 ? ((total / max) * 100).toFixed(1) : '0';
-      const rowClass = idx % 2 === 0 ? 'even-row' : 'odd-row';
-      return `
-    <tr class="${rowClass}">
-        <td style="color: #94a3b8;">${idx + 1}</td>
-        <td class="teacher-name">${t.teacherName}</td>
-        <td>${t.gender || ''}</td>
-        <td style="color: #64748b;">${t.subjectCode}</td>
-        <td style="color: #64748b;">${t.className}</td>
-        ${metricsCols.map(m => {
-        const isUnaccredited = (t.unaccreditedMetrics || []).includes(m.key);
-        const val = isUnaccredited ? 'غ.م' : (t[m.key] || 0);
-        const cellStyle = isUnaccredited ? 'color: #cbd5e1; font-style: italic;' : `font-weight: bold; color: ${m.color};`;
-        return `<td style="${cellStyle} background-color: ${m.color}05;">${val}</td>`;
-      }).join('')}
-        <td class="violation-cell">${t.violations_score || 0}</td>
-        <td class="total-cell">${total}</td>
-        <td class="percent-cell" style="background-color: ${Number(percent) >= 90 ? '#f0fdf4' : Number(percent) >= 70 ? '#fffbeb' : '#fef2f2'}; color: ${Number(percent) >= 90 ? '#166534' : Number(percent) >= 70 ? '#92400e' : '#991b1b'};">
-            ${percent}%
-        </td>
-    </tr>`;
-    }).join('')}
+      
+      return [
+        idx + 1,
+        t.teacherName,
+        t.gender || '---',
+        t.subjectCode || '---',
+        t.className || '---',
+        ...metricsCols.map(m => (t.unaccreditedMetrics || []).includes(m.key) ? 'غ.م' : (t[m.key] || 0)),
+        t.violations_score || 0,
+        total,
+        `${percent}%`
+      ];
+    });
 
-    <tr class="footer-row">
-        <td colspan="5" style="text-align: right; padding-right: 15px; font-size: 14px;">المجموع الكلي</td>
-        ${metricsCols.map(m => {
-      const sum = teachers.reduce((acc, t) => acc + (Number(t[m.key]) || 0), 0);
-      return `<td style="background-color: ${m.color}15; color: ${m.color}; font-size: 13px;">${sum}</td>`;
-    }).join('')}
-        <td class="violation-cell" style="font-size: 13px;">${teachers.reduce((acc, t) => acc + (t.violations_score || 0), 0)}</td>
-        <td class="total-cell" style="font-size: 14px;">${teachers.reduce((acc, t) => acc + calculateTotal(t), 0)}</td>
-        <td class="percent-cell" style="font-size: 14px;">
-            ${(() => {
-        const tSum = teachers.reduce((acc, t) => acc + calculateTotal(t), 0);
-        const tMax = teachers.reduce((acc, t) => acc + calculateMaxTotal(t), 0);
-        return tMax > 0 ? ((tSum / tMax) * 100).toFixed(1) : '0';
-      })()}%
-        </td>
-    </tr>
+    const title = `${lang === 'ar' ? 'التقرير' : 'Report'} ${(currentReport.periodType === 'daily' || !currentReport.periodType) ? (lang === 'ar' ? 'اليومي' : 'Daily') : (lang === 'ar' ? (currentReport.periodType === 'weekly' ? 'الأسبوعي' : currentReport.periodType === 'monthly' ? 'الشهري' : currentReport.periodType === 'quarterly' ? 'الفصلي' : 'السنوي') : currentReport.periodType)}`;
 
-    <tr class="footer-row">
-        <td colspan="5" style="text-align: right; padding-right: 15px; font-size: 14px; color: #64748b;">النسبة العامة للمجال</td>
-        ${metricsCols.map(m => {
-        const sum = teachers.reduce((acc, t) => acc + (Number(t[m.key]) || 0), 0);
-        const count = teachers.length;
-        const pct = count > 0 ? ((sum / (count * m.max)) * 100).toFixed(1) : '0';
-        return `<td style="background-color: ${m.color}10; color: ${m.color}; font-size: 12px;">${pct}%</td>`;
-      }).join('')}
-        <td colspan="3" style="background-color: #f1f5f9;"></td>
-    </tr>
+    await exportToStyledExcel({
+      title: `${title} لمتابعة أداء المعلمين`,
+      filename: `Teacher_Performance_Report_${currentReport.dateStr}`,
+      headers,
+      data: excelData,
+      date: currentReport.dateStr,
+      profile: {
+        ministry: data.profile.ministry,
+        district: data.profile.district,
+        schoolName: data.profile.schoolName,
+        branch: data.profile.branch,
+        branchManager: data.profile.branchManager,
+        writerName: currentUser?.name
+      },
+      onRow: (row, rowData) => {
+        const violationIdx = 5 + metricsCols.length; // 0-based index of Violations
+        const totalIdx = violationIdx + 1;
+        const percentIdx = violationIdx + 2;
 
-    <tr><td colspan="${8 + metricsCols.length}" style="border: none; height: 30px;"></td></tr>
-
-    <tr>
-        <td colspan="${Math.floor((8 + metricsCols.length) / 2)}" class="signature" style="text-align: right;">
-            <div style="margin-bottom: 10px; color: #64748b;">توقيع كاتب التقرير</div>
-            <div style="font-size: 16px;">${reportWriter || '..........................................'}</div>
-        </td>
-        <td colspan="${Math.ceil((8 + metricsCols.length) / 2)}" class="signature" style="text-align: left;">
-            <div style="margin-bottom: 10px; color: #64748b;">توقيع مدير الفرع</div>
-            <div style="font-size: 16px;">${branchManager || '..........................................'}</div>
-        </td>
-    </tr>
-</table>
-</body>
-</html>`;
-
-    const BOM = '\uFEFF';
-    const blob = new Blob([BOM + content], { type: 'application/vnd.ms-excel;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `Teacher_Performance_Report_${currentReport.dateStr}.xls`;
-    link.click();
+        row.eachCell((cell, colIdx) => {
+          // Violations highlight
+          if (colIdx === violationIdx + 1 && Number(rowData[violationIdx]) > 0) {
+             cell.font = { ...cell.font, color: { argb: 'FFFF0000' } };
+             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF1F1' } };
+          }
+          // Highlight performance cells (Total/Percent)
+          if (colIdx >= totalIdx + 1) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
+            cell.font = { ...cell.font, color: { argb: 'FF1E40AF' }, bold: true };
+          }
+        });
+      }
+    });
   };
 
   const toggleAccreditation = (teacherId: string | 'bulk', metricKey: string) => {
@@ -2625,7 +2549,7 @@ export const DailyReportsPage: React.FC = () => {
 
 
 export const ViolationsPage: React.FC = () => {
-  const { lang, data, updateData } = useGlobal();
+  const { lang, data, updateData, currentUser } = useGlobal();
   const [activeMode, setActiveMode] = useState<'students' | 'teachers'>('students');
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -2811,20 +2735,33 @@ export const ViolationsPage: React.FC = () => {
     return msg;
   };
 
-  const exportExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(filteredData.map(v => ({
-      'الاسم': activeMode === 'students' ? v.studentName : v.teacherName,
-      'الصف': v.grade || v.class,
-      'الشعبة': v.section || '',
-      'المادة': v.subject || '',
-      'التاريخ': v.date,
-      'المخالفة': v.violation,
-      'الإجراء': v.procedure,
-      'التوقيع': v.signature
-    })));
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Violations");
-    XLSX.writeFile(workbook, `Violations_${activeMode}.xlsx`);
+  const exportExcel = async () => {
+    const headers = ['الاسم', 'الصف', 'الشعبة', 'المادة', 'التاريخ', 'المخالفة', 'الإجراء', 'التوقيع'];
+    const excelData = filteredData.map(v => [
+      activeMode === 'students' ? v.studentName : v.teacherName,
+      v.grade || v.class,
+      v.section || '',
+      v.subject || '',
+      v.date,
+      v.violation,
+      v.procedure,
+      v.signature
+    ]);
+
+    await exportToStyledExcel({
+      title: `تقرير المخالفات - ${activeMode === 'students' ? 'طلاب' : 'معلمين'}`,
+      filename: `Violations_${activeMode}`,
+      headers,
+      data: excelData,
+      profile: {
+        ministry: data.profile.ministry,
+        district: data.profile.district,
+        schoolName: data.profile.schoolName,
+        branch: data.profile.branch,
+        branchManager: data.profile.branchManager,
+        writerName: currentUser?.name
+      }
+    });
   };
 
   const exportTxt = () => {
@@ -3936,31 +3873,40 @@ export const StudentsReportsPage: React.FC = () => {
   };
   // END OF CHANGE
 
-  const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(filteredData.map(s => ({
-      'اسم الطالب': s.name,
-      'الصف': s.grade,
-      'الشعبة': s.section,
-      'النوع': s.gender,
-      'العنوان': s.address,
-      'العمل': s.workOutside,
-      'الحالة الصحية': s.healthStatus,
-      'تفاصيل الصحة': s.healthDetails,
-      'ولي الأمر': s.guardianName,
-      'الهواتف': s.guardianPhones.join(', '),
-      'القراءة': s.academicReading,
-      'الكتابة': s.academicWriting,
-      'المشاركة': s.academicParticipation,
-      'السلوك': s.behaviorLevel,
-      'الملاحظات': s.mainNotes.join(', '),
-      'تعليم الولي': s.guardianEducation,
-      'متابعة الولي': s.guardianFollowUp,
-      'تعاون الولي': s.guardianCooperation,
-      'ملاحظات أخرى': s.notes
-    })));
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
-    XLSX.writeFile(workbook, `Students_Report_${new Date().getTime()}.xlsx`);
+  const exportToExcel = async () => {
+    const headers = ['اسم الطالب', 'الصف', 'الشعبة', 'النوع', 'العنوان', 'العمل', 'الحالة الصحية', 'تفاصيل الصحة', 'ولي الأمر', 'الهواتف', 'القراءة', 'الكتابة', 'المشاركة', 'السلوك', 'الملاحظات'];
+    const excelData = filteredData.map(s => [
+      s.name,
+      s.grade,
+      s.section,
+      s.gender,
+      s.address,
+      s.workOutside,
+      s.healthStatus,
+      s.healthDetails,
+      s.guardianName,
+      s.guardianPhones.join(', '),
+      s.academicReading,
+      s.academicWriting,
+      s.academicParticipation,
+      s.behaviorLevel,
+      s.mainNotes.join(', ')
+    ]);
+
+    await exportToStyledExcel({
+      title: 'سجل بيانات الطلاب التفصيلي',
+      filename: `Students_Report_${new Date().getTime()}`,
+      headers,
+      data: excelData,
+      profile: {
+        ministry: data.profile.ministry,
+        district: data.profile.district,
+        schoolName: data.profile.schoolName,
+        branch: data.profile.branch,
+        branchManager: data.profile.branchManager,
+        writerName: currentUser?.name
+      }
+    });
   };
 
   const exportToTxt = () => {

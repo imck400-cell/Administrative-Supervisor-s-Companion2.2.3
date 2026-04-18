@@ -16,26 +16,37 @@ import {
 } from 'lucide-react';
 import { AbsenceLog, LatenessLog, StudentViolationLog, StudentReport, ExitLog, DamageLog, ParentVisitLog, ExamLog, TaskItem, TaskReport, TaskRecord, ExecutionStatus } from '../types';
 import { defaultTaskTemplates } from '../context/GlobalState';
+import { exportToStyledExcel } from '../src/lib/excelExport';
 import * as XLSX from 'xlsx';
 
 type MainTab = 'supervisor' | 'staff' | 'students' | 'tests';
 type SubTab = string;
 
 // Helper functions for exporting filtered data used across modules
-const exportExcelFiltered = (title: string, list: any[], columns: { label: string, key: string }[]) => {
-  const worksheet = XLSX.utils.json_to_sheet(list.map(row => {
-    const formatted: any = {};
-    columns.forEach(col => {
-      formatted[col.label] = Array.isArray(row[col.key]) ? row[col.key].join('، ') : row[col.key];
-    });
-    return formatted;
+const exportExcelFiltered = async (title: string, list: any[], columns: { label: string, key: string }[], profile: any, currentUser: any) => {
+  const headers = columns.map(col => col.label);
+  const excelData = list.map(row => columns.map(col => {
+    const val = row[col.key];
+    return Array.isArray(val) ? val.join('، ') : val;
   }));
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
-  XLSX.writeFile(workbook, `${title}_${new Date().getTime()}.xlsx`);
+
+  await exportToStyledExcel({
+    title: title,
+    filename: `${title}_${new Date().getTime()}`,
+    headers,
+    data: excelData,
+    profile: {
+      ministry: profile.ministry,
+      district: profile.district,
+      schoolName: profile.schoolName,
+      branch: profile.branch,
+      branchManager: profile.branchManager,
+      writerName: currentUser?.name
+    }
+  });
 };
 
-const exportTxtFiltered = (title: string, list: any[], columns: { label: string, key: string }[]) => {
+const exportTxtFiltered = (title: string, list: any[], columns: { label: string, key: string }[], profile: any) => {
   let text = `*📋 تقرير: ${title}*\n`;
   text += `*التاريخ:* ${new Date().toLocaleDateString('ar-EG')}\n`;
   text += `----------------------------------\n\n`;
@@ -48,6 +59,11 @@ const exportTxtFiltered = (title: string, list: any[], columns: { label: string,
     });
     text += `\n`;
   });
+
+  if (profile?.schoolName || profile?.branch) {
+    text += `\n----------------------------------\n`;
+    text += `🏫 *${profile.schoolName || ''}${profile.branch ? `، فرع ${profile.branch}` : ''}*\n`;
+  }
 
   const blob = new Blob([text.replace(/\*/g, '')], { type: 'text/plain;charset=utf-8' });
   const link = document.createElement('a');
@@ -1306,8 +1322,8 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
               <button onClick={() => handleWhatsAppAttendance('selected')} className="flex items-center gap-2 bg-slate-800 text-white px-5 py-2.5 rounded-xl font-black text-xs hover:bg-black shadow-md">الأسماء المحددة</button>
               <div className="flex gap-2 mr-6 border-r pr-6">
                 <button onClick={() => { }} title="استيراد" className="p-3 bg-white border-2 text-blue-600 rounded-xl shadow-sm hover:bg-blue-50 transition-all"><Upload size={18} /></button>
-                <button onClick={() => exportTxtFiltered('التحضير_اليومي', filteredPresence.map(s => ({ ...s, status: attendanceMap[s.id] === 'absent' ? 'غائب' : 'حاضر' })), [{ label: 'الاسم', key: 'name' }, { label: 'الحالة', key: 'status' }])} title="تصدير TXT" className="p-3 bg-white border-2 text-slate-600 rounded-xl shadow-sm hover:bg-slate-50 transition-all"><FileText size={18} /></button>
-                <button onClick={() => exportExcelFiltered('التحضير_اليومي', filteredPresence.map(s => ({ ...s, status: attendanceMap[s.id] === 'absent' ? 'غائب' : 'حاضر' })), [{ label: 'الاسم', key: 'name' }, { label: 'الحالة', key: 'status' }])} title="تصدير إكسل" className="p-3 bg-white border-2 text-green-700 rounded-xl shadow-sm hover:bg-green-50 transition-all"><FileSpreadsheet size={18} /></button>
+                <button onClick={() => exportTxtFiltered('التحضير_اليومي', filteredPresence.map(s => ({ ...s, status: attendanceMap[s.id] === 'absent' ? 'غائب' : 'حاضر' })), [{ label: 'الاسم', key: 'name' }, { label: 'الحالة', key: 'status' }], data.profile)} title="تصدير TXT" className="p-3 bg-white border-2 text-slate-600 rounded-xl shadow-sm hover:bg-slate-50 transition-all"><FileText size={18} /></button>
+                <button onClick={() => exportExcelFiltered('التحضير_اليومي', filteredPresence.map(s => ({ ...s, status: attendanceMap[s.id] === 'absent' ? 'غائب' : 'حاضر' })), [{ label: 'الاسم', key: 'name' }, { label: 'الحالة', key: 'status' }], data.profile, currentUser)} title="تصدير إكسل" className="p-3 bg-white border-2 text-green-700 rounded-xl shadow-sm hover:bg-green-50 transition-all"><FileSpreadsheet size={18} /></button>
               </div>
             </div>
           </div>
@@ -1500,7 +1516,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
           </div>
         ) : (
           <div className="space-y-6">
-            <FilterSection suggestions={nameSugg} values={filterValues} setValues={setFilterValues} tempNames={tempNames} setTempNames={setTempNames} appliedNames={appliedNames} setAppliedNames={setAppliedNames} nameInput={nameInput} setNameInput={setNameInput} onExportExcel={() => exportExcelFiltered('غياب_الطلاب', filtered, cols)} onExportTxt={() => exportTxtFiltered('غياب_الطلاب', filtered, cols)} onExportWA={() => shareWhatsAppRich('سجل غياب الطلاب المفلتر', filtered, cols)} />
+            <FilterSection suggestions={nameSugg} values={filterValues} setValues={setFilterValues} tempNames={tempNames} setTempNames={setTempNames} appliedNames={appliedNames} setAppliedNames={setAppliedNames} nameInput={nameInput} setNameInput={setNameInput} onExportExcel={() => exportExcelFiltered('غياب_الطلاب', filtered, cols, data.profile, currentUser)} onExportTxt={() => exportTxtFiltered('غياب_الطلاب', filtered, cols, data.profile)} onExportWA={() => shareWhatsAppRich('سجل غياب الطلاب المفلتر', filtered, cols)} />
             <div className="overflow-x-auto rounded-[1.5rem] border shadow-inner">
               <table className="w-full text-center text-[10px] md:text-sm border-collapse min-w-[1000px]">
                 <thead className="bg-[#FFD966] text-slate-800 font-black">
@@ -1697,7 +1713,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
           </div>
         ) : (
           <div className="space-y-6">
-            <FilterSection suggestions={nameSugg} values={filterValues} setValues={setFilterValues} tempNames={tempNames} setTempNames={setTempNames} appliedNames={appliedNames} setAppliedNames={setAppliedNames} nameInput={nameInput} setNameInput={setNameInput} onExportExcel={() => exportExcelFiltered('تأخر_الطلاب', filtered, cols)} onExportTxt={() => exportTxtFiltered('تأخر_الطلاب', filtered, cols)} onExportWA={() => shareWhatsAppRich('سجل تأخر الطلاب المفلتر', filtered, cols)} />
+            <FilterSection suggestions={nameSugg} values={filterValues} setValues={setFilterValues} tempNames={tempNames} setTempNames={setTempNames} appliedNames={appliedNames} setAppliedNames={setAppliedNames} nameInput={nameInput} setNameInput={setNameInput} onExportExcel={() => exportExcelFiltered('تأخر_الطلاب', filtered, cols, data.profile, currentUser)} onExportTxt={() => exportTxtFiltered('تأخر_الطلاب', filtered, cols, data.profile)} onExportWA={() => shareWhatsAppRich('سجل تأخر الطلاب المفلتر', filtered, cols)} />
             <div className="overflow-x-auto rounded-[1.5rem] border shadow-inner">
               <table className="w-full text-center text-[10px] md:text-sm border-collapse min-w-[1000px]">
                 <thead className="bg-[#FFD966] text-slate-800 font-black">
@@ -1906,7 +1922,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
           </div>
         ) : (
           <div className="space-y-6">
-            <FilterSection suggestions={nameSugg} values={filterValues} setValues={setFilterValues} tempNames={tempNames} setTempNames={setTempNames} appliedNames={appliedNames} setAppliedNames={setAppliedNames} nameInput={nameInput} setNameInput={setNameInput} onExportExcel={() => exportExcelFiltered('مخالفات_الطلاب', filtered, cols)} onExportTxt={() => exportTxtFiltered('مخالفات_الطلاب', filtered, cols)} onExportWA={() => shareWhatsAppRich('سجل مخالفات الطلاب المفلتر', filtered, cols)} />
+            <FilterSection suggestions={nameSugg} values={filterValues} setValues={setFilterValues} tempNames={tempNames} setTempNames={setTempNames} appliedNames={appliedNames} setAppliedNames={setAppliedNames} nameInput={nameInput} setNameInput={setNameInput} onExportExcel={() => exportExcelFiltered('مخالفات_الطلاب', filtered, cols, data.profile, currentUser)} onExportTxt={() => exportTxtFiltered('مخالفات_الطلاب', filtered, cols, data.profile)} onExportWA={() => shareWhatsAppRich('سجل مخالفات الطلاب المفلتر', filtered, cols)} />
             <div className="overflow-x-auto rounded-[1.5rem] md:rounded-[3rem] border shadow-inner">
               <table className="w-full text-center text-[10px] md:text-sm border-collapse min-w-[1000px]">
                 <thead className="bg-[#FFD966] text-slate-800 font-black sticky top-0">
@@ -2047,7 +2063,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
           </div>
         ) : (
           <div className="space-y-8">
-            <FilterSection suggestions={nameSugg} values={filterValues} setValues={setFilterValues} tempNames={tempNames} setTempNames={setTempNames} appliedNames={appliedNames} setAppliedNames={setAppliedNames} nameInput={nameInput} setNameInput={setNameInput} onExportExcel={() => exportExcelFiltered('خروج_الطلاب', filtered, cols)} onExportTxt={() => exportTxtFiltered('خروج_الطلاب', filtered, cols)} onExportWA={() => shareWhatsAppRich('سجل خروج الطلاب المفلتر', filtered, cols)} />
+            <FilterSection suggestions={nameSugg} values={filterValues} setValues={setFilterValues} tempNames={tempNames} setTempNames={setTempNames} appliedNames={appliedNames} setAppliedNames={setAppliedNames} nameInput={nameInput} setNameInput={setNameInput} onExportExcel={() => exportExcelFiltered('خروج_الطلاب', filtered, cols, data.profile, currentUser)} onExportTxt={() => exportTxtFiltered('خروج_الطلاب', filtered, cols, data.profile)} onExportWA={() => shareWhatsAppRich('سجل خروج الطلاب المفلتر', filtered, cols)} />
             <div className="overflow-x-auto rounded-[1.5rem] border shadow-inner">
               <table className="w-full text-center text-[10px] md:text-sm border-collapse min-w-[1000px]"><thead className="bg-[#FFD966] text-slate-800 font-black"><tr>{cols.map(c => <th key={c.key} className="p-3 md:p-5 border-e border-blue-200">{c.label}</th>)}</tr></thead>
                 <tbody className="divide-y divide-slate-100 bg-white font-bold">{filtered.length === 0 ? <tr><td colSpan={cols.length} className="p-20 text-slate-300 italic text-base md:text-lg font-bold">لا توجد بيانات خروج.</td></tr> : filtered.map(l => <tr key={l.id} className="hover:bg-blue-50/30 transition-colors h-10 md:h-12"><td className="p-3 md:p-5 border-e border-slate-50 font-black">{l.studentName}</td><td className="p-3 md:p-5 border-e border-slate-50 font-bold">{l.grade}</td><td className="p-3 md:p-5 border-e border-slate-50">{l.section}</td><td className="p-3 md:p-5 border-e border-slate-50 text-blue-600 text-lg">{l.prevExitCount + 1}</td><td className="p-3 md:p-5 border-e border-slate-50 text-slate-400 text-[10px]">{l.date}</td><td className="p-3 md:p-5 border-e border-slate-50">{l.status}</td><td className="p-3 md:p-5 border-e border-slate-50">{l.action}</td><td className="p-3 md:p-5 text-slate-400 text-[10px]">{l.notes}</td></tr>)}</tbody></table>
@@ -2186,7 +2202,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
           </div>
         ) : (
           <div className="space-y-8">
-            <FilterSection suggestions={nameSugg} values={filterValues} setValues={setFilterValues} tempNames={tempNames} setTempNames={setTempNames} appliedNames={appliedNames} setAppliedNames={setAppliedNames} nameInput={nameInput} setNameInput={setNameInput} onExportExcel={() => exportExcelFiltered('إتلاف_المدرسة', filtered, cols)} onExportTxt={() => exportTxtFiltered('إتلاف_المدرسة', filtered, cols)} onExportWA={() => shareWhatsAppRich('سجل إتلاف المدرسة المفلتر', filtered, cols)} />
+            <FilterSection suggestions={nameSugg} values={filterValues} setValues={setFilterValues} tempNames={tempNames} setTempNames={setTempNames} appliedNames={appliedNames} setAppliedNames={setAppliedNames} nameInput={nameInput} setNameInput={setNameInput} onExportExcel={() => exportExcelFiltered('إتلاف_المدرسة', filtered, cols, data.profile, currentUser)} onExportTxt={() => exportTxtFiltered('إتلاف_المدرسة', filtered, cols, data.profile)} onExportWA={() => shareWhatsAppRich('سجل إتلاف المدرسة المفلتر', filtered, cols)} />
             <div className="overflow-x-auto rounded-[1.5rem] border shadow-inner">
               <table className="w-full text-center text-[10px] md:text-sm border-collapse min-w-[1000px]"><thead className="bg-[#FFD966] text-slate-800 font-black"><tr>{cols.map(c => <th key={c.key} className="p-3 md:p-5 border-e border-red-200">{c.label}</th>)}</tr></thead>
                 <tbody className="divide-y divide-slate-100 bg-white font-bold">{filtered.length === 0 ? <tr><td colSpan={cols.length} className="p-20 text-slate-300 italic text-base md:text-lg font-bold">لا توجد بيانات إتلاف.</td></tr> : filtered.map(l => <tr key={l.id} className="hover:bg-red-50/30 transition-colors h-10 md:h-12">
@@ -2348,7 +2364,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
           </div>
         ) : (
           <div className="space-y-8">
-            <FilterSection suggestions={nameSugg} values={filterValues} setValues={setFilterValues} tempNames={tempNames} setTempNames={setTempNames} appliedNames={appliedNames} setAppliedNames={setAppliedNames} nameInput={nameInput} setNameInput={setNameInput} onExportExcel={() => exportExcelFiltered('زيارات_أولياء_الأمور', filtered, cols)} onExportTxt={() => exportTxtFiltered('زيارات_أولياء_الأمور', filtered, cols)} onExportWA={() => shareWhatsAppRich('سجل زيارات وتواصل أولياء الأمور المفلتر', filtered, cols)} />
+            <FilterSection suggestions={nameSugg} values={filterValues} setValues={setFilterValues} tempNames={tempNames} setTempNames={setTempNames} appliedNames={appliedNames} setAppliedNames={setAppliedNames} nameInput={nameInput} setNameInput={setNameInput} onExportExcel={() => exportExcelFiltered('زيارات_أولياء_الأمور', filtered, cols, data.profile, currentUser)} onExportTxt={() => exportTxtFiltered('زيارات_أولياء_الأمور', filtered, cols, data.profile)} onExportWA={() => shareWhatsAppRich('سجل زيارات وتواصل أولياء الأمور المفلتر', filtered, cols)} />
             <div className="overflow-x-auto rounded-[1.5rem] border shadow-inner">
               <table className="w-full text-center text-[10px] md:text-sm border-collapse min-w-[1200px]"><thead className="bg-[#FFD966] text-slate-800 font-black"><tr>{cols.map(c => <th key={c.key} className="p-3 md:p-5 border-e border-indigo-200">{c.label}</th>)}</tr></thead>
                 <tbody className="divide-y divide-slate-100 bg-white font-bold">{filtered.length === 0 ? <tr><td colSpan={cols.length} className="p-20 text-slate-300 italic text-base md:text-lg font-bold">لا توجد سجلات.</td></tr> : filtered.map(l => <tr key={l.id} className="hover:bg-indigo-50/30 transition-colors h-10 md:h-12"><td className="p-3 md:p-5 border-e border-slate-50 font-black">{l.studentName}</td><td className="p-3 md:p-5 border-e border-slate-50 font-bold">{l.visitorName}</td><td className="p-3 md:p-5 border-e border-slate-50 font-bold">{l.grade}</td><td className="p-3 md:p-5 border-e border-slate-50 font-bold">{l.section}</td><td className="p-3 md:p-5 border-e border-slate-400 text-[10px]">{l.date}</td><td className="p-3 md:p-5 border-e border-slate-50 font-black">{l.type === 'visit' ? 'زيارة' : 'تواصل'}</td><td className="p-3 md:p-5 border-e border-slate-50 text-[10px]">{l.reason}</td><td className="p-3 md:p-5 border-e border-slate-50 text-[10px]">{l.actions}</td><td className="p-3 md:p-5 text-slate-400 text-[10px]">{l.notes}</td></tr>)}</tbody></table>

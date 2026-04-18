@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { AdminFollowUp, AdminReportContainer, MetricDefinition } from '../types';
 import { INDICATORS_DATA, ACTIVITIES_DATA } from './evaluationData';
+import { exportToStyledExcel } from '../src/lib/excelExport';
 
 const StaffFollowUpPage: React.FC = () => {
     const { lang, data, updateData, currentUser, userFilter } = useGlobal();

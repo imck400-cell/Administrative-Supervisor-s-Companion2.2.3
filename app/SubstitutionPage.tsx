@@ -9,8 +9,9 @@ import {
   Download, Upload, Search, UserCheck, LayoutDashboard,
   History, CalendarDays, Archive, FilePlus
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import { TimetableEntry, SubstitutionEntry } from '../types';
+import { exportToStyledExcel } from '../src/lib/excelExport';
+import * as XLSX from 'xlsx';
 
 const SubstitutionPage: React.FC = () => {
   const { lang, data, updateData, currentUser, userFilter } = useGlobal();
@@ -509,12 +510,65 @@ const SubstitutionPage: React.FC = () => {
                   link.download = `Coverage_${selectedCoverageDate}.txt`;
                   link.click();
                 }} className="p-2.5 hover:bg-white text-slate-600 rounded-lg transition-all" title="TXT Export"><FileText size={18} /></button>
-                <button onClick={() => {
-                  const ws = XLSX.utils.json_to_sheet(filteredSubstitutions);
-                  const wb = XLSX.utils.book_new();
-                  XLSX.utils.book_append_sheet(wb, ws, "Coverage");
-                  XLSX.writeFile(wb, `Coverage_${selectedCoverageDate}.xlsx`);
-                }} className="p-2.5 hover:bg-white text-green-600 rounded-lg transition-all" title="Excel Export"><FileSpreadsheet size={18} /></button>
+                <button onClick={async () => {
+                   const headers = ['م', 'المعلم الغائب', 'البند/الحصة', '1', '2', '3', '4', '5', '6', '7'];
+                   const excelData: any[][] = [];
+                   
+                   filteredSubstitutions.forEach((row: any, idx) => {
+                     // Row 1: Teacher + Substitutes
+                     const row1 = [
+                       idx + 1,
+                       row.absentTeacher || '',
+                       'البديل المكلف',
+                       row.p1 || '-', row.p2 || '-', row.p3 || '-', row.p4 || '-', row.p5 || '-', row.p6 || '-', row.p7 || '-'
+                     ];
+                     excelData.push(row1);
+                     
+                     // Row 2: Signatures (simplified for excel usually, but we'll follow UI pattern)
+                     const row2 = [
+                       '',
+                       '',
+                       'التوقيع',
+                       row.sig1 || '', row.sig2 || '', row.sig3 || '', row.sig4 || '', row.sig5 || '', row.sig6 || '', row.sig7 || ''
+                     ];
+                     excelData.push(row2);
+                   });
+
+                   await exportToStyledExcel({
+                     title: `تقرير تغطية حصص الاحتياط - ${selectedCoverageDate}`,
+                     filename: `Coverage_Report_${selectedCoverageDate}`,
+                     headers,
+                     data: excelData,
+                     date: selectedCoverageDate,
+                     columnWidths: [6, 25, 15, 10, 10, 10, 10, 10, 10, 10],
+                     profile: {
+                       ministry: data.profile.ministry,
+                       district: data.profile.district,
+                       schoolName: data.profile.schoolName,
+                       branch: data.profile.branch,
+                       branchManager: data.profile.branchManager,
+                       writerName: currentUser?.name
+                     },
+                     onRow: (row, rowData, idx) => {
+                       const isSignatureRow = idx % 2 !== 0;
+                       row.eachCell((cell, colIdx) => {
+                         // Absent teacher column (Yellowish)
+                         if (colIdx === 2 && rowData[1]) {
+                           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } };
+                         }
+                         // Periods (Greenish)
+                         if (colIdx >= 4) {
+                           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2EFDA' } };
+                         }
+                         // Signature row adjustments
+                         if (isSignatureRow) {
+                           cell.font = { italic: true, size: 9, bold: false };
+                           if (colIdx === 3) cell.font = { bold: true, size: 9 };
+                         }
+                       });
+                     }
+                   });
+                 }} className="p-2.5 hover:bg-white text-green-600 rounded-lg transition-all" title="Excel Export"><FileSpreadsheet size={18} /></button>
                 <button onClick={() => {
                   let text = `*📋 جدول تغطية الحصص*\n*التاريخ:* ${selectedCoverageDate} (${getDayName(selectedCoverageDate)})\n------------------\n`;
                   filteredSubstitutions.forEach((row: any, i) => {

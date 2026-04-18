@@ -356,26 +356,30 @@ const MainApp: React.FC = () => {
 
   const filteredUsersForModal = useMemo(() => {
     const userSchools = currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
-    const isManager = currentUser?.permissions?.userManagement === true;
     const managedIds = currentUser?.permissions?.managedUserIds || [];
+    const isManager = currentUser?.permissions?.userManagement === true || managedIds.length > 0;
 
     return data.users.filter(u => {
-      // 1. Hide admins/full-perm from non-admins
-      const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
-      if (!isAdminOrFull && isTargetAdmin) return false;
-
-      // 2. If regular manager, ONLY show who they explicitly manage
-      if (!isAdminOrFull && isManager) {
+      // 1. If explicit list exists, honor it exclusively (+ self)
+      if (managedIds.length > 0) {
         if (u.id === currentUser?.id) return true;
         return managedIds.includes(u.id);
       }
 
-      // 3. Filter by school for non-admins (if they somehow get here, though only admins or managers see this modal)
-      if (!isAdminOrFull) {
+      // 2. Hide admins/full-perm from non-admins
+      const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
+      if (!isAdminOrFull && isTargetAdmin) return false;
+
+      // 3. Fallback for super-admins or non-restricted managers
+      if (isAdminOrFull) return true;
+
+      if (isManager) {
+        // If they have manager permission but no specific list, they see the whole school? 
+        // No, the user wants them restricted. But let's keep school-wide if no list is set.
         return u.schools.some(s => userSchools.includes(s));
       }
 
-      return true;
+      return u.id === currentUser?.id;
     });
   }, [data.users, currentUser, isAdminOrFull]);
 

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
+import { exportToStyledExcel } from '../src/lib/excelExport';
 
 interface Column {
   key: string;
@@ -69,17 +70,24 @@ const DynamicTable: React.FC<DynamicTableProps> = ({ title, columns, data, onAdd
     window.open(url, '_blank');
   };
 
-  const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(data.map(row => {
-      const formatted: any = {};
-      columns.forEach(col => {
-        formatted[col.label] = row[col.key];
-      });
-      return formatted;
-    }));
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, title);
-    XLSX.writeFile(workbook, `${title}_${new Date().getTime()}.xlsx`);
+  const exportToExcel = async () => {
+    const headers = columns.map(col => col.label);
+    const excelData = data.map(row => columns.map(col => row[col.key]));
+
+    await exportToStyledExcel({
+      title: title,
+      filename: `${title}_${new Date().getTime()}`,
+      headers,
+      data: excelData,
+      profile: {
+        ministry: globalData.profile.ministry,
+        district: globalData.profile.district,
+        schoolName: globalData.profile.schoolName,
+        branch: globalData.profile.branch,
+        branchManager: globalData.profile.branchManager,
+        writerName: globalData.profile.managerName // Use manager as default writer if not set
+      }
+    });
   };
 
   const exportToTxt = () => {

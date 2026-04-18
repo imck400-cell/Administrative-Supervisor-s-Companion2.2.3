@@ -11,7 +11,7 @@ interface AccessCodesModalProps {
 }
 
 const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) => {
-  const { data, updateData } = useGlobal();
+  const { data, updateData, currentUser, effectiveUserIds } = useGlobal();
   const [newSchool, setNewSchool] = useState('');
   const [newYear, setNewYear] = useState('');
   const [selectedSchoolForBranch, setSelectedSchoolForBranch] = useState('');
@@ -118,8 +118,10 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
     setIsEditModalOpen(true);
   };
 
-  const admins = data.users.filter(u => u.role === 'admin');
-  const regularUsers = data.users.filter(u => u.role === 'user');
+  const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+
+  const admins = data.users.filter(u => u.role === 'admin' && (isAdminOrFull || effectiveUserIds.includes(u.id)));
+  const regularUsers = data.users.filter(u => u.role === 'user' && (isAdminOrFull || effectiveUserIds.includes(u.id)));
 
   return (
     <AnimatePresence>

@@ -89,17 +89,126 @@ export const DailyReportsPage: React.FC = () => {
   const [reportWriter, setReportWriter] = useState(data.profile.supervisorName || '');
   const [branchManager, setBranchManager] = useState(data.profile.branchManager || '');
 
+  const updateReportTeachers = (reportId: string, teachers: TeacherFollowUp[]) => {
+    const rawReports = data.dailyReports || [];
+    
+    // Virtual Unified Report
+    if (reportId.startsWith('date_')) {
+      const dateStr = reportId.replace('date_', '');
+      
+      const updateMap: Record<string, TeacherFollowUp[]> = {};
+      const newTeachers: TeacherFollowUp[] = [];
+      
+      teachers.forEach(t => {
+        const rid = (t as any)._reportId;
+        if (rid) {
+          if (!updateMap[rid]) updateMap[rid] = [];
+          updateMap[rid].push(t);
+        } else {
+          newTeachers.push(t);
+        }
+      });
+      
+      let updatedReports = rawReports.map(r => {
+        if (updateMap[r.id]) {
+          // Verify we aren't editing someone else's row as a regular user
+          const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+          const isManager = currentUser?.permissions?.userManagement === true;
+          
+          if (!isAdminOrFull && !isManager && r.userId !== currentUser?.id) {
+             // In regular unified view, sub-users only see their own rows.
+             // If we reached here, something is wrong, but safety first:
+             return r;
+          }
+          
+          return { ...r, teachersData: updateMap[r.id] };
+        }
+        return r;
+      });
+      
+      if (newTeachers.length > 0) {
+        let userReport = updatedReports.find(r => r.dateStr === dateStr && r.userId === currentUser?.id && (r.periodType || 'daily') === 'daily');
+        if (userReport) {
+          userReport.teachersData = [...userReport.teachersData, ...newTeachers];
+        } else {
+          const newR: DailyReportContainer = {
+            id: `rep_${Date.now()}_${Math.random().toString(36).substr(2,5)}`,
+            userId: currentUser?.id,
+            schoolId: currentUser?.selectedSchool,
+            dateStr,
+            dayName: new Intl.DateTimeFormat('ar-EG', { weekday: 'long' }).format(new Date(dateStr)),
+            teachersData: newTeachers,
+            periodType: 'daily'
+          };
+          updatedReports = [...updatedReports, newR];
+        }
+      }
+      
+      updateData({ dailyReports: updatedReports });
+    } else {
+      const updatedReports = rawReports.map(r => 
+        r.id === reportId ? { ...r, teachersData: teachers } : r
+      );
+      updateData({ dailyReports: updatedReports });
+    }
+  };
 
   const reports = useMemo(() => {
-    return data.dailyReports || [];
-  }, [data.dailyReports]);
+    const rawAll = data.dailyReports || [];
+    // School Isolation
+    const raw = rawAll.filter(r => r.schoolId === currentUser?.selectedSchool || !r.schoolId);
+    
+    // Group daily reports by date for a unified school view
+    const dailyBase = raw.filter(r => (r.periodType || 'daily') === 'daily');
+    const periodical = raw.filter(r => (r.periodType || 'daily') !== 'daily');
+
+    const grouped: Record<string, DailyReportContainer> = {};
+    dailyBase.forEach(r => {
+      const dateKey = r.dateStr;
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = {
+          ...r,
+          id: `date_${dateKey}`, // Virtual ID for unified view
+          teachersData: []
+        };
+      }
+      
+      const teachersWithMeta = r.teachersData.map(t => ({ 
+        ...t, 
+        userId: t.userId || r.userId,
+        _reportId: r.id // trace back to original container/owner
+      }));
+      
+      grouped[dateKey].teachersData.push(...teachersWithMeta);
+    });
+
+    // Final merge and sort
+    const unified = Object.values(grouped).map(r => {
+      // Deduplicate teachers just in case
+      const uniqueTeachers = Array.from(new Map(r.teachersData.map(t => [t.id, t])).values());
+      return { ...r, teachersData: uniqueTeachers };
+    });
+
+    return [...unified, ...periodical].sort((a, b) => b.dateStr.localeCompare(a.dateStr));
+  }, [data.dailyReports, currentUser?.selectedSchool]);
 
   // Set active report on load if not set & Auto-create for today
   useEffect(() => {
     if (reports.length > 0) {
-      const currentExists = reports.some(r => r.id === activeReportId);
-      if (!currentExists) {
-        setActiveReportId(reports[reports.length - 1].id);
+      if (!activeReportId) {
+        // Try to find today's unified report first
+        const today = new Date().toISOString().split('T')[0];
+        const todayReport = reports.find(r => r.dateStr === today && (r.periodType || 'daily') === 'daily');
+        if (todayReport) {
+          setActiveReportId(todayReport.id);
+        } else {
+          setActiveReportId(reports[0].id);
+        }
+      } else {
+        const currentExists = reports.some(r => r.id === activeReportId);
+        if (!currentExists) {
+          setActiveReportId(reports[0].id);
+        }
       }
     } else {
       setActiveReportId(null);
@@ -113,7 +222,7 @@ export const DailyReportsPage: React.FC = () => {
     if (hasAttemptedAutoCreate.current) return;
     
     const today = new Date().toISOString().split('T')[0];
-    const hasTodayReport = reports.some(r => r.dateStr === today && r.periodType === 'daily');
+    const hasTodayReport = reports.some(r => r.dateStr === today && (r.periodType || 'daily') === 'daily');
     
     if (!hasTodayReport && reports.length > 0) {
       hasAttemptedAutoCreate.current = true;
@@ -124,7 +233,9 @@ export const DailyReportsPage: React.FC = () => {
     }
   }, [reports]);
 
-  const currentReport = reports.find(r => r.id === activeReportId);
+  const currentReport = useMemo(() => {
+    return reports.find(r => r.id === activeReportId);
+  }, [reports, activeReportId]);
 
   // Subjects Ordering
   const subjectOrder = ["مربية", "القرآن الكريم", "التربية الإسلامية", "اللغة العربية", "اللغة الإنجليزية", "الرياضيات", "العلوم", "الكيمياء", "الفيزياء", "الأحياء", "الاجتماعيات", "الحاسوب", "المكتبة", "الفنية", "المختص الاجتماعي", "الأنشطة", "غيرها"];
@@ -137,6 +248,14 @@ export const DailyReportsPage: React.FC = () => {
 
   const teachers = useMemo(() => {
     let list = currentReport ? [...currentReport.teachersData] : [];
+
+    // Filter by ownership: Non-admins/non-managers only see what they entered
+    const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+    const isManager = currentUser?.permissions?.userManagement === true;
+
+    if (!isAdminOrFull && !isManager && currentReport && (currentReport.periodType || 'daily') === 'daily') {
+      list = list.filter(t => t.userId === currentUser?.id);
+    }
 
     // Filtering
     if (filterMode === 'student' && activeTeacherFilter) {
@@ -231,6 +350,7 @@ export const DailyReportsPage: React.FC = () => {
           const newReport: DailyReportContainer = {
             id: newId,
             userId: currentUser?.id,
+            schoolId: currentUser?.selectedSchool,
             dateStr: today,
             dayName: new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'long' }).format(new Date()),
             teachersData: newTeachers,
@@ -256,6 +376,7 @@ export const DailyReportsPage: React.FC = () => {
     const newReport: DailyReportContainer = {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       userId: currentUser?.id,
+      schoolId: currentUser?.selectedSchool,
       dayName: new Intl.DateTimeFormat('ar-EG', { weekday: 'long' }).format(new Date()),
       dateStr: today,
       teachersData: newTeachers as TeacherFollowUp[],
@@ -290,40 +411,27 @@ export const DailyReportsPage: React.FC = () => {
       newTeacher[m.key] = 0;
     });
 
-    const updatedReports = (data.dailyReports || []).map(r => r.id === reportId ? { ...r, teachersData: [...r.teachersData, newTeacher] } : r);
-    updateData({ dailyReports: updatedReports });
+    const updatedTeachers = [...(currentReport?.teachersData || []), newTeacher];
+    updateReportTeachers(reportId, updatedTeachers);
     toast.success(lang === 'ar' ? 'تم إضافة معلم جديد' : 'New teacher added');
   };
 
   const updateTeacher = (teacherId: string, updates: Record<string, any>) => {
-    if (!activeReportId) return;
-    const updatedReports = (data.dailyReports || []).map(r => {
-      if (r.id === activeReportId) {
-        return {
-          ...r,
-          teachersData: r.teachersData.map(t => t.id === teacherId ? { ...t, ...updates } : t)
-        };
-      }
-      return r;
-    });
-    updateData({ dailyReports: updatedReports });
+    if (!currentReport) return;
+    const updatedTeachers = currentReport.teachersData.map(t => t.id === teacherId ? { ...t, ...updates } : t);
+    updateReportTeachers(currentReport.id, updatedTeachers);
   };
 
   const deleteTeacher = (teacherId: string) => {
-    if (!activeReportId) return;
+    if (!currentReport) return;
     setConfirmDialog({
       isOpen: true,
       title: 'حذف معلم',
       message: lang === 'ar' ? 'هل أنت متأكد من حذف هذا المعلم؟' : 'Are you sure you want to delete this teacher?',
       type: 'danger',
       onConfirm: () => {
-        const updatedReports = (data.dailyReports || []).map(r => {
-          if (r.id === activeReportId) {
-            return { ...r, teachersData: r.teachersData.filter(t => t.id !== teacherId) };
-          }
-          return r;
-        });
-        updateData({ dailyReports: updatedReports });
+        const updatedTeachers = currentReport.teachersData.filter(t => t.id !== teacherId);
+        updateReportTeachers(currentReport.id, updatedTeachers);
         toast.success(lang === 'ar' ? 'تم حذف المعلم' : 'Teacher deleted');
       }
     });
@@ -331,20 +439,15 @@ export const DailyReportsPage: React.FC = () => {
   };
 
   const deleteSelectedTeachers = () => {
-    if (!activeReportId || selectedTeacherIds.length === 0) return;
+    if (!currentReport || selectedTeacherIds.length === 0) return;
     setConfirmDialog({
       isOpen: true,
       title: 'حذف معلمين',
       message: lang === 'ar' ? `هل أنت متأكد من حذف ${selectedTeacherIds.length} معلم؟` : `Are you sure you want to delete ${selectedTeacherIds.length} teachers?`,
       type: 'danger',
       onConfirm: () => {
-        const updatedReports = (data.dailyReports || []).map(r => {
-          if (r.id === activeReportId) {
-            return { ...r, teachersData: r.teachersData.filter(t => !selectedTeacherIds.includes(t.id)) };
-          }
-          return r;
-        });
-        updateData({ dailyReports: updatedReports });
+        const updatedTeachers = currentReport.teachersData.filter(t => !selectedTeacherIds.includes(t.id));
+        updateReportTeachers(currentReport.id, updatedTeachers);
         setSelectedTeacherIds([]);
         toast.success(lang === 'ar' ? 'تم حذف المعلمين المحددين' : 'Selected teachers deleted');
       }
@@ -414,20 +517,12 @@ export const DailyReportsPage: React.FC = () => {
   };
 
   const fillMetricColumn = (metricKey: string, val?: number) => {
-    if (!activeReportId) return;
+    if (!currentReport) return;
     const max = metricsConfig.find(m => m.key === metricKey)?.max || 0;
     const valueToFill = val !== undefined ? val : max;
 
-    const updatedReports = (data.dailyReports || []).map(r => {
-      if (r.id === activeReportId) {
-        return {
-          ...r,
-          teachersData: r.teachersData.map(t => ({ ...t, [metricKey]: valueToFill }))
-        };
-      }
-      return r;
-    });
-    updateData({ dailyReports: updatedReports });
+    const updatedTeachers = currentReport.teachersData.map(t => ({ ...t, [metricKey]: valueToFill }));
+    updateReportTeachers(currentReport.id, updatedTeachers);
   };
 
   const calculateTotal = (t: TeacherFollowUp) => {
@@ -870,6 +965,7 @@ export const DailyReportsPage: React.FC = () => {
     const newReport: DailyReportContainer = {
       id: newId,
       userId: currentUser?.id,
+      schoolId: currentUser?.selectedSchool,
       dayName: 'تقرير مجمع',
       dateStr: `${from} إلى ${to}`,
       teachersData: Object.values(aggregatedData),

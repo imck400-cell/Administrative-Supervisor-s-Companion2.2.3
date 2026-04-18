@@ -65,6 +65,7 @@ interface GlobalContextType {
   login: (username: string, code: string) => User | null;
   completeLogin: (user: User, school: string, year: string) => void;
   logout: () => void;
+  effectiveUserIds: string[];
 }
 
 const defaultMaxGrades = {
@@ -378,9 +379,21 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return true;
     };
 
-    const filterByUser = (item: any) => {
+    const filterByUser = (item: any, key?: string) => {
       // Always filter: if item has no userId, keep it (shared data)
       if (!item.userId) return true;
+
+      const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+
+      // Special logic for Daily/Periodical reports
+      if (key === 'dailyReports') {
+        const periodType = item.periodType || 'daily';
+        if (periodType !== 'daily' && !isAdminOrFull) {
+          // Aggregated reports (weekly, monthly, etc.) are strictly private to the user
+          return item.userId === currentUser?.id;
+        }
+      }
+
       return effectiveUserIds.length === 0 || effectiveUserIds.includes(item.userId);
     };
 
@@ -401,7 +414,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const k = key as keyof AppData;
       if (Array.isArray(newData[k])) {
         (newData as any)[k] = (newData[k] as any[]).filter(
-          (item: any) => filterByUser(item) && filterByDate(item)
+          (item: any) => filterByUser(item, key) && filterByDate(item)
         );
       }
     });
@@ -409,7 +422,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     entityKeys.forEach(key => {
       const k = key as keyof AppData;
       if (Array.isArray(newData[k])) {
-        (newData as any)[k] = (newData[k] as any[]).filter(filterByUser);
+        (newData as any)[k] = (newData[k] as any[]).filter(item => filterByUser(item, key));
       }
     });
 
@@ -929,7 +942,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setDateRange,
       login, 
       completeLogin,
-      logout 
+      logout,
+      effectiveUserIds
     }}>
       {children}
     </GlobalContext.Provider>

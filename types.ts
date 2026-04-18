@@ -69,6 +69,7 @@ export interface MetricDefinition {
 
 export interface TeacherFollowUp {
   id: string;
+  userId?: string;
   teacherName: string;
   subjectCode: string;
   className: string;
@@ -97,6 +98,7 @@ export interface TeacherFollowUp {
 export interface DailyReportContainer {
   id: string;
   userId?: string;
+  schoolId?: string;
   dayName: string;
   dateStr: string;
   teachersData: TeacherFollowUp[];
@@ -124,6 +126,7 @@ export interface AdminFollowUp {
 export interface AdminReportContainer {
   id: string;
   userId?: string;
+  schoolId?: string;
   dateStr: string;
   followUpType: string;
   writer: string;

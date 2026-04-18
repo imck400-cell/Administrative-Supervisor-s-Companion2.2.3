@@ -31,7 +31,7 @@ const toHijri = (dateStr: string) => {
 
 // --- Teachers Follow-up Page (DailyReportsPage) ---
 export const DailyReportsPage: React.FC = () => {
-  const { lang, data, updateData, currentUser, userFilter } = useGlobal();
+  const { lang, data, updateData, currentUser, userFilter, effectiveUserIds } = useGlobal();
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
@@ -250,12 +250,16 @@ export const DailyReportsPage: React.FC = () => {
   const teachers = useMemo(() => {
     let list = currentReport ? [...currentReport.teachersData] : [];
 
-    // Filter by ownership: Non-admins/non-managers only see what they entered
+    // Filter by accessibility: Non-admins/non-managers only see what they entered or are managed by them
     const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
-    const isManager = currentUser?.permissions?.userManagement === true;
-
-    if (!isAdminOrFull && !isManager && currentReport && (currentReport.periodType || 'daily') === 'daily') {
-      list = list.filter(t => t.userId === currentUser?.id);
+    
+    // Use effectiveUserIds from context to keep everything consistent
+    if (!isAdminOrFull && currentReport && (currentReport.periodType || 'daily') === 'daily') {
+      const allowedIds = effectiveUserIds || [currentUser?.id];
+      list = list.filter(t => {
+        const uid = t.userId || (t as any)._ownerId;
+        return !uid || allowedIds.includes(uid);
+      });
     }
 
     // Filtering
@@ -331,37 +335,9 @@ export const DailyReportsPage: React.FC = () => {
 
   const handleCreateReport = () => {
     const today = new Date().toISOString().split('T')[0];
-    const exists = reports.some(r => r.dateStr === today);
+    const exists = reports.some(r => r.dateStr === today && (r.periodType || 'daily') === 'daily');
     if (exists) {
-      if (confirmDialog.isOpen) return; // Prevent multiple dialogs
-      setConfirmDialog({
-        isOpen: true,
-        title: 'تكرار الجدول',
-        message: lang === 'ar' ? 'الجدول لهذا اليوم موجود بالفعل، فهل أنت متأكد من تكرار الجدول لهذا اليوم؟' : 'The schedule for today already exists, are you sure you want to duplicate it?',
-        onConfirm: () => {
-          const newId = `rep_${Date.now()}`;
-          const existingReport = reports.find(r => r.dateStr === today);
-          const newTeachers = existingReport ? existingReport.teachersData.map(t => ({
-            ...t,
-            attendance: 0, appearance: 0, preparation: 0, supervision_queue: 0, supervision_rest: 0, supervision_end: 0,
-            activity: 0, follow_up: 0, total: 0, percentage: 0,
-            violations_notes: []
-          })) : [];
-
-          const newReport: DailyReportContainer = {
-            id: newId,
-            userId: currentUser?.id,
-            schoolId: currentUser?.selectedSchool,
-            dateStr: today,
-            dayName: new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'long' }).format(new Date()),
-            teachersData: newTeachers,
-            periodType: 'daily'
-          };
-          updateData({ dailyReports: [...(data.dailyReports || []), newReport] });
-          setActiveReportId(newId);
-          toast.success(lang === 'ar' ? 'تم تكرار الجدول بنجاح' : 'Schedule duplicated successfully');
-        }
-      });
+      toast.error(lang === 'ar' ? 'الجدول لهذا اليوم موجود بالفعل. لا يمكن إنشاء أكثر من جدول يومي واحد لنفس التاريخ.' : 'The schedule for today already exists. Only one daily schedule per date is allowed.');
       return;
     }
 
@@ -492,25 +468,19 @@ export const DailyReportsPage: React.FC = () => {
       title: 'تعبئة الدرجات',
       message: lang === 'ar' ? 'هل أنت متأكد من تعبئة جميع الدرجات المبينة في الجدول بالحد الأقصى؟' : 'Fill all max?',
       onConfirm: () => {
-        const updatedReports = (data.dailyReports || []).map(r => {
-          if (r.id === activeReportId) {
-            // Apply only to currently visible/filtered teachers (teachers in the current table logic are listed in `teachers` state)
-            const newTeachers = r.teachersData.map((t: any) => {
-              // We only fill max for teachers currently displayed in the filtered list
-              const isDisplayed = teachers.some(displayed => displayed.id === t.id);
-              if (!isDisplayed) return t;
+        if (!currentReport) return;
+        const updatedTeachers = currentReport.teachersData.map((t: any) => {
+          // We only fill max for teachers currently displayed in the filtered list
+          const isDisplayed = teachers.some(displayed => displayed.id === t.id);
+          if (!isDisplayed) return t;
 
-              const updatedTeacher = { ...t };
-              metricsConfig.forEach(m => {
-                if (m.key !== 'violations_score') updatedTeacher[m.key] = m.max;
-              });
-              return updatedTeacher;
-            });
-            return { ...r, teachersData: newTeachers };
-          }
-          return r;
+          const updatedTeacher = { ...t };
+          metricsConfig.forEach(m => {
+            if (m.key !== 'violations_score') updatedTeacher[m.key] = m.max;
+          });
+          return updatedTeacher;
         });
-        updateData({ dailyReports: updatedReports });
+        updateReportTeachers(activeReportId, updatedTeachers);
         toast.success(lang === 'ar' ? 'تمت التعبئة بنجاح' : 'Filled successfully');
       }
     });
@@ -522,7 +492,13 @@ export const DailyReportsPage: React.FC = () => {
     const max = metricsConfig.find(m => m.key === metricKey)?.max || 0;
     const valueToFill = val !== undefined ? val : max;
 
-    const updatedTeachers = currentReport.teachersData.map(t => ({ ...t, [metricKey]: valueToFill }));
+    // Only update teachers that are currently visible/accessible in the list
+    const updatedTeachers = currentReport.teachersData.map(t => {
+      if (teachers.some(dt => dt.id === t.id)) {
+        return { ...t, [metricKey]: valueToFill };
+      }
+      return t;
+    });
     updateReportTeachers(currentReport.id, updatedTeachers);
   };
 
@@ -609,39 +585,35 @@ export const DailyReportsPage: React.FC = () => {
   };
 
   const toggleAccreditation = (teacherId: string | 'bulk', metricKey: string) => {
-    if (!activeReportId) return;
-    const updatedReports = (data.dailyReports || []).map(r => {
-      if (r.id === activeReportId) {
-        let newTeachers = [...r.teachersData];
-        if (teacherId === 'bulk') {
-          // Check if at least one is NOT unaccredited
-          const allCurrentlyUnaccredited = newTeachers.every(t => (t.unaccreditedMetrics || []).includes(metricKey));
-          newTeachers = newTeachers.map(t => {
-            const current = t.unaccreditedMetrics || [];
-            if (allCurrentlyUnaccredited) {
-              return { ...t, unaccreditedMetrics: current.filter(k => k !== metricKey) };
-            } else {
-              if (current.includes(metricKey)) return t;
-              return { ...t, unaccreditedMetrics: [...current, metricKey] };
-            }
-          });
+    if (!activeReportId || !currentReport) return;
+    
+    let newTeachers = [...currentReport.teachersData];
+    if (teacherId === 'bulk') {
+      // Check if at least one is NOT unaccredited
+      const allCurrentlyUnaccredited = newTeachers.every(t => (t.unaccreditedMetrics || []).includes(metricKey));
+      newTeachers = newTeachers.map(t => {
+        const current = t.unaccreditedMetrics || [];
+        if (allCurrentlyUnaccredited) {
+          return { ...t, unaccreditedMetrics: current.filter(k => k !== metricKey) };
         } else {
-          newTeachers = newTeachers.map(t => {
-            if (t.id === teacherId) {
-              const current = t.unaccreditedMetrics || [];
-              const updated = current.includes(metricKey)
-                ? current.filter(k => k !== metricKey)
-                : [...current, metricKey];
-              return { ...t, unaccreditedMetrics: updated };
-            }
-            return t;
-          });
+          if (current.includes(metricKey)) return t;
+          return { ...t, unaccreditedMetrics: [...current, metricKey] };
         }
-        return { ...r, teachersData: newTeachers };
-      }
-      return r;
-    });
-    updateData({ dailyReports: updatedReports });
+      });
+    } else {
+      newTeachers = newTeachers.map(t => {
+        if (t.id === teacherId) {
+          const current = t.unaccreditedMetrics || [];
+          const updated = current.includes(metricKey)
+            ? current.filter(k => k !== metricKey)
+            : [...current, metricKey];
+          return { ...t, unaccreditedMetrics: updated };
+        }
+        return t;
+      });
+    }
+    
+    updateReportTeachers(activeReportId, newTeachers);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent, teacherIdx: number, metricKey: string) => {
@@ -994,17 +966,18 @@ export const DailyReportsPage: React.FC = () => {
       }
 
       // Create new teachers from imported names
-      const existingNames = new Set(teachers.map(t => t.teacherName.trim()));
+      const existingNames = new Set(currentReport.teachersData.map(t => t.teacherName.trim()));
       const newTeachers: TeacherFollowUp[] = teacherNames
         .filter(name => !existingNames.has(name))
         .map((name, idx) => {
           const t: any = {
-            id: `${Date.now()}-${idx}`,
+            id: `import_${Date.now()}_${idx}`,
             teacherName: name,
             subjectCode: teacherProfiles[name]?.subject || '',
             className: teacherProfiles[name]?.class || '',
+            userId: currentUser?.id,
             violations_notes: [],
-            order: teachers.length + idx + 1,
+            order: currentReport.teachersData.length + idx + 1,
             gender: 'ذكر'
           };
           // Initialize all metrics from the list to 0
@@ -1015,23 +988,13 @@ export const DailyReportsPage: React.FC = () => {
         });
 
       if (newTeachers.length === 0) {
-        toast.info('جميع الأسماء موجودة بالفعل في الجدول');
+        toast.info('جميع الأسماء موجودة بالفعل في الجدول التابع لك');
         setShowImportModal(false);
         return;
       }
 
-      // Update the report with new teachers
-      const updatedReports = (data.dailyReports || []).map(r => {
-        if (r.id === activeReportId) {
-          return {
-            ...r,
-            teachersData: [...r.teachersData, ...newTeachers]
-          };
-        }
-        return r;
-      });
-
-      updateData({ dailyReports: updatedReports });
+      // Update the report with new teachers using safe helper
+      updateReportTeachers(activeReportId, [...currentReport.teachersData, ...newTeachers]);
       toast.success(`تم استيراد ${newTeachers.length} معلم بنجاح`);
       setShowImportModal(false);
     } catch (error) {

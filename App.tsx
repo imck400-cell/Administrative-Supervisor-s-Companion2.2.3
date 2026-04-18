@@ -357,6 +357,8 @@ const MainApp: React.FC = () => {
   const filteredUsersForModal = useMemo(() => {
     const userSchools = currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
     const managedIds = currentUser?.permissions?.managedUserIds || [];
+    
+    // Check if the user is a manager or admin
     const isManager = currentUser?.permissions?.userManagement === true || managedIds.length > 0;
 
     return data.users.filter(u => {
@@ -366,6 +368,8 @@ const MainApp: React.FC = () => {
         return managedIds.includes(u.id);
       }
 
+      // If we reach here, no managedIds list exists.
+
       // 2. Hide admins/full-perm from non-admins
       const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
       if (!isAdminOrFull && isTargetAdmin) return false;
@@ -374,8 +378,7 @@ const MainApp: React.FC = () => {
       if (isAdminOrFull) return true;
 
       if (isManager) {
-        // If they have manager permission but no specific list, they see the whole school? 
-        // No, the user wants them restricted. But let's keep school-wide if no list is set.
+        // If they have manager permission but no specific list, they see the whole school/branch
         return u.schools.some(s => userSchools.includes(s));
       }
 

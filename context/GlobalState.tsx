@@ -338,7 +338,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     if (managedIds.length > 0) {
       // Priority: If user has an explicit managed list, they ONLY see that list (+ themselves)
-      // This applies even if they have an admin role, to honor explicit oversight boundaries.
       return data.users.filter(u => {
         if (u.id === currentUser.id) return true; // Always see self
         
@@ -359,8 +358,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .filter(u => u.schools.some(s => allSchools.includes(s)))
         .map(u => u.id);
     } else if (isManager) {
-      // Generic manager without explicit list (if any)
-      return [currentUser.id];
+      // Generic manager without explicit list: sees fellow school members
+      return data.users
+        .filter(u => u.schools.some(s => selectedSchools.includes(s)))
+        .map(u => u.id);
     } else {
       // Regular users ONLY see themselves
       return [currentUser.id];

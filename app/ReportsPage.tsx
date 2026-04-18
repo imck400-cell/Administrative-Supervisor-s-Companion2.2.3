@@ -865,7 +865,7 @@ export const DailyReportsPage: React.FC = () => {
       dayName: 'تقرير مجمع',
       dateStr: `${from} إلى ${to}`,
       teachersData: Object.values(aggregatedData),
-      periodType: period,
+      periodType: period as 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly',
       dateFrom: from,
       dateTo: to,
       writer: reportWriter,
@@ -1523,7 +1523,7 @@ export const DailyReportsPage: React.FC = () => {
                   إلغاء
                 </button>
                 <button
-                  onClick={aggregateReports}
+                  onClick={() => aggregateReports()}
                   className="flex-[1.5] p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-blue-200 hover:shadow-blue-300 hover:-translate-y-0.5 transition-all active:scale-95 flex items-center justify-center gap-2"
                 >
                   <Zap size={18} fill="currentColor" />

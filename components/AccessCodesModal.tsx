@@ -14,6 +14,8 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
   const { data, updateData } = useGlobal();
   const [newSchool, setNewSchool] = useState('');
   const [newYear, setNewYear] = useState('');
+  const [selectedSchoolForBranch, setSelectedSchoolForBranch] = useState('');
+  const [newBranch, setNewBranch] = useState('');
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -23,9 +25,39 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
     if (!newSchool.trim()) return;
     const currentSchools = data.availableSchools || [];
     if (!currentSchools.includes(newSchool.trim())) {
-      updateData({ availableSchools: [...currentSchools, newSchool.trim()] });
+      updateData({ 
+        availableSchools: [...currentSchools, newSchool.trim()],
+        schoolBranches: {
+          ...(data.schoolBranches || {}),
+          [newSchool.trim()]: ['المركز الرئيسي', 'فرع الطلاب', 'فرع الطالبات']
+        }
+      });
     }
     setNewSchool('');
+  };
+
+  const handleAddBranch = () => {
+    if (!selectedSchoolForBranch || !newBranch.trim()) return;
+    const currentBranches = data.schoolBranches?.[selectedSchoolForBranch] || [];
+    if (!currentBranches.includes(newBranch.trim())) {
+      updateData({
+        schoolBranches: {
+          ...(data.schoolBranches || {}),
+          [selectedSchoolForBranch]: [...currentBranches, newBranch.trim()]
+        }
+      });
+    }
+    setNewBranch('');
+  };
+
+  const handleDeleteBranch = (school: string, branch: string) => {
+    const currentBranches = data.schoolBranches?.[school] || [];
+    updateData({
+      schoolBranches: {
+        ...(data.schoolBranches || {}),
+        [school]: currentBranches.filter(b => b !== branch)
+      }
+    });
   };
 
   const handleAddYear = () => {
@@ -138,47 +170,87 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {data.availableSchools?.map((s, idx) => (
-                      <div key={`school-${s}-${idx}`} className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold border border-blue-100 group">
-                        <span>{s}</span>
-                        <button 
-                          onClick={() => handleDeleteSchool(s)}
-                          className="p-0.5 hover:bg-blue-200 rounded-md transition-colors text-blue-400 hover:text-red-500"
-                        >
-                          <X size={12} />
-                        </button>
+                      <div key={`school-${s}-${idx}`} className="flex flex-col gap-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold border border-blue-100 group w-full">
+                        <div className="flex items-center justify-between">
+                          <span>{s}</span>
+                          <button 
+                            onClick={() => handleDeleteSchool(s)}
+                            className="p-0.5 hover:bg-blue-200 rounded-md transition-colors text-blue-400 hover:text-red-500"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {data.schoolBranches?.[s]?.map(b => (
+                            <span key={`${s}-${b}`} className="px-2 py-0.5 bg-white text-blue-500 rounded text-[10px] border border-blue-100 flex items-center gap-1">
+                              {b}
+                              <button onClick={() => handleDeleteBranch(s, b)} className="hover:text-red-500"><X size={10}/></button>
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 mr-2">إضافة عام دراسي جديد</label>
-                  <div className="flex gap-2">
-                    <input 
-                      type="text"
-                      className="flex-1 px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-xl outline-none font-bold"
-                      placeholder="العام الدراسي (مثلاً 2024-2025)..."
-                      value={newYear}
-                      onChange={(e) => setNewYear(e.target.value)}
-                    />
-                    <button 
-                      onClick={handleAddYear}
-                      className="px-4 py-3 bg-blue-600 text-white rounded-xl font-black hover:bg-blue-700 transition-all flex items-center gap-2"
-                    >
-                      <Plus size={18} /> إضافة
-                    </button>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 mr-2">إضافة فرع למدرسة</label>
+                    <div className="flex gap-2">
+                      <select
+                        className="w-1/3 px-2 py-3 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-xl outline-none font-bold text-sm"
+                        value={selectedSchoolForBranch}
+                        onChange={e => setSelectedSchoolForBranch(e.target.value)}
+                      >
+                        <option value="">تحديد مدرسة</option>
+                        {data.availableSchools?.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <input 
+                        type="text"
+                        className="flex-1 px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-xl outline-none font-bold text-sm"
+                        placeholder="اسم الفرع..."
+                        value={newBranch}
+                        onChange={(e) => setNewBranch(e.target.value)}
+                      />
+                      <button 
+                        onClick={handleAddBranch}
+                        className="px-3 py-3 bg-indigo-600 text-white rounded-xl font-black hover:bg-indigo-700 transition-all flex items-center gap-1 text-sm"
+                      >
+                        <Plus size={16} /> اضافة فرع
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {data.availableYears?.map((y, idx) => (
-                      <div key={`year-${y}-${idx}`} className="flex items-center gap-1 px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold border border-slate-200 group">
-                        <span>{y}</span>
-                        <button 
-                          onClick={() => handleDeleteYear(y)}
-                          className="p-0.5 hover:bg-slate-200 rounded-md transition-colors text-slate-400 hover:text-red-500"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))}
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 mr-2">إضافة عام دراسي جديد</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text"
+                        className="flex-1 px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-xl outline-none font-bold"
+                        placeholder="العام الدراسي (مثلاً 2024-2025)..."
+                        value={newYear}
+                        onChange={(e) => setNewYear(e.target.value)}
+                      />
+                      <button 
+                        onClick={handleAddYear}
+                        className="px-4 py-3 bg-blue-600 text-white rounded-xl font-black hover:bg-blue-700 transition-all flex items-center gap-2"
+                      >
+                        <Plus size={18} /> إضافة
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {data.availableYears?.map((y, idx) => (
+                        <div key={`year-${y}-${idx}`} className="flex items-center gap-1 px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold border border-slate-200 group">
+                          <span>{y}</span>
+                          <button 
+                            onClick={() => handleDeleteYear(y)}
+                            className="p-0.5 hover:bg-slate-200 rounded-md transition-colors text-slate-400 hover:text-red-500"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>

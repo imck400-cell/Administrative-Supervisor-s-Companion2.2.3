@@ -1,12 +1,35 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useGlobal } from '../context/GlobalState';
 import { Save, Plus, Trash2, School, Building, Calendar, Users, Briefcase, Sparkles } from 'lucide-react';
 
 const ProfilePage: React.FC = () => {
-  const { data, updateData, lang } = useGlobal();
+  const { data, updateData, lang, currentUser } = useGlobal();
   const profile = data.profile;
+
+  const isManagerOrAdmin = currentUser?.role === 'admin' || currentUser?.permissions?.all === true || currentUser?.permissions?.userManagement === true;
+
+  useEffect(() => {
+    // Auto-fill logic for non-managers (or even apply baseline for everyone if empty)
+    if (currentUser) {
+      const mainSchool = currentUser.selectedSchool?.split(',')[0]?.trim() || '';
+      const branches = currentUser.permissions?.schoolsAndBranches?.[mainSchool] || [];
+      const mainBranch = branches[0] || '';
+
+      if (!isManagerOrAdmin) {
+         if ((profile.schoolName !== mainSchool && mainSchool) || (profile.branch !== mainBranch && mainBranch)) {
+            updateData({
+              profile: {
+                ...profile,
+                schoolName: mainSchool || profile.schoolName || '',
+                branch: mainBranch || profile.branch || ''
+              }
+            });
+         }
+      }
+    }
+  }, [currentUser, profile, isManagerOrAdmin, updateData]);
 
   const updateField = (field: string, value: string) => {
     updateData({
@@ -39,8 +62,8 @@ const ProfilePage: React.FC = () => {
   const formFields = [
     { key: 'ministry', label: 'وزارة التربية والتعليم والبحث العلمي', icon: <School className="w-5 h-5" /> },
     { key: 'district', label: 'المنطقة التعليمية', icon: <Building className="w-5 h-5" /> },
-    { key: 'schoolName', label: 'اسم المدارس', icon: <Briefcase className="w-5 h-5" /> },
-    { key: 'branch', label: 'الفرع', icon: <Sparkles className="w-5 h-5" /> },
+    { key: 'schoolName', label: 'اسم المدارس', icon: <Briefcase className="w-5 h-5" />, autoFilled: true },
+    { key: 'branch', label: 'الفرع', icon: <Sparkles className="w-5 h-5" />, autoFilled: true },
     { key: 'year', label: 'العام الدراسي', icon: <Calendar className="w-5 h-5" /> },
     { key: 'semester', label: 'الفصل الدراسي', icon: <Calendar className="w-5 h-5" /> },
     { key: 'branchManager', label: 'مدير الفرع', icon: <Users className="w-5 h-5" /> },
@@ -61,21 +84,26 @@ const ProfilePage: React.FC = () => {
 
       <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {formFields.map((field) => (
-            <div key={field.key} className="space-y-2">
-              <label className="text-xs font-black text-slate-500 mr-2 flex items-center gap-2">
-                {field.icon}
-                {field.label}
-              </label>
-              <input
-                type="text"
-                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all outline-none font-bold text-slate-700"
-                value={(profile as any)[field.key] || ''}
-                onChange={(e) => updateField(field.key, e.target.value)}
-                placeholder="..."
-              />
-            </div>
-          ))}
+          {formFields.map((field) => {
+            const isReadOnly = field.autoFilled && !isManagerOrAdmin;
+            return (
+              <div key={field.key} className="space-y-2">
+                <label className="text-xs font-black text-slate-500 mr-2 flex items-center gap-2">
+                  {field.icon}
+                  {field.label}
+                  {isReadOnly && <span className="text-[10px] text-white bg-slate-400 px-1.5 py-0.5 rounded-full">تلقائي</span>}
+                </label>
+                <input
+                  type="text"
+                  disabled={isReadOnly}
+                  className={`w-full p-4 rounded-2xl border-2 transition-all outline-none font-bold text-slate-700 ${isReadOnly ? 'bg-slate-100 border-slate-200 opacity-70 cursor-not-allowed' : 'bg-slate-50 border-slate-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-100'}`}
+                  value={(profile as any)[field.key] || ''}
+                  onChange={(e) => updateField(field.key, e.target.value)}
+                  placeholder="..."
+                />
+              </div>
+            );
+          })}
         </div>
 
         <div className="border-t pt-8 space-y-4">

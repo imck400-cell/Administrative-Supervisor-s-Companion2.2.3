@@ -332,6 +332,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // userFilter === 'all': derive the allowed set from school membership.
     const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
     const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
+    const isManager = currentUser.permissions?.userManagement === true;
 
     if (isAdminOrFull) {
       // Admin sees all users in the selected school(s)
@@ -341,15 +342,26 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return data.users
         .filter(u => u.schools.some(s => allSchools.includes(s)))
         .map(u => u.id);
+    } else if (isManager) {
+      // Manager sees themselves and users in their assigned schools + branches
+      return data.users.filter(u => {
+        if (u.id === currentUser.id) return true; // Always see self
+        
+        const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
+        if (isTargetAdmin) return false;
+
+        return u.schools.some(s => {
+          if (!selectedSchools.includes(s)) return false;
+          const myBranches = currentUser.permissions?.schoolsAndBranches?.[s] || [];
+          const targetBranches = u.permissions?.schoolsAndBranches?.[s] || [];
+          
+          if (myBranches.length === 0 || targetBranches.length === 0) return true; 
+          return myBranches.some(b => targetBranches.includes(b));
+        });
+      }).map(u => u.id);
     } else {
-      // Regular user: see themselves and peers in same school(s)
-      return data.users
-        .filter(u => {
-          const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
-          if (isTargetAdmin) return false;
-          return u.schools.some(s => selectedSchools.includes(s));
-        })
-        .map(u => u.id);
+      // Regular users ONLY see themselves
+      return [currentUser.id];
     }
   }, [isAuthenticated, currentUser, userFilter, data.users, data.availableSchools]);
 
@@ -536,6 +548,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!isAuthenticated || !currentUser) return "";
     const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
     const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
+    const isManager = currentUser.permissions?.userManagement === true;
     
     let ids: string[] = [];
 
@@ -545,16 +558,28 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         u.schools.some(s => selectedSchools.includes(s))
       ).map(u => u.id);
     } else {
-      // Non-admins can only see themselves by default, UNLESS userFilter is 'all'
-      // If userFilter is 'all', they should see all non-admin users in their schools
       if (userFilter === 'all') {
-        ids = data.users.filter(u => {
-          const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
-          if (isTargetAdmin) return false;
-          return u.schools.some(s => selectedSchools.includes(s));
-        }).map(u => u.id);
+        if (isManager) {
+          ids = data.users.filter(u => {
+            if (u.id === currentUser.id) return true;
+            const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
+            if (isTargetAdmin) return false;
+
+            return u.schools.some(s => {
+              if (!selectedSchools.includes(s)) return false;
+              const myBranches = currentUser.permissions?.schoolsAndBranches?.[s] || [];
+              const targetBranches = u.permissions?.schoolsAndBranches?.[s] || [];
+              
+              if (myBranches.length === 0 || targetBranches.length === 0) return true; 
+              return myBranches.some(b => targetBranches.includes(b));
+            });
+          }).map(u => u.id);
+        } else {
+          // Regular users ONLY see themselves
+          ids = [currentUser.id];
+        }
       } else {
-        ids = [currentUser.id];
+        ids = userFilter.split(',');
       }
     }
 

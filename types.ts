@@ -334,6 +334,7 @@ export interface UserPermissions {
   schoolProfile?: boolean;
   specialCodes?: boolean;
   userManagement?: boolean;
+  schoolsAndBranches?: Record<string, string[]>;
 }
 
 export interface User {
@@ -352,6 +353,7 @@ export interface AuthUser {
   id: string;
   name: string;
   selectedSchool: string;
+  selectedBranch?: string;
   selectedYear?: string;
   role: 'admin' | 'user';
   permissions?: UserPermissions;
@@ -398,4 +400,5 @@ export interface AppData {
   adminFollowUpTypes?: string[];
   availableSchools?: string[];
   availableYears?: string[];
+  schoolBranches?: Record<string, string[]>;
 }

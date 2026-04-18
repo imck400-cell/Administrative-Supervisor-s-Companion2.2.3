@@ -13,7 +13,7 @@ import {
   Lock, LayoutDashboard, ClipboardCheck, UserX, UserPlus,
   Users, Database, FileSearch, Briefcase,
   School, Calendar, AlertTriangle, Phone, MessageCircle, Key, LogOut, User as UserIcon, X, Check,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, Sparkles
 } from 'lucide-react';
 import GlobalScrollArrows from './components/GlobalScrollArrows';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -625,60 +625,98 @@ const UserFilterModal: React.FC<{
           </div>
 
           {schools.map(school => {
-            const usersInSchool = users.filter(u => u.schools.includes(school));
-            if (usersInSchool.length === 0) return null;
+            const schoolBranchesFromGlobal = (window as any).__rafiquk_data?.schoolBranches?.[school] || [];
+            
+            // Collect all branches that users in this school actually have
+            const userBranches = new Set<string>();
+            users.filter(u => u.schools.includes(school)).forEach(u => {
+              const uBranches = u.permissions?.schoolsAndBranches?.[school] || [];
+              if (uBranches.length === 0) userBranches.add('بدون فرع مخصص');
+              else uBranches.forEach(b => userBranches.add(b));
+            });
 
-            const allSelected = usersInSchool.every(u => tempSelected.includes(u.id));
-            const isExpanded = expandedSchools.includes(school);
+            const uniqueBranches = Array.from(userBranches);
+            if (uniqueBranches.length === 0) return null;
+
+            const isSchoolExpanded = expandedSchools.includes(school);
 
             return (
-              <div key={school} className="space-y-2">
+              <div key={school} className="space-y-4">
                 <div
                   onClick={() => toggleSchoolExpand(school)}
                   className="flex items-center justify-between p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all group"
                 >
                   <div className="flex items-center gap-3">
                     <div className="text-slate-400 group-hover:text-blue-500 transition-colors">
-                      {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                      {isSchoolExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                     </div>
                     <School className="text-blue-500" size={20} />
                     <span className="font-black text-slate-700">{school}</span>
                   </div>
-                  
-                  <div 
-                    onClick={(e) => toggleSchoolSelection(school, e)}
-                    className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${allSelected ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300 group-hover:border-blue-400'}`}
-                  >
-                    {allSelected && <Check size={16} className="text-white" />}
-                  </div>
                 </div>
 
                 <AnimatePresence>
-                  {isExpanded && (
+                  {isSchoolExpanded && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
+                      className="overflow-hidden pr-6 space-y-4"
                     >
-                      <div className="grid grid-cols-1 gap-2 pr-6 py-2">
-                        {usersInSchool.map(u => (
-                          <label key={`${school}-${u.id}`} className="flex items-center justify-between p-4 bg-white rounded-2xl cursor-pointer hover:bg-blue-50/50 transition-all border border-slate-100 hover:border-blue-100">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400">
-                                <UserIcon size={16} />
+                      {uniqueBranches.map(branch => {
+                        const usersInBranch = users.filter(u => {
+                          if (!u.schools.includes(school)) return false;
+                          const uBranches = u.permissions?.schoolsAndBranches?.[school] || [];
+                          if (branch === 'بدون فرع مخصص') return uBranches.length === 0;
+                          return uBranches.includes(branch);
+                        });
+
+                        if (usersInBranch.length === 0) return null;
+                        
+                        const allSelected = usersInBranch.every(u => tempSelected.includes(u.id));
+
+                        return (
+                          <div key={`${school}-${branch}`} className="space-y-2">
+                            <div className="flex items-center justify-between p-3 bg-purple-50/50 rounded-xl border border-purple-100">
+                              <span className="font-bold text-sm text-purple-700 flex items-center gap-2">
+                                <Sparkles size={16}/> {branch}
+                              </span>
+                              <div 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (allSelected) {
+                                    setTempSelected(prev => prev.filter(id => !usersInBranch.map(u=>u.id).includes(id)));
+                                  } else {
+                                    setTempSelected(prev => Array.from(new Set([...prev, ...usersInBranch.map(u=>u.id)])));
+                                  }
+                                }}
+                                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all cursor-pointer ${allSelected ? 'bg-purple-600 border-purple-600' : 'bg-white border-purple-300'}`}
+                              >
+                                {allSelected && <Check size={14} className="text-white" />}
                               </div>
-                              <span className="font-bold text-slate-700">{u.name}</span>
                             </div>
-                            <input
-                              type="checkbox"
-                              checked={tempSelected.includes(u.id)}
-                              onChange={() => toggleUser(u.id)}
-                              className="w-5 h-5 rounded-lg border-2 border-slate-200 text-blue-600 focus:ring-blue-500"
-                            />
-                          </label>
-                        ))}
-                      </div>
+                            
+                            <div className="grid grid-cols-1 gap-2 pr-6">
+                              {usersInBranch.map(u => (
+                                <label key={`${school}-${branch}-${u.id}`} className="flex items-center justify-between p-3 bg-white rounded-2xl cursor-pointer hover:bg-blue-50/50 transition-all border border-slate-100 hover:border-blue-100 shadow-sm">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400">
+                                      <UserIcon size={16} />
+                                    </div>
+                                    <span className="font-bold text-slate-700">{u.name}</span>
+                                  </div>
+                                  <input
+                                    type="checkbox"
+                                    checked={tempSelected.includes(u.id)}
+                                    onChange={() => toggleUser(u.id)}
+                                    className="w-5 h-5 rounded-lg border-2 border-slate-200 text-blue-600 focus:ring-blue-500"
+                                  />
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </motion.div>
                   )}
                 </AnimatePresence>

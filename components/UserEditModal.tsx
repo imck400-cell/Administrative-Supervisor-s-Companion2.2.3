@@ -205,7 +205,39 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
       const next = current.includes(school) 
         ? current.filter(s => s !== school)
         : [...current, school];
-      return { ...prev, schools: next };
+        
+      // Clean up branches if school is removed
+      let nextPermissions = { ...prev.permissions };
+      if (!next.includes(school) && nextPermissions.schoolsAndBranches) {
+        const newBranches = { ...nextPermissions.schoolsAndBranches };
+        delete newBranches[school];
+        nextPermissions.schoolsAndBranches = newBranches;
+      }
+        
+      return { ...prev, schools: next, permissions: nextPermissions };
+    });
+  };
+
+  const toggleBranch = (school: string, branch: string) => {
+    setFormData(prev => {
+      if (!prev) return null;
+      const currentPermissions = prev.permissions || {};
+      const schoolsAndBranches = { ...(currentPermissions.schoolsAndBranches || {}) };
+      const currentBranches = schoolsAndBranches[school] || [];
+      
+      if (currentBranches.includes(branch)) {
+        schoolsAndBranches[school] = currentBranches.filter(b => b !== branch);
+      } else {
+        schoolsAndBranches[school] = [...currentBranches, branch];
+      }
+      
+      return {
+        ...prev,
+        permissions: {
+          ...currentPermissions,
+          schoolsAndBranches
+        }
+      };
     });
   };
 
@@ -315,22 +347,52 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
                   <h3 className="font-black text-xl">المدارس والأعوام المصرح بها</h3>
                 </div>
                 
-                <div className="space-y-2">
-                  <label className="text-sm font-black text-slate-500 mr-2">المدارس</label>
-                  <div className="flex flex-wrap gap-2">
-                    {data.availableSchools?.map((school, idx) => (
-                      <button
-                        key={`school-${school}-${idx}`}
-                        onClick={() => toggleSchool(school)}
-                        className={`px-4 py-2 rounded-xl font-bold text-sm transition-all border-2 ${
-                          formData.schools?.includes(school)
-                            ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-100'
-                            : 'bg-white border-slate-100 text-slate-400 hover:border-purple-200'
-                        }`}
-                      >
-                        {school}
-                      </button>
-                    ))}
+                <div className="space-y-4">
+                  <label className="text-sm font-black text-slate-500 mr-2">المدارس والفروع</label>
+                  <div className="flex flex-col gap-3">
+                    {data.availableSchools?.map((school, idx) => {
+                      const isSchoolSelected = formData.schools?.includes(school);
+                      const schoolBranches = data.schoolBranches?.[school] || [];
+                      const isBranchesEmpty = schoolBranches.length === 0;
+                      
+                      return (
+                        <div key={`school-branch-${school}-${idx}`} className={`p-4 rounded-2xl border-2 transition-all ${isSchoolSelected ? 'bg-purple-50/50 border-purple-200' : 'bg-white border-slate-100 hover:border-purple-100'}`}>
+                          <button
+                            onClick={() => toggleSchool(school)}
+                            className={`w-full flex items-center justify-between text-right px-4 py-2 rounded-xl font-bold transition-all ${
+                              isSchoolSelected
+                                ? 'bg-purple-600 text-white shadow-lg shadow-purple-100'
+                                : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                            }`}
+                          >
+                            <span>{school}</span>
+                            {isSchoolSelected && <Check size={18} />}
+                          </button>
+                          
+                          {/* Branches mapping if school is selected */}
+                          {isSchoolSelected && !isBranchesEmpty && (
+                            <div className="mt-3 flex flex-wrap gap-2 px-2">
+                              {schoolBranches.map(branch => {
+                                const isBranchSelected = formData.permissions?.schoolsAndBranches?.[school]?.includes(branch);
+                                return (
+                                  <button
+                                    key={`branch-${branch}`}
+                                    onClick={() => toggleBranch(school, branch)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                                      isBranchSelected
+                                        ? 'bg-purple-100 border-purple-300 text-purple-700 shadow-sm'
+                                        : 'bg-white border-slate-200 text-slate-400 hover:border-purple-200 hover:bg-purple-50'
+                                    }`}
+                                  >
+                                    {branch}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 

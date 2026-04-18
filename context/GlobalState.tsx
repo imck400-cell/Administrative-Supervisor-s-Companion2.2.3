@@ -604,12 +604,16 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       arrayKeys.forEach(k => dataBuffer[k] = {});
 
       // Shared keys for the selected schools
-      const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions', 'users', 'availableSchools', 'availableYears'];
+      const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears'];
+      const customizableKeys = ['taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
       const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
       const schoolsToListen = selectedSchools.includes('all') ? data.availableSchools : selectedSchools;
 
+      const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
+
       schoolsToListen.forEach(school => {
-        sharedKeys.forEach(key => {
+        // 1. Strictly Shared Keys
+        strictlySharedKeys.forEach(key => {
           const listenerId = `auth-shared-${school}-${key}`;
           if (dataListeners.current.has(listenerId)) return;
           dataListeners.current.add(listenerId);
@@ -620,7 +624,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               const remoteData = snapshot.data().data;
               setData(prev => {
                 if (key === 'users') {
-                  // Merge users for the current school
                   const existingUsers = prev.users || [];
                   const newUsers = Array.isArray(remoteData) ? remoteData : [];
                   const merged = [...existingUsers];
@@ -652,12 +655,56 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 }
               });
             }
-          }, (error) => {
-            if (!error.message.includes('permission-denied')) {
-              console.error(`Auth shared sync error [${key}] for school [${school}]:`, error);
-            }
           });
           unsubscribes.push(unsub);
+        });
+
+        // 2. Customizable Keys (Templates, Exclusions, etc.)
+        customizableKeys.forEach(key => {
+          const personalListenerId = `auth-personal-config-${school}-${currentUser.id}-${key}`;
+          const sharedListenerId = `auth-shared-config-${school}-${key}`;
+
+          // Always listen to shared as baseline
+          if (!dataListeners.current.has(sharedListenerId)) {
+            dataListeners.current.add(sharedListenerId);
+            const sq = doc(db, 'schools', school, 'shared', key);
+            const sunsub = onSnapshot(sq, (sharedSnap) => {
+              // We only apply shared if the user is an admin OR they have NO personal override yet
+              // A personal override is indicated by a separate listener below.
+              // To avoid race conditions, we can just fetch the personal doc first or track it in a ref.
+              // For simplicity, we just use the shared snap if no personal data is set. (See personal listener logic)
+              if (sharedSnap.exists() && isAdminOrFull) {
+                 setData(prev => {
+                   if (JSON.stringify(prev[key]) === JSON.stringify(sharedSnap.data().data)) return prev;
+                   return { ...prev, [key]: sharedSnap.data().data };
+                 });
+              }
+            });
+            unsubscribes.push(sunsub);
+          }
+
+          // If not admin, listen to personal data
+          if (!isAdminOrFull && !dataListeners.current.has(personalListenerId)) {
+            dataListeners.current.add(personalListenerId);
+            const pq = doc(db, 'schools', school, 'users', currentUser.id, 'data', key);
+            const punsub = onSnapshot(pq, async (personalSnap) => {
+               if (personalSnap.exists() && personalSnap.data().data !== undefined) {
+                 // Personal override exists
+                 setData(prev => ({ ...prev, [key]: personalSnap.data().data }));
+               } else {
+                 // Personal override does not exist => fetch once from shared baseline as initial value
+                 try {
+                   const { getDoc } = require('firebase/firestore');
+                   const sq = doc(db, 'schools', school, 'shared', key);
+                   const sharedDoc = await getDoc(sq);
+                   if (sharedDoc.exists()) {
+                     setData(prev => ({ ...prev, [key]: sharedDoc.data().data }));
+                   }
+                 } catch(e){}
+               }
+            });
+            unsubscribes.push(punsub);
+          }
         });
 
         const uids = targetUserIds.split(',').filter(id => id.length > 0);
@@ -711,7 +758,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isAuthenticated && currentUser) {
       const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
       const schoolsToUpdate = selectedSchools.includes('all') ? data.availableSchools : selectedSchools;
-      const sharedKeys = ['profile', 'taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions', 'users', 'availableSchools', 'availableYears'];
+      const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears'];
+      const customizableKeys = ['taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
 
       // Helper to check if an item matches the current active filters (user + date).
       // Uses effectiveUserIds so 'all' still resolves to a concrete list.
@@ -744,14 +792,30 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const updatedData = { ...rawData };
 
       for (const key of Object.keys(newData) as Array<keyof AppData>) {
-        if (sharedKeys.includes(key)) {
+        if (strictlySharedKeys.includes(key)) {
           updatedData[key] = newData[key] as any;
-          if (currentUser.role === 'admin') {
+          if (currentUser.role === 'admin' || currentUser.permissions?.all === true) {
             schoolsToUpdate.forEach(school => {
               setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
                 .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));
             });
           }
+          continue;
+        }
+
+        if (customizableKeys.includes(key)) {
+          updatedData[key] = newData[key] as any;
+          const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
+          
+          schoolsToUpdate.forEach(school => {
+            if (isAdminOrFull) {
+              setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
+                .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));
+            } else {
+              setDoc(doc(db, 'schools', school, 'users', currentUser.id, 'data', key), { data: newData[key] })
+                .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/users/${currentUser.id}/data/${key}`));
+            }
+          });
           continue;
         }
 

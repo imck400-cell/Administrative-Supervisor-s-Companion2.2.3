@@ -378,16 +378,21 @@ export const DailyReportsPage: React.FC = () => {
     setConfirmDialog({
       isOpen: true,
       title: 'تعبئة الدرجات',
-      message: lang === 'ar' ? 'هل أنت متأكد من تعبئة جميع الدرجات بالحد الأقصى؟' : 'Fill all max?',
+      message: lang === 'ar' ? 'هل أنت متأكد من تعبئة جميع الدرجات المبينة في الجدول بالحد الأقصى؟' : 'Fill all max?',
       onConfirm: () => {
         const updatedReports = (data.dailyReports || []).map(r => {
           if (r.id === activeReportId) {
-            const newTeachers = r.teachersData.map(t => {
-              const newScores = { ...t.scores };
+            // Apply only to currently visible/filtered teachers (teachers in the current table logic are listed in `teachers` state)
+            const newTeachers = r.teachersData.map((t: any) => {
+              // We only fill max for teachers currently displayed in the filtered list
+              const isDisplayed = teachers.some(displayed => displayed.id === t.id);
+              if (!isDisplayed) return t;
+
+              const updatedTeacher = { ...t };
               metricsConfig.forEach(m => {
-                if (m.key !== 'violations_score') newScores[m.key] = m.max;
+                if (m.key !== 'violations_score') updatedTeacher[m.key] = m.max;
               });
-              return { ...t, scores: newScores };
+              return updatedTeacher;
             });
             return { ...r, teachersData: newTeachers };
           }
@@ -800,13 +805,18 @@ export const DailyReportsPage: React.FC = () => {
     }
   };
 
-  const aggregateReports = () => {
-    const period = aggPeriod;
+  const aggregateReports = (overridePeriod?: string) => {
+    const period = overridePeriod || aggPeriod;
     const from = aggDateFrom;
     const to = aggDateTo;
 
+    if (!from || !to) {
+      toast.error('يرجى تحديد تاريخ البداية والنهاية أولاً');
+      return;
+    }
+
     const filtered = (data.dailyReports || []).filter(r =>
-      r.periodType === 'daily' &&
+      (r.periodType === 'daily' || !r.periodType) &&
       r.dateStr >= from &&
       r.dateStr <= to
     );
@@ -1559,6 +1569,46 @@ export const DailyReportsPage: React.FC = () => {
               ))}
             </div>
 
+            {/* Quick Generator for Non-Daily Reports */}
+            {archiveCategory !== 'daily' && (
+              <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-[1.5rem] shadow-sm animate-in fade-in zoom-in slide-in-from-top-2">
+                <h4 className="text-sm font-black text-blue-800 mb-3 flex items-center gap-2">
+                  <Zap size={16} className="text-blue-600" />
+                  إنشاء خطة تجميعية جديدة
+                </h4>
+                <div className="flex flex-col sm:flex-row gap-3 items-end">
+                  <div className="flex-1 w-full space-y-1">
+                    <label className="text-xs font-black text-slate-500 px-1">من تاريخ</label>
+                    <input
+                      type="date"
+                      className="w-full p-2.5 rounded-xl border-2 border-white bg-white/60 shadow-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition-all"
+                      value={aggDateFrom}
+                      onChange={e => setAggDateFrom(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex-1 w-full space-y-1">
+                    <label className="text-xs font-black text-slate-500 px-1">إلى تاريخ</label>
+                    <input
+                      type="date"
+                      className="w-full p-2.5 rounded-xl border-2 border-white bg-white/60 shadow-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition-all"
+                      value={aggDateTo}
+                      onChange={e => setAggDateTo(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    onClick={() => {
+                      setAggPeriod(archiveCategory as any);
+                      aggregateReports(archiveCategory);
+                      setShowArchive(false);
+                    }}
+                    className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl font-black shadow-lg shadow-blue-200 hover:bg-blue-700 hover:-translate-y-0.5 transition-all flex justify-center items-center gap-2 whitespace-nowrap"
+                  >
+                    حساب وإنشاء
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Search */}
             <div className="relative mb-4">
               <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -2184,6 +2234,7 @@ export const DailyReportsPage: React.FC = () => {
                                     disabled={isUnaccredited}
                                     className={`flex-1 p-2 bg-slate-50 rounded-xl font-black text-center outline-none focus:ring-2 ring-blue-100 font-sans ${isUnaccredited ? 'opacity-30' : ''}`}
                                     value={(teacher as any)[m.key] || 0}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={e => {
                                       const val = Math.min(m.max, Math.max(0, parseInt(e.target.value) || 0));
                                       updateTeacher(teacher.id, { [m.key]: val });
@@ -2283,6 +2334,7 @@ export const DailyReportsPage: React.FC = () => {
                                       disabled={isUnaccredited}
                                       className={`w-full p-2 bg-slate-50 rounded-xl font-black text-center outline-none focus:ring-2 ring-purple-100 font-sans ${isUnaccredited ? 'opacity-30' : ''}`}
                                       value={(t as any)[mKey] || 0}
+                                      onFocus={(e) => e.target.select()}
                                       onChange={e => {
                                         const val = Math.min(m.max, Math.max(0, parseInt(e.target.value) || 0));
                                         updateTeacher(t.id, { [mKey]: val });

@@ -343,21 +343,15 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .filter(u => u.schools.some(s => allSchools.includes(s)))
         .map(u => u.id);
     } else if (isManager) {
-      // Manager sees themselves and users in their assigned schools + branches
+      // Manager sees themselves and users explicitly assigned to them via managedUserIds
+      const explicitlyManaged = currentUser.permissions?.managedUserIds || [];
       return data.users.filter(u => {
         if (u.id === currentUser.id) return true; // Always see self
         
         const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
         if (isTargetAdmin) return false;
 
-        return u.schools.some(s => {
-          if (!selectedSchools.includes(s)) return false;
-          const myBranches = currentUser.permissions?.schoolsAndBranches?.[s] || [];
-          const targetBranches = u.permissions?.schoolsAndBranches?.[s] || [];
-          
-          if (myBranches.length === 0 || targetBranches.length === 0) return true; 
-          return myBranches.some(b => targetBranches.includes(b));
-        });
+        return explicitlyManaged.includes(u.id);
       }).map(u => u.id);
     } else {
       // Regular users ONLY see themselves
@@ -560,19 +554,13 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } else {
       if (userFilter === 'all') {
         if (isManager) {
+          const explicitlyManaged = currentUser.permissions?.managedUserIds || [];
           ids = data.users.filter(u => {
             if (u.id === currentUser.id) return true;
             const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
             if (isTargetAdmin) return false;
 
-            return u.schools.some(s => {
-              if (!selectedSchools.includes(s)) return false;
-              const myBranches = currentUser.permissions?.schoolsAndBranches?.[s] || [];
-              const targetBranches = u.permissions?.schoolsAndBranches?.[s] || [];
-              
-              if (myBranches.length === 0 || targetBranches.length === 0) return true; 
-              return myBranches.some(b => targetBranches.includes(b));
-            });
+            return explicitlyManaged.includes(u.id);
           }).map(u => u.id);
         } else {
           // Regular users ONLY see themselves

@@ -334,6 +334,7 @@ export interface UserPermissions {
   schoolProfile?: boolean;
   specialCodes?: boolean;
   userManagement?: boolean;
+  managedUserIds?: string[];
   schoolsAndBranches?: Record<string, string[]>;
 }
 

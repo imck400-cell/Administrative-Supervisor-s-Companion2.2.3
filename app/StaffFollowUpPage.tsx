@@ -194,11 +194,18 @@ const StaffFollowUpPage: React.FC = () => {
         }
     }, [reports, currentReportId]);
 
+    const [displayLimit, setDisplayLimit] = useState(50);
+    useEffect(() => {
+        setDisplayLimit(50);
+    }, [currentReportId, followUpType, viewMode]);
+
     const employees = useMemo(() => {
         const report = reports.find(r => r.id === currentReportId);
         if (!report) return [];
         return report.employeesData;
     }, [reports, currentReportId]);
+
+    const displayedEmployees = useMemo(() => employees.slice(0, displayLimit), [employees, displayLimit]);
 
     const displayedMetrics = useMemo(() => {
         return data.adminMetricsList?.[followUpType] || [];
@@ -2065,7 +2072,7 @@ const StaffFollowUpPage: React.FC = () => {
                                         <tbody className="divide-y divide-slate-100">
                                             {employees.length === 0 ? (
                                                 <tr><td colSpan={100} className="p-32 text-center text-slate-300 font-bold text-lg">لم يتم رصد أي موظفين بعد في هذا الجدول</td></tr>
-                                            ) : employees.filter(e => e.employeeName?.includes(searchTerm)).map((emp, idx) => {
+                                            ) : employees.filter(e => e.employeeName?.includes(searchTerm)).slice(0, displayLimit).map((emp, idx) => {
                                                 const total = calculateTotal(emp);
                                                 const max = calculateMaxTotal(emp);
                                                 const percent = max > 0 ? ((total / max) * 100).toFixed(1) : '0';
@@ -2189,6 +2196,18 @@ const StaffFollowUpPage: React.FC = () => {
                                                     </tr>
                                                 );
                                             })}
+                                            {displayLimit < employees.filter(e => e.employeeName?.includes(searchTerm)).length && (
+                                                <tr>
+                                                    <td colSpan={100} className="p-2 text-center bg-slate-50 border-t">
+                                                        <button 
+                                                            onClick={() => setDisplayLimit(prev => prev + 50)}
+                                                            className="px-6 py-2 bg-white hover:bg-blue-50 text-blue-600 font-bold rounded-lg border border-slate-200 transition-colors shadow-sm text-xs"
+                                                        >
+                                                            تحميل المزيد... ({employees.filter(e => e.employeeName?.includes(searchTerm)).length - displayLimit} متبقي)
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            )}
                                         </tbody>
                                         <tfoot className="sticky bottom-0 z-30 bg-[#FFD966] text-[#4F3F0F] font-black text-xs h-16 shadow-[0_-5px_20px_rgba(0,0,0,0.2)]">
                                             <tr className="border-t-4 border-[#E6B11F]">

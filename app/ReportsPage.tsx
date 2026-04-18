@@ -129,6 +129,12 @@ export const DailyReportsPage: React.FC = () => {
   // Subjects Ordering
   const subjectOrder = ["مربية", "القرآن الكريم", "التربية الإسلامية", "اللغة العربية", "اللغة الإنجليزية", "الرياضيات", "العلوم", "الكيمياء", "الفيزياء", "الأحياء", "الاجتماعيات", "الحاسوب", "المكتبة", "الفنية", "المختص الاجتماعي", "الأنشطة", "غيرها"];
 
+  const [displayLimit, setDisplayLimit] = useState(50);
+  
+  useEffect(() => {
+    setDisplayLimit(50);
+  }, [currentReport?.id, filterMode, activeTeacherFilter, sortConfig]);
+
   const teachers = useMemo(() => {
     let list = currentReport ? [...currentReport.teachersData] : [];
 
@@ -163,6 +169,8 @@ export const DailyReportsPage: React.FC = () => {
 
     return list;
   }, [currentReport, sortConfig, filterMode, activeTeacherFilter]);
+
+  const displayedTeachers = useMemo(() => teachers.slice(0, displayLimit), [teachers, displayLimit]);
 
   const metricsList = data.metricsList || [];
 
@@ -1228,7 +1236,7 @@ export const DailyReportsPage: React.FC = () => {
             <tbody>
               {teachers.length === 0 ? (
                 <tr><td colSpan={20} className="p-8 text-slate-400">لا توجد بيانات.. أضف معلمين أو أنشئ جدولاً جديداً</td></tr>
-              ) : teachers.map((t, idx) => {
+              ) : displayedTeachers.map((t, idx) => {
                 const total = calculateTotal(t);
                 const maxTotal = calculateMaxTotal(t);
                 const percent = maxTotal > 0 ? ((total / maxTotal) * 100).toFixed(1) : '0';
@@ -1389,6 +1397,18 @@ export const DailyReportsPage: React.FC = () => {
                   </tr>
                 );
               })}
+              {displayLimit < teachers.length && (
+                <tr>
+                  <td colSpan={20} className="p-2 text-center bg-slate-50 border-t">
+                    <button 
+                      onClick={() => setDisplayLimit(prev => prev + 50)}
+                      className="px-6 py-2 bg-white hover:bg-blue-50 text-blue-600 font-bold rounded-lg border border-slate-200 transition-colors shadow-sm text-xs"
+                    >
+                      تحميل المزيد... ({teachers.length - displayLimit} متبقي)
+                    </button>
+                  </td>
+                </tr>
+              )}
             </tbody>
             <tfoot className="bg-slate-50 text-slate-800 font-bold text-xs sticky bottom-0 z-20 shadow-lg border-t-2 border-slate-200">
               <tr>

@@ -356,14 +356,22 @@ const MainApp: React.FC = () => {
 
   const filteredUsersForModal = useMemo(() => {
     const userSchools = currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
+    const isManager = currentUser?.permissions?.userManagement === true;
+    const managedIds = currentUser?.permissions?.managedUserIds || [];
+
     return data.users.filter(u => {
       // 1. Hide admins/full-perm from non-admins
       const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
       if (!isAdminOrFull && isTargetAdmin) return false;
 
-      // 2. Filter by school for non-admins
+      // 2. If regular manager, ONLY show who they explicitly manage
+      if (!isAdminOrFull && isManager) {
+        if (u.id === currentUser?.id) return true;
+        return managedIds.includes(u.id);
+      }
+
+      // 3. Filter by school for non-admins (if they somehow get here, though only admins or managers see this modal)
       if (!isAdminOrFull) {
-        // Only show users who share at least one school with the current user's active schools
         return u.schools.some(s => userSchools.includes(s));
       }
 

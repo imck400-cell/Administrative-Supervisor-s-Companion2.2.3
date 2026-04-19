@@ -190,6 +190,7 @@ interface SpecialReportsPageProps {
 const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, onSubTabOpen, onNavigate }) => {
   // END OF CHANGE
   const { lang, data, updateData, currentUser, userFilter } = useGlobal();
+  const isReadOnly = currentUser?.permissions?.readOnly === true;
   const filterIds = useMemo(() => (userFilter && userFilter !== 'all') ? userFilter.split(',') : [], [userFilter]);
   const matchesFilter = (userId?: string) => !userFilter || userFilter === 'all' || (userId && filterIds.includes(userId));
   const [activeTab, setActiveTab] = useState<MainTab>('supervisor');
@@ -427,6 +428,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
           };
         });
 
+      if (isReadOnly) return;
       updateData({ examLogs: [...newLogs, ...(data.examLogs || [])] });
       setIsAddAbsentModalOpen(false);
     };
@@ -456,7 +458,8 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const updateSubjectData = (id: string, subject: string, field: string, value: string) => {
-      const updated = (data.examLogs || []).map(log => {
+      if (isReadOnly) return;
+    const updated = (data.examLogs || []).map(log => {
         if (log.id === id) {
           const currentSubjectData = log.subjectsData[subject] || { class: '', grade: '', status: 'not_tested' };
           return {
@@ -755,7 +758,9 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
                       </React.Fragment>
                     ))}
                     <td className="p-2">
-                      <button onClick={() => updateData({ examLogs: data.examLogs?.filter(l => l.id !== log.id) })} className="text-red-300 hover:text-red-600 p-2 rounded-xl transition-all hover:bg-red-50"><Trash2 size={18} /></button>
+                      {!isReadOnly && (
+                        <button onClick={() => updateData({ examLogs: data.examLogs?.filter(l => l.id !== log.id) })} className="text-red-300 hover:text-red-600 p-2 rounded-xl transition-all hover:bg-red-50"><Trash2 size={18} /></button>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -862,6 +867,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const saveLog = () => {
+      if (isReadOnly) return;
       if (!absenceForm.studentId) {
         toast.error('يرجى اختيار طالب أولاً');
         return;
@@ -1578,6 +1584,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const saveLog = () => {
+      if (isReadOnly) return;
       if (!latenessForm.studentId) {
         toast.error('يرجى اختيار طالب أولاً');
         return;
@@ -1771,6 +1778,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const saveLog = () => {
+      if (isReadOnly) return;
       if (!violationForm.studentId) {
         toast.error('يرجى اختيار طالب أولاً');
         return;
@@ -1975,6 +1983,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const saveLog = () => {
+      if (isReadOnly) return;
       if (!exitForm.studentId) {
         toast.error('يرجى اختيار طالب أولاً');
         return;
@@ -2101,6 +2110,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const saveLog = () => {
+      if (isReadOnly) return;
       if (!damageForm.studentId) {
         toast.error('يرجى اختيار طالب أولاً');
         return;
@@ -2466,6 +2476,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
   const [customViolation, setCustomViolation] = useState<{ cat: string, item: string }>({ cat: '', item: '' });
 
   const addCustomViolation = (cat: string) => {
+    if (isReadOnly) return;
     if (!customViolation.item.trim()) return;
     const current = data.customViolationElements || {};
     const catItems = current[cat as keyof typeof current] || [];
@@ -2496,6 +2507,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     const monthlyTemplates = templates.filter(t => t.category === 'monthly');
 
     const resetTasksToDefaults = () => {
+      if (isReadOnly) return;
       setConfirmDialog({
         isOpen: true,
         title: 'استعادة الافتراضي',
@@ -2508,6 +2520,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const handleAddTaskTemplate = (cat: 'daily' | 'weekly' | 'monthly') => {
+      if (isReadOnly) return;
       if (!customTaskInput.trim()) return;
       const newTemplate: TaskItem = {
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -2520,6 +2533,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const removeTaskTemplate = (id: string) => {
+      if (isReadOnly) return;
       updateData({ taskTemplates: templates.filter(t => t.id !== id) });
     };
 
@@ -2558,6 +2572,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const saveTaskReport = () => {
+      if (isReadOnly) return;
       if (!activeTaskReport) return;
 
       const reports = data.taskReports || [];
@@ -2612,6 +2627,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     };
 
     const deleteReport = (reportId: string) => {
+      if (isReadOnly) return;
       setConfirmDialog({
         isOpen: true,
         title: 'حذف التقرير',

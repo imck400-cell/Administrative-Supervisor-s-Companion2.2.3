@@ -6,6 +6,7 @@ import { Save, Plus, Trash2, School, Building, Calendar, Users, Briefcase, Spark
 
 const ProfilePage: React.FC = () => {
   const { data, updateData, lang, currentUser } = useGlobal();
+  const isReadOnly = currentUser?.permissions?.readOnly === true;
   const profile = data.profile;
 
   const isManagerOrAdmin = currentUser?.role === 'admin' || currentUser?.permissions?.all === true || currentUser?.permissions?.userManagement === true;
@@ -32,12 +33,14 @@ const ProfilePage: React.FC = () => {
   }, [currentUser, profile, isManagerOrAdmin, updateData]);
 
   const updateField = (field: string, value: string) => {
+    if (isReadOnly) return;
     updateData({
       profile: { ...profile, [field]: value }
     });
   };
 
   const handleAddCustomField = () => {
+    if (isReadOnly) return;
     const customFields = profile.customFields || [];
     updateData({
       profile: {
@@ -48,6 +51,7 @@ const ProfilePage: React.FC = () => {
   };
 
   const updateCustomField = (index: number, field: 'label' | 'value', value: string) => {
+    if (isReadOnly) return;
     const customFields = (profile.customFields || []).map((f, i) =>
       i === index ? { ...f, [field]: value } : f
     );
@@ -55,6 +59,7 @@ const ProfilePage: React.FC = () => {
   };
 
   const deleteCustomField = (index: number) => {
+    if (isReadOnly) return;
     const customFields = (profile.customFields || []).filter((_, i) => i !== index);
     updateData({ profile: { ...profile, customFields } });
   };

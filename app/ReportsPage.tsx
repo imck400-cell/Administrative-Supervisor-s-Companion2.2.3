@@ -32,6 +32,7 @@ const toHijri = (dateStr: string) => {
 // --- Teachers Follow-up Page (DailyReportsPage) ---
 export const DailyReportsPage: React.FC = () => {
   const { lang, data, updateData, currentUser, userFilter, effectiveUserIds } = useGlobal();
+  const isReadOnly = currentUser?.permissions?.readOnly === true;
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
@@ -91,6 +92,7 @@ export const DailyReportsPage: React.FC = () => {
   const [branchManager, setBranchManager] = useState(data.profile.branchManager || '');
 
   const updateReportTeachers = (reportId: string, teachers: TeacherFollowUp[]) => {
+    if (isReadOnly) return;
     const rawReports = data.dailyReports || [];
     
     // Virtual Unified Report
@@ -334,6 +336,7 @@ export const DailyReportsPage: React.FC = () => {
   };
 
   const handleCreateReport = () => {
+    if (isReadOnly) return;
     const today = new Date().toISOString().split('T')[0];
     const exists = reports.some(r => r.dateStr === today && (r.periodType || 'daily') === 'daily');
     if (exists) {
@@ -367,6 +370,7 @@ export const DailyReportsPage: React.FC = () => {
   };
 
   const addNewTeacher = () => {
+    if (isReadOnly) return;
     let reportId = activeReportId;
     if (!reportId && reports.length > 0) {
       reportId = reports[reports.length - 1].id;
@@ -400,6 +404,7 @@ export const DailyReportsPage: React.FC = () => {
   };
 
   const deleteTeacher = (teacherId: string) => {
+    if (isReadOnly) return;
     if (!currentReport) return;
     setConfirmDialog({
       isOpen: true,
@@ -416,6 +421,7 @@ export const DailyReportsPage: React.FC = () => {
   };
 
   const deleteSelectedTeachers = () => {
+    if (isReadOnly) return;
     if (!currentReport || selectedTeacherIds.length === 0) return;
     setConfirmDialog({
       isOpen: true,
@@ -462,6 +468,7 @@ export const DailyReportsPage: React.FC = () => {
   const allTeacherNames = useMemo(() => Object.keys(teacherProfiles).sort(), [teacherProfiles]);
 
   const fillAllMax = () => {
+    if (isReadOnly) return;
     if (!activeReportId) return;
     setConfirmDialog({
       isOpen: true,
@@ -488,6 +495,7 @@ export const DailyReportsPage: React.FC = () => {
   };
 
   const fillMetricColumn = (metricKey: string, val?: number) => {
+    if (isReadOnly) return;
     if (!currentReport) return;
     const max = metricsConfig.find(m => m.key === metricKey)?.max || 0;
     const valueToFill = val !== undefined ? val : max;
@@ -585,6 +593,7 @@ export const DailyReportsPage: React.FC = () => {
   };
 
   const toggleAccreditation = (teacherId: string | 'bulk', metricKey: string) => {
+    if (isReadOnly) return;
     if (!activeReportId || !currentReport) return;
     
     let newTeachers = [...currentReport.teachersData];
@@ -879,6 +888,7 @@ export const DailyReportsPage: React.FC = () => {
   };
 
   const deleteReport = (reportId: string) => {
+    if (isReadOnly) return;
     setConfirmDialog({
       isOpen: true,
       title: 'حذف التقرير',
@@ -1243,19 +1253,22 @@ export const DailyReportsPage: React.FC = () => {
                           onClick={(e) => e.stopPropagation()}
                         />
                         <span className="font-bold text-xs font-sans">{idx + 1}</span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); deleteTeacher(t.id); }}
-                          className="p-1 text-slate-400 hover:text-red-600 transition-colors"
-                          title="حذف الاسم"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                        {!isReadOnly && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteTeacher(t.id); }}
+                            className="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                            title="حذف الاسم"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
                       </div>
                     </td>
                     <td className="p-1 border-e bg-inherit">
                       <input
                         list="teacher-names-list"
-                        className="w-full text-right font-bold outline-none bg-transparent text-xs"
+                        disabled={isReadOnly}
+                        className="w-full text-right font-bold outline-none bg-transparent text-xs disabled:opacity-70"
                         value={t.teacherName || ''}
                         onChange={e => {
                           const newName = e.target.value;
@@ -1275,28 +1288,37 @@ export const DailyReportsPage: React.FC = () => {
                       !filterMode.includes('metric') && (
                         <>
                           <td className="p-1 border-e">
-                            <select className="w-full bg-transparent outline-none text-[10px] text-center font-bold" value={t.gender || 'ذكر'} onChange={e => updateTeacher(t.id, { gender: e.target.value })}>
+                            <select 
+                              className="w-full bg-transparent outline-none text-[10px] text-center font-bold disabled:opacity-70" 
+                              value={t.gender || 'ذكر'} 
+                              disabled={isReadOnly}
+                              onChange={e => updateTeacher(t.id, { gender: e.target.value })}
+                            >
                               <option value="ذكر">ذكر</option>
                               <option value="أنثى">أنثى</option>
                             </select>
                           </td>
                           <td className="p-1 border-e">
-                            <MultiSelectDropDown
-                              label="المواد"
-                              options={subjects}
-                              selected={t.subjectCode ? t.subjectCode.split(', ') : []}
-                              onChange={(vals) => updateTeacher(t.id, { subjectCode: vals.join(', ') })}
-                              emoji="📚"
-                            />
+                            <div className={isReadOnly ? 'pointer-events-none opacity-70' : ''}>
+                              <MultiSelectDropDown
+                                label="المواد"
+                                options={subjects}
+                                selected={t.subjectCode ? t.subjectCode.split(', ') : []}
+                                onChange={(vals) => updateTeacher(t.id, { subjectCode: vals.join(', ') })}
+                                emoji="📚"
+                              />
+                            </div>
                           </td>
                           <td className="p-1 border-e">
-                            <MultiSelectDropDown
-                              label="الصفوف"
-                              options={grades}
-                              selected={t.className ? t.className.split(', ') : []}
-                              onChange={(vals) => updateTeacher(t.id, { className: vals.join(', ') })}
-                              emoji="🎓"
-                            />
+                            <div className={isReadOnly ? 'pointer-events-none opacity-70' : ''}>
+                              <MultiSelectDropDown
+                                label="الصفوف"
+                                options={grades}
+                                selected={t.className ? t.className.split(', ') : []}
+                                onChange={(vals) => updateTeacher(t.id, { className: vals.join(', ') })}
+                                emoji="🎓"
+                              />
+                            </div>
                           </td>
                         </>
                       )
@@ -1344,7 +1366,8 @@ export const DailyReportsPage: React.FC = () => {
                       <div className="flex items-center justify-center gap-1">
                         <input
                           type="number"
-                          className="w-full text-center text-red-600 font-bold outline-none bg-transparent text-xs font-sans"
+                          disabled={isReadOnly}
+                          className="w-full text-center text-red-600 font-bold outline-none bg-transparent text-xs font-sans disabled:opacity-70"
                           value={t.violations_score || 0}
                           onChange={e => updateTeacher(t.id, { violations_score: parseInt(e.target.value) || 0 })}
                           onClick={(e) => e.stopPropagation()}
@@ -1718,20 +1741,23 @@ export const DailyReportsPage: React.FC = () => {
               </button>
 
               <div className="flex items-center justify-between mb-4 border-b pb-2">
-                <button
-                  onClick={() => {
-                    const name = prompt(lang === 'ar' ? 'أدخل مسمى المجال الجديد:' : 'Enter new domain name:');
-                    if (name) {
-                      const newKey = `metric_${Date.now()}`;
-                      const newList = [...metricsList, { key: newKey, label: name, emoji: '🎯', max: 10, color: '#DDEBF7' }];
-                      updateData({ metricsList: newList });
-                      setSelectedMetrics(prev => [...prev, newKey]);
-                    }
-                  }}
-                  className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-blue-700 transition-all shadow-sm"
-                >
-                  <Plus size={14} /> إضافة مجال جديد
-                </button>
+                {!isReadOnly && (
+                  <button
+                    onClick={() => {
+                      if (isReadOnly) return;
+                      const name = prompt(lang === 'ar' ? 'أدخل مسمى المجال الجديد:' : 'Enter new domain name:');
+                      if (name) {
+                        const newKey = `metric_${Date.now()}`;
+                        const newList = [...metricsList, { key: newKey, label: name, emoji: '🎯', max: 10, color: '#DDEBF7' }];
+                        updateData({ metricsList: newList });
+                        setSelectedMetrics(prev => [...prev, newKey]);
+                      }
+                    }}
+                    className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold hover:bg-blue-700 transition-all shadow-sm"
+                  >
+                    <Plus size={14} /> إضافة مجال جديد
+                  </button>
+                )}
                 <h3 className="font-bold flex-1 text-center mr-8">تخصيص مجالات التقييم</h3>
               </div>
               <p className="text-[10px] text-slate-500 text-center mb-4">يمكنك تغيير مسمى كل مجال، ترتيبه، لونه، أو حذفه</p>
@@ -1745,6 +1771,7 @@ export const DailyReportsPage: React.FC = () => {
                         <button
                           disabled={mIdx === 0}
                           onClick={() => {
+                            if (isReadOnly) return;
                             const newList = [...metricsList];
                             [newList[mIdx - 1], newList[mIdx]] = [newList[mIdx], newList[mIdx - 1]];
                             updateData({ metricsList: newList });
@@ -1756,6 +1783,7 @@ export const DailyReportsPage: React.FC = () => {
                         <button
                           disabled={mIdx === metricsConfig.length - 1}
                           onClick={() => {
+                            if (isReadOnly) return;
                             const newList = [...metricsList];
                             [newList[mIdx], newList[mIdx + 1]] = [newList[mIdx + 1], newList[mIdx]];
                             updateData({ metricsList: newList });
@@ -1925,21 +1953,34 @@ export const DailyReportsPage: React.FC = () => {
 
                 <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                   {teachers.filter(t => t.teacherName.includes(reportTeacherSearch) || t.subjectCode.includes(reportTeacherSearch)).map(t => (
-                    <button
+                    <div
                       key={t.id}
-                      onClick={() => { setReportTeacherId(t.id); setReportSelectedFields(['teacherName', 'subjectCode', 'className', 'gender', 'total', 'percent']); }}
-                      className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all border-2 text-right ${reportTeacherId === t.id
+                      className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all border-2 text-right relative group ${reportTeacherId === t.id
                         ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100'
                         : 'bg-white border-transparent hover:border-blue-200 text-slate-700 shadow-sm'}`}
                     >
-                      <div className="text-right">
+                      <button
+                        onClick={() => { setReportTeacherId(t.id); setReportSelectedFields(['teacherName', 'subjectCode', 'className', 'gender', 'total', 'percent']); }}
+                        className="flex-1 text-right outline-none"
+                      >
                         <div className="font-black text-sm">{t.teacherName || 'معلم جديد'}</div>
                         <div className={`text-[10px] font-bold truncate ${reportTeacherId === t.id ? 'text-blue-100' : 'text-slate-400'}`}>
                           {t.subjectCode || 'بدون مادة'} - {t.className || 'بدون صف'}
                         </div>
+                      </button>
+                      <div className="flex items-center gap-2">
+                        {reportTeacherId === t.id && <Check size={18} />}
+                        {!isReadOnly && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteTeacher(t.id); }}
+                            className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${reportTeacherId === t.id ? 'hover:bg-blue-700 text-white' : 'hover:bg-red-50 text-red-400 hover:text-red-600'}`}
+                            title="حذف هذا المعلم"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
-                      {reportTeacherId === t.id && <Check size={18} />}
-                    </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -2024,30 +2065,35 @@ export const DailyReportsPage: React.FC = () => {
                             </label>
                             <div className="flex-1">
                               {fieldKey === 'subjectCode' ? (
-                                <MultiSelectDropDown
-                                  label="المواد"
-                                  options={subjects}
-                                  selected={teacher.subjectCode ? teacher.subjectCode.split(', ') : []}
-                                  onChange={(vals) => updateTeacher(teacher.id, { subjectCode: vals.join(', ') })}
-                                  emoji="📚"
-                                />
+                                <div className={isReadOnly ? 'pointer-events-none opacity-70' : ''}>
+                                  <MultiSelectDropDown
+                                    label="المواد"
+                                    options={subjects}
+                                    selected={teacher.subjectCode ? teacher.subjectCode.split(', ') : []}
+                                    onChange={(vals) => updateTeacher(teacher.id, { subjectCode: vals.join(', ') })}
+                                    emoji="📚"
+                                  />
+                                </div>
                               ) : fieldKey === 'className' ? (
-                                <MultiSelectDropDown
-                                  label="الصفوف"
-                                  options={grades}
-                                  selected={teacher.className ? teacher.className.split(', ') : []}
-                                  onChange={(vals) => updateTeacher(teacher.id, { className: vals.join(', ') })}
-                                  emoji="🎓"
-                                />
+                                <div className={isReadOnly ? 'pointer-events-none opacity-70' : ''}>
+                                  <MultiSelectDropDown
+                                    label="الصفوف"
+                                    options={grades}
+                                    selected={teacher.className ? teacher.className.split(', ') : []}
+                                    onChange={(vals) => updateTeacher(teacher.id, { className: vals.join(', ') })}
+                                    emoji="🎓"
+                                  />
+                                </div>
                               ) : fieldKey === 'gender' ? (
-                                <select className="w-full p-2 bg-slate-50 rounded-lg font-bold text-center outline-none focus:ring-2 ring-blue-100" value={teacher.gender || 'ذكر'} onChange={e => updateTeacher(teacher.id, { gender: e.target.value })}>
+                                <select disabled={isReadOnly} className="w-full p-2 bg-slate-50 rounded-lg font-bold text-center outline-none focus:ring-2 ring-blue-100 disabled:opacity-70" value={teacher.gender || 'ذكر'} onChange={e => updateTeacher(teacher.id, { gender: e.target.value })}>
                                   <option value="ذكر">ذكر</option>
                                   <option value="أنثى">أنثى</option>
                                 </select>
                               ) : fieldKey === 'teacherName' ? (
                                 <input
                                   type="text"
-                                  className="w-full p-2 bg-slate-50 rounded-lg font-bold text-center outline-none focus:ring-2 ring-blue-100"
+                                  disabled={isReadOnly}
+                                  className="w-full p-2 bg-slate-50 rounded-lg font-bold text-center outline-none focus:ring-2 ring-blue-100 disabled:opacity-70"
                                   value={teacher.teacherName}
                                   onChange={e => updateTeacher(teacher.id, { teacherName: e.target.value })}
                                 />
@@ -2055,8 +2101,8 @@ export const DailyReportsPage: React.FC = () => {
                                 <div className="flex items-center gap-2">
                                   <input
                                     type="number"
-                                    disabled={(teacher.unaccreditedMetrics || []).includes(fieldKey)}
-                                    className={`flex-1 p-2 bg-slate-50 rounded-lg font-bold text-center outline-none focus:ring-2 ring-blue-100 font-sans ${(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'opacity-30' : ''}`}
+                                    disabled={(teacher.unaccreditedMetrics || []).includes(fieldKey) || isReadOnly}
+                                    className={`flex-1 p-2 bg-slate-50 rounded-lg font-bold text-center outline-none focus:ring-2 ring-blue-100 font-sans ${((teacher.unaccreditedMetrics || []).includes(fieldKey) || isReadOnly) ? 'opacity-30 pointer-events-none' : ''}`}
                                     value={(teacher as any)[fieldKey]}
                                     onChange={e => {
                                       const metric = metricsConfig.find(m => m.key === fieldKey);
@@ -2065,16 +2111,18 @@ export const DailyReportsPage: React.FC = () => {
                                       updateTeacher(teacher.id, { [fieldKey]: val });
                                     }}
                                   />
-                                  <button
-                                    onClick={() => toggleAccreditation(teacher.id, fieldKey)}
-                                    className={`p-2 rounded-lg transition-all flex items-center gap-1 ${(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-500'}`}
-                                    title={(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'اعتماد' : 'استبعاد'}
-                                  >
-                                    <Star size={16} className={(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'fill-red-500' : 'fill-green-500'} />
-                                    {(teacher.unaccreditedMetrics || []).includes(fieldKey) && <X size={12} />}
-                                  </button>
+                                  {!isReadOnly && (
+                                    <button
+                                      onClick={() => toggleAccreditation(teacher.id, fieldKey)}
+                                      className={`p-2 rounded-lg transition-all flex items-center gap-1 ${(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-500'}`}
+                                      title={(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'اعتماد' : 'استبعاد'}
+                                    >
+                                      <Star size={16} className={(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'fill-red-500' : 'fill-green-500'} />
+                                      {(teacher.unaccreditedMetrics || []).includes(fieldKey) && <X size={12} />}
+                                    </button>
+                                  )}
                                   {metricsConfig.find(m => m.key === fieldKey) && (
-                                    <span className={`text-[10px] font-black font-sans ${(teacher.unaccreditedMetrics || []).includes(fieldKey) ? 'text-red-500' : 'text-slate-400'} whitespace-nowrap`}>
+                                    <span className={`text-[10px] font-black font-sans ${((teacher.unaccreditedMetrics || []).includes(fieldKey) || isReadOnly) ? 'text-red-500' : 'text-slate-400'} whitespace-nowrap`}>
                                       / {metricsConfig.find(m => m.key === fieldKey)?.max}
                                     </span>
                                   )}
@@ -2234,8 +2282,8 @@ export const DailyReportsPage: React.FC = () => {
                                 <div className="flex items-center gap-2">
                                   <input
                                     type="number"
-                                    disabled={isUnaccredited}
-                                    className={`flex-1 p-2 bg-slate-50 rounded-xl font-black text-center outline-none focus:ring-2 ring-blue-100 font-sans ${isUnaccredited ? 'opacity-30' : ''}`}
+                                    disabled={isUnaccredited || isReadOnly}
+                                    className={`flex-1 p-2 bg-slate-50 rounded-xl font-black text-center outline-none focus:ring-2 ring-blue-100 font-sans ${(isUnaccredited || isReadOnly) ? 'opacity-30 pointer-events-none' : ''}`}
                                     value={(teacher as any)[m.key] || 0}
                                     onFocus={(e) => e.target.select()}
                                     onChange={e => {
@@ -2513,6 +2561,7 @@ export const DailyReportsPage: React.FC = () => {
 
 export const ViolationsPage: React.FC = () => {
   const { lang, data, updateData, currentUser } = useGlobal();
+  const isReadOnly = currentUser?.permissions?.readOnly === true;
   const [activeMode, setActiveMode] = useState<'students' | 'teachers'>('students');
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -2578,6 +2627,7 @@ export const ViolationsPage: React.FC = () => {
   const sections = ["أ", "ب", "ج", "د", "هـ", "و", "ز", "ح", "ط", "ي"];
 
   const handleAddRow = () => {
+    if (isReadOnly) return;
     const newViolation = {
       id: Date.now().toString(),
       type: activeMode,
@@ -2598,6 +2648,7 @@ export const ViolationsPage: React.FC = () => {
   };
 
   const updateViolation = (id: string, field: string, value: any) => {
+    if (isReadOnly) return;
     const updated = data.violations.map(v => v.id === id ? { ...v, [field]: value } : v);
     updateData({ violations: updated });
   };
@@ -2634,6 +2685,7 @@ export const ViolationsPage: React.FC = () => {
   };
 
   const deleteViolation = (id: string) => {
+    if (isReadOnly) return;
     setConfirmDialog({
       isOpen: true,
       title: 'حذف سجل',
@@ -2647,6 +2699,7 @@ export const ViolationsPage: React.FC = () => {
   };
 
   const handleSignature = (id: string) => {
+    if (isReadOnly) return;
     const text = "تم الاطلاع على المخالفة والإجراء، وألتزم بعدم تكرار المخالفة المذكورة، وفي حال تم التكرار فللمدرسة الحق في اتخاذ كافة الإجراءات اللازمة";
     updateViolation(id, 'signature', text);
   };
@@ -3235,6 +3288,7 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
 
 export const StudentsReportsPage: React.FC = () => {
   const { data, updateData, lang, userFilter, currentUser } = useGlobal();
+  const isReadOnly = currentUser?.permissions?.readOnly === true;
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -3406,11 +3460,13 @@ export const StudentsReportsPage: React.FC = () => {
   ];
 
   const updateStudent = (id: string, field: string, value: any) => {
+    if (isReadOnly) return;
     const updated = studentData.map(s => s.id === id ? { ...s, [field]: value } : s);
     updateData({ studentReports: updated });
   };
 
   const addStudent = () => {
+    if (isReadOnly) return;
     const newStudent: StudentReport = {
       id: Date.now().toString(),
       userId: currentUser?.id,
@@ -3440,6 +3496,7 @@ export const StudentsReportsPage: React.FC = () => {
   };
 
   const deleteStudent = (id: string) => {
+    if (isReadOnly) return;
     setConfirmDialog({
       isOpen: true,
       title: lang === 'ar' ? 'حذف طالب' : 'Delete Student',
@@ -3457,6 +3514,7 @@ export const StudentsReportsPage: React.FC = () => {
   };
 
   const bulkDeleteStudents = () => {
+    if (isReadOnly) return;
     if (selectedStudentIds.length === 0) return;
     setConfirmDialog({
       isOpen: true,
@@ -3590,6 +3648,7 @@ export const StudentsReportsPage: React.FC = () => {
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isReadOnly) return;
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -3901,6 +3960,7 @@ export const StudentsReportsPage: React.FC = () => {
   };
 
   const saveDetailStudent = () => {
+    if (isReadOnly) return;
     if (currentDetailStudent) {
       const updated = studentData.map(s => s.id === currentDetailStudent.id ? currentDetailStudent : s);
       updateData({ studentReports: updated });

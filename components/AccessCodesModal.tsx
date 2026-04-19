@@ -12,6 +12,7 @@ interface AccessCodesModalProps {
 
 const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) => {
   const { data, updateData, currentUser, effectiveUserIds } = useGlobal();
+  const isReadOnly = currentUser?.permissions?.readOnly === true;
   const [newSchool, setNewSchool] = useState('');
   const [newYear, setNewYear] = useState('');
   const [selectedSchoolForBranch, setSelectedSchoolForBranch] = useState('');
@@ -22,6 +23,7 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
   if (!isOpen) return null;
 
   const handleAddSchool = () => {
+    if (isReadOnly) return;
     if (!newSchool.trim()) return;
     const currentSchools = data.availableSchools || [];
     if (!currentSchools.includes(newSchool.trim())) {
@@ -37,6 +39,7 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
   };
 
   const handleAddBranch = () => {
+    if (isReadOnly) return;
     if (!selectedSchoolForBranch || !newBranch.trim()) return;
     const currentBranches = data.schoolBranches?.[selectedSchoolForBranch] || [];
     if (!currentBranches.includes(newBranch.trim())) {
@@ -51,6 +54,7 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
   };
 
   const handleDeleteBranch = (school: string, branch: string) => {
+    if (isReadOnly) return;
     const currentBranches = data.schoolBranches?.[school] || [];
     updateData({
       schoolBranches: {
@@ -61,6 +65,7 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
   };
 
   const handleAddYear = () => {
+    if (isReadOnly) return;
     if (!newYear.trim()) return;
     const currentYears = data.availableYears || [];
     if (!currentYears.includes(newYear.trim())) {
@@ -70,11 +75,13 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
   };
 
   const handleDeleteSchool = (school: string) => {
+    if (isReadOnly) return;
     const currentSchools = data.availableSchools || [];
     updateData({ availableSchools: currentSchools.filter(s => s !== school) });
   };
 
   const handleDeleteYear = (year: string) => {
+    if (isReadOnly) return;
     const currentYears = data.availableYears || [];
     updateData({ availableYears: currentYears.filter(y => y !== year) });
   };
@@ -87,6 +94,7 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
   const generateId = () => 'u' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
 
   const handleAddNewAdmin = () => {
+    if (isReadOnly) return;
     const newUser: User = {
       id: generateId(),
       name: '',
@@ -103,6 +111,7 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
   };
 
   const handleAddNewUser = () => {
+    if (isReadOnly) return;
     const newUser: User = {
       id: generateId(),
       name: '',

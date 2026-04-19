@@ -16,6 +16,7 @@ import { exportToStyledExcel } from '../src/lib/excelExport';
 
 const StaffFollowUpPage: React.FC = () => {
     const { lang, data, updateData, currentUser, userFilter } = useGlobal();
+    const isReadOnly = currentUser?.permissions?.readOnly === true;
 
     // Local State
     const [currentReportId, setCurrentReportId] = useState<string | null>(null);
@@ -305,6 +306,10 @@ const StaffFollowUpPage: React.FC = () => {
 
     // Actions
     const handleTypeChange = (newType: string) => {
+        if (isReadOnly) {
+            setFollowUpType(newType === 'متابعة أخرى' ? followUpType : newType);
+            return;
+        }
         let targetType = newType;
         if (newType === 'متابعة أخرى') {
             const customName = prompt('أدخل مسمى نوع المتابعة الجديد:');
@@ -335,6 +340,7 @@ const StaffFollowUpPage: React.FC = () => {
     };
 
     const createNewReport = () => {
+        if (isReadOnly) return;
         const lastReportOfType = (data.adminReports || []).find(r => r.followUpType === followUpType);
         const inheritedEmployees = lastReportOfType ? lastReportOfType.employeesData.map(e => ({
             ...e,
@@ -359,6 +365,7 @@ const StaffFollowUpPage: React.FC = () => {
     };
 
     const aggregateReports = (period: string) => {
+        if (isReadOnly) return;
         if (!data.adminReports || data.adminReports.length === 0) {
             toast.error('لا توجد تقارير سابقة لتجميعها');
             return;
@@ -422,6 +429,7 @@ const StaffFollowUpPage: React.FC = () => {
     };
 
     const deleteReport = (reportId: string) => {
+        if (isReadOnly) return;
         setConfirmDialog({
             isOpen: true,
             title: 'حذف التقرير',
@@ -437,6 +445,7 @@ const StaffFollowUpPage: React.FC = () => {
     };
 
     const addEmployee = () => {
+        if (isReadOnly) return;
         if (!currentReportId) { toast.error('نرجو إنشاء جدول جديد أولاً'); return; }
         const name = prompt('أدخل اسم الموظف:');
         if (!name) return;
@@ -460,6 +469,7 @@ const StaffFollowUpPage: React.FC = () => {
     };
 
     const updateEmployee = (empId: string, updates: Partial<AdminFollowUp>) => {
+        if (isReadOnly) return;
         const updatedReports = (data.adminReports || []).map(r => {
             if (r.id === currentReportId) {
                 const newEmps = r.employeesData.map(e => e.id === empId ? { ...e, ...updates } : e);
@@ -471,6 +481,7 @@ const StaffFollowUpPage: React.FC = () => {
     };
 
     const deleteEmployees = (ids: string[]) => {
+        if (isReadOnly) return;
         setConfirmDialog({
             isOpen: true,
             title: 'حذف موظفين',
@@ -489,6 +500,7 @@ const StaffFollowUpPage: React.FC = () => {
     };
 
     const toggleAccreditation = (empId: string | 'bulk', metricKey: string) => {
+        if (isReadOnly) return;
         const updatedReports = (data.adminReports || []).map(r => {
             if (r.id === currentReportId) {
                 const newEmps = r.employeesData.map(e => {
@@ -507,6 +519,7 @@ const StaffFollowUpPage: React.FC = () => {
     };
 
     const fillMetricColumn = (metricKey: string, value: number) => {
+        if (isReadOnly) return;
         const updatedReports = (data.adminReports || []).map(r => {
             if (r.id === currentReportId) {
                 const newEmps = r.employeesData.map(e => ({ ...e, [metricKey]: value }));
@@ -554,11 +567,13 @@ const StaffFollowUpPage: React.FC = () => {
     };
 
     const handleMaxChange = (key: string, newMax: number) => {
+        if (isReadOnly) return;
         const updated = displayedMetrics.map(m => m.key === key ? { ...m, max: newMax } : m);
         updateData({ adminMetricsList: { ...(data.adminMetricsList || {}), [followUpType]: updated } });
     };
 
     const reorderDomain = (index: number, direction: 'up' | 'down') => {
+        if (isReadOnly) return;
         const newMetrics = [...displayedMetrics];
         const targetIndex = direction === 'up' ? index - 1 : index + 1;
         if (targetIndex >= 0 && targetIndex < newMetrics.length) {
@@ -568,6 +583,7 @@ const StaffFollowUpPage: React.FC = () => {
     };
 
     const renameDomain = (key: string, newLabel: string) => {
+        if (isReadOnly) return;
         const updated = displayedMetrics.map(m => m.key === key ? { ...m, label: newLabel } : m);
         updateData({ adminMetricsList: { ...(data.adminMetricsList || {}), [followUpType]: updated } });
     };

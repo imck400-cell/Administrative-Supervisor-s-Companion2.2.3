@@ -4,6 +4,7 @@ import { Language, AppData, TaskItem, TaskReport, AuthUser, User } from '../type
 import { db, auth } from '../firebase';
 import { signInAnonymously } from 'firebase/auth';
 import { doc, setDoc, onSnapshot, getDocFromServer } from 'firebase/firestore';
+import { toast } from 'sonner';
 
 export enum OperationType {
   CREATE = 'create',
@@ -790,6 +791,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const updateData = (newData: Partial<AppData>) => {
     if (isAuthenticated && currentUser) {
+      if (currentUser.permissions?.readOnly) {
+        console.warn('ReadOnly permission: Update blocked');
+        toast.error(lang === 'ar' ? 'غير مسموح بتغيير البيانات للرتب الممنوحة لك (للقراءة فقط)' : 'Data change not allowed for your role (Read-Only)');
+        return;
+      }
       const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
       const schoolsToUpdate = selectedSchools.includes('all') ? data.availableSchools : selectedSchools;
       const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears'];

@@ -17,7 +17,8 @@ interface BackupVersion {
 }
 
 const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-  const { lang, data } = useGlobal();
+  const { lang, data, currentUser } = useGlobal();
+  const isReadOnly = currentUser?.permissions?.readOnly === true;
   const [exportMode, setExportMode] = useState<'full' | 'teacher' | 'school' | 'type'>('full');
   const [selectedTeacher, setSelectedTeacher] = useState('');
   const [selectedType, setSelectedType] = useState<'students' | 'teachers' | 'violations' | 'substitutions'>('students');
@@ -98,6 +99,7 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
   };
 
   const archiveCurrentData = () => {
+    if (isReadOnly) return;
     const currentRaw = localStorage.getItem('rafiquk_data');
     if (!currentRaw) return;
 
@@ -115,6 +117,7 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
 
   // START OF CHANGE
   const handleImport = async (file: File) => {
+    if (isReadOnly) return;
     setIsLoading(true);
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -137,6 +140,7 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
   };
 
   const executeImport = (merge: boolean) => {
+    if (isReadOnly) return;
     if (!pendingData) return;
     setIsLoading(true);
     
@@ -205,6 +209,7 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
   // END OF CHANGE
 
   const handleRestore = (backup: BackupVersion) => {
+    if (isReadOnly) return;
     setConfirmDialog({
       isOpen: true,
       title: 'استعادة النسخة الاحتياطية',

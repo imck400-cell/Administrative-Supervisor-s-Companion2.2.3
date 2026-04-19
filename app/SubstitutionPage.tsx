@@ -15,6 +15,7 @@ import * as XLSX from 'xlsx';
 
 const SubstitutionPage: React.FC = () => {
   const { lang, data, updateData, currentUser, userFilter } = useGlobal();
+  const isReadOnly = currentUser?.permissions?.readOnly === true;
   const [activeTab, setActiveTab] = useState<'coverage' | 'timetable'>('coverage');
 
   // START OF CHANGE - Coverage State Management
@@ -83,6 +84,7 @@ const SubstitutionPage: React.FC = () => {
   const generateId = () => `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
   const handleAddTimetableRow = () => {
+    if (isReadOnly) return;
     const newEntry: TimetableEntry = {
       id: generateId(),
       userId: currentUser?.id,
@@ -98,6 +100,7 @@ const SubstitutionPage: React.FC = () => {
   };
 
   const updateTimetableField = (id: string, path: string[], value: string) => {
+    if (isReadOnly) return;
     const newList = (data.timetable || []).map(t => {
       if (t.id === id) {
         const updated = { ...t };
@@ -365,6 +368,7 @@ const SubstitutionPage: React.FC = () => {
   // --- Coverage Logic ---
   // START OF CHANGE - Using selectedCoverageDate
   const handleAddRow = () => {
+    if (isReadOnly) return;
     const newEntry: SubstitutionEntry = {
       id: generateId(),
       userId: currentUser?.id,
@@ -381,6 +385,7 @@ const SubstitutionPage: React.FC = () => {
   // END OF CHANGE
 
   const updateEntry = (id: string, field: string, value: string) => {
+    if (isReadOnly) return;
     const newList = data.substitutions.map(s =>
       s.id === id ? { ...s, [field]: value } : s
     );
@@ -403,6 +408,7 @@ const SubstitutionPage: React.FC = () => {
   };
 
   const handleDelete = (id: string) => {
+    if (isReadOnly) return;
     setConfirmDialog({
       isOpen: true,
       title: lang === 'ar' ? 'تأكيد الحذف' : 'Confirm Delete',

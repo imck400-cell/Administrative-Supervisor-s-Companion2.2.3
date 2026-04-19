@@ -20,6 +20,7 @@ const permissionsList = [
   { id: 'schoolProfile', label: 'ملف المدرسة' },
   { id: 'specialCodes', label: 'التحكم بالصلاحيات' },
   { id: 'userManagement', label: 'التحكم بالمستخدمين' },
+  { id: 'readOnly', label: 'عدم السماح بتغيير البيانات' },
   { 
     id: 'specialReports', 
     label: 'تقارير خاصة',
@@ -37,7 +38,8 @@ const permissionsList = [
 ];
 
 const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) => {
-  const { data, updateData } = useGlobal();
+  const { data, updateData, currentUser } = useGlobal();
+  const isReadOnly = currentUser?.permissions?.readOnly === true;
   const [formData, setFormData] = useState<UserType | null>(null);
   const [selectAll, setSelectAll] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -170,6 +172,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
   };
 
   const handleSave = () => {
+    if (isReadOnly) return;
     if (!formData) return;
     const existingUserIndex = data.users.findIndex(u => u.id === formData.id);
     let newUsers = [...data.users];
@@ -185,6 +188,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
   };
 
   const handleDelete = () => {
+    if (isReadOnly) return;
     if (!formData) return;
     setConfirmDialog({
       isOpen: true,

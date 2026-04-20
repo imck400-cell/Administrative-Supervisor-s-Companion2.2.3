@@ -749,6 +749,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
               { label: 'متابعة الموظفين', icon: <ClipboardCheck className="text-indigo-600" />, view: 'staffFollowUp' },
               { label: 'تعهد طالب', icon: <AlertCircle />, view: 'violations' },
               { label: 'خطة الإشراف', icon: <CalendarDays />, view: 'specialReports' },
+              { label: 'المشكلات والحلول', icon: <MessageSquare className="text-pink-600" />, view: 'issuesModal' },
               ...recentActions.map(action => ({
                 label: action.label,
                 icon: action.icon,

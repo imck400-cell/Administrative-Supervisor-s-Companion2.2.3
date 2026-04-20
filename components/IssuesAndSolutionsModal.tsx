@@ -180,11 +180,11 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
         category,
         problem_selected: problem,
         solution_selected: solution,
-        additional_details: additionalDetails,
+        additional_details: additionalDetails || '',
         timestamp: new Date().toISOString(),
-        userId: currentUser?.id,
-        userName: currentUser?.name,
-        school: currentUser?.selectedSchool,
+        userId: currentUser?.id || 'unknown_user',
+        userName: currentUser?.name || 'مستخدم غير معروف',
+        school: currentUser?.selectedSchool || '',
       });
 
       setSuccessMessage('تم حفظ التقرير بنجاح!');

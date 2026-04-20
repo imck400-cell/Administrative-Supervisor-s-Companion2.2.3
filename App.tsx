@@ -9,10 +9,11 @@ import SpecialReportsPage from './app/SpecialReportsPage';
 import ProfilePage from './app/ProfilePage';
 import DataManagementModal from './components/DataManagementModal';
 import AccessCodesModal from './components/AccessCodesModal';
+import IssuesAndSolutionsModal from './components/IssuesAndSolutionsModal';
 import {
   Lock, LayoutDashboard, ClipboardCheck, UserX, UserPlus,
   Users, Database, FileSearch, Briefcase,
-  School, Calendar, AlertTriangle, Phone, MessageCircle, Key, LogOut, User as UserIcon, X, Check,
+  School, Calendar, AlertTriangle, AlertCircle, Phone, MessageCircle, Key, LogOut, User as UserIcon, X, Check,
   ChevronDown, ChevronUp, Sparkles
 } from 'lucide-react';
 import GlobalScrollArrows from './components/GlobalScrollArrows';
@@ -331,6 +332,16 @@ const MainApp: React.FC = () => {
   const [isDataModalOpen, setIsDataModalOpen] = useState(false);
   const [isCodesModalOpen, setIsCodesModalOpen] = useState(false);
   const [isUserFilterModalOpen, setIsUserFilterModalOpen] = useState(false);
+  const [isAppIssuesModalOpen, setIsAppIssuesModalOpen] = useState(false);
+
+  // Helper to handle navigation so both Layout and Quick Access buttons trigger the modal
+  const handleNavigation = (v: string) => {
+    if (v === 'issuesModal') {
+      setIsAppIssuesModalOpen(true);
+    } else {
+      setView(v);
+    }
+  };
 
   const navItems = useMemo(() => {
     const items = [
@@ -341,6 +352,7 @@ const MainApp: React.FC = () => {
       { id: 'violations', label: 'التعهدات', icon: <UserX size={18} />, permission: 'studentAffairs' },
       { id: 'studentReports', label: 'تقارير الطلاب', icon: <Users size={18} />, permission: 'studentAffairs' },
       { id: 'specialReports', label: 'تقارير خاصة', icon: <FileSearch size={18} />, permission: 'specialReports' },
+      { id: 'issuesModal', label: 'المشكلات والحلول', icon: <AlertCircle size={18} />, permission: 'issuesModal' },
       { id: 'profile', label: 'ملف المدرسة', icon: <School size={18} />, permission: 'schoolProfile' },
     ];
 
@@ -422,7 +434,7 @@ const MainApp: React.FC = () => {
 
   const renderView = () => {
     switch (view) {
-      case 'dashboard': return <Dashboard setView={setView} />;
+      case 'dashboard': return <Dashboard setView={handleNavigation} />;
       case 'substitute': return <SubstitutionPage />;
       case 'daily': return <DailyReportsPage />;
       case 'adminReports': return <StaffFollowUpPage />;
@@ -430,12 +442,12 @@ const MainApp: React.FC = () => {
       case 'studentReports': return <StudentsReportsPage />;
       case 'specialReports': return <SpecialReportsPage />;
       case 'profile': return <ProfilePage />;
-      default: return <Dashboard setView={setView} />;
+      default: return <Dashboard setView={handleNavigation} />;
     }
   };
 
   return (
-    <Layout onNavigate={setView} onOpenSettings={() => setIsDataModalOpen(true)}>
+    <Layout onNavigate={handleNavigation} onOpenSettings={() => setIsDataModalOpen(true)}>
       <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-100">
@@ -505,15 +517,28 @@ const MainApp: React.FC = () => {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-8 bg-white/50 backdrop-blur-md p-2 rounded-2xl border border-white">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setView(item.id)}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all ${view === item.id ? 'bg-blue-600 text-white shadow-xl' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
-          >
-            {item.icon} {item.label}
-          </button>
-        ))}
+        {navItems.map((item) => {
+          // If the nav item is issuesModal, check if user has permission
+          if (item.id === 'issuesModal') {
+            const issuesModalPerm = currentUser?.permissions?.issuesModal;
+            const canUseIssuesButton = currentUser?.role === 'admin' || 
+               currentUser?.permissions?.all === true ||
+               issuesModalPerm === undefined || 
+               (Array.isArray(issuesModalPerm) && issuesModalPerm.includes('useIssuesButton'));
+               
+            if (!canUseIssuesButton) return null;
+          }
+          
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleNavigation(item.id)}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all ${view === item.id || (item.id === 'issuesModal' && isAppIssuesModalOpen) ? 'bg-blue-600 text-white shadow-xl' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+            >
+              {item.icon} {item.label}
+            </button>
+          );
+        })}
       </div>
 
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -541,6 +566,11 @@ const MainApp: React.FC = () => {
             setUserFilter(ids.join(','));
           }
         }}
+      />
+
+      <IssuesAndSolutionsModal 
+        isOpen={isAppIssuesModalOpen}
+        onClose={() => setIsAppIssuesModalOpen(false)}
       />
     </Layout>
   );

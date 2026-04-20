@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 import { useGlobal } from '../context/GlobalState';
 import { 
   Menu, X, Home, Users, ClipboardList, BookOpen, 
-  Settings, LogOut, MessageCircle, FileText, UserPlus, FileSearch, Briefcase
+  Settings, LogOut, MessageCircle, FileText, UserPlus, FileSearch, Briefcase, AlertCircle
 } from 'lucide-react';
+import IssuesAndSolutionsModal from './IssuesAndSolutionsModal';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,6 +16,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings }) => {
   const { lang, setLang, logout, data } = useGlobal();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isIssuesModalOpen, setIsIssuesModalOpen] = useState(false);
 
   const menuItems = [
     { icon: <Home size={20} />, label: 'لوحة التحكم', path: 'dashboard' },
@@ -22,12 +24,17 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings })
     { icon: <Briefcase size={20} />, label: 'متابعة الموظفين والعاملين', path: 'adminReports' },
     { icon: <Users size={20} />, label: 'شؤون الطلاب', path: 'studentReports' },
     { icon: <FileSearch size={20} />, label: 'التقارير الخاصة', path: 'specialReports' },
+    { icon: <AlertCircle size={20} />, label: 'المشكلات والحلول', path: 'issuesModal', action: () => setIsIssuesModalOpen(true) },
     { icon: <UserPlus size={20} />, label: 'جدول التغطية', path: 'substitute' },
     { icon: <FileText size={20} />, label: 'ملف المدرسة', path: 'profile' },
   ];
 
   const handleMenuClick = (item: any) => {
-    onNavigate(item.path);
+    if (item.action) {
+      item.action();
+    } else {
+      onNavigate(item.path);
+    }
     setIsSidebarOpen(false);
   };
 
@@ -85,6 +92,11 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings })
       <footer className="bg-white border-t py-4 px-6 text-center text-slate-600 font-semibold text-xs sm:text-sm">
         إعداد المستشار الإداري والتربوي إبراهيم دخان
       </footer>
+
+      <IssuesAndSolutionsModal 
+        isOpen={isIssuesModalOpen}
+        onClose={() => setIsIssuesModalOpen(false)}
+      />
     </div>
   );
 };

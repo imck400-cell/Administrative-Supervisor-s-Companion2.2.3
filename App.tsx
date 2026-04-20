@@ -10,8 +10,9 @@ import ProfilePage from './app/ProfilePage';
 import DataManagementModal from './components/DataManagementModal';
 import AccessCodesModal from './components/AccessCodesModal';
 import IssuesAndSolutionsModal from './components/IssuesAndSolutionsModal';
+import CaseStudyModal from './components/CaseStudyModal';
 import {
-  Lock, LayoutDashboard, ClipboardCheck, UserX, UserPlus,
+  Lock, LayoutDashboard, ClipboardCheck, ClipboardList, UserX, UserPlus,
   Users, Database, FileSearch, Briefcase,
   School, Calendar, AlertTriangle, AlertCircle, Phone, MessageCircle, Key, LogOut, User as UserIcon, X, Check,
   ChevronDown, ChevronUp, Sparkles
@@ -333,11 +334,14 @@ const MainApp: React.FC = () => {
   const [isCodesModalOpen, setIsCodesModalOpen] = useState(false);
   const [isUserFilterModalOpen, setIsUserFilterModalOpen] = useState(false);
   const [isAppIssuesModalOpen, setIsAppIssuesModalOpen] = useState(false);
+  const [isCaseStudyModalOpen, setIsCaseStudyModalOpen] = useState(false);
 
   // Helper to handle navigation so both Layout and Quick Access buttons trigger the modal
   const handleNavigation = (v: string) => {
     if (v === 'issuesModal') {
       setIsAppIssuesModalOpen(true);
+    } else if (v === 'caseStudyModal') {
+      setIsCaseStudyModalOpen(true);
     } else {
       setView(v);
     }
@@ -352,6 +356,7 @@ const MainApp: React.FC = () => {
       { id: 'violations', label: 'التعهدات', icon: <UserX size={18} />, permission: 'studentAffairs' },
       { id: 'studentReports', label: 'تقارير الطلاب', icon: <Users size={18} />, permission: 'studentAffairs' },
       { id: 'specialReports', label: 'تقارير خاصة', icon: <FileSearch size={18} />, permission: 'specialReports' },
+      { id: 'caseStudyModal', label: 'دراسة حالة طالب', icon: <ClipboardList size={18} />, permission: 'caseStudyModal' },
       { id: 'issuesModal', label: 'المشكلات والحلول', icon: <AlertCircle size={18} />, permission: 'issuesModal' },
       { id: 'profile', label: 'ملف المدرسة', icon: <School size={18} />, permission: 'schoolProfile' },
     ];
@@ -446,6 +451,12 @@ const MainApp: React.FC = () => {
     }
   };
 
+  const managedIds = currentUser?.permissions?.managedUserIds || [];
+  const isManager = currentUser?.permissions?.userManagement === true || managedIds.length > 0;
+  const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+  const hasCaseStudyPerm = currentUser?.permissions?.caseStudyModal === true;
+  const canUseCaseStudy = hasCaseStudyPerm || isGeneralSupervisor || isManager;
+
   return (
     <Layout onNavigate={handleNavigation} onOpenSettings={() => setIsDataModalOpen(true)}>
       <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
@@ -513,6 +524,15 @@ const MainApp: React.FC = () => {
               <Database className="text-blue-600" size={18} /> إدارة البيانات
             </button>
           )}
+
+          {canUseCaseStudy && (
+            <button
+              onClick={() => setIsCaseStudyModalOpen(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all"
+            >
+              <ClipboardList className="text-blue-600" size={18} /> دراسة حالة طالب
+            </button>
+          )}
         </div>
       </div>
 
@@ -528,12 +548,25 @@ const MainApp: React.FC = () => {
                
             if (!canUseIssuesButton) return null;
           }
+
+          if (item.id === 'caseStudyModal') {
+             // Logic for caseStudyModal visibility based on prompt
+             const managedIds = currentUser?.permissions?.managedUserIds || [];
+             const isManager = currentUser?.permissions?.userManagement === true || managedIds.length > 0;
+             const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+             
+             // Check explicit permission OR admin OR manager
+             const hasCaseStudyPerm = currentUser?.permissions?.caseStudyModal === true;
+
+             const canUseCaseStudy = hasCaseStudyPerm || isGeneralSupervisor || isManager;
+             if (!canUseCaseStudy) return null;
+          }
           
           return (
             <button
               key={item.id}
               onClick={() => handleNavigation(item.id)}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all ${view === item.id || (item.id === 'issuesModal' && isAppIssuesModalOpen) ? 'bg-blue-600 text-white shadow-xl' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all ${view === item.id || (item.id === 'issuesModal' && isAppIssuesModalOpen) || (item.id === 'caseStudyModal' && isCaseStudyModalOpen) ? 'bg-blue-600 text-white shadow-xl' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
             >
               {item.icon} {item.label}
             </button>
@@ -571,6 +604,10 @@ const MainApp: React.FC = () => {
       <IssuesAndSolutionsModal 
         isOpen={isAppIssuesModalOpen}
         onClose={() => setIsAppIssuesModalOpen(false)}
+      />
+      <CaseStudyModal
+        isOpen={isCaseStudyModalOpen}
+        onClose={() => setIsCaseStudyModalOpen(false)}
       />
     </Layout>
   );

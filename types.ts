@@ -341,6 +341,7 @@ export interface UserPermissions {
   readOnly?: boolean;
   schoolsAndBranches?: Record<string, string[]>;
   issuesModal?: boolean | string[];
+  caseStudyModal?: boolean;
 }
 
 export interface User {

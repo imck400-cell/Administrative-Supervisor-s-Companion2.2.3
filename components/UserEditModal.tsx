@@ -29,6 +29,7 @@ const permissionsList = [
       { id: 'viewAllIssues', label: 'إظهار المشكلات والحلول' },
     ]
   },
+  { id: 'caseStudyModal', label: 'دراسة حالة' },
   { 
     id: 'specialReports', 
     label: 'تقارير خاصة',

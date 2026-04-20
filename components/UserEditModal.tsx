@@ -22,6 +22,14 @@ const permissionsList = [
   { id: 'userManagement', label: 'التحكم بالمستخدمين' },
   { id: 'readOnly', label: 'عدم السماح بتغيير البيانات' },
   { 
+    id: 'issuesModal', 
+    label: 'المشكلات والحلول',
+    subPermissions: [
+      { id: 'useIssuesButton', label: 'استخدام الزر' },
+      { id: 'viewAllIssues', label: 'إظهار المشكلات والحلول' },
+    ]
+  },
+  { 
     id: 'specialReports', 
     label: 'تقارير خاصة',
     subPermissions: [

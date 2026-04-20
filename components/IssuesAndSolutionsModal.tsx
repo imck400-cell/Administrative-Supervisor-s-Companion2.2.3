@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { X, Save, AlertCircle } from 'lucide-react';
-import { collection, addDoc } from 'firebase/firestore';
+import React, { useState, useMemo, useEffect } from 'react';
+import { X, Save, AlertCircle, List, PlusCircle, Trash2, Calendar, User, Clock } from 'lucide-react';
+import { collection, addDoc, getDocs, query, where, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useGlobal } from '../context/GlobalState';
 
 interface ModalProps {
   isOpen: boolean;
@@ -95,6 +96,9 @@ const issuesDictionary = {
 };
 
 const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
+  const { currentUser, data } = useGlobal();
+  const [activeTab, setActiveTab] = useState<'create' | 'view'>('create');
+  
   const [category, setCategory] = useState('');
   const [problem, setProblem] = useState('');
   const [solution, setSolution] = useState('');
@@ -103,9 +107,63 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
   const [successMessage, setSuccessMessage] = useState('');
   const [error, setError] = useState('');
 
+  const [issuesRecord, setIssuesRecord] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
   const categories = Object.keys(issuesDictionary);
   const currentProblems = category ? issuesDictionary[category as keyof typeof issuesDictionary].problems : [];
   const currentSolutions = category ? issuesDictionary[category as keyof typeof issuesDictionary].solutions : [];
+
+  const fetchIssues = async () => {
+    setIsLoading(true);
+    try {
+      // For simplicity, just get all from this school, then filter in JS
+      // Because we may need complex filtering for managed users
+      const q = query(
+        collection(db, 'issuesAndSolutions_log'), 
+        orderBy('timestamp', 'desc')
+      );
+      const querySnapshot = await getDocs(q);
+      const docs = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Filter by school in JS to avoid index errors
+      const schoolDocs = docs.filter((d: any) => d.school === currentUser?.selectedSchool);
+      
+      const isAdmin = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+      const issuesPermRaw = currentUser?.permissions?.issuesModal;
+      const canViewAll = Array.isArray(issuesPermRaw) && issuesPermRaw.includes('viewAllIssues');
+      const managedIds = currentUser?.permissions?.managedUserIds || [];
+
+      let filteredDocs = schoolDocs;
+      if (!isAdmin && !canViewAll) {
+        filteredDocs = schoolDocs.filter((d: any) => 
+          d.userId === currentUser?.id || managedIds.includes(d.userId)
+        );
+      }
+      
+      setIssuesRecord(filteredDocs);
+    } catch (err) {
+      console.error('Error fetching issues: ', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && activeTab === 'view') {
+      fetchIssues();
+    }
+  }, [isOpen, activeTab, currentUser]);
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا التقرير؟')) return;
+    try {
+      await deleteDoc(doc(db, 'issuesAndSolutions_log', id));
+      setIssuesRecord(prev => prev.filter(r => r.id !== id));
+    } catch (err) {
+      console.error('Error deleting document: ', err);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,7 +181,10 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
         problem_selected: problem,
         solution_selected: solution,
         additional_details: additionalDetails,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        userId: currentUser?.id,
+        userName: currentUser?.name,
+        school: currentUser?.selectedSchool,
       });
 
       setSuccessMessage('تم حفظ التقرير بنجاح!');
@@ -149,14 +210,28 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm rtl font-arabic overflow-y-auto">
       <div className="bg-slate-50 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-white/50 flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="bg-white/80 backdrop-blur-md px-6 py-4 border-b flex justify-between items-center sticky top-0 z-10">
+        <div className="bg-white/80 backdrop-blur-md px-6 py-4 border-b flex flex-col sm:flex-row sm:justify-between items-center sticky top-0 z-10 gap-4">
           <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
             <AlertCircle className="w-6 h-6 text-blue-500" />
             المشكلات والحلول
           </h2>
+          <div className="flex bg-slate-100 p-1 rounded-2xl w-full sm:w-auto">
+            <button 
+              onClick={() => setActiveTab('create')}
+              className={`flex-1 sm:px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'create' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <PlusCircle size={18} /> إضافة جديد
+            </button>
+            <button 
+              onClick={() => setActiveTab('view')}
+              className={`flex-1 sm:px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'view' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              <List size={18} /> سجل التقارير
+            </button>
+          </div>
           <button 
             onClick={onClose}
-            className="p-2 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 rounded-xl transition-colors h-[48px] w-[48px] flex items-center justify-center"
+            className="p-2 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 rounded-xl transition-colors h-[48px] w-[48px] flex items-center justify-center hidden sm:flex"
           >
             <X size={24} />
           </button>
@@ -164,20 +239,21 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
 
         {/* Content */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1">
-          {successMessage ? (
-            <div className="bg-emerald-50 text-emerald-600 p-6 rounded-2xl text-center border border-emerald-100 mb-6">
-              <div className="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Save size={32} />
-              </div>
-              <p className="font-bold text-lg">{successMessage}</p>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm font-semibold border border-red-100">
-                  {error}
+          {activeTab === 'create' ? (
+            successMessage ? (
+              <div className="bg-emerald-50 text-emerald-600 p-6 rounded-2xl text-center border border-emerald-100 mb-6">
+                <div className="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Save size={32} />
                 </div>
-              )}
+                <p className="font-bold text-lg">{successMessage}</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {error && (
+                  <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm font-semibold border border-red-100">
+                    {error}
+                  </div>
+                )}
 
               {/* Category Card */}
               <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-white shadow-sm">
@@ -246,11 +322,63 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
               </div>
 
             </form>
+            )
+          ) : (
+            <div className="space-y-4">
+              {isLoading ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              ) : issuesRecord.length === 0 ? (
+                <div className="text-center py-12 text-slate-500 font-medium">لا توجد تقارير مسجلة حالياً</div>
+              ) : (
+                issuesRecord.map((record, idx) => (
+                  <div key={idx} className="bg-white/80 backdrop-blur-md p-5 rounded-3xl border border-white shadow-sm flex flex-col gap-4 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-2 h-full bg-blue-500 rounded-r-3xl"></div>
+                    <div className="flex justify-between items-start gap-4 mr-2">
+                       <div className="space-y-1">
+                          <span className="bg-blue-100 text-blue-700 text-xs font-black px-3 py-1 rounded-full">{record.category}</span>
+                          <h3 className="font-bold text-slate-800 text-lg">{record.problem_selected}</h3>
+                       </div>
+                       {(currentUser?.role === 'admin' || record.userId === currentUser?.id) && (
+                         <button onClick={() => handleDelete(record.id)} className="text-slate-400 hover:text-red-500 transition-colors bg-red-50/0 hover:bg-red-50 p-2 rounded-xl">
+                           <Trash2 size={18} />
+                         </button>
+                       )}
+                    </div>
+                    
+                    <div className="mr-2 bg-emerald-50 text-emerald-700 p-3 rounded-2xl border border-emerald-100">
+                      <p className="text-sm font-bold flex items-center gap-2">
+                         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span> 
+                         الحل: {record.solution_selected}
+                      </p>
+                    </div>
+
+                    {record.additional_details && (
+                       <p className="mr-2 text-sm text-slate-600 bg-slate-50 p-3 rounded-2xl whitespace-pre-wrap leading-relaxed border border-slate-100">
+                         {record.additional_details}
+                       </p>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 font-medium mr-2 mt-2 pt-3 border-t border-slate-100">
+                       <div className="flex items-center gap-1.5">
+                         <User size={14} className="text-slate-400" />
+                         <span>{record.userName}</span>
+                       </div>
+                       <div className="flex items-center gap-1.5">
+                         <Clock size={14} className="text-slate-400" />
+                         <span dir="ltr">{new Date(record.timestamp).toLocaleString('ar-AE')}</span>
+                       </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           )}
         </div>
 
         {/* Footer */}
-        {!successMessage && (
+        {activeTab === 'create' && !successMessage && (
           <div className="bg-white/80 backdrop-blur-md px-6 py-4 border-t sticky bottom-0">
             <button 
               onClick={handleSubmit}

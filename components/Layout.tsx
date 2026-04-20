@@ -14,9 +14,15 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings }) => {
-  const { lang, setLang, logout, data } = useGlobal();
+  const { lang, setLang, logout, data, currentUser } = useGlobal();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isIssuesModalOpen, setIsIssuesModalOpen] = useState(false);
+
+  const issuesModalPerm = currentUser?.permissions?.issuesModal;
+  const canUseIssuesButton = currentUser?.role === 'admin' || 
+     currentUser?.permissions?.all === true ||
+     issuesModalPerm === undefined || 
+     (Array.isArray(issuesModalPerm) && issuesModalPerm.includes('useIssuesButton'));
 
   const menuItems = [
     { icon: <Home size={20} />, label: 'لوحة التحكم', path: 'dashboard' },
@@ -24,7 +30,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings })
     { icon: <Briefcase size={20} />, label: 'متابعة الموظفين والعاملين', path: 'adminReports' },
     { icon: <Users size={20} />, label: 'شؤون الطلاب', path: 'studentReports' },
     { icon: <FileSearch size={20} />, label: 'التقارير الخاصة', path: 'specialReports' },
-    { icon: <AlertCircle size={20} />, label: 'المشكلات والحلول', path: 'issuesModal', action: () => setIsIssuesModalOpen(true) },
+    ...(canUseIssuesButton ? [{ icon: <AlertCircle size={20} />, label: 'المشكلات والحلول', path: 'issuesModal', action: () => setIsIssuesModalOpen(true) }] : []),
     { icon: <UserPlus size={20} />, label: 'جدول التغطية', path: 'substitute' },
     { icon: <FileText size={20} />, label: 'ملف المدرسة', path: 'profile' },
   ];

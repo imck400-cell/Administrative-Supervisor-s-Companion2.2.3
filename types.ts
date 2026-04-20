@@ -340,6 +340,7 @@ export interface UserPermissions {
   managedUserIds?: string[];
   readOnly?: boolean;
   schoolsAndBranches?: Record<string, string[]>;
+  issuesModal?: boolean | string[];
 }
 
 export interface User {

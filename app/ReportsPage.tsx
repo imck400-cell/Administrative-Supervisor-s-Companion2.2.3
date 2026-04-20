@@ -31,7 +31,7 @@ const toHijri = (dateStr: string) => {
 
 // --- Teachers Follow-up Page (DailyReportsPage) ---
 export const DailyReportsPage: React.FC = () => {
-  const { lang, data, updateData, currentUser, userFilter, effectiveUserIds } = useGlobal();
+  const { lang, data, updateData, currentUser, userFilter, effectiveUserIds, dashboardFilter, setDashboardFilter } = useGlobal();
   const isReadOnly = currentUser?.permissions?.readOnly === true;
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
@@ -90,6 +90,14 @@ export const DailyReportsPage: React.FC = () => {
   // Default Writer/Manager (can be persisted in profile or localState)
   const [reportWriter, setReportWriter] = useState(data.profile.supervisorName || '');
   const [branchManager, setBranchManager] = useState(data.profile.branchManager || '');
+
+  useEffect(() => {
+    if (dashboardFilter?.view === 'daily') {
+      setFilterMode('student');
+      setActiveTeacherFilter(dashboardFilter.filterValue);
+      setDashboardFilter(null);
+    }
+  }, [dashboardFilter, setDashboardFilter]);
 
   const updateReportTeachers = (reportId: string, teachers: TeacherFollowUp[]) => {
     if (isReadOnly) return;
@@ -3287,7 +3295,7 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
 });
 
 export const StudentsReportsPage: React.FC = () => {
-  const { data, updateData, lang, userFilter, currentUser } = useGlobal();
+  const { data, updateData, lang, userFilter, currentUser, dashboardFilter, setDashboardFilter } = useGlobal();
   const isReadOnly = currentUser?.permissions?.readOnly === true;
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -3368,6 +3376,14 @@ export const StudentsReportsPage: React.FC = () => {
       localStorage.removeItem('highlight_student_name');
     }
   }, []);
+
+  useEffect(() => {
+    if (dashboardFilter?.view === 'studentReports') {
+      setFilterMode('student');
+      setSelectedStudentNames([dashboardFilter.filterValue]);
+      setDashboardFilter(null);
+    }
+  }, [dashboardFilter, setDashboardFilter]);
 
   const studentData = useMemo(() => {
     let list = data.studentReports || [];

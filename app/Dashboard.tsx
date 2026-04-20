@@ -26,7 +26,7 @@ interface CardConfig {
 }
 
 const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[] }> = ({ setView, recentActions = [] }) => {
-  const { lang, data, userFilter, dateRange: globalDateRange, setDateRange: setGlobalDateRange } = useGlobal();
+  const { lang, data, userFilter, dateRange: globalDateRange, setDateRange: setGlobalDateRange, setDashboardFilter } = useGlobal();
 
   const today = new Date().toISOString().split('T')[0];
   const [globalTimeRange, setGlobalTimeRange] = useState<TimeRange>('all');
@@ -161,7 +161,19 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
     }
   };
 
-  const getSubSubTypes = (subType: string) => {
+  const getSubSubTypes = (category: DataCategory, subType: string) => {
+    if (category === 'teachers') {
+      return [
+        { id: 'highest', label: 'الأعلى تقييما' },
+        { id: 'lowest', label: 'الأدنى تقييما' },
+        { id: 'ممتاز', label: 'ممتاز' },
+        { id: 'متوسط', label: 'متوسط' },
+        { id: 'جيد', label: 'جيد' },
+        { id: 'ضعيف', label: 'ضعيف' },
+        { id: 'ضعيف جدا', label: 'ضعيف جدا' },
+      ];
+    }
+
     const commonRatings = [
       { id: 'ممتاز', label: 'ممتاز' },
       { id: 'جيد جدا', label: 'جيد جدا' },
@@ -313,9 +325,74 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
 
   const getFilteredListForCard = (card: CardConfig) => {
     let list = processedData[card.category] || [];
-    const subSubOptions = getSubSubTypes(card.subType);
+    const subSubOptions = getSubSubTypes(card.category, card.subType);
 
-    if (card.category === 'special_reports') {
+    if (card.category === 'teachers') {
+      const getTeacherMetricPercent = (teacher: any, metricKey: string, metricsList: any[]) => {
+        if (metricKey === 'all') {
+          let total = 0;
+          let max = 0;
+          metricsList.forEach(m => {
+            if (!(teacher.unaccreditedMetrics || []).includes(m.key)) {
+              total += Number(teacher[m.key]) || 0;
+              max += m.max || 10;
+            }
+          });
+          return max > 0 ? (total / max) * 100 : 0;
+        } else {
+          const m = metricsList.find(x => x.key === metricKey);
+          if (!m || (teacher.unaccreditedMetrics || []).includes(metricKey)) return undefined;
+          const max = m.max || 10;
+          return max > 0 ? ((Number(teacher[metricKey]) || 0) / max) * 100 : 0;
+        }
+      };
+
+      if (card.subType !== 'all') {
+        // Must have data for this metric if a specific one is selected
+        list = list.filter(i => {
+          const val = (i as any)[card.subType];
+          return val !== undefined && val !== null && val !== '' && val !== '0' && val !== 0;
+        });
+      }
+
+      // Filter and categorize by percentage
+      list = list.filter(i => {
+        const pt = getTeacherMetricPercent(i, card.subType, data.metricsList || []);
+        if (pt === undefined) return false;
+        
+        if (card.subSubTypes.length > 0) {
+          const ratings = card.subSubTypes.filter(opt => ['ممتاز', 'جيد', 'متوسط', 'ضعيف', 'ضعيف جدا'].includes(opt));
+          if (ratings.length > 0) {
+            const ratMatch = ratings.some(r => {
+              if (r === 'ممتاز' && pt >= 90) return true;
+              if (r === 'جيد' && pt >= 75 && pt < 90) return true;
+              if (r === 'متوسط' && pt >= 60 && pt < 75) return true;
+              if (r === 'ضعيف' && pt >= 50 && pt < 60) return true;
+              if (r === 'ضعيف جدا' && pt < 50) return true;
+              return false;
+            });
+            if (!ratMatch) return false;
+          }
+        }
+        return true;
+      });
+
+      // Apply sorting
+      if (card.subSubTypes.includes('highest')) {
+        list = list.sort((a, b) => {
+           const pa = getTeacherMetricPercent(a, card.subType, data.metricsList || []) || 0;
+           const pb = getTeacherMetricPercent(b, card.subType, data.metricsList || []) || 0;
+           return pb - pa;
+        });
+      } else if (card.subSubTypes.includes('lowest')) {
+        list = list.sort((a, b) => {
+           const pa = getTeacherMetricPercent(a, card.subType, data.metricsList || []) || 0;
+           const pb = getTeacherMetricPercent(b, card.subType, data.metricsList || []) || 0;
+           return pa - pb;
+        });
+      }
+
+    } else if (card.category === 'special_reports') {
       if (card.subType !== 'all') {
         list = list.filter(i => i.cat === card.subType);
 
@@ -327,7 +404,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
     } else if (card.subType !== 'all') {
       if (card.category === 'substitutions') {
         list = list.filter(i => i.paymentStatus === card.subType);
-      } else if (card.category === 'students' || card.category === 'teachers') {
+      } else if (card.category === 'students') {
         // Only show items where this specific metric has data
         list = list.filter(i => {
           const val = (i as any)[card.subType];
@@ -506,7 +583,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
           const count = list.length;
           const currentCat = mainCategories.find(c => c.id === card.category);
           const currentSub = getSubTypes(card.category).find(s => s.id === card.subType);
-          const subSubOptions = getSubSubTypes(card.subType);
+          const subSubOptions = getSubSubTypes(card.category, card.subType);
           const design = cardColors[idx % cardColors.length];
           const offset = cardOffsets[card.id] || 0;
           const visibleItems = list.slice(offset, offset + 3);
@@ -582,7 +659,12 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
                   visibleItems.map((item, i) => (
                     <div
                       key={`${card.id}-${offset}-${i}`}
-                      onClick={() => setView?.(currentCat?.view || 'dashboard')}
+                      onClick={() => {
+                         if (currentCat?.view) {
+                            setDashboardFilter({ view: currentCat.view, filterValue: item.displayName });
+                            setView?.(currentCat.view);
+                         }
+                      }}
                       className="bg-white/95 backdrop-blur-sm px-3 rounded-2xl border border-white shadow-sm flex items-center gap-3 hover:bg-white hover:shadow-xl hover:-translate-x-1 cursor-pointer transition-all animate-in slide-in-from-right-2 fade-in duration-300 h-[60px]"
                     >
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm bg-slate-50 border-2 border-slate-100 flex-shrink-0`}>

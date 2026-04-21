@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useGlobal } from '../context/GlobalState';
-import { X, Save, Share2, FileSpreadsheet, User, ClipboardList, Search, Calendar, ChevronDown, ChevronUp, Trash2, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Save, Share2, FileSpreadsheet, User, ClipboardList, Search, Calendar, ChevronDown, ChevronUp, Trash2, CheckCircle2, ChevronLeft, ChevronRight, TrendingUp, Briefcase } from 'lucide-react';
 import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import * as XLSX from 'xlsx';
@@ -100,8 +100,6 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     setSelectedSubject('');
   }, [evaluatorRole]);
 
-  if (!isOpen) return null;
-
   const filteredStudents = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const term = normalizeArabic(searchQuery);
@@ -113,6 +111,19 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     const term = normalizeArabic(filterStudentsQuery);
     return data.studentReports.filter(s => normalizeArabic(s.name).includes(term)).slice(0, 5);
   }, [filterStudentsQuery, data.studentReports]);
+
+  // View Log Filtering
+  const filteredLogs = useMemo(() => {
+    let result = logs;
+    if (filterDateFrom) result = result.filter(l => l.timestamp.split('T')[0] >= filterDateFrom);
+    if (filterDateTo) result = result.filter(l => l.timestamp.split('T')[0] <= filterDateTo);
+    if (selectedFilterStudents.length > 0) {
+      result = result.filter(l => selectedFilterStudents.includes(l.studentName));
+    }
+    return result;
+  }, [logs, filterDateFrom, filterDateTo, selectedFilterStudents]);
+
+  if (!isOpen) return null;
 
   const handleStudentSelect = (student: StudentReport) => {
     setSelectedStudent(student);
@@ -413,18 +424,6 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
-
-  // View Log Filtering
-  const filteredLogs = useMemo(() => {
-    let result = logs;
-    if (filterDateFrom) result = result.filter(l => l.timestamp.split('T')[0] >= filterDateFrom);
-    if (filterDateTo) result = result.filter(l => l.timestamp.split('T')[0] <= filterDateTo);
-    if (selectedFilterStudents.length > 0) {
-      result = result.filter(l => selectedFilterStudents.includes(l.studentName));
-    }
-    return result;
-  }, [logs, filterDateFrom, filterDateTo, selectedFilterStudents]);
-
 
   return (
     <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm rtl font-arabic overflow-hidden">

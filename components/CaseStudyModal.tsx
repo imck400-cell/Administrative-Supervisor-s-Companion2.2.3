@@ -30,11 +30,49 @@ const RATINGS = [
   { id: 'ضعيف جدا', color: 'bg-red-500', text: 'text-red-700' }
 ];
 
-const normalizeArabic = (text: string) => {
-  return text.replace(/[أإآا]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').trim();
+const normalizeArabic = (text: any) => {
+  if (!text) return '';
+  return String(text).replace(/[أإآا]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').trim();
 };
 
-const getSubjectsForGrade = (grade: string) => {
+const ALL_FIELDS_MAP: Record<string, string> = {
+  academic_understanding: 'الاستيعاب العلمي',
+  homework_commitment: 'الالتزام بالواجبات',
+  participation: 'المشاركة والتفاعل',
+  classroom_behavior: 'السلوك الصفي',
+  strengths: 'نقاط التميز',
+  attendance: 'الحضور والانصراف',
+  appearance: 'المظهر العام',
+  yard_behavior: 'السلوك العام في الساحات',
+  property_respect: 'احترام الممتلكات',
+  admin_communication: 'التواصل مع الإدارة',
+  home_environment: 'البيئة المنزلية',
+  study_independence: 'الاستقلالية في المذاكرة',
+  social_life: 'الحياة الاجتماعية',
+  health_status: 'الحالة الصحية',
+  behavioral_notes: 'الملاحظات السلوكية',
+  school_feelings: 'المشاعر تجاه المدرسة',
+  favorite_hard_subjects: 'المواد المفضلة / الصعبة',
+  peer_relations: 'العلاقات مع الزملاء / التنمر',
+  preferred_learning_style: 'طريقة التعلم المفضلة',
+  leadership_skills: 'المهارات القيادية',
+  teamwork: 'العمل الجماعي',
+  talents: 'المواهب',
+  chronic_diseases: 'الأمراض المزمنة',
+  clinic_visits: 'زيارات العيادة',
+  physical_growth: 'النمو البدني',
+  developmental_skills: 'المهارات النمائية',
+  academic_skills: 'المهارات الأكاديمية الخاصة',
+  iep_progress: 'تقدم الخطة الفردية',
+  initial_diagnosis: 'التشخيص المبدئي (نوع الحالة)',
+  swot_analysis: 'مصفوفة SWOT',
+  risk_level: 'مؤشر الخطورة',
+  sociogram: 'العلاقات (الأصدقاء / حالة التنمر)',
+  sessions_log: 'سجل الجلسات والمقاييس',
+  interventions: 'التدخلات والإحالة'
+};
+
+const getSubjectsForGrade = (grade: any) => {
   if (!grade) return [];
   const g = normalizeArabic(grade);
   if (['تمهيدي', 'اول', 'ثاني', 'ثالث', 'اوله', 'ثانيه', 'ثالثه'].some(x => g.includes(x) && !g.includes('ثانوي'))) {
@@ -356,11 +394,10 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
            const rating = flat[mainKey + '_rating'];
            const val = flat[key];
            
-           // Lookup label (approximation, we don't have the original fields array easily here without role state sync)
-           // But we can format nicely
-           text += `*البند:* ${val}\n`; // Detailed labels missing in generic iteration, but we can reconstruct it.
-           if (rating) text += `*التقييم:* ${rating}\n`;
-           text += `\n`;
+           const label = ALL_FIELDS_MAP[mainKey] || mainKey;
+           text += `*${label}*\n`;
+           if (rating) text += `التقييم: ${rating}\n`;
+           text += `الملاحظات: ${val}\n\n`;
         }
     });
 
@@ -766,38 +803,45 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
                                {isExpanded && (
                                  <tr className="bg-slate-50/80 border-t-0 shadow-inner">
                                    <td colSpan={6} className="p-6">
-                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                       {Object.keys(log.formData || {}).filter(k=>k.endsWith('_text')).map(textKey => {
-                                          const mainKey = textKey.replace('_text', '');
-                                          const rating = log.formData[`${mainKey}_rating`];
-                                          const text = log.formData[textKey];
-                                          return (
-                                            <div key={mainKey} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-2">
-                                              {rating && (
-                                                <span className={`self-start text-[10px] font-black px-2 py-1 rounded-lg ${RATINGS.find(r=>r.id===rating)?.text || 'bg-slate-100 text-slate-600'}`}>
-                                                  {rating}
-                                                </span>
-                                              )}
-                                              <p className="text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap">{text}</p>
-                                            </div>
-                                          );
-                                       })}
-                                       {log.additionalDetails && (
-                                         <div className="col-span-full bg-blue-50/50 p-4 rounded-2xl border border-blue-200 shadow-sm">
-                                            <h4 className="text-xs font-black text-blue-800 mb-2">إجراءات مخصصة وتفاصيل</h4>
-                                            <p className="text-sm font-bold text-slate-700 whitespace-pre-wrap">{log.additionalDetails}</p>
-                                         </div>
-                                       )}
-                                       {/* Also display basic static fields saved under student info */}
-                                       <div className="col-span-full border-t border-slate-300/50 pt-4 mt-2">
-                                          <div className="flex gap-4 text-xs font-bold text-slate-500">
-                                             <span><b className="text-slate-800">ولي الأمر:</b> {log.guardianName}</span>
-                                             <span><b className="text-slate-800">هاتف:</b> {log.guardianPhone}</span>
-                                             <span><b className="text-slate-800">السكن:</b> {log.studentAddress}</span>
-                                             <span><b className="text-slate-800">العمل:</b> {log.studentWork}</span>
-                                          </div>
-                                       </div>
-                                     </div>
+       <div className="flex flex-col space-y-4 w-full">
+         {Object.keys(log.formData || {}).filter(k=>k.endsWith('_text')).map(textKey => {
+            const mainKey = textKey.replace('_text', '');
+            const rating = log.formData[`${mainKey}_rating`];
+            const text = log.formData[textKey];
+            const label = ALL_FIELDS_MAP[mainKey] || mainKey;
+            
+            return (
+              <div key={mainKey} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-3 transition-colors hover:border-blue-200">
+                <div className="flex items-start justify-between border-b border-slate-100 pb-3 mb-1">
+                   <h4 className="font-black text-slate-800 text-base">{label}</h4>
+                   {rating && (
+                     <span className={`text-xs font-black px-3 py-1.5 rounded-xl ${RATINGS.find(r=>r.id===rating)?.color || 'bg-slate-500'} text-white shadow-sm`}>
+                       {rating}
+                     </span>
+                   )}
+                </div>
+                <p className="text-sm font-bold text-slate-600 leading-relaxed whitespace-pre-wrap">{text}</p>
+              </div>
+            );
+         })}
+         {log.additionalDetails && (
+           <div className="w-full bg-indigo-50/70 p-5 rounded-2xl border border-indigo-100 shadow-sm mt-4">
+              <h4 className="text-sm font-black text-indigo-900 mb-3 flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-indigo-600" /> إجراءات مخصصة وتفاصيل إضافية
+              </h4>
+              <p className="text-sm font-bold text-indigo-800 whitespace-pre-wrap leading-relaxed">{log.additionalDetails}</p>
+           </div>
+         )}
+         {/* Also display basic static fields saved under student info */}
+         <div className="w-full border-t border-slate-300/50 pt-4 mt-6">
+            <div className="flex flex-wrap gap-4 text-xs font-bold text-slate-500 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+               <span className="flex-1"><b className="text-slate-800 ml-1">ولي الأمر:</b> {log.guardianName}</span>
+               <span className="flex-1 text-left"><b className="text-slate-800 ml-1">هاتف:</b> <span className="dir-ltr inline-block">{log.guardianPhone}</span></span>
+               <span className="flex-1"><b className="text-slate-800 ml-1">السكن:</b> {log.studentAddress || '-'}</span>
+               <span className="flex-1"><b className="text-slate-800 ml-1">العمل:</b> {log.studentWork || '-'}</span>
+            </div>
+         </div>
+       </div>
                                    </td>
                                  </tr>
                                )}

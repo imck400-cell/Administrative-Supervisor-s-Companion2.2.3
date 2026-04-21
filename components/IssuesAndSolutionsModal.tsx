@@ -12,12 +12,22 @@ interface ModalProps {
 const issuesDictionary = {
   "شؤون الطلاب (السلوك والانضباط)": {
     problems: [
-      "كثرة الغياب والتأخر الصباحي / الفوضى",
-      "مخالفة الزي المدرسي والمظهر العام",
-      "سلوكيات سلبية (تنمر، عدوانية، سرقة، إتلاف ممتلكات)",
-      "استخدام الهواتف المحمولة / ضعف الانضباط الصفي",
-      "ضعف الدافعية واللامبالاة / إهمال الواجبات",
-      "تدني المستوى التعليمي / صعوبات تعلم"
+      "كثرة الغياب",
+      "التأخر الصباحي",
+      "الفوضى وعدم الانضباط",
+      "مخالفة الزي المدرسي",
+      "مخالفة المظهر العام",
+      "التنمر",
+      "العدوانية",
+      "السرقة",
+      "إتلاف الممتلكات",
+      "استخدام الهواتف المحمولة",
+      "ضعف الانضباط الصفي",
+      "ضعف الدافعية",
+      "اللامبالاة",
+      "إهمال الواجبات",
+      "تدني المستوى التعليمي",
+      "صعوبات تعلم"
     ],
     solutions: [
       "استدعاء ولي الأمر وتوقيع تعهد أو عقد سلوكي",
@@ -30,12 +40,16 @@ const issuesDictionary = {
   },
   "الكادر التعليمي والإداري": {
     problems: [
-      "كثرة غياب وتأخر المعلمات / تأخر التحضير",
+      "كثرة غياب المعلمات",
+      "كثرة تأخر المعلمات",
+      "تأخر التحضير",
       "ضعف الإدارة الصفية",
       "مقاومة التغيير والتطوير",
       "ضعف المهارات التقنية (الشاشات، الذكاء الاصطناعي)",
-      "تداخل المهام / ضغط العمل ونهاية الشهر",
-      "مشاكل العلاقات المهنية / ضعف التواصل مع الأهالي"
+      "تداخل المهام",
+      "ضغط العمل ونهاية الشهر",
+      "مشاكل العلاقات المهنية",
+      "ضعف التواصل مع الأهالي"
     ],
     solutions: [
       "عقد ورش عمل تدريبية داخلية",
@@ -48,10 +62,14 @@ const issuesDictionary = {
   },
   "أولياء الأمور والبيئة الأسرية": {
     problems: [
-      "ضعف المتابعة وعدم التجاوب / أمية الأهل",
+      "ضعف المتابعة",
+      "عدم التجاوب",
+      "أمية الأهل",
       "التأخر في استلام الطلاب نهاية الدوام",
       "التعامل غير اللائق مع الإدارة",
-      "مشاكل أسرية تؤثر على الطالب (عنف، إهمال)"
+      "مشاكل أسرية تؤثر على الطالب",
+      "العنف الأسري",
+      "إهمال الطالب من قبل الأسرة"
     ],
     solutions: [
       "إرسال إشعارات مسجلة وموثقة عبر النظام",
@@ -63,10 +81,13 @@ const issuesDictionary = {
   },
   "الشؤون التقنية والمادية": {
     problems: [
-      "تعطل الأجهزة الأساسية (طابعات، شاشات، توصيلات)",
-      "حاجة المبنى للصيانة",
+      "تعطل طابعات وتصوير",
+      "تعطل شاشات",
+      "مشاكل في التوصيلات والكهرباء",
+      "حاجة المبنى للصيانة بشكل عام",
       "الكثافة العددية العالية في الفصول",
-      "نقص الوسائل التعليمية وموارد الأنشطة",
+      "نقص الوسائل التعليمية",
+      "نقص موارد الأنشطة",
       "غياب مساحة مخصصة للإشراف التربوي"
     ],
     solutions: [
@@ -117,6 +138,13 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
   const fetchIssues = async () => {
     setIsLoading(true);
     try {
+      if (!navigator.onLine) {
+         const offlineData = JSON.parse(localStorage.getItem('offlineIssues') || '[]');
+         setIssuesRecord(offlineData);
+         setIsLoading(false);
+         return;
+      }
+
       // For simplicity, just get all from this school, then filter in JS
       // Because we may need complex filtering for managed users
       const q = query(
@@ -141,7 +169,8 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
         );
       }
       
-      setIssuesRecord(filteredDocs);
+      const offlineData = JSON.parse(localStorage.getItem('offlineIssues') || '[]');
+      setIssuesRecord([...offlineData, ...filteredDocs]);
     } catch (err) {
       console.error('Error fetching issues: ', err);
     } finally {
@@ -157,6 +186,20 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('هل أنت متأكد من حذف هذا التقرير؟')) return;
+    
+    if (id.startsWith('local_')) {
+      const offlineData = JSON.parse(localStorage.getItem('offlineIssues') || '[]');
+      const newData = offlineData.filter((i: any) => i.id !== id);
+      localStorage.setItem('offlineIssues', JSON.stringify(newData));
+      setIssuesRecord(prev => prev.filter(r => r.id !== id));
+      return;
+    }
+    
+    if (!navigator.onLine) {
+        alert('لا يمكن حذف التقارير المحفوظة سحابياً إلا عند توفر اتصال إنترنت.');
+        return;
+    }
+
     try {
       await deleteDoc(doc(db, 'issuesAndSolutions_log', id));
       setIssuesRecord(prev => prev.filter(r => r.id !== id));
@@ -175,26 +218,35 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     setIsSubmitting(true);
     setError('');
 
-    try {
-      await addDoc(collection(db, 'issuesAndSolutions_log'), {
-        category,
-        problem_selected: problem,
-        solution_selected: solution,
-        additional_details: additionalDetails || '',
-        timestamp: new Date().toISOString(),
-        userId: currentUser?.id || 'unknown_user',
-        userName: currentUser?.name || 'مستخدم غير معروف',
-        school: currentUser?.selectedSchool || '',
-      });
+    const payload = {
+      category,
+      problem_selected: problem,
+      solution_selected: solution,
+      additional_details: additionalDetails || '',
+      timestamp: new Date().toISOString(),
+      userId: currentUser?.id || 'unknown_user',
+      userName: currentUser?.name || 'مستخدم غير معروف',
+      school: currentUser?.selectedSchool || '',
+    };
 
-      setSuccessMessage('تم حفظ التقرير بنجاح!');
+    try {
+      if (navigator.onLine) {
+        await addDoc(collection(db, 'issuesAndSolutions_log'), payload);
+        setSuccessMessage('تم حفظ التقرير بنجاح، ومزامنته سحابياً!');
+      } else {
+        const offlineData = JSON.parse(localStorage.getItem('offlineIssues') || '[]');
+        offlineData.push({ ...payload, id: 'local_' + Date.now() });
+        localStorage.setItem('offlineIssues', JSON.stringify(offlineData));
+        setSuccessMessage('تم حفظ التقرير محلياً بنجاح وسيتزامن حين توفر الإنترنت!');
+      }
+
       setTimeout(() => {
         setSuccessMessage('');
         setCategory('');
         setProblem('');
         setSolution('');
         setAdditionalDetails('');
-        onClose();
+        // onClose(); // Removed auto close as per user request
       }, 2000);
     } catch (err: any) {
       console.error('Error saving document: ', err);

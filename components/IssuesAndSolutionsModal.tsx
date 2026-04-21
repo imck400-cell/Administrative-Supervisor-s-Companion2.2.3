@@ -130,10 +130,63 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
 
   const [issuesRecord, setIssuesRecord] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  const [searchQuery, setSearchQuery] = useState('');
 
   const categories = Object.keys(issuesDictionary);
-  const currentProblems = category ? issuesDictionary[category as keyof typeof issuesDictionary].problems : [];
-  const currentSolutions = category ? issuesDictionary[category as keyof typeof issuesDictionary].solutions : [];
+
+  // Derive current problems based on category
+  // issuesDictionary structure: Record<string, Record<string, string[]>> or fallback obj
+  // We need to handle both the new specific structures and old fallback structures
+  const currentCategoryData = category ? issuesDictionary[category as keyof typeof issuesDictionary] : null;
+  let currentProblems: string[] = [];
+  let currentSolutions: string[] = [];
+  
+  if (currentCategoryData) {
+    if (Array.isArray((currentCategoryData as any).problems)) {
+        // Old structure fallback
+        currentProblems = (currentCategoryData as any).problems;
+        currentSolutions = (currentCategoryData as any).solutions;
+    } else {
+        // New structure
+        currentProblems = Object.keys(currentCategoryData);
+        if (problem && (currentCategoryData as any)[problem]) {
+            currentSolutions = (currentCategoryData as any)[problem];
+        }
+    }
+  }
+
+  // Handle problem search across all dictionary
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    
+    const results: Array<{category: string, problem: string}> = [];
+    const lowerQuery = searchQuery.toLowerCase();
+
+    Object.entries(issuesDictionary).forEach(([catKey, catValue]) => {
+      if (Array.isArray((catValue as any).problems)) {
+         (catValue as any).problems.forEach((prob: string) => {
+           if (prob.includes(lowerQuery)) {
+              results.push({ category: catKey, problem: prob });
+           }
+         });
+      } else {
+         Object.keys(catValue).forEach(prob => {
+            if (prob.includes(lowerQuery)) {
+               results.push({ category: catKey, problem: prob });
+            }
+         });
+      }
+    });
+    return results;
+  }, [searchQuery]);
+
+  const selectSearchResult = (res: {category: string, problem: string}) => {
+     setCategory(res.category);
+     setProblem(res.problem);
+     setSolution('');
+     setSearchQuery('');
+  };
 
   const fetchIssues = async () => {
     setIsLoading(true);
@@ -262,7 +315,19 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm rtl font-arabic overflow-y-auto">
       <div className="bg-slate-50 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-white/50 flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="bg-white/80 backdrop-blur-md px-6 py-4 border-b flex flex-col sm:flex-row sm:justify-between items-center sticky top-0 z-10 gap-4">
+        <div className="bg-white/80 backdrop-blur-md px-6 py-4 border-b flex justify-between items-center sm:hidden sticky top-0 z-20">
+            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-blue-500" /> المشكلات والحلول
+            </h2>
+            <button 
+                onClick={onClose}
+                className="p-2 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 rounded-xl transition-colors h-[40px] w-[40px] flex items-center justify-center"
+            >
+                <X size={20} />
+            </button>
+        </div>
+
+        <div className="bg-white/80 backdrop-blur-md px-6 py-4 border-b hidden sm:flex sm:flex-row sm:justify-between items-center sticky top-0 z-10 gap-4">
           <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
             <AlertCircle className="w-6 h-6 text-blue-500" />
             المشكلات والحلول
@@ -283,9 +348,25 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
           </div>
           <button 
             onClick={onClose}
-            className="p-2 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 rounded-xl transition-colors h-[48px] w-[48px] flex items-center justify-center hidden sm:flex"
+            className="p-2 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 rounded-xl transition-colors h-[48px] w-[48px] flex items-center justify-center"
           >
             <X size={24} />
+          </button>
+        </div>
+
+        {/* Mobile Tabs */}
+        <div className="flex bg-slate-100 p-1 rounded-2xl w-full sm:hidden mt-2 mx-4 max-w-[calc(100%-2rem)]">
+          <button 
+            onClick={() => setActiveTab('create')}
+            className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'create' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            <PlusCircle size={16} /> إضافة جديد
+          </button>
+          <button 
+            onClick={() => setActiveTab('view')}
+            className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'view' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            <List size={16} /> سجل التقارير
           </button>
         </div>
 
@@ -306,6 +387,39 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
                     {error}
                   </div>
                 )}
+
+              {/* Search Problem Card */}
+              <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-white shadow-sm relative">
+                <label className="block text-sm font-bold text-slate-700 mb-2">البحث السريع عن المشكلة وإظهار الحلول</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="ابحث عن المشكلة هنا مباشر..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500 h-[48px] px-4 font-medium"
+                  />
+                  {searchQuery && searchResults.length > 0 && (
+                    <div className="absolute z-50 top-[100%] left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg">
+                       {searchResults.map((res, i) => (
+                          <div 
+                            key={i} 
+                            onClick={() => selectSearchResult(res)}
+                            className="p-3 hover:bg-slate-50 cursor-pointer border-b last:border-0 border-slate-100 transition-colors"
+                          >
+                             <div className="font-bold text-slate-800 text-sm">{res.problem}</div>
+                             <div className="text-xs text-slate-400 mt-1">{res.category}</div>
+                          </div>
+                       ))}
+                    </div>
+                  )}
+                  {searchQuery && searchResults.length === 0 && (
+                    <div className="absolute z-50 top-[100%] left-0 right-0 mt-1 p-3 text-sm text-center text-slate-500 bg-white border border-slate-200 rounded-xl shadow-lg">
+                      لم يتم العثور على مشكلة مطابقة
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* Category Card */}
               <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-white shadow-sm">

@@ -9,112 +9,7 @@ interface ModalProps {
   onClose: () => void;
 }
 
-const issuesDictionary = {
-  "شؤون الطلاب (السلوك والانضباط)": {
-    problems: [
-      "كثرة الغياب",
-      "التأخر الصباحي",
-      "الفوضى وعدم الانضباط",
-      "مخالفة الزي المدرسي",
-      "مخالفة المظهر العام",
-      "التنمر",
-      "العدوانية",
-      "السرقة",
-      "إتلاف الممتلكات",
-      "استخدام الهواتف المحمولة",
-      "ضعف الانضباط الصفي",
-      "ضعف الدافعية",
-      "اللامبالاة",
-      "إهمال الواجبات",
-      "تدني المستوى التعليمي",
-      "صعوبات تعلم"
-    ],
-    solutions: [
-      "استدعاء ولي الأمر وتوقيع تعهد أو عقد سلوكي",
-      "إحالة الطالب للموجه الطلابي لإعداد خطة تعديل سلوك",
-      "تفعيل لوحة التعزيز الإيجابي والإذاعة المدرسية",
-      "مصادرة الهاتف وإلزام الطالب بلائحة الانضباط",
-      "إعداد خطة علاجية أكاديمية بالتنسيق مع المعلم",
-      "دمج الطالب في لجان الأنشطة لتحفيزه"
-    ]
-  },
-  "الكادر التعليمي والإداري": {
-    problems: [
-      "كثرة غياب المعلمات",
-      "كثرة تأخر المعلمات",
-      "تأخر التحضير",
-      "ضعف الإدارة الصفية",
-      "مقاومة التغيير والتطوير",
-      "ضعف المهارات التقنية (الشاشات، الذكاء الاصطناعي)",
-      "تداخل المهام",
-      "ضغط العمل ونهاية الشهر",
-      "مشاكل العلاقات المهنية",
-      "ضعف التواصل مع الأهالي"
-    ],
-    solutions: [
-      "عقد ورش عمل تدريبية داخلية",
-      "عقد جلسات توجيه فردية (Coaching)",
-      "إعادة صياغة التوصيف الوظيفي بوضوح",
-      "تقنين الاجتماعات الإدارية لتقليل الضغط",
-      "إصدار تعميم بضوابط بيئة العمل",
-      "أتمتة التكليفات عبر النظام لتوفير الوقت"
-    ]
-  },
-  "أولياء الأمور والبيئة الأسرية": {
-    problems: [
-      "ضعف المتابعة",
-      "عدم التجاوب",
-      "أمية الأهل",
-      "التأخر في استلام الطلاب نهاية الدوام",
-      "التعامل غير اللائق مع الإدارة",
-      "مشاكل أسرية تؤثر على الطالب",
-      "العنف الأسري",
-      "إهمال الطالب من قبل الأسرة"
-    ],
-    solutions: [
-      "إرسال إشعارات مسجلة وموثقة عبر النظام",
-      "جدولة لقاءات دورية مفتوحة (مجالس أمهات/آباء)",
-      "تكليف الموجه الطلابي بمتابعة الحالات الخاصة",
-      "وضع آلية مالية مرنة لرسوم المدرسة",
-      "إحالة حالات العنف للجهات المختصة"
-    ]
-  },
-  "الشؤون التقنية والمادية": {
-    problems: [
-      "تعطل طابعات وتصوير",
-      "تعطل شاشات",
-      "مشاكل في التوصيلات والكهرباء",
-      "حاجة المبنى للصيانة بشكل عام",
-      "الكثافة العددية العالية في الفصول",
-      "نقص الوسائل التعليمية",
-      "نقص موارد الأنشطة",
-      "غياب مساحة مخصصة للإشراف التربوي"
-    ],
-    solutions: [
-      "رفع تذكرة صيانة عاجلة للجهة المختصة",
-      "توفير أجهزة بديلة (Standby)",
-      "إعادة توزيع الطلاب لتقليل الكثافة",
-      "تخصيص صندوق مصغر لوسائل المرحلة الثانوية",
-      "جدولة استخدام غرف بديلة مؤقتاً"
-    ]
-  },
-  "الشؤون التخصصية (الإرشاد والدمج)": {
-    problems: [
-      "عدم واقعية الخطة التشغيلية للمدرسة",
-      "تحديات دمج الطلاب ذوي الاحتياجات الخاصة",
-      "الحاجة لتدخل مختص نفسي للحالات المعقدة",
-      "ضعف تفعيل المكتبة المدرسية",
-      "غياب معايير موضوعية للجوائز التنافسية"
-    ],
-    solutions: [
-      "تكييف الخطة لتتلاءم مع الموارد الفعلية",
-      "إعداد استمارات متابعة دقيقة لذوي الاحتياجات",
-      "التنسيق مع أخصائي نفسي زائر أو مركز متخصص",
-      "إدراج حصص مكتبة أسبوعية إلزامية",
-      "اعتماد لائحة معايير تقييم واضحة"
-    ]
-  }
-};
+import { issuesDictionary } from './data';
 
 const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
   const { currentUser, data } = useGlobal();
@@ -132,6 +27,7 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
 
   const categories = Object.keys(issuesDictionary);
 
@@ -389,7 +285,7 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
                 )}
 
               {/* Search Problem Card */}
-              <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-white shadow-sm relative">
+              <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-white shadow-sm relative z-50">
                 <label className="block text-sm font-bold text-slate-700 mb-2">البحث السريع عن المشكلة وإظهار الحلول</label>
                 <div className="relative">
                   <input
@@ -400,21 +296,21 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500 h-[48px] px-4 font-medium"
                   />
                   {searchQuery && searchResults.length > 0 && (
-                    <div className="absolute z-50 top-[100%] left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg">
+                    <div className="absolute z-[100] top-[100%] left-0 right-0 mt-2 max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl">
                        {searchResults.map((res, i) => (
                           <div 
                             key={i} 
                             onClick={() => selectSearchResult(res)}
-                            className="p-3 hover:bg-slate-50 cursor-pointer border-b last:border-0 border-slate-100 transition-colors"
+                            className="p-3 hover:bg-blue-50 cursor-pointer border-b last:border-0 border-slate-100 transition-colors"
                           >
                              <div className="font-bold text-slate-800 text-sm">{res.problem}</div>
-                             <div className="text-xs text-slate-400 mt-1">{res.category}</div>
+                             <div className="text-xs text-slate-500 mt-1">{res.category}</div>
                           </div>
                        ))}
                     </div>
                   )}
                   {searchQuery && searchResults.length === 0 && (
-                    <div className="absolute z-50 top-[100%] left-0 right-0 mt-1 p-3 text-sm text-center text-slate-500 bg-white border border-slate-200 rounded-xl shadow-lg">
+                    <div className="absolute z-[100] top-[100%] left-0 right-0 mt-2 p-3 text-sm text-center text-slate-500 bg-white border border-slate-200 rounded-xl shadow-xl">
                       لم يتم العثور على مشكلة مطابقة
                     </div>
                   )}
@@ -422,7 +318,7 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
               </div>
 
               {/* Category Card */}
-              <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-white shadow-sm">
+              <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-white shadow-sm relative z-40">
                 <label className="block text-sm font-bold text-slate-700 mb-2">الفئة الرئيسية</label>
                 <select 
                   value={category}
@@ -491,6 +387,16 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
             )
           ) : (
             <div className="space-y-4">
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="ابحث في سجل التقارير (الفئة، المشكلة، الحل، أو المدخل)..."
+                  value={historySearchQuery}
+                  onChange={(e) => setHistorySearchQuery(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500 h-[48px] px-4 font-medium"
+                />
+              </div>
+
               {isLoading ? (
                 <div className="flex justify-center py-12">
                   <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -498,7 +404,15 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
               ) : issuesRecord.length === 0 ? (
                 <div className="text-center py-12 text-slate-500 font-medium">لا توجد تقارير مسجلة حالياً</div>
               ) : (
-                issuesRecord.map((record, idx) => (
+                issuesRecord.filter(record => {
+                  const q = historySearchQuery.toLowerCase();
+                  return !historySearchQuery.trim() || 
+                    record.category?.toLowerCase().includes(q) ||
+                    record.problem_selected?.toLowerCase().includes(q) ||
+                    record.solution_selected?.toLowerCase().includes(q) ||
+                    record.additional_details?.toLowerCase().includes(q) ||
+                    record.userName?.toLowerCase().includes(q);
+                }).map((record, idx) => (
                   <div key={idx} className="bg-white/80 backdrop-blur-md p-5 rounded-3xl border border-white shadow-sm flex flex-col gap-4 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-2 h-full bg-blue-500 rounded-r-3xl"></div>
                     <div className="flex justify-between items-start gap-4 mr-2">

@@ -367,6 +367,19 @@ export interface AuthUser {
   permissions?: UserPermissions;
 }
 
+export interface TrainingEvaluation {
+  id: string;
+  userId?: string;
+  traineeName: string;
+  jobTitle: string;
+  courseName: string;
+  trainerName: string;
+  courseDate: string;
+  evaluationDate: string;
+  answers: Record<string, any>;
+  overallRating?: number;
+}
+
 export interface AppData {
   users: User[];
   profile: SchoolProfile;
@@ -409,4 +422,5 @@ export interface AppData {
   availableSchools?: string[];
   availableYears?: string[];
   schoolBranches?: Record<string, string[]>;
+  trainingEvaluations?: TrainingEvaluation[];
 }

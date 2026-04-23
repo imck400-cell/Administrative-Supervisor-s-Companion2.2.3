@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, Save, Printer, Star, Edit, ChevronLeft } from 'lucide-react';
+import { X, Check, Save, Printer, Star, Edit, ChevronLeft, User, BookOpen, Coffee, Activity, MessageSquare, Puzzle } from 'lucide-react';
 import { useGlobal } from '../context/GlobalState';
+
+const iconMap: Record<string, any> = {
+  User, BookOpen, Star, Coffee, Activity, MessageSquare, Puzzle
+};
 
 interface CourseEvaluationModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const defaultSchema = [
+const defaultSchema_v2 = [
   {
     id: 'general_info',
     title: 'أولاً: المعلومات العامة',
@@ -17,86 +21,82 @@ const defaultSchema = [
     fields: [
       { id: 'trainee_name', type: 'text', label: 'اسم المتدرب' },
       { id: 'job_title', type: 'text', label: 'المسمى الوظيفي' },
-      { id: 'impactful_program', type: 'text', label: 'اسم البرنامج التدريبي الأكثر تأثيراً' }
+      { id: 'course_name', type: 'text', label: 'اسم البرنامج التدريبي' },
+      { id: 'trainer_name', type: 'text', label: 'اسم المدرب' },
+      { id: 'course_date', type: 'date', label: 'تاريخ الدورة' }
     ]
   },
   {
     id: 'scientific_content',
-    title: 'ثانياً: تقييم المحتوى العلمي والبرامج',
+    title: 'ثانياً: المحتوى التدريبي والمنهجية',
     description: '(مقياس من 1 إلى 5)',
     icon: 'BookOpen',
     theme: 'emerald',
     fields: [
-      { id: 'goals_clarity', type: 'rating', label: 'مدى وضوح أهداف البرامج التدريبية الأربعة.' },
-      { id: 'related_tasks', type: 'rating', label: 'ارتباط محتوى الدورة بالمهام الإدارية الواقعية في المدرسة.' },
-      { id: 'theory_practice_balance', type: 'rating', label: 'التوازن بين الجانب النظري والتطبيقي خلال الأيام الثمانية.' },
-      { id: 'time_adequacy', type: 'rating', label: 'كفاية الوقت المخصص لكل برنامج (من الثامنة والثلث حتى الواحدة ظهراً).' }
+      { id: 'goals_clarity', type: 'rating', label: 'أهداف الدورة كانت واضحة ومحددة منذ البداية.' },
+      { id: 'content_modernity', type: 'rating', label: 'المحتوى التدريبي غطى الأساليب العلمية الحديثة في تشخيص المشكلة.' },
+      { id: 'materials_quality', type: 'rating', label: 'الوسائل الإيضاحية والمادة العلمية الموزعة كانت ذات جودة عالية.' },
+      { id: 'knowledge_gain', type: 'rating', label: 'مستوى المعرفة المكتسبة بعد الدورة مقارنة بما قبلها.' }
     ]
   },
   {
     id: 'trainers_performance',
-    title: 'ثالثاً: تقييم الأداء التدريبي',
+    title: 'ثالثاً: أداء المدرب والبيئة التدريبية',
     icon: 'Star',
     theme: 'amber',
     fields: [
-      { id: 'communication_skills', type: 'rating', label: 'قدرة المدربين على إيصال المعلومات بأسلوب سلس.' },
-      { id: 'interaction', type: 'rating', label: 'مدى تفاعل المدربين مع استفسارات المشاركين (الـ 23 متدرباً).' },
-      { id: 'tools_usage', type: 'rating', label: 'استخدام الوسائل التعليمية والتقنيات الحديثة في العرض.' }
+      { id: 'concept_delivery', type: 'rating', label: 'تمكن المدرب من إيصال المفاهيم المعقدة بأسلوب سلس وواضح.' },
+      { id: 'theory_practice_balance', type: 'rating', label: 'كان هناك توزان جيد بين الجانب النظري والتمارين العملية.' },
+      { id: 'discussion_management', type: 'rating', label: 'أدار المدرب النقاشات بفاعلية وأجاب على استفسارات المشاركين بوضوح.' },
+      { id: 'environment_suitability', type: 'rating', label: 'ملاءمة القاعة التدريبية وتجهيزاتها اللوجستية والفنية.' },
+      { id: 'time_management', type: 'rating', label: 'إدارة الوقت وتوزيعه بين الجلسات وفترات الاستراحة.' },
+      { id: 'activity_contribution', type: 'rating', label: 'مدى إسهام الأنشطة في تعزيز تبادل الخبرات والتفاعل بين المتدربين.' }
     ]
   },
   {
-    id: 'equipments_services',
-    title: 'رابعاً: التجهيزات والخدمات',
-    icon: 'Coffee',
+    id: 'problem_solving_skills',
+    title: 'رابعاً: مهارة الحل واتخاذ القرار',
+    icon: 'Puzzle',
     theme: 'purple',
     fields: [
-      { id: 'training_env', type: 'rating', label: 'بيئة التدريب: ملاءمة القاعة من حيث (الإضاءة، التهوية، التجهيزات التقنية).' },
-      { id: 'breaks_quality', type: 'rating', label: 'الفترات الاستراحة: كفاية وقت الاستراحة وجودة الضيافة المقدمة.' },
-      { id: 'gifts_impact', type: 'rating', label: 'الهدايا والتحفيز: أثر الهدايا والمواد العينية في تعزيز روح المشاركة.' },
-      { id: 'general_org', type: 'rating', label: 'التنظيم العام: دور مسؤول الدورة في تذليل الصعوبات وإدارة الجدول الزمني.' }
+      { id: 'creative_solutions', type: 'rating', label: 'قدمت الدورة استراتيجيات فعالة لتوليد حلول إبداعية وغير تقليدية.' },
+      { id: 'solution_evaluation', type: 'rating', label: 'تعلمت كيفية تقييم الحلول المتاحة واختيار الحل الأمثل بناءً على معايير واضحة.' },
+      { id: 'action_plan', type: 'rating', label: 'أدركت كيفية وضع خطة عمل تنفيذية لمتابعة الحل بعد اتخاذ القرار.' },
+      { id: 'pressure_management', type: 'rating', label: 'ساهمت الدورة في تعزيز قدرتي على إدارة المشكلات تحت الضغط.' }
     ]
   },
   {
     id: 'impact_results',
-    title: 'خامساً: قياس الأثر والنتائج',
+    title: 'خامساً: الأثر العام والتطوير',
     icon: 'Activity',
     theme: 'rose',
     fields: [
-      { id: 'acquired_skill', type: 'textarea', label: 'ما هي أهم مهارة اكتسبتها وتخطط لتطبيقها في عملك الإداري للعام القادم؟' },
-      { id: 'performance_improvement', type: 'select', label: 'هل تشعر أن هذه الدورة ستساهم في تحسين مستوى الأداء العام لمدارس الرائد؟', options: ['نعم', 'إلى حد ما', 'لا'] },
-      { id: 'general_satisfaction', type: 'star_rating', label: 'مدى رضاك العام عن الدورة كحزمة متكاملة.' }
-    ]
-  },
-  {
-    id: 'open_questions',
-    title: 'سادساً: أسئلة مفتوحة',
-    description: '(للتطوير المستقبلي)',
-    icon: 'MessageSquare',
-    theme: 'indigo',
-    fields: [
-      { id: 'distinctive_points', type: 'textarea', label: 'ما هي النقاط التي تميزت بها هذه الدورة عن غيرها؟' },
-      { id: 'improvement_suggestions', type: 'textarea', label: 'ما هي المقترحات التي تراها مناسبة لتحسين "أوقات الاستراحة" أو "التجهيزات" في الدورات القادمة؟' },
-      { id: 'future_topics', type: 'textarea', label: 'هل هناك مواضيع إدارية معينة تقترح إدراجها في برامج تدريبية مستقبلية؟' }
+      { id: 'acquired_skills', type: 'textarea', label: 'ما هي أهم المهارات التي اكتسبتها وترى أنها ستغير طريقة تعاملك مع المشكلات؟' },
+      { id: 'confidence_increase', type: 'select', label: 'هل تشعر بثقة أكبر الآن في مواجهة المشكلات الإدارية أو الشخصية؟', options: ['نعم', 'إلى حد ما', 'لا'] },
+      { id: 'skills_transfer', type: 'select', label: 'هل ستقوم بنقل ما تعلمته من مهارات إلى بيئة عملك لتطوير الأداء؟', options: ['نعم', 'إلى حد ما', 'لا'] },
+      { id: 'challenges_notes', type: 'textarea', label: 'ما هي أبرز التحديات أو الملاحظات النقدية التي واجهتك أثناء الدورة؟' },
+      { id: 'improvement_suggestions', type: 'textarea', label: 'ما هي مقترحاتك لتطوير هذه الدورة في المرات القادمة أو مواضيع تقترح إضافتها؟' },
+      { id: 'overall_rating', type: 'star_rating', label: 'التقييم العام للدورة كحزمة متكاملة' }
     ]
   }
 ];
 
 export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ isOpen, onClose }) => {
-  const { currentUser } = useGlobal();
+  const { currentUser, updateData, data } = useGlobal();
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [schema, setSchema] = useState(() => {
     try {
-      const saved = localStorage.getItem('courseEvaluationSchema');
-      return saved ? JSON.parse(saved) : defaultSchema;
+      const saved = localStorage.getItem('courseEvaluationSchema_v2');
+      return saved ? JSON.parse(saved) : defaultSchema_v2;
     } catch {
-      return defaultSchema;
+      return defaultSchema_v2;
     }
   });
   const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('courseEvaluationSchema', JSON.stringify(schema));
+    localStorage.setItem('courseEvaluationSchema_v2', JSON.stringify(schema));
   }, [schema]);
 
   // Check if user has permission to edit schema
@@ -117,7 +117,22 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ is
   };
 
   const handleSubmit = () => {
-    // In a real app, send to database here
+    const newEvaluation = {
+      id: `eval_${Date.now()}`,
+      userId: currentUser?.id,
+      traineeName: formData['trainee_name'] || 'غير مسجل',
+      jobTitle: formData['job_title'] || 'غير مسجل',
+      courseName: formData['course_name'] || 'غير مسجل',
+      trainerName: formData['trainer_name'] || 'غير مسجل',
+      courseDate: formData['course_date'] || new Date().toISOString().split('T')[0],
+      evaluationDate: new Date().toISOString().split('T')[0],
+      answers: formData,
+      overallRating: formData['overall_rating'] || 0
+    };
+
+    const currentEvaluations = data.trainingEvaluations || [];
+    updateData({ trainingEvaluations: [...currentEvaluations, newEvaluation] });
+    
     setIsSubmitted(true);
   };
 
@@ -210,12 +225,18 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ is
                    شكراً لك، {formData['trainee_name'] || 'أستاذي الكريم'}!
                  </h2>
                  <p className="text-xl text-slate-600">تم حفظ تقييمك بنجاح، نقدر وقتك ومساهمتك في التطوير.</p>
-                 <div className="flex gap-4 mt-8 pt-8 border-t border-slate-100 w-full justify-center">
+                 <div className="flex gap-4 mt-8 pt-8 border-t border-slate-100 w-full justify-center flex-wrap">
                    <button 
-                     onClick={() => setIsSubmitted(false)}
+                     onClick={onClose}
                      className="px-6 py-3 bg-white border-2 border-slate-200 rounded-xl text-slate-700 font-bold hover:bg-slate-50 transition-colors"
                    >
-                     العودة للتعديل
+                     العودة للقائمة السابقة
+                   </button>
+                   <button 
+                     onClick={() => setIsSubmitted(false)}
+                     className="px-6 py-3 bg-blue-50 text-blue-700 rounded-xl font-bold hover:bg-blue-100 transition-colors"
+                   >
+                     تعديل الإجابات
                    </button>
                    <button 
                      onClick={onClose}
@@ -257,24 +278,36 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ is
                 </div>
 
                 <div className="p-6 md:p-8 overflow-y-auto space-y-8 bg-slate-50">
-                   {schema.map((section, sIdx) => (
-                     <div key={section.id} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 print-break-inside-avoid">
-                        <div className="flex items-start justify-between mb-6">
-                           <div className="flex-1">
-                             {isEditMode ? (
-                               <input 
-                                 type="text" 
-                                 value={section.title} 
-                                 onChange={(e) => handleUpdateSectionTitle(sIdx, e.target.value)}
-                                 className="w-full text-xl font-black text-slate-800 bg-slate-50 border-2 border-indigo-100 rounded-lg px-3 py-1 outline-none mb-1"
-                               />
-                             ) : (
-                               <h3 className="text-xl font-black text-slate-800">{section.title}</h3>
-                             )}
-                             {section.description && <span className="text-sm font-bold text-slate-400 block mt-1">{section.description}</span>}
+                   {schema.map((section, sIdx) => {
+                     const IconComponent = iconMap[section.icon || 'Star'] || Star;
+                     return (
+                     <div key={section.id} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 print-break-inside-avoid relative overflow-hidden">
+                        {/* Decorative background for icon */}
+                        <div className={`absolute -right-6 -top-6 w-32 h-32 opacity-[0.03] text-${section.theme || 'blue'}-500 pointer-events-none`}>
+                          <IconComponent size={128} />
+                        </div>
+
+                        <div className="flex items-start justify-between mb-6 relative">
+                           <div className="flex items-center gap-4 flex-1">
+                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-${section.theme || 'blue'}-50 text-${section.theme || 'blue'}-600`}>
+                               <IconComponent size={24} />
+                             </div>
+                             <div className="flex-1">
+                               {isEditMode ? (
+                                 <input 
+                                   type="text" 
+                                   value={section.title} 
+                                   onChange={(e) => handleUpdateSectionTitle(sIdx, e.target.value)}
+                                   className="w-full text-xl font-black text-slate-800 bg-slate-50 border-2 border-indigo-100 rounded-lg px-3 py-1 outline-none mb-1"
+                                 />
+                               ) : (
+                                 <h3 className="text-xl font-black text-slate-800">{section.title}</h3>
+                               )}
+                               {section.description && <span className="text-sm font-bold text-slate-400 block mt-1">{section.description}</span>}
+                             </div>
                            </div>
                            {isEditMode && (
-                             <button onClick={() => handleRemoveSection(sIdx)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg mr-2 transition-colors">
+                             <button onClick={() => handleRemoveSection(sIdx)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg mr-2 transition-colors shrink-0">
                                <X size={20} />
                              </button>
                            )}
@@ -302,6 +335,15 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ is
                               {field.type === 'text' && (
                                 <input 
                                   type="text" 
+                                  value={formData[field.id] || ''}
+                                  onChange={(e) => handleFieldChange(field.id, e.target.value)}
+                                  className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-blue-500 outline-none transition-all"
+                                />
+                              )}
+
+                              {field.type === 'date' && (
+                                <input 
+                                  type="date" 
                                   value={formData[field.id] || ''}
                                   onChange={(e) => handleFieldChange(field.id, e.target.value)}
                                   className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-blue-500 outline-none transition-all"
@@ -382,7 +424,8 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ is
                           )}
                         </div>
                      </div>
-                   ))}
+                     );
+                   })}
 
                    {isEditMode && (
                      <button

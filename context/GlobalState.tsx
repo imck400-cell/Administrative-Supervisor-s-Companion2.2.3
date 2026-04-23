@@ -272,6 +272,8 @@ const defaultData: AppData = {
   ],
   availableSchools: ['مدرسة الرواد', 'مدرسة النخبة'],
   availableYears: ['2024-2025', '2025-2026'],
+  schoolBranches: {},
+  trainingEvaluations: [],
   profile: {
     ministry: '',
     district: '',

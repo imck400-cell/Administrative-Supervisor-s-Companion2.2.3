@@ -11,9 +11,10 @@ import DataManagementModal from './components/DataManagementModal';
 import AccessCodesModal from './components/AccessCodesModal';
 import IssuesAndSolutionsModal from './components/IssuesAndSolutionsModal';
 import CaseStudyModal from './components/CaseStudyModal';
+import TrainingCoursesModal from './components/TrainingCoursesModal';
 import {
   Lock, LayoutDashboard, ClipboardCheck, ClipboardList, UserX, UserPlus,
-  Users, Database, FileSearch, Briefcase,
+  Users, Database, FileSearch, Briefcase, BookOpen,
   School, Calendar, AlertTriangle, AlertCircle, Phone, MessageCircle, Key, LogOut, User as UserIcon, X, Check,
   ChevronDown, ChevronUp, Sparkles
 } from 'lucide-react';
@@ -335,6 +336,7 @@ const MainApp: React.FC = () => {
   const [isUserFilterModalOpen, setIsUserFilterModalOpen] = useState(false);
   const [isAppIssuesModalOpen, setIsAppIssuesModalOpen] = useState(false);
   const [isCaseStudyModalOpen, setIsCaseStudyModalOpen] = useState(false);
+  const [isTrainingCoursesModalOpen, setIsTrainingCoursesModalOpen] = useState(false);
 
   // Helper to handle navigation so both Layout and Quick Access buttons trigger the modal
   const handleNavigation = (v: string) => {
@@ -342,6 +344,8 @@ const MainApp: React.FC = () => {
       setIsAppIssuesModalOpen(true);
     } else if (v === 'caseStudyModal') {
       setIsCaseStudyModalOpen(true);
+    } else if (v === 'trainingCoursesModal') {
+      setIsTrainingCoursesModalOpen(true);
     } else {
       setView(v);
     }
@@ -357,6 +361,7 @@ const MainApp: React.FC = () => {
       { id: 'studentReports', label: 'تقارير الطلاب', icon: <Users size={18} />, permission: 'studentAffairs' },
       { id: 'specialReports', label: 'تقارير خاصة', icon: <FileSearch size={18} />, permission: 'specialReports' },
       { id: 'caseStudyModal', label: 'دراسة حالة طالب', icon: <ClipboardList size={18} />, permission: 'caseStudyModal' },
+      { id: 'trainingCoursesModal', label: 'الدورات التدريبية', icon: <BookOpen size={18} />, permission: 'trainingCourses' },
       { id: 'issuesModal', label: 'المشكلات والحلول', icon: <AlertCircle size={18} />, permission: 'issuesModal' },
       { id: 'profile', label: 'ملف المدرسة', icon: <School size={18} />, permission: 'schoolProfile' },
     ];
@@ -608,6 +613,10 @@ const MainApp: React.FC = () => {
       <CaseStudyModal
         isOpen={isCaseStudyModalOpen}
         onClose={() => setIsCaseStudyModalOpen(false)}
+      />
+      <TrainingCoursesModal
+        isOpen={isTrainingCoursesModalOpen}
+        onClose={() => setIsTrainingCoursesModalOpen(false)}
       />
     </Layout>
   );

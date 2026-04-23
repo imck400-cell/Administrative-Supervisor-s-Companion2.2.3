@@ -29,6 +29,14 @@ const permissionsList = [
       { id: 'viewAllIssues', label: 'إظهار المشكلات والحلول' },
     ]
   },
+  { 
+    id: 'trainingCourses', 
+    label: 'الدورات التدريبية',
+    subPermissions: [
+      { id: 'editSchema', label: 'صلاحيات تعديل المعايير والإضافة والحذف' },
+      { id: 'viewIndicators', label: 'مؤشرات الدروات التدريبية' },
+    ]
+  },
   { id: 'caseStudyModal', label: 'دراسة حالة' },
   { 
     id: 'specialReports', 

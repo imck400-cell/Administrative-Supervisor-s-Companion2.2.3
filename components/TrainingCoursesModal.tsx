@@ -1,0 +1,100 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, BookOpen, User, Star, List, BarChart } from 'lucide-react';
+import { useGlobal } from '../context/GlobalState';
+import CourseEvaluationModal from './CourseEvaluationModal';
+
+interface TrainingCoursesModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const TrainingCoursesModal: React.FC<TrainingCoursesModalProps> = ({ isOpen, onClose }) => {
+  const { currentUser } = useGlobal();
+  const [isEvaluationOpen, setIsEvaluationOpen] = useState(false);
+
+  const trainingPerm = currentUser?.permissions?.trainingCourses;
+  const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+  const canViewIndicators = isGeneralSupervisor || (Array.isArray(trainingPerm) && trainingPerm.includes('viewIndicators'));
+
+  if (!isOpen && !isEvaluationOpen) return null;
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm font-arabic">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="w-full max-w-4xl bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]"
+          >
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                  <BookOpen size={24} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-slate-800">الدورات التدريبية</h2>
+                  <p className="text-slate-500 font-medium">بوابة إدارة وتقييم البرامج التدريبية</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-white/50 rounded-xl transition-colors text-slate-500 hover:text-slate-800"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-8 overflow-y-auto bg-slate-50 flex-1">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 
+                 <button className="flex flex-col items-center justify-center p-8 bg-white border-2 border-slate-100 rounded-3xl hover:border-blue-400 hover:shadow-xl transition-all group">
+                   <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                     <List size={32} />
+                   </div>
+                   <h3 className="text-xl font-bold text-slate-800">الاحتياجات التدريبية القادمة</h3>
+                 </button>
+
+                 <button 
+                   onClick={() => setIsEvaluationOpen(true)}
+                   className="flex flex-col items-center justify-center p-8 bg-white border-2 border-slate-100 rounded-3xl hover:border-amber-400 hover:shadow-xl transition-all group"
+                 >
+                   <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                     <Star size={32} />
+                   </div>
+                   <h3 className="text-xl font-bold text-slate-800">تقييم الدورة التدريبية</h3>
+                 </button>
+
+                 <button className="flex flex-col items-center justify-center p-8 bg-white border-2 border-slate-100 rounded-3xl hover:border-emerald-400 hover:shadow-xl transition-all group opacity-50 cursor-not-allowed">
+                   <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                     <BookOpen size={32} />
+                   </div>
+                   <h3 className="text-xl font-bold text-slate-800">أرشيف الدورات التدريبية</h3>
+                 </button>
+
+                 {canViewIndicators && (
+                   <button className="flex flex-col items-center justify-center p-8 bg-white border-2 border-slate-100 rounded-3xl hover:border-purple-400 hover:shadow-xl transition-all group opacity-50 cursor-not-allowed">
+                     <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                       <BarChart size={32} />
+                     </div>
+                     <h3 className="text-xl font-bold text-slate-800">مؤشرات الدروات التدريبية</h3>
+                   </button>
+                 )}
+
+               </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {isEvaluationOpen && (
+        <CourseEvaluationModal isOpen={isEvaluationOpen} onClose={() => setIsEvaluationOpen(false)} />
+      )}
+    </AnimatePresence>
+  );
+};
+export default TrainingCoursesModal;

@@ -23,3 +23,24 @@ body {
   background: #cbd5e1;
   border-radius: 10px;
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .PrintSection, .PrintSection * {
+    visibility: visible;
+  }
+  .PrintSection {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none !important;
+  }
+  .hide-on-print {
+    display: none !important;
+  }
+}

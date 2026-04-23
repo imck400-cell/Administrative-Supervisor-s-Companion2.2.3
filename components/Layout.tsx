@@ -27,6 +27,9 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings })
   const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
   const hasCaseStudyPerm = currentUser?.permissions?.caseStudyModal === true;
   const canUseCaseStudy = hasCaseStudyPerm || isGeneralSupervisor || isManager;
+  
+  const trainingPerm = currentUser?.permissions?.trainingCourses;
+  const canUseTrainingCourses = isGeneralSupervisor || trainingPerm === true || trainingPerm === undefined || (Array.isArray(trainingPerm) && trainingPerm.length > 0);
 
   const menuItems = [
     { icon: <Home size={20} />, label: 'لوحة التحكم', path: 'dashboard' },
@@ -35,6 +38,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings })
     { icon: <Users size={20} />, label: 'شؤون الطلاب', path: 'studentReports' },
     { icon: <FileSearch size={20} />, label: 'التقارير الخاصة', path: 'specialReports' },
     ...(canUseCaseStudy ? [{ icon: <ClipboardList size={20} />, label: 'دراسة حالة طالب', path: 'caseStudyModal' }] : []),
+    ...(canUseTrainingCourses ? [{ icon: <BookOpen size={20} />, label: 'الدورات التدريبية', path: 'trainingCoursesModal' }] : []),
     ...(canUseIssuesButton ? [{ icon: <AlertCircle size={20} />, label: 'المشكلات والحلول', path: 'issuesModal' }] : []),
     { icon: <UserPlus size={20} />, label: 'جدول التغطية', path: 'substitute' },
     { icon: <FileText size={20} />, label: 'ملف المدرسة', path: 'profile' },

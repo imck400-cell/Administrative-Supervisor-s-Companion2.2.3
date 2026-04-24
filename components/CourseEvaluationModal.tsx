@@ -360,19 +360,26 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ is
 
                               {field.type === 'rating' && (
                                 <div className="flex items-center gap-2 md:gap-4 flex-wrap">
-                                  {[1, 2, 3, 4, 5].map(num => (
-                                    <button
-                                      key={num}
-                                      onClick={() => handleFieldChange(field.id, num)}
-                                      className={`w-12 h-12 md:w-14 md:h-14 rounded-full font-black text-lg flex items-center justify-center transition-all ${
-                                        formData[field.id] === num 
-                                          ? `bg-blue-600 text-white shadow-lg shadow-blue-200 scale-110` 
-                                          : `bg-slate-100 text-slate-500 hover:bg-slate-200`
-                                      }`}
-                                    >
-                                      {num}
-                                    </button>
-                                  ))}
+                                  {[1, 2, 3, 4, 5].map(num => {
+                                    const isSelected = formData[field.id] === num;
+                                    let colorClass = 'bg-slate-100 text-slate-500 hover:bg-slate-200';
+                                    if (isSelected) {
+                                      if (num === 5) colorClass = 'bg-[#86efac] text-green-950 shadow-lg shadow-green-200 scale-110 border-2 border-[#4ade80]'; // Light Green
+                                      else if (num === 4) colorClass = 'bg-blue-500 text-white shadow-lg shadow-blue-200 scale-110 border-2 border-blue-600'; // Blue
+                                      else if (num === 3) colorClass = 'bg-cyan-300 text-cyan-950 shadow-lg shadow-cyan-200 scale-110 border-2 border-cyan-400'; // Cyan
+                                      else if (num === 2) colorClass = 'bg-orange-500 text-white shadow-lg shadow-orange-200 scale-110 border-2 border-orange-600'; // Orange
+                                      else if (num === 1) colorClass = 'bg-[#990000] text-white shadow-lg shadow-red-200 scale-110 border-2 border-[#660000]'; // Crimson
+                                    }
+                                    return (
+                                      <button
+                                        key={num}
+                                        onClick={() => handleFieldChange(field.id, num)}
+                                        className={`w-12 h-12 md:w-14 md:h-14 rounded-full font-black text-lg flex items-center justify-center transition-all ${colorClass}`}
+                                      >
+                                        {num}
+                                      </button>
+                                    );
+                                  })}
                                 </div>
                               )}
 

@@ -70,7 +70,7 @@ export const TrainingCoursesModal: React.FC<TrainingCoursesModalProps> = ({ isOp
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <button 
                        onClick={() => setEvaluationMode('current')}
-                       className="flex flex-col items-center justify-center p-8 bg-white border-2 border-slate-100 rounded-3xl hover:border-amber-400 hover:shadow-xl transition-all group"
+                       className="relative overflow-hidden flex flex-col items-center justify-center p-8 bg-amber-50/70 border-2 border-amber-100/50 backdrop-blur-sm rounded-3xl hover:border-amber-400 hover:shadow-xl transition-all group"
                      >
                        <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                          <Star size={32} />
@@ -81,7 +81,7 @@ export const TrainingCoursesModal: React.FC<TrainingCoursesModalProps> = ({ isOp
 
                      <button 
                        onClick={() => setEvaluationMode('comprehensive')}
-                       className="flex flex-col items-center justify-center p-8 bg-white border-2 border-slate-100 rounded-3xl hover:border-blue-400 hover:shadow-xl transition-all group"
+                       className="relative overflow-hidden flex flex-col items-center justify-center p-8 bg-blue-50/70 border-2 border-blue-100/50 backdrop-blur-sm rounded-3xl hover:border-blue-400 hover:shadow-xl transition-all group"
                      >
                        <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                          <BookOpen size={32} />
@@ -94,7 +94,7 @@ export const TrainingCoursesModal: React.FC<TrainingCoursesModalProps> = ({ isOp
                ) : (
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                    
-                   <button className="flex flex-col items-center justify-center p-8 bg-white border-2 border-slate-100 rounded-3xl hover:border-blue-400 hover:shadow-xl transition-all group">
+                   <button className="relative overflow-hidden flex flex-col items-center justify-center p-8 bg-blue-50/70 border-2 border-blue-100/50 backdrop-blur-sm rounded-3xl hover:border-blue-400 hover:shadow-xl transition-all group">
                      <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                        <List size={32} />
                      </div>
@@ -103,7 +103,7 @@ export const TrainingCoursesModal: React.FC<TrainingCoursesModalProps> = ({ isOp
 
                    <button 
                      onClick={() => setEvaluationMode('select')}
-                     className="flex flex-col items-center justify-center p-8 bg-white border-2 border-slate-100 rounded-3xl hover:border-amber-400 hover:shadow-xl transition-all group"
+                     className="relative overflow-hidden flex flex-col items-center justify-center p-8 bg-amber-50/70 border-2 border-amber-100/50 backdrop-blur-sm rounded-3xl hover:border-amber-400 hover:shadow-xl transition-all group"
                    >
                      <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                        <Star size={32} />
@@ -113,7 +113,7 @@ export const TrainingCoursesModal: React.FC<TrainingCoursesModalProps> = ({ isOp
 
                    <button 
                      onClick={() => setIsArchiveOpen(true)}
-                     className="flex flex-col items-center justify-center p-8 bg-white border-2 border-slate-100 rounded-3xl hover:border-emerald-400 hover:shadow-xl transition-all group"
+                     className="relative overflow-hidden flex flex-col items-center justify-center p-8 bg-emerald-50/70 border-2 border-emerald-100/50 backdrop-blur-sm rounded-3xl hover:border-emerald-400 hover:shadow-xl transition-all group"
                    >
                      <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                        <BookOpen size={32} />
@@ -122,7 +122,7 @@ export const TrainingCoursesModal: React.FC<TrainingCoursesModalProps> = ({ isOp
                    </button>
 
                    {canViewIndicators && (
-                     <button className="flex flex-col items-center justify-center p-8 bg-white border-2 border-slate-100 rounded-3xl hover:border-purple-400 hover:shadow-xl transition-all group opacity-50 cursor-not-allowed">
+                     <button className="relative overflow-hidden flex flex-col items-center justify-center p-8 bg-purple-50/70 border-2 border-purple-100/50 backdrop-blur-sm rounded-3xl hover:border-purple-400 hover:shadow-xl transition-all group opacity-50 cursor-not-allowed">
                        <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                          <BarChart size={32} />
                        </div>

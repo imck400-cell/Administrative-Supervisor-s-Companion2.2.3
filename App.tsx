@@ -13,6 +13,7 @@ import IssuesAndSolutionsModal from './components/IssuesAndSolutionsModal';
 import CaseStudyModal from './components/CaseStudyModal';
 import TrainingCoursesModal from './components/TrainingCoursesModal';
 import ComprehensiveIndicatorsModal from './components/ComprehensiveIndicatorsModal';
+import { QuickAccess, useQuickAccess } from './components/QuickAccess';
 import {
   Lock, LayoutDashboard, ClipboardCheck, ClipboardList, UserX, UserPlus,
   Users, Database, FileSearch, Briefcase, BookOpen,
@@ -340,8 +341,12 @@ const MainApp: React.FC = () => {
   const [isTrainingCoursesModalOpen, setIsTrainingCoursesModalOpen] = useState(false);
   const [isComprehensiveIndicatorsOpen, setIsComprehensiveIndicatorsOpen] = useState(false);
 
+  const { recordUsage } = useQuickAccess(currentUser?.id);
+
   // Helper to handle navigation so both Layout and Quick Access buttons trigger the modal
   const handleNavigation = (v: string) => {
+    if (v) recordUsage(v);
+    
     if (v === 'issuesModal') {
       setIsAppIssuesModalOpen(true);
     } else if (v === 'caseStudyModal') {
@@ -350,6 +355,10 @@ const MainApp: React.FC = () => {
       setIsTrainingCoursesModalOpen(true);
     } else if (v === 'comprehensiveIndicatorsModal') {
       setIsComprehensiveIndicatorsOpen(true);
+    } else if (v === 'codesModal') {
+      setIsCodesModalOpen(true);
+    } else if (v === 'dataModal') {
+      setIsDataModalOpen(true);
     } else {
       setView(v);
     }
@@ -458,6 +467,7 @@ const MainApp: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
+          <QuickAccess userId={currentUser?.id} onAction={handleNavigation} />
           <button
             onClick={logout}
             className="flex items-center gap-2 px-6 py-3 bg-red-50 border-2 border-red-100 rounded-[1.2rem] text-red-600 font-black text-sm hover:bg-red-600 hover:text-white transition-all shadow-sm"

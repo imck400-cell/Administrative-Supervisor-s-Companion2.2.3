@@ -32,23 +32,30 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings })
   const canUseTrainingCourses = isGeneralSupervisor || trainingPerm === true || trainingPerm === undefined || (Array.isArray(trainingPerm) && trainingPerm.length > 0);
 
   const studentAffairsPerm = currentUser?.permissions?.studentAffairs;
-  const canUseStudentAffairs = isGeneralSupervisor || studentAffairsPerm === true || (Array.isArray(studentAffairsPerm) && studentAffairsPerm.length > 0);
+  const canUseStudentAffairs = isGeneralSupervisor || studentAffairsPerm === true || (Array.isArray(studentAffairsPerm) && studentAffairsPerm.length > 0) || studentAffairsPerm === undefined;
   
   const canUseComprehensiveIndicators = isGeneralSupervisor || (Array.isArray(currentUser?.permissions?.comprehensiveIndicators) && currentUser!.permissions!.comprehensiveIndicators.includes('showButton'));
 
+  const canUseDashboard = isGeneralSupervisor || currentUser?.permissions?.dashboard !== false;
+  const canUseDaily = isGeneralSupervisor || currentUser?.permissions?.dailyFollowUp !== false;
+  const canUseAdmin = isGeneralSupervisor || currentUser?.permissions?.adminFollowUp !== false;
+  const canUseSpecial = isGeneralSupervisor || currentUser?.permissions?.specialReports !== false;
+  const canUseSubstitutes = isGeneralSupervisor || currentUser?.permissions?.substitutions !== false;
+  const canUseProfile = isGeneralSupervisor || currentUser?.permissions?.schoolProfile !== false;
+
   const menuItems = [
-    { icon: <Home size={20} />, label: 'لوحة التحكم', path: 'dashboard' },
-    { icon: <BookOpen size={20} />, label: 'متابعة المعلمين', path: 'daily' },
-    { icon: <Briefcase size={20} />, label: 'متابعة الموظفين والعاملين', path: 'adminReports' },
+    ...(canUseDashboard ? [{ icon: <Home size={20} />, label: 'لوحة التحكم', path: 'dashboard' }] : []),
+    ...(canUseDaily ? [{ icon: <BookOpen size={20} />, label: 'متابعة المعلمين', path: 'daily' }] : []),
+    ...(canUseAdmin ? [{ icon: <Briefcase size={20} />, label: 'متابعة الموظفين والعاملين', path: 'adminReports' }] : []),
     ...(canUseStudentAffairs ? [{ icon: <UserX size={20} />, label: 'التعهدات', path: 'violations' }] : []),
-    { icon: <Users size={20} />, label: 'شؤون الطلاب', path: 'studentReports' },
-    { icon: <FileSearch size={20} />, label: 'التقارير الخاصة', path: 'specialReports' },
+    ...(canUseStudentAffairs ? [{ icon: <Users size={20} />, label: 'شؤون الطلاب', path: 'studentReports' }] : []),
+    ...(canUseSpecial ? [{ icon: <FileSearch size={20} />, label: 'التقارير الخاصة', path: 'specialReports' }] : []),
     ...(canUseComprehensiveIndicators ? [{ icon: <BarChart size={20} />, label: 'مؤشرات الأداء الشاملة', path: 'comprehensiveIndicatorsModal' }] : []),
     ...(canUseCaseStudy ? [{ icon: <ClipboardList size={20} />, label: 'دراسة حالة طالب', path: 'caseStudyModal' }] : []),
     ...(canUseTrainingCourses ? [{ icon: <BookOpen size={20} />, label: 'الدورات التدريبية', path: 'trainingCoursesModal' }] : []),
     ...(canUseIssuesButton ? [{ icon: <AlertCircle size={20} />, label: 'المشكلات والحلول', path: 'issuesModal' }] : []),
-    { icon: <UserPlus size={20} />, label: 'جدول التغطية', path: 'substitute' },
-    { icon: <FileText size={20} />, label: 'ملف المدرسة', path: 'profile' },
+    ...(canUseSubstitutes ? [{ icon: <UserPlus size={20} />, label: 'جدول التغطية', path: 'substitute' }] : []),
+    ...(canUseProfile ? [{ icon: <FileText size={20} />, label: 'ملف المدرسة', path: 'profile' }] : []),
   ];
 
   const handleMenuClick = (item: any) => {

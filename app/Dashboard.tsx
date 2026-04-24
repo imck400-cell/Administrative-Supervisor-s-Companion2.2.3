@@ -707,66 +707,30 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 bg-white p-8 rounded-[2.5rem] border-2 border-slate-50 shadow-sm relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-2 h-full bg-blue-600 group-hover:w-3 transition-all"></div>
-          <h3 className="text-xl font-black mb-6 flex items-center gap-2 text-slate-800">
-            <CalendarDays className="text-blue-600" />
-            بيانات المؤسسة
-          </h3>
-          <div className="space-y-6">
-            <div className="bg-blue-50/50 p-4 rounded-3xl border border-blue-100/50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white rounded-xl shadow-sm text-blue-600"><School size={16} /></div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-black uppercase mb-1 block">اسم المدرسة</label>
-                  <div className="text-slate-800 font-black text-sm">{data.profile.schoolName || '---'}</div>
-                </div>
-              </div>
-            </div>
-            <div className="bg-emerald-50/50 p-4 rounded-3xl border border-emerald-100/50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white rounded-xl shadow-sm text-emerald-600"><User size={16} /></div>
-                <div>
-                  <label className="text-[10px] text-slate-400 font-black uppercase mb-1 block">المشرف المسؤول</label>
-                  <div className="text-slate-800 font-black text-sm">{data.profile.supervisorName || '---'}</div>
-                </div>
+      <div className="bg-white p-8 rounded-[2.5rem] border-2 border-slate-50 shadow-sm relative overflow-hidden group">
+        <div className="absolute top-0 left-0 w-2 h-full bg-blue-600 group-hover:w-3 transition-all"></div>
+        <h3 className="text-xl font-black mb-6 flex items-center gap-2 text-slate-800">
+          <CalendarDays className="text-blue-600" />
+          بيانات المؤسسة
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-blue-50/50 p-4 rounded-3xl border border-blue-100/50">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white rounded-xl shadow-sm text-blue-600"><School size={16} /></div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-black uppercase mb-1 block">اسم المدرسة</label>
+                <div className="text-slate-800 font-black text-sm">{data.profile.schoolName || '---'}</div>
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border-2 border-slate-50 shadow-sm relative overflow-hidden">
-          <div className="absolute -top-10 -right-10 w-40 h-40 bg-slate-50 rounded-full opacity-50"></div>
-          <h3 className="text-xl font-black mb-6 flex items-center gap-2 text-slate-800">
-            <TrendingUp className="text-green-600" />
-            الوصول السريع
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
-            {[
-              { label: 'التقرير اليومي', icon: <FileText />, view: 'daily' },
-              { label: 'تغطية الحصص', icon: <UserPlusIcon />, view: 'substitute' },
-              { label: 'متابعة الموظفين', icon: <ClipboardCheck className="text-indigo-600" />, view: 'staffFollowUp' },
-              { label: 'تعهد طالب', icon: <AlertCircle />, view: 'violations' },
-              { label: 'خطة الإشراف', icon: <CalendarDays />, view: 'specialReports' },
-              { label: 'المشكلات والحلول', icon: <MessageSquare className="text-pink-600" />, view: 'issuesModal' },
-              ...recentActions.map(action => ({
-                label: action.label,
-                icon: action.icon,
-                view: action.id
-              }))
-            ].slice(0, 12).map((btn, i) => (
-              <button
-                key={`quick-${btn.label}-${i}`}
-                onClick={() => setView?.(btn.view)}
-                className="flex flex-col items-center justify-center p-6 rounded-[2rem] border-2 border-slate-50 bg-slate-50 hover:bg-white hover:border-blue-600 hover:shadow-2xl hover:-translate-y-2 transition-all gap-3 group"
-              >
-                <div className={`p-4 rounded-2xl bg-white shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-all text-blue-600`}>
-                  {btn.icon}
-                </div>
-                <span className="text-xs font-black text-slate-700 truncate w-full text-center px-1">{btn.label}</span>
-              </button>
-            ))}
+          <div className="bg-emerald-50/50 p-4 rounded-3xl border border-emerald-100/50">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white rounded-xl shadow-sm text-emerald-600"><User size={16} /></div>
+              <div>
+                <label className="text-[10px] text-slate-400 font-black uppercase mb-1 block">المشرف المسؤول</label>
+                <div className="text-slate-800 font-black text-sm">{data.profile.supervisorName || '---'}</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

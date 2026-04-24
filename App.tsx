@@ -442,7 +442,7 @@ const MainApp: React.FC = () => {
   const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
   const hasCaseStudyPerm = currentUser?.permissions?.caseStudyModal === true;
   const canUseCaseStudy = hasCaseStudyPerm || isGeneralSupervisor || isManager;
-  const canUseComprehensiveIndicators = isGeneralSupervisor || currentUser?.permissions?.comprehensiveIndicators === true;
+  const canUseComprehensiveIndicators = isGeneralSupervisor || (Array.isArray(currentUser?.permissions?.comprehensiveIndicators) && currentUser!.permissions!.comprehensiveIndicators.includes('showButton'));
 
   return (
     <Layout onNavigate={handleNavigation} onOpenSettings={() => setIsDataModalOpen(true)}>

@@ -39,6 +39,14 @@ const permissionsList = [
   },
   { id: 'caseStudyModal', label: 'دراسة حالة' },
   { 
+    id: 'comprehensiveIndicators', 
+    label: 'المؤشرات الشاملة',
+    subPermissions: [
+      { id: 'showButton', label: 'ظهور الزر' },
+      { id: 'managePermissions', label: 'الصلاحيات' },
+    ]
+  },
+  { 
     id: 'specialReports', 
     label: 'تقارير خاصة',
     subPermissions: [
@@ -568,6 +576,116 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
                                                       ? currentManaged.filter(id => id !== u.id)
                                                       : [...currentManaged, u.id];
                                                     return { ...prev, permissions: { ...prev.permissions, managedUserIds: next } };
+                                                  });
+                                                }}
+                                              />
+                                            </label>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {perm.id === 'comprehensiveIndicators' && Array.isArray(formData.permissions?.comprehensiveIndicators) && formData.permissions.comprehensiveIndicators.includes('managePermissions') && (
+                      <div className="mt-4 pt-4 border-t border-slate-100">
+                        <label className="text-xs font-black text-indigo-600 block mb-2">تحديد صلاحيات المؤشرات الشاملة (المستخدمين ضمن المدارس/الفروع):</label>
+                        <div className="space-y-3 pl-2">
+                          {(formData.schools || []).map(school => {
+                            const validBranches = formData.permissions?.schoolsAndBranches?.[school] || [];
+                            const usersInSchool = data.users.filter(u => u.schools.includes(school) && u.id !== formData.id);
+                            
+                            if (usersInSchool.length === 0) return null;
+
+                            const branchesToDisplay = validBranches.length > 0 ? validBranches : ['بدون فرع مخصص'];
+                            const isSchoolFullyManaged = usersInSchool.every(u => (formData.permissions?.comprehensiveIndicatorsUsers || []).includes(u.id));
+
+                            const toggleAllInSchool = () => {
+                              setFormData(prev => {
+                                if (!prev) return null;
+                                const currentManaged = prev.permissions?.comprehensiveIndicatorsUsers || [];
+                                const schoolUserIds = usersInSchool.map(u => u.id);
+                                let next: string[];
+                                if (isSchoolFullyManaged) {
+                                  next = currentManaged.filter(id => !schoolUserIds.includes(id));
+                                } else {
+                                  next = Array.from(new Set([...currentManaged, ...schoolUserIds]));
+                                }
+                                return { ...prev, permissions: { ...prev.permissions, comprehensiveIndicatorsUsers: next } };
+                              });
+                            };
+
+                            return (
+                              <div key={`ci-${school}`} className="bg-indigo-50/50 p-2 rounded-xl border border-indigo-100">
+                                <div className="flex items-center justify-between mb-2 p-1">
+                                  <span className="font-bold text-sm text-indigo-800 flex items-center gap-1"><School size={14}/> {school}</span>
+                                  <input 
+                                    type="checkbox" 
+                                    className="w-4 h-4 text-indigo-600 rounded" 
+                                    checked={isSchoolFullyManaged}
+                                    onChange={toggleAllInSchool}
+                                  />
+                                </div>
+                                <div className="space-y-2 pr-3 border-r-2 border-indigo-200">
+                                  {branchesToDisplay.map(branch => {
+                                    const usersInBranch = usersInSchool.filter(u => {
+                                      const uBranches = u.permissions?.schoolsAndBranches?.[school] || [];
+                                      if (branch === 'بدون فرع مخصص') return uBranches.length === 0;
+                                      return uBranches.includes(branch);
+                                    });
+
+                                    if (usersInBranch.length === 0) return null;
+                                    
+                                    const isBranchFullyManaged = usersInBranch.every(u => (formData.permissions?.comprehensiveIndicatorsUsers || []).includes(u.id));
+                                    
+                                    const toggleAllInBranch = () => {
+                                      setFormData(prev => {
+                                        if (!prev) return null;
+                                        const currentManaged = prev.permissions?.comprehensiveIndicatorsUsers || [];
+                                        const branchUserIds = usersInBranch.map(u => u.id);
+                                        let next: string[];
+                                        if (isBranchFullyManaged) {
+                                          next = currentManaged.filter(id => !branchUserIds.includes(id));
+                                        } else {
+                                          next = Array.from(new Set([...currentManaged, ...branchUserIds]));
+                                        }
+                                        return { ...prev, permissions: { ...prev.permissions, comprehensiveIndicatorsUsers: next } };
+                                      });
+                                    };
+
+                                    return (
+                                      <div key={`ci-${school}-${branch}`} className="space-y-1">
+                                        <div className="flex items-center justify-between bg-white p-1 rounded-lg">
+                                          <span className="text-xs font-bold text-indigo-700">{branch}</span>
+                                          <input 
+                                            type="checkbox" 
+                                            className="w-3.5 h-3.5 text-indigo-500 rounded"
+                                            checked={isBranchFullyManaged}
+                                            onChange={toggleAllInBranch}
+                                          />
+                                        </div>
+                                        <div className="pr-2 space-y-1">
+                                          {usersInBranch.map(u => (
+                                            <label key={`ci-${u.id}`} className="flex items-center justify-between cursor-pointer hover:bg-white p-1 rounded transition-colors group">
+                                              <span className="text-xs font-bold text-slate-600 group-hover:text-indigo-600">{u.name}</span>
+                                              <input 
+                                                type="checkbox" 
+                                                className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600"
+                                                checked={(formData.permissions?.comprehensiveIndicatorsUsers || []).includes(u.id)}
+                                                onChange={() => {
+                                                  setFormData(prev => {
+                                                    if (!prev) return null;
+                                                    const currentManaged = prev.permissions?.comprehensiveIndicatorsUsers || [];
+                                                    const next = currentManaged.includes(u.id)
+                                                      ? currentManaged.filter(id => id !== u.id)
+                                                      : [...currentManaged, u.id];
+                                                    return { ...prev, permissions: { ...prev.permissions, comprehensiveIndicatorsUsers: next } };
                                                   });
                                                 }}
                                               />

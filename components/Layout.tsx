@@ -34,7 +34,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings })
   const studentAffairsPerm = currentUser?.permissions?.studentAffairs;
   const canUseStudentAffairs = isGeneralSupervisor || studentAffairsPerm === true || (Array.isArray(studentAffairsPerm) && studentAffairsPerm.length > 0);
   
-  const canUseComprehensiveIndicators = isGeneralSupervisor || currentUser?.permissions?.comprehensiveIndicators === true;
+  const canUseComprehensiveIndicators = isGeneralSupervisor || (Array.isArray(currentUser?.permissions?.comprehensiveIndicators) && currentUser!.permissions!.comprehensiveIndicators.includes('showButton'));
 
   const menuItems = [
     { icon: <Home size={20} />, label: 'لوحة التحكم', path: 'dashboard' },

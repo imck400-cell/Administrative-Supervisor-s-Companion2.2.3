@@ -15,8 +15,12 @@ export const ComprehensiveIndicatorsModal: React.FC<ComprehensiveIndicatorsModal
   const [selectedSchool, setSelectedSchool] = useState<string>('all');
 
   const schools = useMemo(() => {
-    return Array.from(new Set(data.users.flatMap(u => u.schools).filter(Boolean)));
-  }, [data.users]);
+    const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+    if (isGeneralSupervisor) {
+      return Array.from(new Set(data.users.flatMap(u => u.schools).filter(Boolean)));
+    }
+    return currentUser?.schools || [];
+  }, [data.users, currentUser]);
 
   // Quick Stats Pulse
   const { staffAttendanceRate, parentEngagementRate, unresolvedHighRiskIssues, academicExcellence } = useMemo(() => {
@@ -29,22 +33,160 @@ export const ComprehensiveIndicatorsModal: React.FC<ComprehensiveIndicatorsModal
     };
   }, [data, dateRange, selectedSchool]);
 
-  const handleExportExcel = () => {
-     // TODO
+  const handleExportExcel = async () => {
+    // Basic structured data for Excel
+    const summaryData = [
+      ['التقرير الإداري الشامل'],
+      [`الفترة: من ${dateRange.from || 'البداية'} إلى ${dateRange.to || 'اليوم'}`],
+      [`الفرع/المدرسة: ${selectedSchool === 'all' ? 'الكل' : selectedSchool}`],
+      [],
+      ['مؤشرات النبض السريعة (Quick Stats Pulse)'],
+      ['المؤشر', 'القيمة'],
+      ['الاستقرار التشغيلي (حضور الكادر)', `${staffAttendanceRate}%`],
+      ['الرضا والتفاعل (تجاوب أولياء الأمور)', `${parentEngagementRate}%`],
+      ['الخطر المدرسي (مشكلات عالية الخطورة غير محلولة)', unresolvedHighRiskIssues],
+      ['التميز الأكاديمي', `${academicExcellence}%`],
+      [],
+      ['المستوى الإداري والتشغيلي'],
+      ['كفاءة التغطية (الاحتراق الوظيفي)', '85%'],
+      ['معدل إنجاز المرافق', '72%']
+    ];
+
+    try {
+      const ExcelJS = await import('exceljs');
+      const { saveAs } = await import('file-saver');
+
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'نظام إدارة التعليم';
+      workbook.lastModifiedBy = currentUser?.name || 'Admin';
+      workbook.created = new Date();
+
+      // Sheet 1: Summary (الملخص)
+      const summarySheet = workbook.addWorksheet('Summary - ملخص إداري', { views: [{ rightToLeft: true }] });
+      
+      summarySheet.columns = [
+        { header: 'المؤشر / التفاصيل', key: 'metric', width: 45 },
+        { header: 'القيمة / النسبة', key: 'value', width: 20 },
+      ];
+
+      // Add titles
+      summarySheet.addRow(['التقرير الإداري الشامل', '']).font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+      summarySheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } }; // Deep Blue
+      summarySheet.addRow([`الفترة: ${dateRange.from || 'البداية'} إلى ${dateRange.to || 'اليوم'}`, '']).font = { italic: true };
+      summarySheet.addRow(['']);
+
+      const pulseHeader = summarySheet.addRow(['مؤشرات النبض السريعة (Quick Stats Pulse)', '']);
+      pulseHeader.font = { size: 14, bold: true };
+      pulseHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+
+      const indicators = [
+        ['الاستقرار التشغيلي (حضور الكادر)', staffAttendanceRate, true],
+        ['الرضا والتفاعل (تجاوب أولياء الأمور)', parentEngagementRate, true],
+        ['الخطر المدرسي (مشكلات عالية الخطورة غير محلولة)', unresolvedHighRiskIssues, false],
+        ['التميز الأكاديمي', academicExcellence, true],
+        [''],
+        ['المستوى الإداري والتشغيلي', ''],
+        ['كفاءة التغطية (الاحتراق الوظيفي)', 85, true],
+        ['معدل إنجاز وإصلاح الأعطال', 72, true]
+      ];
+
+      indicators.forEach(ind => {
+        const row = summarySheet.addRow([ind[0], ind[1]]);
+        if (typeof ind[1] === 'number') {
+           const isPercentage = ind[2];
+           if (isPercentage) {
+             row.getCell(2).numFmt = '0"%"';
+             // Conditional format logic using font colors:
+             const val = ind[1] as number;
+             if (val < 50) {
+               row.getCell(2).font = { color: { argb: 'FFEE0000' }, bold: true }; // Red
+             } else if (val >= 90) {
+               row.getCell(2).font = { color: { argb: 'FF00aa00' }, bold: true }; // Green
+             }
+           } else {
+             // For issues, high is bad
+             if ((ind[1] as number) > 0) {
+               row.getCell(2).font = { color: { argb: 'FFEE0000' }, bold: true }; // Red
+             }
+           }
+        } else if (ind[1] === '') {
+           row.font = { bold: true };
+           row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+        }
+      });
+
+      // Sheet 2: Detailed Staff (تفاصيل الكوادر)
+      const staffSheet = workbook.addWorksheet('تفاصيل الموظفين', { views: [{ rightToLeft: true }] });
+      staffSheet.columns = [
+        { header: 'القسم / الإدارة', key: 'dept', width: 30 },
+        { header: 'المؤشر', key: 'indicator', width: 30 },
+        { header: 'النسبة / الإنجاز', key: 'value', width: 20 },
+      ];
+      staffSheet.getRow(1).font = { bold: true };
+      
+      const staffData = [
+        { dept: 'القيادة العليا', indicator: 'سرعة اتخاذ القرارات', value: 90 },
+        { dept: 'إدارة الجودة', indicator: 'استقرار الجدول', value: 95 },
+        { dept: 'المختص الاجتماعي', indicator: 'الحالات المعالجة', value: 82 },
+        { dept: 'بيئة / صيانة', indicator: 'الاستجابة للأعطال', value: 68 },
+      ];
+
+      staffData.forEach(d => {
+        const row = staffSheet.addRow(d);
+        row.getCell(3).numFmt = '0"%"';
+        if (d.value < 50) row.getCell(3).font = { color: { argb: 'FFEE0000' }, bold: true };
+        else if (d.value >= 90) row.getCell(3).font = { color: { argb: 'FF00aa00' }, bold: true };
+      });
+
+      // Generate File
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `Comprehensive_Indicators_${dateRange.from || 'All'}.xlsx`);
+
+    } catch (e) {
+      console.error('Error generating Excel', e);
+      alert('حدث خطأ أثناء إنشاء ملف Excel. الرجاء المحاولة مرة أخرى.');
+    }
   };
 
   const handleWhatsAppShare = () => {
+    // Generate an exhaustive report for WhatsApp
     const text = `📊 *التقرير الإداري الشامل*
-🗓️ الفترة: ${dateRange.from || 'البداية'} إلى ${dateRange.to || 'اليوم'}
+🏢 *الفرع/المدرسة:* ${selectedSchool === 'all' ? 'جميع الفروع' : selectedSchool}
+🗓️ *الفترة:* من ${dateRange.from || 'بداية العام'} إلى ${dateRange.to || 'اليوم'}
 
-🟢 *نقاط القوة (مؤشرات خضراء):*
-👨‍🏫 نسبة حضور الكادر: ${staffAttendanceRate}%
-🏆 نسبة التميز الأكاديمي: ${academicExcellence}%
+*===== 1. مؤشرات النبض السريعة =====*
+👨‍🏫 الاستقرار التشغيلي (حضور الكادر): *${staffAttendanceRate}%*
+🤝 الرضا والتفاعل (أولياء الأمور): *${parentEngagementRate}%*
+⚠️ الخطر المدرسي (مشاكل عالية الخطورة غير محلولة): *${unresolvedHighRiskIssues}*
+🏆 التميز الأكاديمي (نسب النجاح والإنجاز): *${academicExcellence}%*
 
-🔴 *نقاط الضعف والمخاطر (مؤشرات حمراء):*
-⚠️ مشاكل وأعطال غير محلولة: ${unresolvedHighRiskIssues}
+*===== 2. المستوى الإداري والتشغيلي =====*
+• كفاءة التغطية (الاحتراق الوظيفي): *85% (تغطية مكتملة)*
+• الانضباط الإداري العام: *12% تأخر، 4% غياب*
+• كفاءة المرافق وحل المشكلات: *72% معدل الإنجاز*
 
-🔗 للاطلاع على التفاصيل، نرجو مراجعة لوحة المؤشرات في النظام.`;
+*===== 3. أداء الكادر التعليمي =====*
+• مؤشر الفجوة التعليمية: *14% فجوة*
+• جودة التصحيح: *78% التزام*
+• الانضباط الصفي: *92% انضباط*
+
+*===== 4. شؤون الطلاب والسلوك =====*
+• الانضباط الطلابي: *76% بلا تبليغات*
+• تفاعل أولياء الأمور: *(متعاون: 45%، متذمر: 15%، غير متابع: 40%)*
+• المؤشر الصحي العام: *12 حالة مرضية/مزمنة*
+
+*===== 5. مؤشرات الاستراتيجية الاستشرافية =====*
+• الهدر المالي المُقّدر: *4,500 ر.س*
+• عائد التدريب (ROI): *+12% أداء*
+• بوصلة القرار (SWOT):
+  🟢 قوة: الأنشطة اللاصفية
+  🔵 فرص: تكريم المبادرين
+  🟡 ضعف: تدني نتائج الرياضيات
+  🔴 تهديد: تسرب طلاب أول ثانوي
+
+🔗 للاطلاع على التفاصيل الكاملة والرسوم البيانية، نرجو فتح مسار المؤشرات الشاملة بنظام الإدارة.`;
+
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -61,43 +203,43 @@ export const ComprehensiveIndicatorsModal: React.FC<ComprehensiveIndicatorsModal
             className="w-full max-w-7xl bg-white rounded-3xl shadow-2xl flex flex-col my-auto min-h-[90vh] max-h-[95vh]"
           >
             {/* Header */}
-            <div className="sticky top-0 bg-white/90 backdrop-blur-xl border-b border-slate-100 p-6 flex flex-col gap-6 z-20 rounded-t-3xl">
-              <div className="flex items-center justify-between">
+            <div className="sticky top-0 bg-white/90 backdrop-blur-xl border-b border-slate-100 p-4 md:p-6 flex flex-col gap-4 md:gap-6 z-20 rounded-t-3xl">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner shrink-0">
                     <BarChart size={24} />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-black text-slate-800">مؤشرات الأداء الشاملة</h2>
-                    <p className="text-sm font-bold text-slate-500">لوحة القياس الذكية لمركز القرار</p>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-800">مؤشرات الأداء الشاملة</h2>
+                    <p className="text-xs md:text-sm font-bold text-slate-500">لوحة القياس الذكية لمركز القرار</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <button onClick={handleWhatsAppShare} className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-xl font-bold hover:bg-green-100 transition-colors border border-green-200">
-                     <Share2 size={18} /> مشاركة WhatsApp
+                <div className="flex flex-wrap items-center gap-2 md:gap-3 w-full md:w-auto">
+                  <button onClick={handleWhatsAppShare} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-700 rounded-xl font-bold hover:bg-green-100 transition-colors border border-green-200 text-xs md:text-sm">
+                     <Share2 size={16} /> مشاركة
                   </button>
-                  <button onClick={handleExportExcel} className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl font-bold hover:bg-blue-100 transition-colors border border-blue-200">
-                     <Download size={18} /> تصدير Excel
+                  <button onClick={handleExportExcel} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-xl font-bold hover:bg-blue-100 transition-colors border border-blue-200 text-xs md:text-sm">
+                     <Download size={16} /> تصدير
                   </button>
-                  <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500">
-                    <X size={24} />
+                  <button onClick={onClose} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-slate-500 shrink-0">
+                    <X size={20} />
                   </button>
                 </div>
               </div>
               {/* Dynamic Filters */}
-              <div className="flex flex-wrap gap-4 items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                 <div className="flex items-center gap-2">
-                   <Calendar size={18} className="text-slate-400" />
-                   <span className="font-bold text-slate-700 text-sm">الفترة من:</span>
-                   <input type="date" className="p-2 rounded-lg border border-slate-200 text-sm font-bold outline-none focus:border-indigo-500" value={dateRange.from} onChange={e => setDateRange(p => ({...p, from: e.target.value}))} />
-                   <span className="font-bold text-slate-700 text-sm">إلى:</span>
-                   <input type="date" className="p-2 rounded-lg border border-slate-200 text-sm font-bold outline-none focus:border-indigo-500" value={dateRange.to} onChange={e => setDateRange(p => ({...p, to: e.target.value}))} />
+              <div className="flex flex-col md:flex-row flex-wrap gap-4 items-stretch md:items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                 <div className="flex flex-wrap items-center gap-2">
+                   <Calendar size={18} className="text-slate-400 shrink-0" />
+                   <span className="font-bold text-slate-700 text-xs md:text-sm">الفترة من:</span>
+                   <input type="date" className="flex-1 md:flex-none p-2 rounded-lg border border-slate-200 text-xs md:text-sm font-bold outline-none focus:border-indigo-500" value={dateRange.from} onChange={e => setDateRange(p => ({...p, from: e.target.value}))} />
+                   <span className="font-bold text-slate-700 text-xs md:text-sm">إلى:</span>
+                   <input type="date" className="flex-1 md:flex-none p-2 rounded-lg border border-slate-200 text-xs md:text-sm font-bold outline-none focus:border-indigo-500" value={dateRange.to} onChange={e => setDateRange(p => ({...p, to: e.target.value}))} />
                  </div>
-                 <div className="h-6 w-px bg-slate-200 mx-2" />
+                 <div className="hidden md:block h-6 w-px bg-slate-200 mx-2" />
                  <div className="flex items-center gap-2">
-                   <Filter size={18} className="text-slate-400" />
-                   <select className="p-2 rounded-lg border border-slate-200 text-sm font-bold outline-none focus:border-indigo-500 min-w-[200px]" value={selectedSchool} onChange={e => setSelectedSchool(e.target.value)}>
-                     <option value="all">عرض الكل (جميع الفروع والمراحل)</option>
+                   <Filter size={18} className="text-slate-400 shrink-0" />
+                   <select className="flex-1 p-2 rounded-lg border border-slate-200 text-xs md:text-sm font-bold outline-none focus:border-indigo-500 min-w-[150px]" value={selectedSchool} onChange={e => setSelectedSchool(e.target.value)}>
+                     <option value="all">عرض الكل (جميع الفروع)</option>
                      {schools.map(s => <option key={s} value={s}>{s}</option>)}
                    </select>
                  </div>

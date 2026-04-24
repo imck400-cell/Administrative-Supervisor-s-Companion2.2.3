@@ -366,7 +366,24 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } else if (isManager) {
       // Generic manager without explicit list: sees fellow school members
       return data.users
-        .filter(u => u.schools.some(s => selectedSchools.includes(s)))
+        .filter(u => {
+           if (u.id === currentUser.id) return true;
+           const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
+           if (!isAdminOrFull && isTargetAdmin) return false;
+           
+           return u.schools.some(s => {
+             if (!selectedSchools.includes(s)) return false;
+             
+             // Branch check
+             const managerBranches = currentUser.permissions?.schoolsAndBranches?.[s] || [];
+             if (managerBranches.length > 0) {
+               const targetBranches = u.permissions?.schoolsAndBranches?.[s] || [];
+               if (targetBranches.length === 0) return false; // If target has no branch
+               return managerBranches.some(b => targetBranches.includes(b));
+             }
+             return true;
+           });
+        })
         .map(u => u.id);
     } else {
       // Regular users ONLY see themselves

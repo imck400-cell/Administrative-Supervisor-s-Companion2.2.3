@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Home, BookOpen, Briefcase, UserPlus, AlertCircle, Users, 
-  FileSearch, FileText, BarChart, ClipboardList, Key, Database, Zap, Plus, X, Star, Link, ChevronDown
+  FileSearch, FileText, BarChart, ClipboardList, Key, Database, Zap, Plus, X, Star, Pin, Link, ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGlobal } from '../context/GlobalState';
@@ -21,6 +21,17 @@ const ALL_ACTIONS = [
   { id: 'issuesModal', label: 'المشكلات والحلول', icon: <AlertCircle size={18} /> },
   { id: 'codesModal', label: 'التحكم بالصلاحيات', icon: <Key size={18} /> },
   { id: 'dataModal', label: 'إدارة البيانات', icon: <Database size={18} /> },
+  // Sub-items for Special Reports
+  { id: 'specialReports-الغياب اليومي', label: 'سجل الغياب اليومي', icon: <Users size={18} /> },
+  { id: 'specialReports-التأخر', label: 'سجل التأخر المتكرر', icon: <AlertCircle size={18} /> },
+  { id: 'specialReports-خروج طالب أثناء الدراسة', label: 'سجل خروج الطلاب', icon: <AlertCircle size={18} /> },
+  { id: 'specialReports-المخالفات الطلابية', label: 'سجل المخالفات الطلابية', icon: <AlertCircle size={18} /> },
+  { id: 'specialReports-سجل الإتلاف المدرسي', label: 'سجل الإتلاف المدرسي', icon: <AlertCircle size={18} /> },
+  { id: 'specialReports-سجل الحالات الخاصة', label: 'سجل الحالات الخاصة', icon: <Users size={18} /> },
+  { id: 'specialReports-سجل الحالة الصحية', label: 'سجل الحالة الصحية', icon: <AlertCircle size={18} /> },
+  { id: 'specialReports-سجل زيارة أولياء الأمور والتواصل بهم', label: 'زيارات أولياء الأمور', icon: <Users size={18} /> },
+  { id: 'specialReports-الاختبار الشهري', label: 'الاختبارات الشهرية', icon: <FileSearch size={18} /> },
+  { id: 'specialReports-الاختبار الفصلي', label: 'الاختبارات الفصلية', icon: <FileSearch size={18} /> }
 ];
 
 export const useQuickAccess = (userId?: string) => {
@@ -122,7 +133,7 @@ export const QuickAccess: React.FC<{
   const canUseSubstitutes = checkPerm(currentUser?.permissions?.substitutions);
   const canUseProfile = checkPerm(currentUser?.permissions?.schoolProfile);
 
-  const canUseCodesModal = isGeneralSupervisor || currentUser?.permissions?.specialCodes;
+  const canUseCodesModal = isGeneralSupervisor || checkPerm(currentUser?.permissions?.specialCodes) || checkPerm(currentUser?.permissions?.userManagement) || (currentUser?.permissions?.managedUserIds && currentUser.permissions.managedUserIds.length > 0);
   const canUseDataModal = isGeneralSupervisor;
 
   const allowedIds = [
@@ -131,7 +142,18 @@ export const QuickAccess: React.FC<{
     ...(canUseAdmin ? ['adminReports'] : []),
     ...(canUseSubstitutes ? ['substitute'] : []),
     ...(canUseStudentAffairs ? ['violations', 'studentReports'] : []),
-    ...(canUseSpecial ? ['specialReports'] : []),
+    ...(canUseSpecial ? [
+      'specialReports',
+      ...(checkPerm(currentUser?.permissions?.specialReports, 'absenceLog') ? ['specialReports-الغياب اليومي'] : []),
+      ...(checkPerm(currentUser?.permissions?.specialReports, 'latenessLog') ? ['specialReports-التأخر'] : []),
+      ...(checkPerm(currentUser?.permissions?.specialReports, 'exitLog') ? ['specialReports-خروج طالب أثناء الدراسة'] : []),
+      ...(checkPerm(currentUser?.permissions?.specialReports, 'violationLog') ? ['specialReports-المخالفات الطلابية'] : []),
+      ...(checkPerm(currentUser?.permissions?.specialReports, 'damageLog') ? ['specialReports-سجل الإتلاف المدرسي'] : []),
+      ...(checkPerm(currentUser?.permissions?.specialReports, 'specialCasesLog') ? ['specialReports-سجل الحالات الخاصة'] : []),
+      ...(checkPerm(currentUser?.permissions?.specialReports, 'healthLog') ? ['specialReports-سجل الحالة الصحية'] : []),
+      ...(checkPerm(currentUser?.permissions?.specialReports, 'parentVisitLog') ? ['specialReports-سجل زيارة أولياء الأمور والتواصل بهم'] : []),
+      ...(checkPerm(currentUser?.permissions?.specialReports, 'examLog') ? ['specialReports-الاختبار الشهري', 'specialReports-الاختبار الفصلي'] : []),
+    ] : []),
     ...(canUseProfile ? ['profile'] : []),
     ...(canUseComprehensiveIndicators ? ['comprehensiveIndicatorsModal'] : []),
     ...(canUseCaseStudy ? ['caseStudyModal'] : []),
@@ -181,10 +203,10 @@ export const QuickAccess: React.FC<{
         </button>
         <button 
           onClick={(e) => { e.stopPropagation(); togglePin(id); }}
-          className={`p-1.5 rounded-lg transition-colors \${isPinned ? 'text-amber-500 bg-amber-50' : 'text-slate-300 hover:text-amber-500 hover:bg-slate-100 opacity-0 group-hover:opacity-100'}`}
+          className={`p-1.5 rounded-lg transition-colors ${isPinned ? 'text-amber-600 bg-amber-100 opacity-100' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50 sm:opacity-0 sm:group-hover:opacity-100 opacity-100'}`}
           title={isPinned ? 'إلغاء التثبيت' : 'تثبيت في الوصول السريع'}
         >
-          <Star size={16} fill={isPinned ? "currentColor" : "none"} />
+          <Pin size={16} fill={isPinned ? "currentColor" : "none"} className={isPinned ? 'rotate-45' : ''} />
         </button>
       </div>
     );
@@ -222,7 +244,7 @@ export const QuickAccess: React.FC<{
                 <>
                   {pinned.length > 0 && (
                     <div className="mb-3">
-                      <div className="px-3 py-1 text-xs font-black text-amber-600 mb-1 flex items-center gap-1"><Star size={12} fill="currentColor"/> المثبتة</div>
+                      <div className="px-3 py-1 text-xs font-black text-amber-600 mb-1 flex items-center gap-1"><Pin size={12} fill="currentColor" className="rotate-45"/> المثبتة</div>
                       {pinned.map(id => <ActionButton key={id} id={id} isPinned={true} />)}
                     </div>
                   )}

@@ -209,9 +209,22 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     onConfirm: () => { },
   });
 
+  const structure = {
+    supervisor: { title: 'المشرف الإداري', icon: <Briefcase />, items: ['المهام', 'الخطة الفصلية', 'الخلاصة الشهرية', 'المهام اليومية', 'المهام المضافة', 'المهام المرحلة', 'أهم المشكلات اليومية', 'التوصيات العامة', 'احتياجات الدور', 'سجل متابعة الدفاتر والتصحيح', 'الجرد العام للعهد', 'ملاحظات عامة'] },
+    staff: { title: 'الكادر التعليمي', icon: <Users />, items: ['سجل الإبداع والتميز', 'كشف الاستلام والتسليم', 'المخالفات', 'التعميمات'] },
+    students: { title: 'الطلاب/ الطالبات', icon: <GraduationCap />, items: ['الغياب اليومي', 'التأخر', 'خروج طالب أثناء الدراسة', 'المخالفات الطلابية', 'سجل الإتلاف المدرسي', 'سجل الحالات الخاصة', 'سجل الحالة الصحية', 'سجل زيارة أولياء الأمور والتواصل بهم'] },
+    tests: { title: 'تقارير الاختبار', icon: <FileSearch />, items: ['الاختبار الشهري', 'الاختبار الفصلي'] }
+  };
+
   useEffect(() => {
     if (initialSubTab) {
       setActiveSubTab(initialSubTab);
+      for (const [key, cat] of Object.entries(structure)) {
+        if (cat.items.includes(initialSubTab)) {
+          setActiveTab(key as MainTab);
+          break;
+        }
+      }
     }
   }, [initialSubTab]);
 
@@ -329,13 +342,6 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
     try {
       return new Intl.DateTimeFormat('ar-EG', { weekday: 'long' }).format(new Date(dateStr));
     } catch { return ''; }
-  };
-
-  const structure = {
-    supervisor: { title: 'المشرف الإداري', icon: <Briefcase />, items: ['المهام', 'الخطة الفصلية', 'الخلاصة الشهرية', 'المهام اليومية', 'المهام المضافة', 'المهام المرحلة', 'أهم المشكلات اليومية', 'التوصيات العامة', 'احتياجات الدور', 'سجل متابعة الدفاتر والتصحيح', 'الجرد العام للعهد', 'ملاحظات عامة'] },
-    staff: { title: 'الكادر التعليمي', icon: <Users />, items: ['سجل الإبداع والتميز', 'كشف الاستلام والتسليم', 'المخالفات', 'التعميمات'] },
-    students: { title: 'الطلاب/ الطالبات', icon: <GraduationCap />, items: ['الغياب اليومي', 'التأخر', 'خروج طالب أثناء الدراسة', 'المخالفات الطلابية', 'سجل الإتلاف المدرسي', 'سجل الحالات الخاصة', 'سجل الحالة الصحية', 'سجل زيارة أولياء الأمور والتواصل بهم'] },
-    tests: { title: 'تقارير الاختبار', icon: <FileSearch />, items: ['الاختبار الشهري', 'الاختبار الفصلي'] }
   };
 
   const shareWhatsAppRich = (title: string, tableData: any[], columns: { label: string, key: string }[]) => {

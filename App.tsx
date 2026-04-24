@@ -391,7 +391,18 @@ const MainApp: React.FC = () => {
 
       if (isManager) {
         // If they have manager permission but no specific list, they see the whole school/branch
-        return u.schools.some(s => userSchools.includes(s));
+        return u.schools.some(s => {
+          if (!userSchools.includes(s)) return false;
+          
+          // Branch verification
+          const managerBranches = currentUser?.permissions?.schoolsAndBranches?.[s] || [];
+          if (managerBranches.length > 0) {
+            const targetBranches = u.permissions?.schoolsAndBranches?.[s] || [];
+            if (targetBranches.length === 0) return false; // Target has no branch but manager has specific branches
+            return managerBranches.some(b => targetBranches.includes(b));
+          }
+          return true;
+        });
       }
 
       return u.id === currentUser?.id;
@@ -433,6 +444,11 @@ const MainApp: React.FC = () => {
   if (!isAuthenticated) return <AdvancedLoginPage />;
 
   const renderView = () => {
+    if (view.startsWith('specialReports-')) {
+      const subTab = view.split('-')[1];
+      return <SpecialReportsPage initialSubTab={subTab} onNavigate={handleNavigation} />;
+    }
+
     switch (view) {
       case 'dashboard': return <Dashboard setView={handleNavigation} />;
       case 'substitute': return <SubstitutionPage />;
@@ -440,7 +456,7 @@ const MainApp: React.FC = () => {
       case 'adminReports': return <StaffFollowUpPage />;
       case 'violations': return <ViolationsPage />;
       case 'studentReports': return <StudentsReportsPage />;
-      case 'specialReports': return <SpecialReportsPage />;
+      case 'specialReports': return <SpecialReportsPage onNavigate={handleNavigation} />;
       case 'profile': return <ProfilePage />;
       default: return <Dashboard setView={handleNavigation} />;
     }
@@ -527,7 +543,7 @@ const MainApp: React.FC = () => {
             </button>
           )}
 
-          {(isAdminOrFull || currentUser?.permissions?.specialCodes) && (
+          {(isAdminOrFull || checkPerm(currentUser?.permissions?.specialCodes) || checkPerm(currentUser?.permissions?.userManagement) || (currentUser?.permissions?.managedUserIds && currentUser.permissions.managedUserIds.length > 0)) && (
             <button
               onClick={() => setIsCodesModalOpen(true)}
               className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all"

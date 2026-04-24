@@ -351,29 +351,6 @@ const MainApp: React.FC = () => {
     }
   };
 
-  const navItems = useMemo(() => {
-    const items = [
-      { id: 'dashboard', label: 'الرئيسية', icon: <LayoutDashboard size={18} />, permission: 'dashboard' },
-      { id: 'daily', label: 'متابعة المعلمين', icon: <ClipboardCheck size={18} />, permission: 'dailyFollowUp' },
-      { id: 'adminReports', label: 'متابعة الموظفين والعاملين', icon: <Briefcase size={18} />, permission: 'adminFollowUp' },
-      { id: 'substitute', label: 'جدول التغطية', icon: <UserPlus size={18} />, permission: 'substitutions' },
-      { id: 'violations', label: 'التعهدات', icon: <UserX size={18} />, permission: 'studentAffairs' },
-      { id: 'studentReports', label: 'تقارير الطلاب', icon: <Users size={18} />, permission: 'studentAffairs' },
-      { id: 'specialReports', label: 'تقارير خاصة', icon: <FileSearch size={18} />, permission: 'specialReports' },
-      { id: 'caseStudyModal', label: 'دراسة حالة طالب', icon: <ClipboardList size={18} />, permission: 'caseStudyModal' },
-      { id: 'trainingCoursesModal', label: 'الدورات التدريبية', icon: <BookOpen size={18} />, permission: 'trainingCourses' },
-      { id: 'issuesModal', label: 'المشكلات والحلول', icon: <AlertCircle size={18} />, permission: 'issuesModal' },
-      { id: 'profile', label: 'ملف المدرسة', icon: <School size={18} />, permission: 'schoolProfile' },
-    ];
-
-    if (currentUser?.role === 'admin' || currentUser?.permissions?.all) return items;
-
-    return items.filter(item => {
-      const p = currentUser?.permissions?.[item.permission as keyof UserPermissions];
-      return p === true || (Array.isArray(p) && p.length > 0);
-    });
-  }, [currentUser]);
-
   const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
 
   const filteredUsersForModal = useMemo(() => {
@@ -529,54 +506,7 @@ const MainApp: React.FC = () => {
               <Database className="text-blue-600" size={18} /> إدارة البيانات
             </button>
           )}
-
-          {canUseCaseStudy && (
-            <button
-              onClick={() => setIsCaseStudyModalOpen(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all"
-            >
-              <ClipboardList className="text-blue-600" size={18} /> دراسة حالة طالب
-            </button>
-          )}
         </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2 mb-8 bg-white/50 backdrop-blur-md p-2 rounded-2xl border border-white">
-        {navItems.map((item) => {
-          // If the nav item is issuesModal, check if user has permission
-          if (item.id === 'issuesModal') {
-            const issuesModalPerm = currentUser?.permissions?.issuesModal;
-            const canUseIssuesButton = currentUser?.role === 'admin' || 
-               currentUser?.permissions?.all === true ||
-               issuesModalPerm === undefined || 
-               (Array.isArray(issuesModalPerm) && issuesModalPerm.includes('useIssuesButton'));
-               
-            if (!canUseIssuesButton) return null;
-          }
-
-          if (item.id === 'caseStudyModal') {
-             // Logic for caseStudyModal visibility based on prompt
-             const managedIds = currentUser?.permissions?.managedUserIds || [];
-             const isManager = currentUser?.permissions?.userManagement === true || managedIds.length > 0;
-             const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
-             
-             // Check explicit permission OR admin OR manager
-             const hasCaseStudyPerm = currentUser?.permissions?.caseStudyModal === true;
-
-             const canUseCaseStudy = hasCaseStudyPerm || isGeneralSupervisor || isManager;
-             if (!canUseCaseStudy) return null;
-          }
-          
-          return (
-            <button
-              key={item.id}
-              onClick={() => handleNavigation(item.id)}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-black transition-all ${view === item.id || (item.id === 'issuesModal' && isAppIssuesModalOpen) || (item.id === 'caseStudyModal' && isCaseStudyModalOpen) ? 'bg-blue-600 text-white shadow-xl' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
-            >
-              {item.icon} {item.label}
-            </button>
-          );
-        })}
       </div>
 
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">

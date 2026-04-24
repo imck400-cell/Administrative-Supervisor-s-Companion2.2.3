@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useGlobal } from '../context/GlobalState';
 import { 
   Menu, X, Home, Users, ClipboardList, BookOpen, 
-  Settings, LogOut, MessageCircle, FileText, UserPlus, FileSearch, Briefcase, AlertCircle
+  Settings, LogOut, MessageCircle, FileText, UserPlus, FileSearch, Briefcase, AlertCircle, UserX
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -31,10 +31,14 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings })
   const trainingPerm = currentUser?.permissions?.trainingCourses;
   const canUseTrainingCourses = isGeneralSupervisor || trainingPerm === true || trainingPerm === undefined || (Array.isArray(trainingPerm) && trainingPerm.length > 0);
 
+  const studentAffairsPerm = currentUser?.permissions?.studentAffairs;
+  const canUseStudentAffairs = isGeneralSupervisor || studentAffairsPerm === true || (Array.isArray(studentAffairsPerm) && studentAffairsPerm.length > 0);
+
   const menuItems = [
     { icon: <Home size={20} />, label: 'لوحة التحكم', path: 'dashboard' },
     { icon: <BookOpen size={20} />, label: 'متابعة المعلمين', path: 'daily' },
     { icon: <Briefcase size={20} />, label: 'متابعة الموظفين والعاملين', path: 'adminReports' },
+    ...(canUseStudentAffairs ? [{ icon: <UserX size={20} />, label: 'التعهدات', path: 'violations' }] : []),
     { icon: <Users size={20} />, label: 'شؤون الطلاب', path: 'studentReports' },
     { icon: <FileSearch size={20} />, label: 'التقارير الخاصة', path: 'specialReports' },
     ...(canUseCaseStudy ? [{ icon: <ClipboardList size={20} />, label: 'دراسة حالة طالب', path: 'caseStudyModal' }] : []),

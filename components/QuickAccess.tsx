@@ -4,6 +4,7 @@ import {
   FileSearch, FileText, BarChart, ClipboardList, Key, Database, Zap, Plus, X, Star, Link, ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useGlobal } from '../context/GlobalState';
 
 const ALL_ACTIONS = [
   { id: 'dashboard', label: 'الرئيسية', icon: <Home size={18} /> },
@@ -76,8 +77,57 @@ export const QuickAccess: React.FC<{
   const [isOpen, setIsOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { currentUser } = useGlobal();
 
   const { pinned, recent, usage, togglePin } = useQuickAccess(userId);
+
+  // Permission logic (matching Layout)
+  const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+  
+  const issuesModalPerm = currentUser?.permissions?.issuesModal;
+  const canUseIssuesButton = isGeneralSupervisor || issuesModalPerm === undefined || (Array.isArray(issuesModalPerm) && issuesModalPerm.includes('useIssuesButton'));
+
+  const managedIds = currentUser?.permissions?.managedUserIds || [];
+  const isManager = currentUser?.permissions?.userManagement === true || managedIds.length > 0;
+  
+  const hasCaseStudyPerm = currentUser?.permissions?.caseStudyModal === true;
+  const canUseCaseStudy = hasCaseStudyPerm || isGeneralSupervisor || isManager;
+  
+  const trainingPerm = currentUser?.permissions?.trainingCourses;
+  const canUseTrainingCourses = isGeneralSupervisor || trainingPerm === true || trainingPerm === undefined || (Array.isArray(trainingPerm) && trainingPerm.length > 0);
+
+  const studentAffairsPerm = currentUser?.permissions?.studentAffairs;
+  const canUseStudentAffairs = isGeneralSupervisor || studentAffairsPerm === true || (Array.isArray(studentAffairsPerm) && studentAffairsPerm.length > 0) || studentAffairsPerm === undefined;
+  
+  const canUseComprehensiveIndicators = isGeneralSupervisor || (Array.isArray(currentUser?.permissions?.comprehensiveIndicators) && currentUser!.permissions!.comprehensiveIndicators.includes('showButton'));
+
+  const canUseDashboard = isGeneralSupervisor || currentUser?.permissions?.dashboard !== false;
+  const canUseDaily = isGeneralSupervisor || currentUser?.permissions?.dailyFollowUp !== false;
+  const canUseAdmin = isGeneralSupervisor || currentUser?.permissions?.adminFollowUp !== false;
+  const canUseSpecial = isGeneralSupervisor || currentUser?.permissions?.specialReports !== false;
+  const canUseSubstitutes = isGeneralSupervisor || currentUser?.permissions?.substitutions !== false;
+  const canUseProfile = isGeneralSupervisor || currentUser?.permissions?.schoolProfile !== false;
+
+  const canUseCodesModal = isGeneralSupervisor || currentUser?.permissions?.userManagement;
+  const canUseDataModal = isGeneralSupervisor;
+
+  const allowedIds = [
+    ...(canUseDashboard ? ['dashboard'] : []),
+    ...(canUseDaily ? ['daily'] : []),
+    ...(canUseAdmin ? ['adminReports'] : []),
+    ...(canUseSubstitutes ? ['substitute'] : []),
+    ...(canUseStudentAffairs ? ['violations', 'studentReports'] : []),
+    ...(canUseSpecial ? ['specialReports'] : []),
+    ...(canUseProfile ? ['profile'] : []),
+    ...(canUseComprehensiveIndicators ? ['comprehensiveIndicatorsModal'] : []),
+    ...(canUseCaseStudy ? ['caseStudyModal'] : []),
+    ...(canUseTrainingCourses ? ['trainingCoursesModal'] : []),
+    ...(canUseIssuesButton ? ['issuesModal'] : []),
+    ...(canUseCodesModal ? ['codesModal'] : []),
+    ...(canUseDataModal ? ['dataModal'] : []),
+  ];
+
+  const allowedActions = ALL_ACTIONS.filter(a => allowedIds.includes(a.id));
 
   // Close when clicking outside
   useEffect(() => {
@@ -91,14 +141,15 @@ export const QuickAccess: React.FC<{
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const getAction = (id: string) => ALL_ACTIONS.find(a => a.id === id)!;
+  const getAction = (id: string) => allowedActions.find(a => a.id === id);
 
   // Frequently used items (top 3, not pinned, not recent)
   const popular = Object.entries(usage)
     .sort((a, b) => b[1] - a[1])
     .map(entry => entry[0])
-    .filter(id => !pinned.includes(id) && !recent.includes(id))
+    .filter(id => allowedIds.includes(id) && !pinned.includes(id) && !recent.includes(id))
     .slice(0, 3);
+
 
   const handleActionClick = (id: string) => {
     onAction(id);
@@ -137,14 +188,22 @@ export const QuickAccess: React.FC<{
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="absolute top-full left-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden"
-          >
-            <div className="max-h-[400px] overflow-y-auto custom-scrollbar p-2">
+          <>
+            {/* Mobile backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-900/20 z-[90] sm:hidden backdrop-blur-sm"
+              onClick={() => setIsOpen(false)}
+            />
+            {/* Dropdown / Action sheet */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="fixed sm:absolute bottom-4 sm:bottom-auto left-4 right-4 sm:start-auto sm:end-0 sm:translate-x-0 sm:top-full z-[100] sm:mt-2 sm:w-72 bg-white rounded-3xl sm:rounded-2xl shadow-xl sm:border border-slate-100 overflow-hidden"
+            >
+              <div className="max-h-[50vh] sm:max-h-[400px] overflow-y-auto custom-scrollbar p-2">
               {!showAll ? (
                 <>
                   {pinned.length > 0 && (
@@ -186,7 +245,7 @@ export const QuickAccess: React.FC<{
                     </button>
                   </div>
                   <div className="space-y-1">
-                    {ALL_ACTIONS.map(action => (
+                    {allowedActions.map(action => (
                       <ActionButton key={action.id} id={action.id} isPinned={pinned.includes(action.id)} />
                     ))}
                   </div>
@@ -194,6 +253,7 @@ export const QuickAccess: React.FC<{
               )}
             </div>
           </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

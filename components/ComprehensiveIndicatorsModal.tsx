@@ -19,7 +19,8 @@ export const ComprehensiveIndicatorsModal: React.FC<ComprehensiveIndicatorsModal
     if (isGeneralSupervisor) {
       return Array.from(new Set(data.users.flatMap(u => u.schools).filter(Boolean)));
     }
-    return currentUser?.schools || [];
+    const userEntry = data.users.find(u => u.id === currentUser?.id);
+    return userEntry?.schools || (currentUser?.selectedSchool ? [currentUser.selectedSchool] : []);
   }, [data.users, currentUser]);
 
   // Quick Stats Pulse

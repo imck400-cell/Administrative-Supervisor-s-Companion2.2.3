@@ -343,6 +343,7 @@ export interface UserPermissions {
   issuesModal?: boolean | string[];
   caseStudyModal?: boolean;
   trainingCourses?: boolean | string[];
+  comprehensiveIndicators?: boolean;
 }
 
 export interface User {

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useGlobal } from '../context/GlobalState';
 import { 
   Menu, X, Home, Users, ClipboardList, BookOpen, 
-  Settings, LogOut, MessageCircle, FileText, UserPlus, FileSearch, Briefcase, AlertCircle, UserX
+  Settings, LogOut, MessageCircle, FileText, UserPlus, FileSearch, Briefcase, AlertCircle, UserX, BarChart
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -33,6 +33,8 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings })
 
   const studentAffairsPerm = currentUser?.permissions?.studentAffairs;
   const canUseStudentAffairs = isGeneralSupervisor || studentAffairsPerm === true || (Array.isArray(studentAffairsPerm) && studentAffairsPerm.length > 0);
+  
+  const canUseComprehensiveIndicators = isGeneralSupervisor || currentUser?.permissions?.comprehensiveIndicators === true;
 
   const menuItems = [
     { icon: <Home size={20} />, label: 'لوحة التحكم', path: 'dashboard' },
@@ -41,6 +43,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings })
     ...(canUseStudentAffairs ? [{ icon: <UserX size={20} />, label: 'التعهدات', path: 'violations' }] : []),
     { icon: <Users size={20} />, label: 'شؤون الطلاب', path: 'studentReports' },
     { icon: <FileSearch size={20} />, label: 'التقارير الخاصة', path: 'specialReports' },
+    ...(canUseComprehensiveIndicators ? [{ icon: <BarChart size={20} />, label: 'مؤشرات الأداء الشاملة', path: 'comprehensiveIndicatorsModal' }] : []),
     ...(canUseCaseStudy ? [{ icon: <ClipboardList size={20} />, label: 'دراسة حالة طالب', path: 'caseStudyModal' }] : []),
     ...(canUseTrainingCourses ? [{ icon: <BookOpen size={20} />, label: 'الدورات التدريبية', path: 'trainingCoursesModal' }] : []),
     ...(canUseIssuesButton ? [{ icon: <AlertCircle size={20} />, label: 'المشكلات والحلول', path: 'issuesModal' }] : []),

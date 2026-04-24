@@ -12,11 +12,12 @@ import AccessCodesModal from './components/AccessCodesModal';
 import IssuesAndSolutionsModal from './components/IssuesAndSolutionsModal';
 import CaseStudyModal from './components/CaseStudyModal';
 import TrainingCoursesModal from './components/TrainingCoursesModal';
+import ComprehensiveIndicatorsModal from './components/ComprehensiveIndicatorsModal';
 import {
   Lock, LayoutDashboard, ClipboardCheck, ClipboardList, UserX, UserPlus,
   Users, Database, FileSearch, Briefcase, BookOpen,
   School, Calendar, AlertTriangle, AlertCircle, Phone, MessageCircle, Key, LogOut, User as UserIcon, X, Check,
-  ChevronDown, ChevronUp, Sparkles
+  ChevronDown, ChevronUp, Sparkles, BarChart
 } from 'lucide-react';
 import GlobalScrollArrows from './components/GlobalScrollArrows';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -337,6 +338,7 @@ const MainApp: React.FC = () => {
   const [isAppIssuesModalOpen, setIsAppIssuesModalOpen] = useState(false);
   const [isCaseStudyModalOpen, setIsCaseStudyModalOpen] = useState(false);
   const [isTrainingCoursesModalOpen, setIsTrainingCoursesModalOpen] = useState(false);
+  const [isComprehensiveIndicatorsOpen, setIsComprehensiveIndicatorsOpen] = useState(false);
 
   // Helper to handle navigation so both Layout and Quick Access buttons trigger the modal
   const handleNavigation = (v: string) => {
@@ -346,6 +348,8 @@ const MainApp: React.FC = () => {
       setIsCaseStudyModalOpen(true);
     } else if (v === 'trainingCoursesModal') {
       setIsTrainingCoursesModalOpen(true);
+    } else if (v === 'comprehensiveIndicatorsModal') {
+      setIsComprehensiveIndicatorsOpen(true);
     } else {
       setView(v);
     }
@@ -438,6 +442,7 @@ const MainApp: React.FC = () => {
   const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
   const hasCaseStudyPerm = currentUser?.permissions?.caseStudyModal === true;
   const canUseCaseStudy = hasCaseStudyPerm || isGeneralSupervisor || isManager;
+  const canUseComprehensiveIndicators = isGeneralSupervisor || currentUser?.permissions?.comprehensiveIndicators === true;
 
   return (
     <Layout onNavigate={handleNavigation} onOpenSettings={() => setIsDataModalOpen(true)}>
@@ -487,6 +492,15 @@ const MainApp: React.FC = () => {
                 </button>
               )}
             </div>
+          )}
+
+          {canUseComprehensiveIndicators && (
+            <button
+              onClick={() => setIsComprehensiveIndicatorsOpen(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-emerald-100 rounded-[1.2rem] text-emerald-700 font-black text-sm hover:bg-emerald-50 hover:border-emerald-200 hover:shadow-md transition-all whitespace-nowrap"
+            >
+              <BarChart className="text-emerald-600" size={18} /> مؤشرات الأداء الشاملة
+            </button>
           )}
 
           {isAdminOrFull && (
@@ -547,6 +561,10 @@ const MainApp: React.FC = () => {
       <TrainingCoursesModal
         isOpen={isTrainingCoursesModalOpen}
         onClose={() => setIsTrainingCoursesModalOpen(false)}
+      />
+      <ComprehensiveIndicatorsModal
+        isOpen={isComprehensiveIndicatorsOpen}
+        onClose={() => setIsComprehensiveIndicatorsOpen(false)}
       />
     </Layout>
   );

@@ -122,7 +122,7 @@ export const QuickAccess: React.FC<{
   const canUseSubstitutes = checkPerm(currentUser?.permissions?.substitutions);
   const canUseProfile = checkPerm(currentUser?.permissions?.schoolProfile);
 
-  const canUseCodesModal = isGeneralSupervisor || currentUser?.permissions?.userManagement;
+  const canUseCodesModal = isGeneralSupervisor || currentUser?.permissions?.specialCodes;
   const canUseDataModal = isGeneralSupervisor;
 
   const allowedIds = [

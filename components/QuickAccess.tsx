@@ -86,7 +86,7 @@ export const QuickAccess: React.FC<{
   
   const checkPerm = (permValue: boolean | string[] | undefined, legacySubPerm?: string): boolean => {
     if (isGeneralSupervisor) return true;
-    if (permValue === undefined) return true;
+    if (permValue === undefined) return false;
     if (permValue === true) return true;
     if (permValue === false) return false;
     if (Array.isArray(permValue)) {
@@ -95,7 +95,7 @@ export const QuickAccess: React.FC<{
       if (legacySubPerm && permValue.includes(legacySubPerm)) return true;
       return false;
     }
-    return true;
+    return false;
   };
 
   const issuesModalPerm = currentUser?.permissions?.issuesModal;

@@ -449,9 +449,23 @@ const MainApp: React.FC = () => {
   const managedIds = currentUser?.permissions?.managedUserIds || [];
   const isManager = currentUser?.permissions?.userManagement === true || managedIds.length > 0;
   const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
-  const hasCaseStudyPerm = currentUser?.permissions?.caseStudyModal === true;
-  const canUseCaseStudy = hasCaseStudyPerm || isGeneralSupervisor || isManager;
-  const canUseComprehensiveIndicators = isGeneralSupervisor || (Array.isArray(currentUser?.permissions?.comprehensiveIndicators) && currentUser!.permissions!.comprehensiveIndicators.includes('showButton'));
+
+  const checkPerm = (permValue: boolean | string[] | undefined, legacySubPerm?: string): boolean => {
+    if (isGeneralSupervisor) return true;
+    if (permValue === undefined) return false;
+    if (permValue === true) return true;
+    if (permValue === false) return false;
+    if (Array.isArray(permValue)) {
+      if (permValue.length === 0) return false;
+      if (permValue.includes('view') || permValue.includes('showButton')) return true;
+      if (legacySubPerm && permValue.includes(legacySubPerm)) return true;
+      return false;
+    }
+    return false;
+  };
+
+  const canUseCaseStudy = isGeneralSupervisor || isManager || checkPerm(currentUser?.permissions?.caseStudyModal);
+  const canUseComprehensiveIndicators = checkPerm(currentUser?.permissions?.comprehensiveIndicators, 'showButton');
 
   return (
     <Layout onNavigate={handleNavigation} onOpenSettings={() => setIsDataModalOpen(true)}>

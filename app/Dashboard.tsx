@@ -26,7 +26,7 @@ interface CardConfig {
 }
 
 const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[] }> = ({ setView, recentActions = [] }) => {
-  const { lang, data, userFilter, dateRange: globalDateRange, setDateRange: setGlobalDateRange, setDashboardFilter } = useGlobal();
+  const { lang, data, userFilter, dateRange: globalDateRange, setDateRange: setGlobalDateRange, setDashboardFilter, currentUser } = useGlobal();
 
   const today = new Date().toISOString().split('T')[0];
   const [globalTimeRange, setGlobalTimeRange] = useState<TimeRange>('all');
@@ -93,13 +93,29 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
   const [cycleDuration, setCycleDuration] = useState(5000);
   const [cardOffsets, setCardOffsets] = useState<Record<number, number>>({});
 
+  const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+
+  const checkPerm = (permValue: boolean | string[] | undefined, legacySubPerm?: string): boolean => {
+    if (isGeneralSupervisor) return true;
+    if (permValue === undefined) return false;
+    if (permValue === true) return true;
+    if (permValue === false) return false;
+    if (Array.isArray(permValue)) {
+      if (permValue.length === 0) return false;
+      if (permValue.includes('view')) return true;
+      if (legacySubPerm && permValue.includes(legacySubPerm)) return true;
+      return false;
+    }
+    return false;
+  };
+
   const mainCategories = [
-    { id: 'students', label: 'تقارير الطلاب', icon: <GraduationCap className="text-blue-500" />, view: 'studentReports' },
-    { id: 'teachers', label: 'متابعة المعلمين', icon: <UserCheck className="text-emerald-500" />, view: 'daily' },
-    { id: 'violations', label: 'التعهدات والمخالفات', icon: <ShieldAlert className="text-red-500" />, view: 'violations' },
-    { id: 'special_reports', label: 'التقارير الخاصة', icon: <FileText className="text-orange-500" />, view: 'specialReports' },
-    { id: 'substitutions', label: 'جدول التغطية', icon: <UserPlusIcon className="text-purple-500" />, view: 'substitute' },
-    { id: 'staff_followup', label: 'متابعة الموظفين', icon: <ClipboardCheck className="text-indigo-500" />, view: 'staffFollowUp' },
+    ...(checkPerm(currentUser?.permissions?.studentAffairs) ? [{ id: 'students', label: 'تقارير الطلاب', icon: <GraduationCap className="text-blue-500" />, view: 'studentReports' }] : []),
+    ...(checkPerm(currentUser?.permissions?.dailyFollowUp) ? [{ id: 'teachers', label: 'متابعة المعلمين', icon: <UserCheck className="text-emerald-500" />, view: 'daily' }] : []),
+    ...(checkPerm(currentUser?.permissions?.studentAffairs) ? [{ id: 'violations', label: 'التعهدات والمخالفات', icon: <ShieldAlert className="text-red-500" />, view: 'violations' }] : []),
+    ...(checkPerm(currentUser?.permissions?.specialReports) ? [{ id: 'special_reports', label: 'التقارير الخاصة', icon: <FileText className="text-orange-500" />, view: 'specialReports' }] : []),
+    ...(checkPerm(currentUser?.permissions?.substitutions) ? [{ id: 'substitutions', label: 'جدول التغطية', icon: <UserPlusIcon className="text-purple-500" />, view: 'substitute' }] : []),
+    ...(checkPerm(currentUser?.permissions?.adminFollowUp) ? [{ id: 'staff_followup', label: 'متابعة الموظفين', icon: <ClipboardCheck className="text-indigo-500" />, view: 'staffFollowUp' }] : []),
   ];
 
   const getSubTypes = (category: DataCategory) => {

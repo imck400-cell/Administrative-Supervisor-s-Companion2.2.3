@@ -6,7 +6,7 @@ import { Save, Plus, Trash2, School, Building, Calendar, Users, Briefcase, Spark
 
 const ProfilePage: React.FC = () => {
   const { data, updateData, lang, currentUser } = useGlobal();
-  const isReadOnly = currentUser?.permissions?.readOnly === true;
+  const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.schoolProfile) && currentUser.permissions.schoolProfile.includes('disable'));
   const profile = data.profile;
 
   const isManagerOrAdmin = currentUser?.role === 'admin' || currentUser?.permissions?.all === true || currentUser?.permissions?.userManagement === true;

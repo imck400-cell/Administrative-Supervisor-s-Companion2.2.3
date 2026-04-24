@@ -190,7 +190,7 @@ interface SpecialReportsPageProps {
 const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, onSubTabOpen, onNavigate }) => {
   // END OF CHANGE
   const { lang, data, updateData, currentUser, userFilter } = useGlobal();
-  const isReadOnly = currentUser?.permissions?.readOnly === true;
+  const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.specialReports) && currentUser.permissions.specialReports.includes('disable'));
   const filterIds = useMemo(() => (userFilter && userFilter !== 'all') ? userFilter.split(',') : [], [userFilter]);
   const matchesFilter = (userId?: string) => !userFilter || userFilter === 'all' || (userId && filterIds.includes(userId));
   const [activeTab, setActiveTab] = useState<MainTab>('supervisor');

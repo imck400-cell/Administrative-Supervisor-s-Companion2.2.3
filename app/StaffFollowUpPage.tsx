@@ -16,7 +16,7 @@ import { exportToStyledExcel } from '../src/lib/excelExport';
 
 const StaffFollowUpPage: React.FC = () => {
     const { lang, data, updateData, currentUser, userFilter } = useGlobal();
-    const isReadOnly = currentUser?.permissions?.readOnly === true;
+    const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.adminFollowUp) && currentUser.permissions.adminFollowUp.includes('disable'));
 
     // Local State
     const [currentReportId, setCurrentReportId] = useState<string | null>(null);

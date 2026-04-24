@@ -84,29 +84,43 @@ export const QuickAccess: React.FC<{
   // Permission logic (matching Layout)
   const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
   
+  const checkPerm = (permValue: boolean | string[] | undefined, legacySubPerm?: string): boolean => {
+    if (isGeneralSupervisor) return true;
+    if (permValue === undefined) return true;
+    if (permValue === true) return true;
+    if (permValue === false) return false;
+    if (Array.isArray(permValue)) {
+      if (permValue.length === 0) return false;
+      if (permValue.includes('view')) return true;
+      if (legacySubPerm && permValue.includes(legacySubPerm)) return true;
+      return false;
+    }
+    return true;
+  };
+
   const issuesModalPerm = currentUser?.permissions?.issuesModal;
-  const canUseIssuesButton = isGeneralSupervisor || issuesModalPerm === undefined || (Array.isArray(issuesModalPerm) && issuesModalPerm.includes('useIssuesButton'));
+  const canUseIssuesButton = checkPerm(issuesModalPerm, 'useIssuesButton');
 
   const managedIds = currentUser?.permissions?.managedUserIds || [];
   const isManager = currentUser?.permissions?.userManagement === true || managedIds.length > 0;
   
-  const hasCaseStudyPerm = currentUser?.permissions?.caseStudyModal === true;
-  const canUseCaseStudy = hasCaseStudyPerm || isGeneralSupervisor || isManager;
+  const canUseCaseStudy = isGeneralSupervisor || isManager || checkPerm(currentUser?.permissions?.caseStudyModal);
   
   const trainingPerm = currentUser?.permissions?.trainingCourses;
-  const canUseTrainingCourses = isGeneralSupervisor || trainingPerm === true || trainingPerm === undefined || (Array.isArray(trainingPerm) && trainingPerm.length > 0);
+  const canUseTrainingCourses = checkPerm(trainingPerm);
 
   const studentAffairsPerm = currentUser?.permissions?.studentAffairs;
-  const canUseStudentAffairs = isGeneralSupervisor || studentAffairsPerm === true || (Array.isArray(studentAffairsPerm) && studentAffairsPerm.length > 0) || studentAffairsPerm === undefined;
+  const canUseStudentAffairs = checkPerm(studentAffairsPerm);
   
-  const canUseComprehensiveIndicators = isGeneralSupervisor || (Array.isArray(currentUser?.permissions?.comprehensiveIndicators) && currentUser!.permissions!.comprehensiveIndicators.includes('showButton'));
+  const compIndPerm = currentUser?.permissions?.comprehensiveIndicators;
+  const canUseComprehensiveIndicators = checkPerm(compIndPerm, 'showButton');
 
-  const canUseDashboard = isGeneralSupervisor || currentUser?.permissions?.dashboard !== false;
-  const canUseDaily = isGeneralSupervisor || currentUser?.permissions?.dailyFollowUp !== false;
-  const canUseAdmin = isGeneralSupervisor || currentUser?.permissions?.adminFollowUp !== false;
-  const canUseSpecial = isGeneralSupervisor || currentUser?.permissions?.specialReports !== false;
-  const canUseSubstitutes = isGeneralSupervisor || currentUser?.permissions?.substitutions !== false;
-  const canUseProfile = isGeneralSupervisor || currentUser?.permissions?.schoolProfile !== false;
+  const canUseDashboard = checkPerm(currentUser?.permissions?.dashboard);
+  const canUseDaily = checkPerm(currentUser?.permissions?.dailyFollowUp);
+  const canUseAdmin = checkPerm(currentUser?.permissions?.adminFollowUp);
+  const canUseSpecial = checkPerm(currentUser?.permissions?.specialReports);
+  const canUseSubstitutes = checkPerm(currentUser?.permissions?.substitutions);
+  const canUseProfile = checkPerm(currentUser?.permissions?.schoolProfile);
 
   const canUseCodesModal = isGeneralSupervisor || currentUser?.permissions?.userManagement;
   const canUseDataModal = isGeneralSupervisor;

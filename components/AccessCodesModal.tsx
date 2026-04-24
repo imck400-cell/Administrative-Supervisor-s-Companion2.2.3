@@ -12,7 +12,7 @@ interface AccessCodesModalProps {
 
 const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) => {
   const { data, updateData, currentUser, effectiveUserIds } = useGlobal();
-  const isReadOnly = currentUser?.permissions?.readOnly === true;
+  const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.userManagement) && currentUser.permissions.userManagement.includes('disable'));
   const [newSchool, setNewSchool] = useState('');
   const [newYear, setNewYear] = useState('');
   const [selectedSchoolForBranch, setSelectedSchoolForBranch] = useState('');
@@ -129,8 +129,8 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
 
   const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
 
-  const admins = data.users.filter(u => u.role === 'admin' && (isAdminOrFull || effectiveUserIds.includes(u.id)));
-  const regularUsers = data.users.filter(u => u.role === 'user' && (isAdminOrFull || effectiveUserIds.includes(u.id)));
+  const admins = data.users.filter(u => u.role === 'admin' && (isAdminOrFull || effectiveUserIds.includes(u.id)) && !(u.role === 'admin' || u.permissions?.all === true));
+  const regularUsers = data.users.filter(u => u.role === 'user' && (isAdminOrFull || effectiveUserIds.includes(u.id)) && !(u.permissions?.all === true));
 
   return (
     <AnimatePresence>

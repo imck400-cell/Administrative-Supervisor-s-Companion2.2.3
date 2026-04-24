@@ -11,20 +11,26 @@ interface UserEditModalProps {
   user: UserType | null;
 }
 
+const commonSubPermissions = [
+  { id: 'view', label: 'ظهور الزر' },
+  { id: 'disable', label: 'عدم تفعيل الزر' }
+];
+
 const permissionsList = [
-  { id: 'dashboard', label: 'الرئيسية' },
-  { id: 'dailyFollowUp', label: 'متابعة المعلمين' },
-  { id: 'adminFollowUp', label: 'متابعة الموظفين والعاملين' },
-  { id: 'studentAffairs', label: 'شؤون الطلاب' },
-  { id: 'substitutions', label: 'جدول التغطية' },
-  { id: 'schoolProfile', label: 'ملف المدرسة' },
+  { id: 'dashboard', label: 'الرئيسية', subPermissions: [...commonSubPermissions] },
+  { id: 'dailyFollowUp', label: 'متابعة المعلمين', subPermissions: [...commonSubPermissions] },
+  { id: 'adminFollowUp', label: 'متابعة الموظفين والعاملين', subPermissions: [...commonSubPermissions] },
+  { id: 'studentAffairs', label: 'شؤون الطلاب', subPermissions: [...commonSubPermissions] },
+  { id: 'substitutions', label: 'جدول التغطية', subPermissions: [...commonSubPermissions] },
+  { id: 'schoolProfile', label: 'ملف المدرسة', subPermissions: [...commonSubPermissions] },
   { id: 'specialCodes', label: 'التحكم بالصلاحيات' },
-  { id: 'userManagement', label: 'التحكم بالمستخدمين' },
+  { id: 'userManagement', label: 'التحكم بالمستخدمين', subPermissions: [...commonSubPermissions] },
   { id: 'readOnly', label: 'عدم السماح بتغيير البيانات' },
   { 
     id: 'issuesModal', 
     label: 'المشكلات والحلول',
     subPermissions: [
+      ...commonSubPermissions,
       { id: 'useIssuesButton', label: 'استخدام الزر' },
       { id: 'viewAllIssues', label: 'إظهار المشكلات والحلول' },
     ]
@@ -33,15 +39,17 @@ const permissionsList = [
     id: 'trainingCourses', 
     label: 'الدورات التدريبية',
     subPermissions: [
+      ...commonSubPermissions,
       { id: 'editSchema', label: 'صلاحيات تعديل المعايير والإضافة والحذف' },
       { id: 'viewIndicators', label: 'مؤشرات الدروات التدريبية' },
     ]
   },
-  { id: 'caseStudyModal', label: 'دراسة حالة' },
+  { id: 'caseStudyModal', label: 'دراسة حالة', subPermissions: [...commonSubPermissions] },
   { 
     id: 'comprehensiveIndicators', 
     label: 'المؤشرات الشاملة',
     subPermissions: [
+      ...commonSubPermissions,
       { id: 'showButton', label: 'ظهور الزر' },
       { id: 'managePermissions', label: 'الصلاحيات' },
     ]
@@ -50,6 +58,7 @@ const permissionsList = [
     id: 'specialReports', 
     label: 'تقارير خاصة',
     subPermissions: [
+      ...commonSubPermissions,
       { id: 'absenceLog', label: 'سجل الغياب' },
       { id: 'latenessLog', label: 'سجل التأخر' },
       { id: 'violationLog', label: 'سجل المخالفات' },
@@ -64,7 +73,7 @@ const permissionsList = [
 
 const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) => {
   const { data, updateData, currentUser } = useGlobal();
-  const isReadOnly = currentUser?.permissions?.readOnly === true;
+  const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.userManagement) && currentUser.permissions.userManagement.includes('disable'));
   const [formData, setFormData] = useState<UserType | null>(null);
   const [selectAll, setSelectAll] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -488,7 +497,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
                             const validBranches = formData.permissions?.schoolsAndBranches?.[school] || [];
                             
                             // Let's find all users in this school
-                            const usersInSchool = data.users.filter(u => u.schools.includes(school) && u.id !== formData.id);
+                            const usersInSchool = data.users.filter(u => u.schools.includes(school) && u.id !== formData.id && !(u.role === 'admin' || u.permissions?.all === true));
                             
                             if (usersInSchool.length === 0) return null;
 
@@ -599,7 +608,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
                         <div className="space-y-3 pl-2">
                           {(formData.schools || []).map(school => {
                             const validBranches = formData.permissions?.schoolsAndBranches?.[school] || [];
-                            const usersInSchool = data.users.filter(u => u.schools.includes(school) && u.id !== formData.id);
+                            const usersInSchool = data.users.filter(u => u.schools.includes(school) && u.id !== formData.id && !(u.role === 'admin' || u.permissions?.all === true));
                             
                             if (usersInSchool.length === 0) return null;
 

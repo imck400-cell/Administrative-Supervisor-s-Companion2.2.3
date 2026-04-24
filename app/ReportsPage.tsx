@@ -32,7 +32,7 @@ const toHijri = (dateStr: string) => {
 // --- Teachers Follow-up Page (DailyReportsPage) ---
 export const DailyReportsPage: React.FC = () => {
   const { lang, data, updateData, currentUser, userFilter, effectiveUserIds, dashboardFilter, setDashboardFilter } = useGlobal();
-  const isReadOnly = currentUser?.permissions?.readOnly === true;
+  const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.dailyFollowUp) && currentUser.permissions.dailyFollowUp.includes('disable'));
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
@@ -2569,7 +2569,7 @@ export const DailyReportsPage: React.FC = () => {
 
 export const ViolationsPage: React.FC = () => {
   const { lang, data, updateData, currentUser } = useGlobal();
-  const isReadOnly = currentUser?.permissions?.readOnly === true;
+  const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.studentAffairs) && currentUser.permissions.studentAffairs.includes('disable'));
   const [activeMode, setActiveMode] = useState<'students' | 'teachers'>('students');
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -3296,7 +3296,7 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
 
 export const StudentsReportsPage: React.FC = () => {
   const { data, updateData, lang, userFilter, currentUser, dashboardFilter, setDashboardFilter } = useGlobal();
-  const isReadOnly = currentUser?.permissions?.readOnly === true;
+  const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.studentAffairs) && currentUser.permissions.studentAffairs.includes('disable'));
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;

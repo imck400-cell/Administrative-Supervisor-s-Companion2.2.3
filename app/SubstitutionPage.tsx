@@ -15,7 +15,7 @@ import * as XLSX from 'xlsx';
 
 const SubstitutionPage: React.FC = () => {
   const { lang, data, updateData, currentUser, userFilter } = useGlobal();
-  const isReadOnly = currentUser?.permissions?.readOnly === true;
+  const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.substitutions) && currentUser.permissions.substitutions.includes('disable'));
   const [activeTab, setActiveTab] = useState<'coverage' | 'timetable'>('coverage');
 
   // START OF CHANGE - Coverage State Management

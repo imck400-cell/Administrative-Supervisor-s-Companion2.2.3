@@ -103,14 +103,29 @@ const StudentsManager = () => {
   const [students, setStudents] = useState<StudentData[]>([]);
 
   useEffect(() => {
-    if (data.secretariatStudents) {
-      setStudents(data.secretariatStudents.map((s: any) => ({
+    let cloudData = data.secretariatStudents;
+    const ls = localStorage.getItem('secretariat_students');
+    
+    // Migrate local storage if cloud is completely empty AND local storage has something.
+    if ((!cloudData || cloudData.length === 0) && ls) {
+      try {
+        const parsed = JSON.parse(ls);
+        if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+          updateData({ secretariatStudents: parsed });
+          cloudData = parsed;
+          localStorage.removeItem('secretariat_students'); // cleanup after migrate
+        }
+      } catch {}
+    }
+
+    if (cloudData) {
+      setStudents(cloudData.map((s: any) => ({
         ...s,
         school: s.school || (s.schoolBranch ? s.schoolBranch.split('-')[0]?.trim() || s.schoolBranch : ''),
         branch: s.branch || (s.schoolBranch ? s.schoolBranch.split('-')[1]?.trim() || '' : '')
       })));
     }
-  }, [data.secretariatStudents]);
+  }, [data.secretariatStudents, updateData]);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -381,14 +396,29 @@ const StaffManager = () => {
   const [staff, setStaff] = useState<StaffData[]>([]);
 
   useEffect(() => {
-    if (data.secretariatStaff) {
-      setStaff(data.secretariatStaff.map((s: any) => ({
+    let cloudData = data.secretariatStaff;
+    const ls = localStorage.getItem('secretariat_staff');
+    
+    // Migrate local storage if cloud is completely empty AND local storage has something.
+    if ((!cloudData || cloudData.length === 0) && ls) {
+      try {
+        const parsed = JSON.parse(ls);
+        if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+          updateData({ secretariatStaff: parsed });
+          cloudData = parsed;
+          localStorage.removeItem('secretariat_staff'); // cleanup after migrate
+        }
+      } catch {}
+    }
+
+    if (cloudData) {
+      setStaff(cloudData.map((s: any) => ({
         ...s,
         school: s.school || (s.schoolBranch ? s.schoolBranch.split('-')[0]?.trim() || s.schoolBranch : ''),
         branch: s.branch || (s.schoolBranch ? s.schoolBranch.split('-')[1]?.trim() || '' : '')
       })));
     }
-  }, [data.secretariatStaff]);
+  }, [data.secretariatStaff, updateData]);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);

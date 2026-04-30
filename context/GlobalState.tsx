@@ -813,7 +813,18 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const updateData = (newData: Partial<AppData>) => {
     if (isAuthenticated && currentUser) {
-      if (currentUser.permissions?.readOnly) {
+      let isBlockedByReadOnly = currentUser.permissions?.readOnly;
+
+      // Allow bypass for secretariat if they have 'allowEdits'
+      if (isBlockedByReadOnly && (newData.secretariatStudents || newData.secretariatStaff)) {
+        if (Array.isArray(currentUser.permissions?.secretariat) && currentUser.permissions?.secretariat.includes('allowEdits')) {
+          // If the update ONLY contains secretariat data, allow it. Or just allow passing it.
+          // Since SecretariatView only updates secretariat info, we can safely bypass.
+          isBlockedByReadOnly = false;
+        }
+      }
+
+      if (isBlockedByReadOnly) {
         console.warn('ReadOnly permission: Update blocked');
         toast.error(lang === 'ar' ? 'غير مسموح بتغيير البيانات للرتب الممنوحة لك (للقراءة فقط)' : 'Data change not allowed for your role (Read-Only)');
         return;

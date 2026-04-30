@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Briefcase, Users, Upload, FileSpreadsheet, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGlobal } from '../context/GlobalState';
@@ -179,7 +179,10 @@ const StudentsManager = () => {
     ? availableSchools
     : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
     
-  const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('disable'));
+  const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+  const isExplicitlyDisabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('disable');
+  const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
+  const isReadOnly = !isGeneralSupervisor && (isReadOnlyFlag || isExplicitlyDisabled);
 
   return (
     <div className="space-y-4">
@@ -362,7 +365,7 @@ const StaffManager = () => {
   const toggleArrayItem = (id: string, field: 'subjects'|'grades', item: string) => {
     setStaff(staff.map(s => {
       if (s.id !== id) return s;
-      const arr = s[field];
+      const arr = s[field] || [];
       const newArr = arr.includes(item) ? arr.filter(x => x !== item) : [...arr, item];
       return { ...s, [field]: newArr };
     }));
@@ -377,7 +380,10 @@ const StaffManager = () => {
     ? availableSchools
     : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
     
-  const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('disable'));
+  const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+  const isExplicitlyDisabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('disable');
+  const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
+  const isReadOnly = !isGeneralSupervisor && (isReadOnlyFlag || isExplicitlyDisabled);
 
   return (
     <div className="space-y-4">
@@ -447,14 +453,14 @@ const StaffManager = () => {
                 </td>
                 <td className="p-2">
                   <div className="relative group">
-                    <div className="min-h-[38px] p-2 border border-slate-200 rounded-lg bg-transparent truncate max-w-[200px]" title={employee.subjects.join('، ')}>
-                      {employee.subjects.join('، ') || 'اختر...'}
+                    <div className="min-h-[38px] p-2 border border-slate-200 rounded-lg bg-transparent truncate max-w-[200px]" title={(employee.subjects || []).join('، ')}>
+                      {(employee.subjects || []).join('، ') || 'اختر...'}
                     </div>
                     {!isReadOnly && (
                       <div className="absolute top-full right-0 mt-1 w-48 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl hidden group-hover:block z-50">
                         {['مربية', 'القرآن الكريم', 'التربية الإسلامية', 'اللغة العربية', 'اللغة الإنجليزية', 'الرياضيات', 'العلوم', 'الكيمياء', 'الفيزياء', 'الأحياء', 'الاجتماعيات', 'الحاسوب', 'المكتبة', 'الفنية', 'المختص الاجتماعي', 'الأنشطة'].map(subj => (
                           <label key={subj} className="flex items-center gap-2 p-2 hover:bg-slate-50 cursor-pointer text-sm">
-                            <input type="checkbox" checked={employee.subjects.includes(subj)} onChange={() => toggleArrayItem(employee.id, 'subjects', subj)} className="rounded border-slate-300 text-blue-500 w-4 h-4 cursor-pointer" />
+                            <input type="checkbox" checked={(employee.subjects || []).includes(subj)} onChange={() => toggleArrayItem(employee.id, 'subjects', subj)} className="rounded border-slate-300 text-blue-500 w-4 h-4 cursor-pointer" />
                             {subj}
                           </label>
                         ))}
@@ -464,14 +470,14 @@ const StaffManager = () => {
                 </td>
                 <td className="p-2">
                   <div className="relative group">
-                    <div className="min-h-[38px] p-2 border border-slate-200 rounded-lg bg-transparent truncate max-w-[200px]" title={employee.grades.join('، ')}>
-                      {employee.grades.join('، ') || 'اختر...'}
+                    <div className="min-h-[38px] p-2 border border-slate-200 rounded-lg bg-transparent truncate max-w-[200px]" title={(employee.grades || []).join('، ')}>
+                      {(employee.grades || []).join('، ') || 'اختر...'}
                     </div>
                     {!isReadOnly && (
                       <div className="absolute top-full right-0 mt-1 w-32 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl hidden group-hover:block z-50">
                         {['تمهيدي', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(gr => (
                           <label key={gr} className="flex items-center gap-2 p-2 hover:bg-slate-50 cursor-pointer text-sm">
-                            <input type="checkbox" checked={employee.grades.includes(gr)} onChange={() => toggleArrayItem(employee.id, 'grades', gr)} className="rounded border-slate-300 text-blue-500 w-4 h-4 cursor-pointer" />
+                            <input type="checkbox" checked={(employee.grades || []).includes(gr)} onChange={() => toggleArrayItem(employee.id, 'grades', gr)} className="rounded border-slate-300 text-blue-500 w-4 h-4 cursor-pointer" />
                             {gr}
                           </label>
                         ))}

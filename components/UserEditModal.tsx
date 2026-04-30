@@ -375,25 +375,25 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
 
                         if (['مدير عام المدارس', 'مدير الفرع', 'السكرتارية'].includes(jobTitle)) {
                           newPerms.dashboard = ['view'];
-                          newPerms.dailyFollowUp = ['view', 'disable'];
-                          newPerms.adminFollowUp = ['view', 'disable'];
-                          newPerms.studentAffairs = ['view', 'disable'];
-                          newPerms.substitutions = ['view', 'disable'];
+                          newPerms.dailyFollowUp = ['view'];
+                          newPerms.adminFollowUp = ['view'];
+                          newPerms.studentAffairs = ['view'];
+                          newPerms.substitutions = ['view'];
                           newPerms.schoolProfile = ['view'];
-                          newPerms.secretariat = ['showButton', 'disable'];
+                          newPerms.secretariat = ['showButton'];
                           newPerms.userManagement = ['view'];
                           newPerms.readOnly = true;
                           newPerms.issuesModal = ['view', 'useIssuesButton', 'viewAllIssues'];
                           newPerms.trainingCourses = ['view', 'editSchema', 'viewIndicators'];
-                          newPerms.caseStudyModal = ['view', 'disable'];
+                          newPerms.caseStudyModal = ['view'];
                           newPerms.comprehensiveIndicators = ['view', 'showButton', 'managePermissions'];
-                          newPerms.specialReports = ['view', 'disable', 'absenceLog', 'latenessLog', 'violationLog', 'exitLog', 'damageLog', 'parentVisitLog', 'examLog', 'taskReports'];
+                          newPerms.specialReports = ['view'];
                         } else if (jobTitle === 'مشرف الدور') {
                           newPerms.dashboard = ['view'];
                           newPerms.dailyFollowUp = ['view'];
                           newPerms.studentAffairs = ['view'];
                           newPerms.substitutions = ['view'];
-                          newPerms.schoolProfile = ['view', 'disable'];
+                          newPerms.schoolProfile = ['view'];
                           newPerms.issuesModal = ['view', 'useIssuesButton', 'viewAllIssues'];
                           newPerms.trainingCourses = ['view'];
                           newPerms.specialReports = ['view', 'absenceLog', 'latenessLog', 'violationLog', 'exitLog', 'damageLog', 'parentVisitLog', 'examLog', 'taskReports'];

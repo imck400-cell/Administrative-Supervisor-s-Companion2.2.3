@@ -55,11 +55,14 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings })
   const canUseSpecial = checkPerm(currentUser?.permissions?.specialReports);
   const canUseSubstitutes = checkPerm(currentUser?.permissions?.substitutions);
   const canUseProfile = checkPerm(currentUser?.permissions?.schoolProfile);
+  const isSecretariatRole = ['مدير عام المدارس', 'مدير الفرع', 'السكرتارية'].includes(currentUser?.jobTitle || '');
+  const canUseSecretariat = checkPerm(currentUser?.permissions?.secretariat, 'showButton') || isSecretariatRole;
 
   const menuItems = [
     ...(canUseDashboard ? [{ icon: <Home size={20} />, label: 'لوحة التحكم', path: 'dashboard' }] : []),
     ...(canUseDaily ? [{ icon: <BookOpen size={20} />, label: 'متابعة المعلمين', path: 'daily' }] : []),
     ...(canUseAdmin ? [{ icon: <Briefcase size={20} />, label: 'متابعة الموظفين والعاملين', path: 'adminReports' }] : []),
+    ...(canUseSecretariat ? [{ icon: <Briefcase size={20} />, label: 'السكرتارية', path: 'secretariat' }] : []),
     ...(canUseStudentAffairs ? [{ icon: <UserX size={20} />, label: 'التعهدات', path: 'violations' }] : []),
     ...(canUseStudentAffairs ? [{ icon: <Users size={20} />, label: 'شؤون الطلاب', path: 'studentReports' }] : []),
     ...(canUseSpecial ? [{ icon: <FileSearch size={20} />, label: 'التقارير الخاصة', path: 'specialReports' }] : []),

@@ -136,7 +136,8 @@ export const QuickAccess: React.FC<{
 
   const canUseCodesModal = isGeneralSupervisor || checkPerm(currentUser?.permissions?.specialCodes) || checkPerm(currentUser?.permissions?.userManagement) || (currentUser?.permissions?.managedUserIds && currentUser.permissions.managedUserIds.length > 0);
   const canUseDataModal = isGeneralSupervisor;
-  const canUseSecretariat = checkPerm(currentUser?.permissions?.secretariat, 'showButton');
+  const isSecretariatRole = ['مدير عام المدارس', 'مدير الفرع', 'السكرتارية'].includes(currentUser?.jobTitle || '');
+  const canUseSecretariat = checkPerm(currentUser?.permissions?.secretariat, 'showButton') || isSecretariatRole;
 
   const allowedIds = [
     ...(canUseDashboard ? ['dashboard'] : []),

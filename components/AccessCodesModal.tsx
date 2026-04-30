@@ -1,9 +1,124 @@
 import React, { useState } from 'react';
 import { useGlobal } from '../context/GlobalState';
-import { X, Plus, Edit2, Trash2, Shield, Users, School, Calendar, Key } from 'lucide-react';
+import { X, Plus, Edit2, Trash2, Shield, Users, School, Calendar, Key, ChevronDown, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import UserEditModal from './UserEditModal';
 import { User } from '../types';
+
+const GroupedUsersRenderer: React.FC<{ users: User[], onEditUser: (user: User) => void }> = ({ users, onEditUser }) => {
+  const [expandedSchools, setExpandedSchools] = useState<Record<string, boolean>>({});
+  const [expandedBranches, setExpandedBranches] = useState<Record<string, boolean>>({});
+  const [expandedJobs, setExpandedJobs] = useState<Record<string, boolean>>({});
+
+  const grouped: Record<string, Record<string, Record<string, User[]>>> = {};
+  users.forEach(u => {
+    const schools = u.schools?.length > 0 ? u.schools : ['بدون مدرسة'];
+    schools.forEach(school => {
+      let branches = u.permissions?.schoolsAndBranches?.[school] || [];
+      if (branches.length === 0) branches = ['بدون فرع'];
+      
+      branches.forEach(branch => {
+        const job = u.jobTitle || 'بدون وظيفة';
+        if (!grouped[school]) grouped[school] = {};
+        if (!grouped[school][branch]) grouped[school][branch] = {};
+        if (!grouped[school][branch][job]) grouped[school][branch][job] = [];
+        
+        if (!grouped[school][branch][job].some(existing => existing.id === u.id)) {
+          grouped[school][branch][job].push(u);
+        }
+      });
+    });
+  });
+
+  const toggleSchool = (s: string) => setExpandedSchools(prev => ({ ...prev, [s]: !prev[s] }));
+  const toggleBranch = (b: string) => setExpandedBranches(prev => ({ ...prev, [b]: !prev[b] }));
+  const toggleJob = (j: string) => setExpandedJobs(prev => ({ ...prev, [j]: !prev[j] }));
+
+  if (users.length === 0) return <div className="text-slate-400 text-sm font-bold p-4 text-center">لا يوجد مستخدمين</div>;
+
+  return (
+    <div className="space-y-3">
+      {Object.keys(grouped).map(school => (
+        <div key={school} className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+          <button 
+            onClick={() => toggleSchool(school)}
+            className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 transition-colors"
+          >
+            <div className="flex items-center gap-2 font-black text-slate-700">
+              <School size={18} /> {school}
+            </div>
+            {expandedSchools[school] ? <ChevronDown size={18} className="text-slate-400" /> : <ChevronLeft size={18} className="text-slate-400" />}
+          </button>
+          
+          {expandedSchools[school] && (
+            <div className="p-4 pt-2 space-y-3 border-t border-slate-100">
+              {Object.keys(grouped[school]).map(branch => {
+                const branchKey = `${school}-${branch}`;
+                return (
+                  <div key={branchKey} className="border border-indigo-100 rounded-xl overflow-hidden mr-4">
+                    <button
+                      onClick={() => toggleBranch(branchKey)}
+                      className="w-full flex items-center justify-between p-3 bg-indigo-50/50 hover:bg-indigo-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 font-bold text-indigo-700 text-sm">
+                        {branch}
+                      </div>
+                      {expandedBranches[branchKey] ? <ChevronDown size={16} className="text-indigo-400" /> : <ChevronLeft size={16} className="text-indigo-400" />}
+                    </button>
+                    
+                    {expandedBranches[branchKey] && (
+                      <div className="p-3 pt-1 space-y-2 border-t border-indigo-50 bg-white">
+                        {Object.keys(grouped[school][branch]).map(job => {
+                          const jobKey = `${school}-${branch}-${job}`;
+                          const jobUsers = grouped[school][branch][job];
+                          return (
+                            <div key={jobKey} className="border border-emerald-100 rounded-lg overflow-hidden mr-4">
+                              <button
+                                onClick={() => toggleJob(jobKey)}
+                                className="w-full flex items-center justify-between p-2 bg-emerald-50/30 hover:bg-emerald-50/60 transition-colors"
+                              >
+                                <div className="flex items-center gap-2 font-bold text-emerald-700 text-xs text-right">
+                                  {job} <span className="text-[10px] bg-emerald-100 px-2 py-0.5 rounded-full">{jobUsers.length}</span>
+                                </div>
+                                {expandedJobs[jobKey] ? <ChevronDown size={14} className="text-emerald-400" /> : <ChevronLeft size={14} className="text-emerald-400" />}
+                              </button>
+                              
+                              {expandedJobs[jobKey] && (
+                                <div className="p-2 bg-white flex flex-col gap-2">
+                                  {jobUsers.map((user: User) => (
+                                    <div key={user.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between mr-2">
+                                      <div>
+                                        <div className="font-black text-slate-800 text-sm">{user.name}</div>
+                                        <div className="text-[11px] font-bold text-slate-500 flex items-center gap-1 mt-1">
+                                          <Key size={10} /> {user.code}
+                                          {user.role === 'admin' && <span className="text-red-500 mr-1 bg-red-100 px-1 rounded text-[10px]">(مدير)</span>}
+                                        </div>
+                                      </div>
+                                      <button 
+                                        onClick={() => onEditUser(user)}
+                                        className="p-1.5 bg-white text-slate-400 hover:text-blue-600 rounded-lg shadow-sm hover:shadow-md transition-all border border-slate-200"
+                                      >
+                                        <Edit2 size={14} />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
 
 interface AccessCodesModalProps {
   isOpen: boolean;
@@ -296,23 +411,8 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose, en
                   <Plus size={16} /> إضافة مدير
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {admins.map(user => (
-                  <div key={user.id} className="p-4 bg-emerald-50/50 rounded-2xl border-2 border-emerald-100 flex items-center justify-between">
-                    <div>
-                      <div className="font-black text-slate-800">{user.name}</div>
-                      <div className="text-xs font-bold text-emerald-600 flex items-center gap-1 mt-1">
-                        <Key size={12} /> {user.code}
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => handleEditUser(user)}
-                      className="p-2 bg-white text-slate-400 hover:text-blue-600 rounded-xl shadow-sm hover:shadow-md transition-all"
-                    >
-                      <Edit2 size={18} />
-                    </button>
-                  </div>
-                ))}
+              <div className="mt-3">
+                <GroupedUsersRenderer users={admins} onEditUser={handleEditUser} />
               </div>
             </section>
 
@@ -330,23 +430,8 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose, en
                   <Plus size={16} /> إضافة مستخدم
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {regularUsers.map(user => (
-                  <div key={user.id} className="p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 flex items-center justify-between">
-                    <div>
-                      <div className="font-black text-slate-800">{user.name}</div>
-                      <div className="text-xs font-bold text-slate-400 flex items-center gap-1 mt-1">
-                        <Key size={12} /> {user.code}
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => handleEditUser(user)}
-                      className="p-2 bg-white text-slate-400 hover:text-blue-600 rounded-xl shadow-sm hover:shadow-md transition-all"
-                    >
-                      <Edit2 size={18} />
-                    </button>
-                  </div>
-                ))}
+              <div className="mt-3">
+                <GroupedUsersRenderer users={regularUsers} onEditUser={handleEditUser} />
               </div>
             </section>
           </div>

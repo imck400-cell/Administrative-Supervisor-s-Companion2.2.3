@@ -90,6 +90,7 @@ export interface TeacherFollowUp {
   zero_period: number;
   violations_score: number;
   violations_notes: string[];
+  additional_violation_notes?: string;
   order?: number;
   gender?: string;
   unaccreditedMetrics?: string[];
@@ -118,6 +119,7 @@ export interface AdminFollowUp {
   role: string;
   violations_score: number;
   violations_notes: string[];
+  additional_violation_notes?: string;
   order?: number;
   unaccreditedMetrics?: string[];
   executedCounts?: Record<string, number>;

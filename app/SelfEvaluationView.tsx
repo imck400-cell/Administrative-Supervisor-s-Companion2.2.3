@@ -15,8 +15,8 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
   const [subject, setSubject] = useState('');
   const [teacherName, setTeacherName] = useState(currentUser?.name || '');
   const [grades, setGrades] = useState(currentUser?.grades?.join(', ') || '');
-  const [schoolName, setSchoolName] = useState(currentUser?.schools?.[0] || '');
-  const [branchName, setBranchName] = useState(currentUser?.permissions?.schoolsAndBranches?.[schoolName]?.[0] || '');
+  const [schoolName, setSchoolName] = useState(Object.keys(currentUser?.permissions?.schoolsAndBranches || {})[0] || '');
+  const [branchName, setBranchName] = useState(currentUser?.permissions?.schoolsAndBranches?.[schoolName]?.[0] || currentUser?.selectedBranch || '');
 
   const defaultColumns = [
     { id: 'no', label: 'م' },
@@ -61,40 +61,6 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
     { id: 'r18c', category: 'الوسائل والمصادر', no: '', activity: 'أخرى ـــــــ', planned: '', executed: '', total: '', percentage: '', note: '' },
     { id: 'h4', category: 'header', no: '', activity: 'الغياب والتأخر', planned: '', executed: '', total: '', percentage: '', note: '' },
     { id: 'r19', category: 'الغياب والتأخر', no: '19', activity: 'عدد أيام الغياب 0', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r20', category: 'الغياب والتأخر', no: '20', activity: 'عدد أيام التأخر 0', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'hf', category: 'footer', no: '', activity: 'الإجمالي', planned: '', executed: '', total: '120', percentage: '', note: '' },
-  ];
-
-  const [columns, setColumns] = useState(defaultColumns);
-  const [rows, setRows] = useState<SelfEvaluationRow[]>(defaultRows);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showArchive, setShowArchive] = useState(false);
-  
-  // Archiving
-  const handleSave = () => {
-    if (isReadOnly) {
-      toast.error('للقراءة فقط');
-      return;
-    }
-    
-    const newEval: SelfEvaluation = {
-      id: Date.now().toString(),
-      userId: currentUser?.id,
-      schoolId: schoolName,
-      dateStr,
-      teacherName,
-      subject,
-      grades,
-      schoolName,
-      branchName,
-      rows
-    };
-
-    updateData({
-      selfEvaluations: [...(data.selfEvaluations || []), newEval]
-    });
-    toast.success('تم أرشفة التقرير بنجاح');
-  };�خر', no: '19', activity: 'عدد أيام الغياب 0', planned: '', executed: '', total: '', percentage: '', note: '' },
     { id: 'r20', category: 'الغياب والتأخر', no: '20', activity: 'عدد أيام التأخر 0', planned: '', executed: '', total: '', percentage: '', note: '' },
     { id: 'hf', category: 'footer', no: '', activity: 'الإجمالي', planned: '', executed: '', total: '120', percentage: '', note: '' },
   ];

@@ -97,18 +97,20 @@ export const SecretariatView: React.FC = () => {
 };
 
 const StudentsManager = () => {
-  const { currentUser, data } = useGlobal();
+  const { currentUser, data, updateData } = useGlobal();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [students, setStudents] = useState<StudentData[]>(() => {
-    try { 
-      const existing = JSON.parse(localStorage.getItem('secretariat_students') || '[]');
-      return existing.map((s: any) => ({
+  
+  const [students, setStudents] = useState<StudentData[]>([]);
+
+  useEffect(() => {
+    if (data.secretariatStudents) {
+      setStudents(data.secretariatStudents.map((s: any) => ({
         ...s,
         school: s.school || (s.schoolBranch ? s.schoolBranch.split('-')[0]?.trim() || s.schoolBranch : ''),
         branch: s.branch || (s.schoolBranch ? s.schoolBranch.split('-')[1]?.trim() || '' : '')
-      }));
-    } catch { return []; }
-  });
+      })));
+    }
+  }, [data.secretariatStudents]);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -116,7 +118,7 @@ const StudentsManager = () => {
 
   const saveStudents = (newStudents: StudentData[]) => {
     setStudents(newStudents);
-    localStorage.setItem('secretariat_students', JSON.stringify(newStudents));
+    updateData({ secretariatStudents: newStudents });
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -373,18 +375,20 @@ const StudentsManager = () => {
 };
 
 const StaffManager = () => {
-  const { currentUser, data } = useGlobal();
+  const { currentUser, data, updateData } = useGlobal();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [staff, setStaff] = useState<StaffData[]>(() => {
-    try { 
-      const existing = JSON.parse(localStorage.getItem('secretariat_staff') || '[]');
-      return existing.map((s: any) => ({
+  
+  const [staff, setStaff] = useState<StaffData[]>([]);
+
+  useEffect(() => {
+    if (data.secretariatStaff) {
+      setStaff(data.secretariatStaff.map((s: any) => ({
         ...s,
         school: s.school || (s.schoolBranch ? s.schoolBranch.split('-')[0]?.trim() || s.schoolBranch : ''),
         branch: s.branch || (s.schoolBranch ? s.schoolBranch.split('-')[1]?.trim() || '' : '')
-      }));
-    } catch { return []; }
-  });
+      })));
+    }
+  }, [data.secretariatStaff]);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -392,7 +396,7 @@ const StaffManager = () => {
 
   const saveStaff = (newStaff: StaffData[]) => {
     setStaff(newStaff);
-    localStorage.setItem('secretariat_staff', JSON.stringify(newStaff));
+    updateData({ secretariatStaff: newStaff });
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

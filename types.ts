@@ -414,6 +414,8 @@ export interface AppData {
   pinnedDamageStudents?: string[];
   pinnedVisitStudents?: string[];
   genericSpecialReports?: GenericSpecialReport[];
+  secretariatStudents?: any[];
+  secretariatStaff?: any[];
   customViolationElements?: {
     behavior?: string[];
     duties?: string[];

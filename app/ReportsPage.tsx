@@ -258,10 +258,7 @@ export const DailyReportsPage: React.FC = () => {
   }, [currentReport?.id, filterMode, activeTeacherFilter, sortConfig]);
 
   const teachers = useMemo(() => {
-    let secretariatStaff: any[] = [];
-    try {
-      secretariatStaff = JSON.parse(localStorage.getItem('secretariat_staff') || '[]');
-    } catch {}
+    let secretariatStaff: any[] = data.secretariatStaff || [];
 
     const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
     const userSchools = isAdminOrFull ? [] : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
@@ -304,8 +301,25 @@ export const DailyReportsPage: React.FC = () => {
         gender: s.gender || 'ذكر',
         violations_score: 0,
         violations_notes: [],
+        attendance: 0,
+        appearance: 0,
+        preparation: 0,
+        supervision_queue: 0,
+        supervision_rest: 0,
+        supervision_prayer: 0,
+        class_management: 0,
+        teaching_strategies: 0,
+        technology_usage: 0,
+        active_learning: 0,
+        student_evaluation: 0,
+        correction: 0,
+        weak_students: 0,
+        excellence_students: 0,
+        enrichment: 0,
+        follow_up: 0,
+        admin_directives: 0,
         order: validStaff.indexOf(s) + 1
-      }
+      } as unknown as TeacherFollowUp;
     });
 
     const manualTeachers = currentTeacherData.filter(t => !list.some(l => l.teacherName === t.teacherName));
@@ -3450,10 +3464,7 @@ export const StudentsReportsPage: React.FC = () => {
   }, [dashboardFilter, setDashboardFilter]);
 
   const studentData = useMemo(() => {
-    let secretariatList: any[] = [];
-    try {
-      secretariatList = JSON.parse(localStorage.getItem('secretariat_students') || '[]');
-    } catch {}
+    let secretariatList: any[] = data.secretariatStudents || [];
 
     const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
     const userSchools = isGeneralSupervisor ? [] : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
@@ -3509,10 +3520,11 @@ export const StudentsReportsPage: React.FC = () => {
         behaviorLevel: 'متوسط',
         mainNotes: [],
         otherNotesText: '',
+        guardianFollowUp: 'متوسط',
         guardianEducation: 'متعلم',
-        guardianFollowUp: 'متوسطة',
-        guardianCooperation: 'متوسطة'
-      };
+        guardianCooperation: 'متوسط',
+        notes: ''
+      } as StudentReport;
     });
 
     if (userFilter && userFilter !== 'all') {

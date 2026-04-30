@@ -353,11 +353,7 @@ const MainApp: React.FC = () => {
   const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
 
   const handleOpenCodesModal = () => {
-    if (isAdminOrFull) {
-      setIsCodesModalOpen(true);
-    } else {
-      setIsPasswordModalOpen(true);
-    }
+    setIsPasswordModalOpen(true);
   };
 
   // Helper to handle navigation so both Layout and Quick Access buttons trigger the modal
@@ -571,15 +567,6 @@ const MainApp: React.FC = () => {
               className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all whitespace-nowrap"
             >
               <Key className="text-blue-600" size={18} /> التحكم بالصلاحيات
-            </button>
-          )}
-
-          {!isAdminOrFull && !(Array.isArray(currentUser?.permissions?.specialCodes) && currentUser.permissions.specialCodes.includes('showButton')) && (checkPerm(currentUser?.permissions?.userManagement) || (currentUser?.permissions?.managedUserIds && currentUser.permissions.managedUserIds.length > 0)) && (
-            <button
-              onClick={() => setIsCodesModalOpen(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all whitespace-nowrap"
-            >
-              <Users className="text-blue-600" size={18} /> التحكم بالمستخدمين
             </button>
           )}
 

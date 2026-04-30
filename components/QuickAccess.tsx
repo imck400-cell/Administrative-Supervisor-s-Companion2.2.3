@@ -240,9 +240,9 @@ export const QuickAccess: React.FC<{
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="fixed sm:absolute bottom-4 sm:bottom-auto left-4 right-4 sm:start-auto sm:end-0 sm:translate-x-0 sm:top-full z-[100] sm:mt-2 sm:w-72 bg-white rounded-3xl sm:rounded-2xl shadow-xl sm:border border-slate-100 overflow-hidden"
+              className="fixed sm:absolute bottom-4 sm:bottom-auto left-4 right-4 sm:start-auto sm:end-0 sm:translate-x-0 sm:top-full z-[100] sm:mt-2 sm:w-72 bg-white rounded-3xl sm:rounded-2xl shadow-xl sm:border border-slate-100 flex flex-col overflow-hidden max-h-[85vh]"
             >
-              <div className="max-h-[50vh] sm:max-h-[400px] overflow-y-auto custom-scrollbar p-2">
+              <div className="overflow-y-auto custom-scrollbar p-2 overscroll-contain flex-1">
               {!showAll ? (
                 <>
                   {pinned.length > 0 && (

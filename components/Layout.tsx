@@ -111,8 +111,8 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings })
           <div className="fixed inset-0 bg-black/20 z-40 sm:hidden" onClick={() => setIsSidebarOpen(false)} />
         )}
 
-        <aside className={`fixed sm:sticky top-16 z-40 h-[calc(100vh-4rem)] bg-white border-e transition-all duration-300 shadow-xl sm:shadow-none ${isSidebarOpen ? 'w-64' : 'w-0 overflow-hidden'}`}>
-          <nav className="p-4 space-y-2">
+        <aside className={`fixed sm:sticky top-16 z-40 h-[calc(100vh-4rem)] bg-white border-e transition-all duration-300 shadow-xl sm:shadow-none ${isSidebarOpen ? 'w-64' : 'w-0 overflow-hidden'} flex flex-col`}>
+          <nav className="p-4 space-y-2 overflow-y-auto custom-scrollbar flex-1">
             {menuItems.map((item) => (
               <button 
                 key={item.path}

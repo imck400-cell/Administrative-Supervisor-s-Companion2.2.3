@@ -10,6 +10,7 @@ export interface SchoolProfile {
   semester: string;
   branchManager: string;
   generalManager: string;
+  schoolsAndBranches?: Record<string, string[]>;
   customFields?: { label: string, value: string }[];
   // Legacy fields preserved for compatibility
   supervisorName?: string;
@@ -336,6 +337,7 @@ export interface UserPermissions {
   substitutions?: boolean | string[];
   schoolProfile?: boolean | string[];
   secretariat?: boolean | string[];
+  teacherPortal?: boolean | string[];
   specialCodes?: boolean | string[];
   userManagement?: boolean | string[];
   managedUserIds?: string[];

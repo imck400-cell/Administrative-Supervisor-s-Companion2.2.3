@@ -19,6 +19,7 @@ const ProfilePage = React.lazy(() => import('./app/ProfilePage'));
 const DailyReportsPage = React.lazy(() => import('./app/ReportsPage').then(module => ({ default: module.DailyReportsPage })));
 const ViolationsPage = React.lazy(() => import('./app/ReportsPage').then(module => ({ default: module.ViolationsPage })));
 const StudentsReportsPage = React.lazy(() => import('./app/ReportsPage').then(module => ({ default: module.StudentsReportsPage })));
+const TeacherPortalPage = React.lazy(() => import('./app/TeacherPortalPage').then(module => ({ default: module.TeacherPortalPage })));
 
 import {
   Lock, LayoutDashboard, ClipboardCheck, ClipboardList, UserX, UserPlus,
@@ -468,6 +469,7 @@ const MainApp: React.FC = () => {
         case 'adminReports': Content = <StaffFollowUpPage />; break;
         case 'violations': Content = <ViolationsPage />; break;
         case 'studentReports': Content = <StudentsReportsPage />; break;
+        case 'teacherPortal': Content = <TeacherPortalPage />; break;
         case 'specialReports': Content = <SpecialReportsPage onNavigate={handleNavigation} />; break;
         case 'profile': Content = <ProfilePage />; break;
         case 'secretariat': Content = <SecretariatView />; break;

@@ -35,6 +35,15 @@ const permissionsList = [
       { id: 'allowEdits', label: 'السماح بتغيير البيانات' }
     ]
   },
+  {
+    id: 'teacherPortal',
+    label: 'خاص بالمعلم',
+    subPermissions: [
+      { id: 'view', label: 'ظهور الزر' },
+      { id: 'disable', label: 'عدم التفعيل' },
+      { id: 'hideButton', label: 'عدم ظهور الزر' }
+    ]
+  },
   { 
     id: 'specialCodes', 
     label: 'التحكم بالصلاحيات',
@@ -415,6 +424,9 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
                           newPerms.issuesModal = ['view', 'useIssuesButton', 'viewAllIssues'];
                           newPerms.trainingCourses = ['view', 'editSchema', 'viewIndicators'];
                           newPerms.caseStudyModal = ['view'];
+                        } else if (jobTitle === 'معلم') {
+                          newPerms.teacherPortal = ['view'];
+                          newPerms.trainingCourses = ['view'];
                         }
                         
                         // Update selectAll
@@ -430,6 +442,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
                     <option value="السكرتارية">السكرتارية</option>
                     <option value="مشرف الدور">مشرف الدور</option>
                     <option value="المختص الاجتماعي">المختص الاجتماعي</option>
+                    <option value="معلم">معلم</option>
                   </select>
                 </div>
 

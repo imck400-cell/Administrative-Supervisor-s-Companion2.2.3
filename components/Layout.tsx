@@ -43,6 +43,9 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings })
   const trainingPerm = currentUser?.permissions?.trainingCourses;
   const canUseTrainingCourses = checkPerm(trainingPerm);
 
+  const teacherPerm = currentUser?.permissions?.teacherPortal;
+  const canUseTeacherPortal = checkPerm(teacherPerm, 'view');
+
   const studentAffairsPerm = currentUser?.permissions?.studentAffairs;
   const canUseStudentAffairs = checkPerm(studentAffairsPerm);
   
@@ -65,6 +68,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onNavigate, onOpenSettings })
     ...(canUseSecretariat ? [{ icon: <Briefcase size={20} />, label: 'السكرتارية', path: 'secretariat' }] : []),
     ...(canUseStudentAffairs ? [{ icon: <UserX size={20} />, label: 'التعهدات', path: 'violations' }] : []),
     ...(canUseStudentAffairs ? [{ icon: <Users size={20} />, label: 'شؤون الطلاب', path: 'studentReports' }] : []),
+    ...(canUseTeacherPortal ? [{ icon: <BookOpen size={20} />, label: 'خاص بالمعلم', path: 'teacherPortal' }] : []),
     ...(canUseSpecial ? [{ icon: <FileSearch size={20} />, label: 'التقارير الخاصة', path: 'specialReports' }] : []),
     ...(canUseComprehensiveIndicators ? [{ icon: <BarChart size={20} />, label: 'مؤشرات الأداء الشاملة', path: 'comprehensiveIndicatorsModal' }] : []),
     ...(canUseCaseStudy ? [{ icon: <ClipboardList size={20} />, label: 'دراسة حالة طالب', path: 'caseStudyModal' }] : []),

@@ -352,6 +352,8 @@ export interface User {
   id: string;
   name: string;
   jobTitle?: string;
+  grades?: string[];
+  sections?: string[];
   code: string;
   schools: string[];
   academicYears?: string[];
@@ -365,6 +367,8 @@ export interface AuthUser {
   id: string;
   name: string;
   jobTitle?: string;
+  grades?: string[];
+  sections?: string[];
   selectedSchool: string;
   selectedBranch?: string;
   selectedYear?: string;

@@ -258,16 +258,57 @@ export const DailyReportsPage: React.FC = () => {
   }, [currentReport?.id, filterMode, activeTeacherFilter, sortConfig]);
 
   const teachers = useMemo(() => {
-    let list = currentReport ? [...currentReport.teachersData] : [];
+    let secretariatStaff: any[] = [];
+    try {
+      secretariatStaff = JSON.parse(localStorage.getItem('secretariat_staff') || '[]');
+    } catch {}
 
-    // Filter by accessibility: Non-admins/non-managers only see what they entered or are managed by them
     const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
-    
-    // Use effectiveUserIds from context to keep everything consistent
+    const userSchools = isAdminOrFull ? [] : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
+    const userGrades = currentUser?.grades || [];
+    const userSections = currentUser?.sections || [];
+
+    let validStaff = secretariatStaff.filter(s => {
+      if (isAdminOrFull) return true;
+      let ok = true;
+      if (userSchools.length > 0 && !userSchools.includes(s.schoolBranch)) ok = false;
+      if (currentUser?.grades && !currentUser.grades.includes(s.grade)) ok = false;
+      if (currentUser?.sections && !currentUser.sections.includes(s.section)) ok = false;
+      return ok;
+    });
+
+    const currentTeacherData = currentReport ? [...currentReport.teachersData] : [];
+
+    let list = validStaff.map(s => {
+      const existing = currentTeacherData.find(t => t.teacherName === s.name);
+      if (existing) {
+        return {
+          ...existing,
+          className: s.grade && s.section ? `${s.grade} / ${s.section}` : s.grade || s.section || existing.className,
+          subjectCode: s.specialty || existing.subjectCode,
+          gender: 'ذكر'
+        };
+      }
+      return {
+        id: crypto.randomUUID(),
+        teacherName: s.name,
+        subjectCode: s.specialty || '',
+        className: s.grade && s.section ? `${s.grade} / ${s.section}` : s.grade || s.section || '',
+        gender: 'ذكر',
+        violations_score: 0,
+        violations_notes: [],
+        order: validStaff.indexOf(s) + 1
+      }
+    });
+
+    // We do not append teachers not in Secretariat (per requirement)
+
+    // Filter by accessibility for sub-users matching what was originally there
     if (!isAdminOrFull && currentReport && (currentReport.periodType || 'daily') === 'daily') {
       const allowedIds = effectiveUserIds || [currentUser?.id];
       list = list.filter(t => {
         const uid = t.userId || (t as any)._ownerId;
+        // Since we synthesize them, they won't have userId yet if new. Allow if no uid.
         return !uid || allowedIds.includes(uid);
       });
     }
@@ -302,7 +343,7 @@ export const DailyReportsPage: React.FC = () => {
     });
 
     return list;
-  }, [currentReport, sortConfig, filterMode, activeTeacherFilter]);
+  }, [currentReport, sortConfig, filterMode, activeTeacherFilter, currentUser, effectiveUserIds]);
 
   const displayedTeachers = useMemo(() => teachers.slice(0, displayLimit), [teachers, displayLimit]);
 
@@ -407,7 +448,22 @@ export const DailyReportsPage: React.FC = () => {
 
   const updateTeacher = (teacherId: string, updates: Record<string, any>) => {
     if (!currentReport) return;
-    const updatedTeachers = currentReport.teachersData.map(t => t.id === teacherId ? { ...t, ...updates } : t);
+    let found = false;
+    let updatedTeachers = currentReport.teachersData.map(t => {
+      if (t.id === teacherId) {
+        found = true;
+        return { ...t, ...updates };
+      }
+      return t;
+    });
+
+    if (!found) {
+      const synthTeacher = teachers.find(t => t.id === teacherId);
+      if (synthTeacher) {
+        updatedTeachers.push({ ...synthTeacher, ...updates });
+      }
+    }
+    
     updateReportTeachers(currentReport.id, updatedTeachers);
   };
 
@@ -3386,13 +3442,71 @@ export const StudentsReportsPage: React.FC = () => {
   }, [dashboardFilter, setDashboardFilter]);
 
   const studentData = useMemo(() => {
-    let list = data.studentReports || [];
+    let secretariatList: any[] = [];
+    try {
+      secretariatList = JSON.parse(localStorage.getItem('secretariat_students') || '[]');
+    } catch {}
+
+    const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+    const userSchools = isGeneralSupervisor ? [] : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
+    const userGrades = currentUser?.grades || [];
+    const userSections = currentUser?.sections || [];
+
+    let validStudents = secretariatList.filter(s => {
+      if (isGeneralSupervisor) return true;
+      let ok = true;
+      if (userSchools.length > 0 && !userSchools.includes(s.schoolBranch)) ok = false;
+      if (currentUser?.grades && !currentUser.grades.includes(s.grade)) ok = false;
+      if (currentUser?.sections && !currentUser.sections.includes(s.section)) ok = false;
+      return ok;
+    });
+
+    const rawStudentReports = data.studentReports || [];
+    
+    let list = validStudents.map(s => {
+      const existing = rawStudentReports.find(r => r.name === s.name && r.grade === s.grade && r.section === s.section);
+      if (existing) {
+        return {
+          ...existing,
+          // Sync immutable fields from secretariat
+          gender: s.gender || existing.gender,
+          address: s.residenceWork || existing.address,
+          healthStatus: s.healthStatus || existing.healthStatus,
+          guardianName: s.guardianInfo || existing.guardianName,
+        };
+      }
+      return {
+        id: crypto.randomUUID(),
+        userId: currentUser?.id,
+        createdAt: new Date().toISOString(),
+        name: s.name || '',
+        gender: s.gender || '',
+        grade: s.grade || '',
+        section: s.section || '',
+        address: s.residenceWork || '',
+        workOutside: '',
+        healthStatus: s.healthStatus || 'ممتاز',
+        healthDetails: '',
+        guardianName: s.guardianInfo || '',
+        guardianPhones: [],
+        academicReading: 'متوسط',
+        academicWriting: 'متوسط',
+        academicParticipation: 'متوسط',
+        behaviorLevel: 'متوسط',
+        mainNotes: [],
+        otherNotesText: '',
+        guardianEducation: 'متعلم',
+        guardianFollowUp: 'متوسطة',
+        guardianCooperation: 'متوسطة'
+      };
+    });
+
     if (userFilter && userFilter !== 'all') {
       const filterIds = userFilter.split(',');
       list = list.filter(s => filterIds.includes(s.userId || ''));
     }
     return list;
-  }, [data.studentReports, userFilter]);
+  }, [data.studentReports, userFilter, currentUser]);
 
   const optionsAr = {
     gender: ["ذكر", "أنثى"],

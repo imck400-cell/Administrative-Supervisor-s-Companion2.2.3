@@ -5,6 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User as UserType, UserPermissions } from '../types';
 import ConfirmDialog from './ConfirmDialog';
 
+const gradesOptions = ['تمهيدي', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+const sectionsOptions = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي'];
+
 interface UserEditModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -366,6 +369,8 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
                     onChange={(e) => {
                       const jobTitle = e.target.value;
                       let newPerms: UserPermissions = { ...formData.permissions };
+                      let newGrades = formData.grades;
+                      let newSections = formData.sections;
                       
                       // Clear defaults when selecting a preset
                       if (jobTitle) {
@@ -388,6 +393,9 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
                           newPerms.caseStudyModal = ['view'];
                           newPerms.comprehensiveIndicators = ['view', 'showButton', 'managePermissions'];
                           newPerms.specialReports = ['view'];
+                          
+                          newGrades = [...gradesOptions];
+                          newSections = [...sectionsOptions];
                         } else if (jobTitle === 'مشرف الدور') {
                           newPerms.dashboard = ['view'];
                           newPerms.dailyFollowUp = ['view'];
@@ -407,7 +415,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
                         newPerms.all = false;
                       }
 
-                      setFormData({ ...formData, jobTitle, permissions: newPerms });
+                      setFormData({ ...formData, jobTitle, permissions: newPerms, grades: newGrades, sections: newSections });
                     }}
                   >
                     <option value="" disabled>اختر الوظيفة...</option>
@@ -417,6 +425,52 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
                     <option value="مشرف الدور">مشرف الدور</option>
                     <option value="المختص الاجتماعي">المختص الاجتماعي</option>
                   </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-black text-slate-500 mr-2">الصف</label>
+                  <div className="relative group">
+                    <div className="min-h-[58px] px-6 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl outline-none font-black text-lg transition-all cursor-pointer flex flex-wrap gap-2 items-center">
+                      {formData.grades?.length === gradesOptions.length ? 'الجميع' : formData.grades?.join('، ') || 'اختر...'}
+                    </div>
+                    <div className="absolute top-full right-0 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-xl hidden group-hover:block z-50 p-2">
+                      <label className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer text-sm font-bold border-b rounded-xl transition-colors">
+                        <input type="checkbox" checked={formData.grades?.length === gradesOptions.length} onChange={(e) => setFormData({ ...formData, grades: e.target.checked ? [...gradesOptions] : [] })} className="rounded border-slate-300 text-blue-500 w-4 h-4 cursor-pointer" />
+                        الجميع
+                      </label>
+                      <div className="grid grid-cols-2 gap-1 mt-1">
+                        {gradesOptions.map(gr => (
+                          <label key={gr} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer text-sm font-bold rounded-xl transition-colors">
+                            <input type="checkbox" checked={formData.grades?.includes(gr) || false} onChange={() => { const newArr = formData.grades?.includes(gr) ? formData.grades.filter(x => x !== gr) : [...(formData.grades || []), gr]; setFormData({ ...formData, grades: newArr }); }} className="rounded border-slate-300 text-blue-500 w-4 h-4 cursor-pointer" />
+                            {gr}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-black text-slate-500 mr-2">الشعب</label>
+                  <div className="relative group">
+                    <div className="min-h-[58px] px-6 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl outline-none font-black text-lg transition-all cursor-pointer flex flex-wrap gap-2 items-center">
+                      {formData.sections?.length === sectionsOptions.length ? 'الجميع' : formData.sections?.join('، ') || 'اختر...'}
+                    </div>
+                     <div className="absolute top-full right-0 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-xl hidden group-hover:block z-50 p-2">
+                      <label className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer text-sm font-bold border-b rounded-xl transition-colors">
+                        <input type="checkbox" checked={formData.sections?.length === sectionsOptions.length} onChange={(e) => setFormData({ ...formData, sections: e.target.checked ? [...sectionsOptions] : [] })} className="rounded border-slate-300 text-blue-500 w-4 h-4 cursor-pointer" />
+                        الجميع
+                      </label>
+                      <div className="grid grid-cols-2 gap-1 mt-1">
+                        {sectionsOptions.map(sec => (
+                          <label key={sec} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer text-sm font-bold rounded-xl transition-colors">
+                            <input type="checkbox" checked={formData.sections?.includes(sec) || false} onChange={() => { const newArr = formData.sections?.includes(sec) ? formData.sections.filter(x => x !== sec) : [...(formData.sections || []), sec]; setFormData({ ...formData, sections: newArr }); }} className="rounded border-slate-300 text-blue-500 w-4 h-4 cursor-pointer" />
+                            {sec}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">

@@ -91,7 +91,10 @@ const permissionsList = [
 
 const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) => {
   const { data, updateData, currentUser } = useGlobal();
-  const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.userManagement) && currentUser.permissions.userManagement.includes('disable'));
+  const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+  const isExplicitlyDisabled = Array.isArray(currentUser?.permissions?.userManagement) && currentUser.permissions.userManagement.includes('disable');
+  const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
+  const isReadOnly = !isGeneralSupervisor && (isReadOnlyFlag || isExplicitlyDisabled);
   const [formData, setFormData] = useState<UserType | null>(null);
   const [selectAll, setSelectAll] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{

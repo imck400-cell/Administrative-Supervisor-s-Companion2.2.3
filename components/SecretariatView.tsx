@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Briefcase, Users, Upload, FileSpreadsheet, Plus, Trash2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Briefcase, Users, FileSpreadsheet, Plus, Trash2, Search } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useGlobal } from '../context/GlobalState';
 import * as XLSX from 'xlsx';
 
@@ -9,7 +9,9 @@ type TabType = 'students' | 'staff' | null;
 interface StudentData {
   id: string;
   serialNumber: number;
-  schoolBranch: string;
+  schoolBranch?: string;
+  school: string;
+  branch: string;
   name: string;
   grade: string;
   section: string;
@@ -22,23 +24,20 @@ interface StudentData {
 interface StaffData {
   id: string;
   serialNumber: number;
-  schoolBranch: string;
+  schoolBranch?: string;
+  school: string;
+  branch: string;
   name: string;
   gender: string;
   subjects: string[];
   grades: string[];
 }
 
+import ConfirmDialog from './ConfirmDialog';
+
 export const SecretariatView: React.FC = () => {
-  const { currentUser, data, updateData } = useGlobal();
   const [activeTab, setActiveTab] = useState<TabType>(null);
   
-  // Create mock data inside data context if not exists, but for now we'll keep local state or use context data if we want to save it. 
-  // Wait, does the requested feature need saving to the database? Yes, everything in this app is saved to localStorage via data. Let's add it to `data.secretariatStudents` and `data.secretariatStaff`?
-  // Let's create `secretariatStudents` and `secretariatStaff` in `types.ts` first. But `updateData` manages dynamic fields loosely or strongly typed? The initial structure in `GlobalState.tsx` doesn't have it.
-  // Actually, keeping state local to simulate the component or updating `GlobalState` might be necessary for persistence. 
-  
-  // We'll manage state within the component and push to `updateData` using a generic key if we want. But the prompt just asked to make it work. I will use standard state first to make it fast and we can persist it to localStorage directly to bypass GlobalState schema changes if possible, or try attaching it to `data`.
   return (
     <div className="space-y-6" dir="rtl">
       <div className="flex items-center justify-between mb-8">
@@ -83,7 +82,7 @@ export const SecretariatView: React.FC = () => {
               {activeTab === 'students' ? 'شؤون الطلاب' : 'شؤون الموظفين'}
             </h3>
             <button
-              onClick={() => setActiveTab(null)}
+               onClick={() => setActiveTab(null)}
               className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors font-bold text-sm"
             >
               العودة للخيارات
@@ -98,12 +97,23 @@ export const SecretariatView: React.FC = () => {
 };
 
 const StudentsManager = () => {
-  const { currentUser, data, updateData } = useGlobal();
+  const { currentUser, data } = useGlobal();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [students, setStudents] = useState<StudentData[]>(() => {
-    try { return JSON.parse(localStorage.getItem('secretariat_students') || '[]'); } catch { return []; }
+    try { 
+      const existing = JSON.parse(localStorage.getItem('secretariat_students') || '[]');
+      return existing.map((s: any) => ({
+        ...s,
+        school: s.school || (s.schoolBranch ? s.schoolBranch.split('-')[0]?.trim() || s.schoolBranch : ''),
+        branch: s.branch || (s.schoolBranch ? s.schoolBranch.split('-')[1]?.trim() || '' : '')
+      }));
+    } catch { return []; }
   });
   
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; type?: 'danger' }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
   const saveStudents = (newStudents: StudentData[]) => {
     setStudents(newStudents);
     localStorage.setItem('secretariat_students', JSON.stringify(newStudents));
@@ -112,7 +122,6 @@ const StudentsManager = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -120,17 +129,18 @@ const StudentsManager = () => {
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws);
+        const rows = XLSX.utils.sheet_to_json(ws);
         
         let newStudents: StudentData[] = [...students];
         let maxSerial = newStudents.reduce((max, s) => Math.max(max, s.serialNumber), 0);
 
-        data.forEach((row: any) => {
+        rows.forEach((row: any) => {
           maxSerial++;
           newStudents.push({
             id: Date.now().toString() + Math.random().toString(),
             serialNumber: maxSerial,
-            schoolBranch: row['المدرسة والفرع'] || '',
+            school: row['المدرسة'] || '',
+            branch: row['الفرع'] || '',
             name: row['اسم الطالب'] || row['الاسم'] || '',
             grade: row['الصف'] || '',
             section: row['الشعبة'] || '',
@@ -140,7 +150,6 @@ const StudentsManager = () => {
             guardianInfo: row['اسم ولي الأمر / الهاتف'] || row['ولي الأمر'] || '',
           });
         });
-        
         saveStudents(newStudents);
       } catch (err) {
         alert('حدث خطأ أثناء قراءة الملف');
@@ -155,14 +164,7 @@ const StudentsManager = () => {
     saveStudents([...students, {
       id: Date.now().toString(),
       serialNumber: maxSerial + 1,
-      schoolBranch: '',
-      name: '',
-      grade: '',
-      section: '',
-      gender: '',
-      residenceWork: '',
-      healthStatus: '',
-      guardianInfo: '',
+      school: '', branch: '', name: '', grade: '', section: '', gender: '', residenceWork: '', healthStatus: '', guardianInfo: ''
     }]);
   };
 
@@ -172,52 +174,104 @@ const StudentsManager = () => {
   
   const deleteRow = (id: string) => {
     saveStudents(students.filter(s => s.id !== id));
+    setSelectedIds(selectedIds.filter(sel => sel !== id));
   };
 
-  const availableSchools = Object.values(data.profile.schoolsAndBranches || {}).flat().filter(s => !!s);
-  const userSchools = (currentUser?.role === 'admin' || currentUser?.permissions?.all) 
-    ? availableSchools
-    : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
-    
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    setConfirmDialog({
+      isOpen: true,
+      title: 'حذف متعدد',
+      message: `هل أنت متأكد من حذف ${selectedIds.length} طالب؟`,
+      type: 'danger',
+      onConfirm: () => {
+        saveStudents(students.filter(s => !selectedIds.includes(s.id)));
+        setSelectedIds([]);
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
   const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
   const isExplicitlyDisabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('disable');
   const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
   const isReadOnly = !isGeneralSupervisor && (isReadOnlyFlag || isExplicitlyDisabled);
 
+  const availableSchoolsKeys = Object.keys(data.profile.schoolsAndBranches || {});
+  const userSchools = isGeneralSupervisor ? availableSchoolsKeys : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
+
+  const filteredStudents = useMemo(() => {
+    if (!searchQuery) return students;
+    const lowerQ = searchQuery.toLowerCase();
+    return students.filter(s => 
+      s.name.toLowerCase().includes(lowerQ) ||
+      s.school.toLowerCase().includes(lowerQ) ||
+      s.branch.toLowerCase().includes(lowerQ) ||
+      s.grade.toLowerCase().includes(lowerQ) ||
+      s.guardianInfo.toLowerCase().includes(lowerQ) ||
+      s.residenceWork.toLowerCase().includes(lowerQ)
+    );
+  }, [students, searchQuery]);
+
+  const toggleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) setSelectedIds(filteredStudents.map(s => s.id));
+    else setSelectedIds([]);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
   return (
     <div className="space-y-4">
-      {!isReadOnly && (
-        <div className="flex gap-4">
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-200">
+        <div className="relative w-full md:w-96">
+          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
           <input 
-            type="file" 
-            accept=".xlsx, .xls" 
-            onChange={handleFileUpload} 
-            ref={fileInputRef} 
-            className="hidden" 
+            type="text" 
+            placeholder="بحث عن طالب، صف، فرع، ولي أمر..." 
+            className="w-full bg-white border-2 border-slate-200 rounded-xl py-3 pr-12 pl-4 outline-none focus:border-blue-500 transition-colors font-bold text-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors"
-          >
-            <FileSpreadsheet size={20} />
-            استيراد أسماء الطلاب
-          </button>
-          <button 
-            onClick={addEmptyRow}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-50 text-blue-600 rounded-xl font-bold border-2 border-blue-100 hover:bg-blue-100 transition-colors mr-auto"
-          >
-            <Plus size={20} />
-            إضافة طالب
-          </button>
         </div>
-      )}
+        
+        {!isReadOnly && (
+          <div className="flex gap-2">
+            {selectedIds.length > 0 && (
+              <button 
+                onClick={handleBulkDelete}
+                className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-xl font-bold border-2 border-red-100 hover:bg-red-100 transition-colors"
+              >
+                <Trash2 size={20} />
+                حذف المحددين ({selectedIds.length})
+              </button>
+            )}
+            <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} ref={fileInputRef} className="hidden" />
+            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors">
+              <FileSpreadsheet size={20} />
+              استيراد
+            </button>
+            <button onClick={addEmptyRow} className="flex items-center gap-2 px-6 py-3 bg-blue-50 text-blue-600 rounded-xl font-bold border-2 border-blue-100 hover:bg-blue-100 transition-colors">
+              <Plus size={20} />
+              إضافة
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="overflow-x-auto bg-slate-50 rounded-2xl border border-slate-200">
         <table className="w-full text-right whitespace-nowrap">
           <thead className="bg-slate-100 text-slate-600 font-bold text-sm">
             <tr>
+              <th className="p-3 w-12 text-center">
+                {!isReadOnly && (
+                   <input type="checkbox" onChange={toggleSelectAll} checked={filteredStudents.length > 0 && selectedIds.length === filteredStudents.length} className="rounded border-slate-300 w-4 h-4 text-blue-600 focus:ring-blue-500" />
+                )}
+              </th>
               <th className="p-3 w-16 text-center">الرقم</th>
-              <th className="p-3 w-48">المدرسة والفرع</th>
+              <th className="p-3 w-32">المدرسة</th>
+              <th className="p-3 w-32">الفرع</th>
               <th className="p-3 min-w-[200px]">اسم الطالب</th>
               <th className="p-3 w-32">الصف</th>
               <th className="p-3 w-24">الشعبة</th>
@@ -229,18 +283,24 @@ const StudentsManager = () => {
             </tr>
           </thead>
           <tbody>
-            {students.map((student, index) => (
-              <tr key={student.id} className="border-b border-slate-200 hover:bg-white transition-colors">
+            {filteredStudents.map((student, index) => (
+              <tr key={student.id} className={`border-b border-slate-200 transition-colors ${selectedIds.includes(student.id) ? 'bg-blue-50' : 'hover:bg-white'}`}>
+                <td className="p-2 text-center">
+                  {!isReadOnly && (
+                    <input type="checkbox" checked={selectedIds.includes(student.id)} onChange={() => toggleSelect(student.id)} className="rounded border-slate-300 w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                  )}
+                </td>
                 <td className="p-2 text-center font-bold text-slate-500">{student.serialNumber}</td>
                 <td className="p-2">
-                  <select 
-                    className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50"
-                    value={student.schoolBranch}
-                    onChange={e => updateRow(student.id, 'schoolBranch', e.target.value)}
-                    disabled={isReadOnly}
-                  >
-                    <option value="">اختر...</option>
+                  <select className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50" value={student.school} onChange={e => updateRow(student.id, 'school', e.target.value)} disabled={isReadOnly}>
+                    <option value="">اختر المدرسة</option>
                     {userSchools.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </td>
+                <td className="p-2">
+                  <select className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50" value={student.branch} onChange={e => updateRow(student.id, 'branch', e.target.value)} disabled={isReadOnly || !student.school}>
+                    <option value="">اختر الفرع</option>
+                    {(data.profile.schoolsAndBranches?.[student.school] || []).map((b: string) => <option key={b} value={b}>{b}</option>)}
                   </select>
                 </td>
                 <td className="p-2">
@@ -249,7 +309,7 @@ const StudentsManager = () => {
                 <td className="p-2">
                   <select disabled={isReadOnly} className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50" value={student.grade} onChange={e => updateRow(student.id, 'grade', e.target.value)}>
                     <option value="">اختر...</option>
-                    {['تمهيدي', '1', '2', '3', '4', '5', '6', '7', '8', '9'].map(v => <option key={v} value={v}>{v}</option>)}
+                    {['تمهيدي', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 </td>
                 <td className="p-2">
@@ -259,7 +319,11 @@ const StudentsManager = () => {
                   </select>
                 </td>
                 <td className="p-2">
-                  <input disabled={isReadOnly} type="text" className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50" value={student.gender} onChange={e => updateRow(student.id, 'gender', e.target.value)} />
+                  <select disabled={isReadOnly} className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50" value={student.gender} onChange={e => updateRow(student.id, 'gender', e.target.value)}>
+                    <option value="">اختر...</option>
+                    <option value="ذكر">ذكر</option>
+                    <option value="أنثى">أنثى</option>
+                  </select>
                 </td>
                 <td className="p-2">
                   <input disabled={isReadOnly} type="text" className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50" value={student.residenceWork} onChange={e => updateRow(student.id, 'residenceWork', e.target.value)} />
@@ -279,25 +343,45 @@ const StudentsManager = () => {
                 </td>
               </tr>
             ))}
-            {students.length === 0 && (
+            {filteredStudents.length === 0 && (
               <tr>
-                <td colSpan={10} className="p-8 text-center text-slate-500 font-bold">لا يوجد طلاب، قم بالإضافة أو الاستيراد من إكسل</td>
+                <td colSpan={12} className="p-8 text-center text-slate-500 font-bold">لا يوجد طلاب مطابقين للبحث، قم بالإضافة أو الاستيراد من إكسل</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type={confirmDialog.type}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };
 
 const StaffManager = () => {
-  const { currentUser, data, updateData } = useGlobal();
+  const { currentUser, data } = useGlobal();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [staff, setStaff] = useState<StaffData[]>(() => {
-    try { return JSON.parse(localStorage.getItem('secretariat_staff') || '[]'); } catch { return []; }
+    try { 
+      const existing = JSON.parse(localStorage.getItem('secretariat_staff') || '[]');
+      return existing.map((s: any) => ({
+        ...s,
+        school: s.school || (s.schoolBranch ? s.schoolBranch.split('-')[0]?.trim() || s.schoolBranch : ''),
+        branch: s.branch || (s.schoolBranch ? s.schoolBranch.split('-')[1]?.trim() || '' : '')
+      }));
+    } catch { return []; }
   });
   
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; type?: 'danger' }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
   const saveStaff = (newStaff: StaffData[]) => {
     setStaff(newStaff);
     localStorage.setItem('secretariat_staff', JSON.stringify(newStaff));
@@ -306,7 +390,6 @@ const StaffManager = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -314,24 +397,24 @@ const StaffManager = () => {
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws);
+        const rows = XLSX.utils.sheet_to_json(ws);
         
         let newStaff: StaffData[] = [...staff];
         let maxSerial = newStaff.reduce((max, s) => Math.max(max, s.serialNumber), 0);
 
-        data.forEach((row: any) => {
+        rows.forEach((row: any) => {
           maxSerial++;
           newStaff.push({
             id: Date.now().toString() + Math.random().toString(),
             serialNumber: maxSerial,
-            schoolBranch: row['المدرسة والفرع'] || '',
+            school: row['المدرسة'] || '',
+            branch: row['الفرع'] || '',
             name: row['اسم المعلم'] || row['الاسم'] || '',
             gender: row['النوع'] || '',
             subjects: row['المادة']?.toString().split(',') || [],
             grades: row['الصف']?.toString().split(',') || [],
           });
         });
-        
         saveStaff(newStaff);
       } catch (err) {
         alert('حدث خطأ أثناء قراءة الملف');
@@ -346,11 +429,7 @@ const StaffManager = () => {
     saveStaff([...staff, {
       id: Date.now().toString(),
       serialNumber: maxSerial + 1,
-      schoolBranch: '',
-      name: '',
-      gender: '',
-      subjects: [],
-      grades: [],
+      school: '', branch: '', name: '', gender: '', subjects: [], grades: []
     }]);
   };
 
@@ -360,8 +439,24 @@ const StaffManager = () => {
   
   const deleteRow = (id: string) => {
     saveStaff(staff.filter(s => s.id !== id));
+    setSelectedIds(selectedIds.filter(sel => sel !== id));
   };
-  
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    setConfirmDialog({
+      isOpen: true,
+      title: 'حذف متعدد',
+      message: `هل أنت متأكد من حذف ${selectedIds.length} موظف؟`,
+      type: 'danger',
+      onConfirm: () => {
+        saveStaff(staff.filter(s => !selectedIds.includes(s.id)));
+        setSelectedIds([]);
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
   const toggleArrayItem = (id: string, field: 'subjects'|'grades', item: string) => {
     setStaff(staff.map(s => {
       if (s.id !== id) return s;
@@ -371,54 +466,85 @@ const StaffManager = () => {
     }));
   };
 
-  useEffect(() => {
-    localStorage.setItem('secretariat_staff', JSON.stringify(staff));
-  }, [staff]);
-
-  const availableSchools = Object.values(data.profile.schoolsAndBranches || {}).flat().filter(s => !!s);
-  const userSchools = (currentUser?.role === 'admin' || currentUser?.permissions?.all) 
-    ? availableSchools
-    : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
-    
   const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
   const isExplicitlyDisabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('disable');
   const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
   const isReadOnly = !isGeneralSupervisor && (isReadOnlyFlag || isExplicitlyDisabled);
 
+  const availableSchoolsKeys = Object.keys(data.profile.schoolsAndBranches || {});
+  const userSchools = isGeneralSupervisor ? availableSchoolsKeys : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
+
+  const filteredStaff = useMemo(() => {
+    if (!searchQuery) return staff;
+    const lowerQ = searchQuery.toLowerCase();
+    return staff.filter(s => 
+      s.name.toLowerCase().includes(lowerQ) ||
+      s.school.toLowerCase().includes(lowerQ) ||
+      s.branch.toLowerCase().includes(lowerQ) ||
+      (s.subjects || []).join(' ').toLowerCase().includes(lowerQ) ||
+      (s.grades || []).join(' ').toLowerCase().includes(lowerQ)
+    );
+  }, [staff, searchQuery]);
+
+  const toggleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) setSelectedIds(filteredStaff.map(s => s.id));
+    else setSelectedIds([]);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
   return (
     <div className="space-y-4">
-      {!isReadOnly && (
-        <div className="flex gap-4">
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-200">
+        <div className="relative w-full md:w-96">
+          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
           <input 
-            type="file" 
-            accept=".xlsx, .xls" 
-            onChange={handleFileUpload} 
-            ref={fileInputRef} 
-            className="hidden" 
+            type="text" 
+            placeholder="بحث عن معلم، مادة، صف، مدرسة..." 
+            className="w-full bg-white border-2 border-slate-200 rounded-xl py-3 pr-12 pl-4 outline-none focus:border-blue-500 transition-colors font-bold text-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors"
-          >
-            <FileSpreadsheet size={20} />
-            استيراد أسماء المعلمين
-          </button>
-          <button 
-            onClick={addEmptyRow}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-50 text-blue-600 rounded-xl font-bold border-2 border-blue-100 hover:bg-blue-100 transition-colors mr-auto"
-          >
-            <Plus size={20} />
-            إضافة موظف
-          </button>
         </div>
-      )}
+        
+        {!isReadOnly && (
+          <div className="flex gap-2">
+            {selectedIds.length > 0 && (
+              <button 
+                onClick={handleBulkDelete}
+                className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-xl font-bold border-2 border-red-100 hover:bg-red-100 transition-colors"
+              >
+                <Trash2 size={20} />
+                حذف المحددين ({selectedIds.length})
+              </button>
+            )}
+            <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} ref={fileInputRef} className="hidden" />
+            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors">
+              <FileSpreadsheet size={20} />
+              استيراد
+            </button>
+            <button onClick={addEmptyRow} className="flex items-center gap-2 px-6 py-3 bg-blue-50 text-blue-600 rounded-xl font-bold border-2 border-blue-100 hover:bg-blue-100 transition-colors">
+              <Plus size={20} />
+              إضافة
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="overflow-x-auto bg-slate-50 rounded-2xl border border-slate-200 pb-[100px]">
         <table className="w-full text-right whitespace-nowrap min-h-[200px]">
           <thead className="bg-slate-100 text-slate-600 font-bold text-sm">
             <tr>
+              <th className="p-3 w-12 text-center">
+                {!isReadOnly && (
+                   <input type="checkbox" onChange={toggleSelectAll} checked={filteredStaff.length > 0 && selectedIds.length === filteredStaff.length} className="rounded border-slate-300 w-4 h-4 text-blue-600 focus:ring-blue-500" />
+                )}
+              </th>
               <th className="p-3 w-16 text-center">الرقم</th>
-              <th className="p-3 w-48">المدرسة والفرع</th>
+              <th className="p-3 w-32">المدرسة</th>
+              <th className="p-3 w-32">الفرع</th>
               <th className="p-3 min-w-[200px]">اسم المعلم</th>
               <th className="p-3 w-32">النوع</th>
               <th className="p-3 w-64">المادة (يمكن اختيار أكثر من واحدة)</th>
@@ -427,18 +553,24 @@ const StaffManager = () => {
             </tr>
           </thead>
           <tbody>
-            {staff.map((employee, index) => (
-               <tr key={employee.id} className="border-b border-slate-200 hover:bg-white transition-colors">
+            {filteredStaff.map((employee, index) => (
+               <tr key={employee.id} className={`border-b border-slate-200 transition-colors ${selectedIds.includes(employee.id) ? 'bg-blue-50' : 'hover:bg-white'}`}>
+                <td className="p-2 text-center">
+                  {!isReadOnly && (
+                    <input type="checkbox" checked={selectedIds.includes(employee.id)} onChange={() => toggleSelect(employee.id)} className="rounded border-slate-300 w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                  )}
+                </td>
                 <td className="p-2 text-center font-bold text-slate-500">{employee.serialNumber}</td>
                 <td className="p-2">
-                  <select 
-                    className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50"
-                    value={employee.schoolBranch}
-                    onChange={e => updateRow(employee.id, 'schoolBranch', e.target.value)}
-                    disabled={isReadOnly}
-                  >
-                    <option value="">اختر...</option>
+                  <select className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50" value={employee.school} onChange={e => updateRow(employee.id, 'school', e.target.value)} disabled={isReadOnly}>
+                    <option value="">اختر المدرسة</option>
                     {userSchools.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </td>
+                <td className="p-2">
+                  <select className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50" value={employee.branch} onChange={e => updateRow(employee.id, 'branch', e.target.value)} disabled={isReadOnly || !employee.school}>
+                    <option value="">اختر الفرع</option>
+                    {(data.profile.schoolsAndBranches?.[employee.school] || []).map((b: string) => <option key={b} value={b}>{b}</option>)}
                   </select>
                 </td>
                 <td className="p-2">
@@ -494,14 +626,23 @@ const StaffManager = () => {
                 </td>
               </tr>
             ))}
-            {staff.length === 0 && (
+            {filteredStaff.length === 0 && (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-slate-500 font-bold">لا يوجد موظفون، قم بالإضافة أو الاستيراد من إكسل</td>
+                <td colSpan={9} className="p-8 text-center text-slate-500 font-bold">لا يوجد موظفون مطابقون للبحث، قم بالإضافة أو الاستيراد من إكسل</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type={confirmDialog.type}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

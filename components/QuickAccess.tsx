@@ -21,6 +21,7 @@ const ALL_ACTIONS = [
   { id: 'issuesModal', label: 'المشكلات والحلول', icon: <AlertCircle size={18} /> },
   { id: 'codesModal', label: 'التحكم بالصلاحيات', icon: <Key size={18} /> },
   { id: 'dataModal', label: 'إدارة البيانات', icon: <Database size={18} /> },
+  { id: 'secretariat', label: 'السكرتارية', icon: <Briefcase size={18} /> },
   // Sub-items for Special Reports
   { id: 'specialReports-الغياب اليومي', label: 'سجل الغياب اليومي', icon: <Users size={18} /> },
   { id: 'specialReports-التأخر', label: 'سجل التأخر المتكرر', icon: <AlertCircle size={18} /> },
@@ -135,6 +136,7 @@ export const QuickAccess: React.FC<{
 
   const canUseCodesModal = isGeneralSupervisor || checkPerm(currentUser?.permissions?.specialCodes) || checkPerm(currentUser?.permissions?.userManagement) || (currentUser?.permissions?.managedUserIds && currentUser.permissions.managedUserIds.length > 0);
   const canUseDataModal = isGeneralSupervisor;
+  const canUseSecretariat = checkPerm(currentUser?.permissions?.secretariat, 'showButton');
 
   const allowedIds = [
     ...(canUseDashboard ? ['dashboard'] : []),
@@ -161,6 +163,7 @@ export const QuickAccess: React.FC<{
     ...(canUseIssuesButton ? ['issuesModal'] : []),
     ...(canUseCodesModal ? ['codesModal'] : []),
     ...(canUseDataModal ? ['dataModal'] : []),
+    ...(canUseSecretariat ? ['secretariat'] : []),
   ];
 
   const allowedActions = ALL_ACTIONS.filter(a => allowedIds.includes(a.id));

@@ -9,6 +9,7 @@ import CaseStudyModal from './components/CaseStudyModal';
 import TrainingCoursesModal from './components/TrainingCoursesModal';
 import ComprehensiveIndicatorsModal from './components/ComprehensiveIndicatorsModal';
 import { QuickAccess, useQuickAccess } from './components/QuickAccess';
+import { SecretariatView } from './components/SecretariatView';
 import SkeletonLoader from './components/SkeletonLoader';
 
 const SubstitutionPage = React.lazy(() => import('./app/SubstitutionPage'));
@@ -469,6 +470,7 @@ const MainApp: React.FC = () => {
         case 'studentReports': Content = <StudentsReportsPage />; break;
         case 'specialReports': Content = <SpecialReportsPage onNavigate={handleNavigation} />; break;
         case 'profile': Content = <ProfilePage />; break;
+        case 'secretariat': Content = <SecretariatView />; break;
         default: Content = <Dashboard setView={handleNavigation} />; break;
       }
     }

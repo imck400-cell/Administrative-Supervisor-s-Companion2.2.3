@@ -24,6 +24,14 @@ const permissionsList = [
   { id: 'substitutions', label: 'جدول التغطية', subPermissions: [...commonSubPermissions] },
   { id: 'schoolProfile', label: 'ملف المدرسة', subPermissions: [...commonSubPermissions] },
   { 
+    id: 'secretariat', 
+    label: 'السكرتارية',
+    subPermissions: [
+      { id: 'showButton', label: 'ظهور الزر' },
+      { id: 'disable', label: 'عدم التفعيل' }
+    ]
+  },
+  { 
     id: 'specialCodes', 
     label: 'التحكم بالصلاحيات',
     subPermissions: [
@@ -372,6 +380,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
                           newPerms.studentAffairs = ['view', 'disable'];
                           newPerms.substitutions = ['view', 'disable'];
                           newPerms.schoolProfile = ['view'];
+                          newPerms.secretariat = ['showButton', 'disable'];
                           newPerms.userManagement = ['view'];
                           newPerms.readOnly = true;
                           newPerms.issuesModal = ['view', 'useIssuesButton', 'viewAllIssues'];

@@ -338,6 +338,66 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
                 </div>
 
                 <div className="space-y-2">
+                  <label className="text-sm font-black text-slate-500 mr-2">الوظيفة</label>
+                  <select 
+                    className="w-full px-6 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl outline-none font-black text-lg transition-all appearance-none cursor-pointer"
+                    value={formData.jobTitle || ''}
+                    onChange={(e) => {
+                      const jobTitle = e.target.value;
+                      let newPerms: UserPermissions = { ...formData.permissions };
+                      
+                      // Clear defaults when selecting a preset
+                      if (jobTitle) {
+                        newPerms = {};
+                        newPerms.managedUserIds = formData.permissions?.managedUserIds;
+                        newPerms.schoolsAndBranches = formData.permissions?.schoolsAndBranches;
+
+                        if (['مدير عام المدارس', 'مدير الفرع', 'السكرتارية'].includes(jobTitle)) {
+                          newPerms.dashboard = ['view'];
+                          newPerms.dailyFollowUp = ['view', 'disable'];
+                          newPerms.adminFollowUp = ['view', 'disable'];
+                          newPerms.studentAffairs = ['view', 'disable'];
+                          newPerms.substitutions = ['view', 'disable'];
+                          newPerms.schoolProfile = ['view'];
+                          newPerms.userManagement = ['view'];
+                          newPerms.readOnly = true;
+                          newPerms.issuesModal = ['view', 'useIssuesButton', 'viewAllIssues'];
+                          newPerms.trainingCourses = ['view', 'editSchema', 'viewIndicators'];
+                          newPerms.caseStudyModal = ['view', 'disable'];
+                          newPerms.comprehensiveIndicators = ['view', 'showButton', 'managePermissions'];
+                          newPerms.specialReports = ['view', 'disable', 'absenceLog', 'latenessLog', 'violationLog', 'exitLog', 'damageLog', 'parentVisitLog', 'examLog', 'taskReports'];
+                        } else if (jobTitle === 'مشرف الدور') {
+                          newPerms.dashboard = ['view'];
+                          newPerms.dailyFollowUp = ['view'];
+                          newPerms.studentAffairs = ['view'];
+                          newPerms.substitutions = ['view'];
+                          newPerms.schoolProfile = ['view', 'disable'];
+                          newPerms.issuesModal = ['view', 'useIssuesButton', 'viewAllIssues'];
+                          newPerms.trainingCourses = ['view'];
+                          newPerms.specialReports = ['view', 'absenceLog', 'latenessLog', 'violationLog', 'exitLog', 'damageLog', 'parentVisitLog', 'examLog', 'taskReports'];
+                        } else if (jobTitle === 'المختص الاجتماعي') {
+                          newPerms.issuesModal = ['view', 'useIssuesButton', 'viewAllIssues'];
+                          newPerms.trainingCourses = ['view', 'editSchema', 'viewIndicators'];
+                          newPerms.caseStudyModal = ['view'];
+                        }
+                        
+                        // Update selectAll
+                        newPerms.all = false;
+                      }
+
+                      setFormData({ ...formData, jobTitle, permissions: newPerms });
+                    }}
+                  >
+                    <option value="" disabled>اختر الوظيفة...</option>
+                    <option value="مدير عام المدارس">مدير عام المدارس</option>
+                    <option value="مدير الفرع">مدير الفرع</option>
+                    <option value="السكرتارية">السكرتارية</option>
+                    <option value="مشرف الدور">مشرف الدور</option>
+                    <option value="المختص الاجتماعي">المختص الاجتماعي</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
                   <label className="text-sm font-black text-slate-500 mr-2">كود الدخول (4 أرقام)</label>
                   <div className="flex gap-3">
                     <input 

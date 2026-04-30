@@ -328,20 +328,20 @@ export interface TaskReport {
 
 export interface UserPermissions {
   all?: boolean;
-  dashboard?: boolean;
+  dashboard?: boolean | string[];
   dailyFollowUp?: boolean | string[];
   adminFollowUp?: boolean | string[];
   studentAffairs?: boolean | string[];
   specialReports?: boolean | string[];
   substitutions?: boolean | string[];
-  schoolProfile?: boolean;
+  schoolProfile?: boolean | string[];
   specialCodes?: boolean;
-  userManagement?: boolean;
+  userManagement?: boolean | string[];
   managedUserIds?: string[];
   readOnly?: boolean;
   schoolsAndBranches?: Record<string, string[]>;
   issuesModal?: boolean | string[];
-  caseStudyModal?: boolean;
+  caseStudyModal?: boolean | string[];
   trainingCourses?: boolean | string[];
   comprehensiveIndicators?: boolean | string[];
   comprehensiveIndicatorsUsers?: string[];
@@ -350,6 +350,7 @@ export interface UserPermissions {
 export interface User {
   id: string;
   name: string;
+  jobTitle?: string;
   code: string;
   schools: string[];
   academicYears?: string[];
@@ -362,6 +363,7 @@ export interface User {
 export interface AuthUser {
   id: string;
   name: string;
+  jobTitle?: string;
   selectedSchool: string;
   selectedBranch?: string;
   selectedYear?: string;

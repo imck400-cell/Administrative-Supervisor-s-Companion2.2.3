@@ -23,7 +23,14 @@ const permissionsList = [
   { id: 'studentAffairs', label: 'شؤون الطلاب', subPermissions: [...commonSubPermissions] },
   { id: 'substitutions', label: 'جدول التغطية', subPermissions: [...commonSubPermissions] },
   { id: 'schoolProfile', label: 'ملف المدرسة', subPermissions: [...commonSubPermissions] },
-  { id: 'specialCodes', label: 'التحكم بالصلاحيات' },
+  { 
+    id: 'specialCodes', 
+    label: 'التحكم بالصلاحيات',
+    subPermissions: [
+      { id: 'showButton', label: 'ظهور الزر' },
+      { id: 'hideButton', label: 'عدم ظهور الزر' }
+    ]
+  },
   { id: 'userManagement', label: 'التحكم بالمستخدمين', subPermissions: [...commonSubPermissions] },
   { id: 'readOnly', label: 'عدم السماح بتغيير البيانات' },
   { 
@@ -133,7 +140,13 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
           newPermissions.all = false;
         } else {
           // Check child
-          newPermissions[key] = [...currentSubs, subId] as any;
+          let nextSubs = [...currentSubs, subId];
+          
+          if (key === 'specialCodes') {
+            if (subId === 'showButton') nextSubs = nextSubs.filter(id => id !== 'hideButton');
+            if (subId === 'hideButton') nextSubs = nextSubs.filter(id => id !== 'showButton');
+          }
+          newPermissions[key] = nextSubs as any;
           
           // Check if all children of this parent are now checked
           const parent = permissionsList.find(p => p.id === key);

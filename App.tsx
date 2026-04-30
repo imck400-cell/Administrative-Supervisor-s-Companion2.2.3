@@ -345,8 +345,20 @@ const MainApp: React.FC = () => {
   const [isCaseStudyModalOpen, setIsCaseStudyModalOpen] = useState(false);
   const [isTrainingCoursesModalOpen, setIsTrainingCoursesModalOpen] = useState(false);
   const [isComprehensiveIndicatorsOpen, setIsComprehensiveIndicatorsOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [specialCodesPassword, setSpecialCodesPassword] = useState('');
 
   const { recordUsage } = useQuickAccess(currentUser?.id);
+
+  const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+
+  const handleOpenCodesModal = () => {
+    if (isAdminOrFull) {
+      setIsCodesModalOpen(true);
+    } else {
+      setIsPasswordModalOpen(true);
+    }
+  };
 
   // Helper to handle navigation so both Layout and Quick Access buttons trigger the modal
   const handleNavigation = (v: string) => {
@@ -361,15 +373,13 @@ const MainApp: React.FC = () => {
     } else if (v === 'comprehensiveIndicatorsModal') {
       setIsComprehensiveIndicatorsOpen(true);
     } else if (v === 'codesModal') {
-      setIsCodesModalOpen(true);
+      handleOpenCodesModal();
     } else if (v === 'dataModal') {
       setIsDataModalOpen(true);
     } else {
       setView(v);
     }
   };
-
-  const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
 
   const filteredUsersForModal = useMemo(() => {
     const userSchools = currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
@@ -555,12 +565,21 @@ const MainApp: React.FC = () => {
             </button>
           )}
 
-          {(isAdminOrFull || checkPerm(currentUser?.permissions?.specialCodes) || checkPerm(currentUser?.permissions?.userManagement) || (currentUser?.permissions?.managedUserIds && currentUser.permissions.managedUserIds.length > 0)) && (
+          {(isAdminOrFull || (Array.isArray(currentUser?.permissions?.specialCodes) && currentUser.permissions.specialCodes.includes('showButton'))) && (
             <button
-              onClick={() => setIsCodesModalOpen(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all"
+              onClick={handleOpenCodesModal}
+              className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all whitespace-nowrap"
             >
               <Key className="text-blue-600" size={18} /> التحكم بالصلاحيات
+            </button>
+          )}
+
+          {!isAdminOrFull && !(Array.isArray(currentUser?.permissions?.specialCodes) && currentUser.permissions.specialCodes.includes('showButton')) && (checkPerm(currentUser?.permissions?.userManagement) || (currentUser?.permissions?.managedUserIds && currentUser.permissions.managedUserIds.length > 0)) && (
+            <button
+              onClick={() => setIsCodesModalOpen(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all whitespace-nowrap"
+            >
+              <Users className="text-blue-600" size={18} /> التحكم بالمستخدمين
             </button>
           )}
 
@@ -580,7 +599,80 @@ const MainApp: React.FC = () => {
       </div>
 
       <DataManagementModal isOpen={isDataModalOpen} onClose={() => setIsDataModalOpen(false)} />
-      <AccessCodesModal isOpen={isCodesModalOpen} onClose={() => setIsCodesModalOpen(false)} />
+      <AccessCodesModal 
+        isOpen={isCodesModalOpen} 
+        onClose={() => {
+          setIsCodesModalOpen(false);
+          setSpecialCodesPassword(''); // Reset on close
+        }} 
+        enteredPassword={specialCodesPassword}
+      />
+
+      <AnimatePresence>
+        {isPasswordModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm font-arabic">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden"
+            >
+              <div className="p-6 bg-blue-600 text-white flex justify-between items-center">
+                <h2 className="text-xl font-black flex items-center gap-2">
+                  <Key size={24} />
+                  إدخال الرقم السري
+                </h2>
+                <button 
+                  onClick={() => {
+                    setIsPasswordModalOpen(false);
+                    setSpecialCodesPassword('');
+                  }}
+                  className="p-2 hover:bg-white/20 rounded-xl transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <p className="text-slate-600 font-bold text-sm text-center">
+                  الرجاء إدخال الرقم السري للوصول إلى إدارة الصلاحيات
+                </p>
+                <input
+                  type="password"
+                  className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-center text-xl font-black focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                  value={specialCodesPassword}
+                  onChange={(e) => setSpecialCodesPassword(e.target.value)}
+                  placeholder="الرقم السري"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (specialCodesPassword === '2#3#2*4*a') {
+                        setIsPasswordModalOpen(false);
+                        setIsCodesModalOpen(true);
+                      } else {
+                        // could show error toast here
+                        alert('الرقم السري غير صحيح');
+                      }
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    if (specialCodesPassword === '2#3#2*4*a') {
+                      setIsPasswordModalOpen(false);
+                      setIsCodesModalOpen(true);
+                    } else {
+                      alert('الرقم السري غير صحيح');
+                    }
+                  }}
+                  className="w-full py-3 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 transition-colors"
+                >
+                  دخول
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <UserFilterModal
         isOpen={isUserFilterModalOpen}

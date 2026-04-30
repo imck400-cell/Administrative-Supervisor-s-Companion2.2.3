@@ -335,7 +335,7 @@ export interface UserPermissions {
   specialReports?: boolean | string[];
   substitutions?: boolean | string[];
   schoolProfile?: boolean | string[];
-  specialCodes?: boolean;
+  specialCodes?: boolean | string[];
   userManagement?: boolean | string[];
   managedUserIds?: string[];
   readOnly?: boolean;

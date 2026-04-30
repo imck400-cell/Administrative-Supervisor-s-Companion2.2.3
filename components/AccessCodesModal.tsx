@@ -8,9 +8,10 @@ import { User } from '../types';
 interface AccessCodesModalProps {
   isOpen: boolean;
   onClose: () => void;
+  enteredPassword?: string;
 }
 
-const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) => {
+const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose, enteredPassword }) => {
   const { data, updateData, currentUser, effectiveUserIds } = useGlobal();
   const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.userManagement) && currentUser.permissions.userManagement.includes('disable'));
   const [newSchool, setNewSchool] = useState('');
@@ -121,16 +122,30 @@ const AccessCodesModal: React.FC<AccessCodesModalProps> = ({ isOpen, onClose }) 
       startDate: new Date().toISOString().split('T')[0],
       expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       role: 'user',
-      permissions: { dashboard: true, trainingCourses: true }
+      permissions: { dashboard: ['view'], trainingCourses: ['view'], specialCodes: ['hideButton'] }
     };
     setEditingUser(newUser);
     setIsEditModalOpen(true);
   };
 
   const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+  const hasFullAccess = isAdminOrFull || enteredPassword === '2#3#2*4*a';
 
-  const admins = data.users.filter(u => u.role === 'admin' && (isAdminOrFull || effectiveUserIds.includes(u.id)) && !(u.role === 'admin' || u.permissions?.all === true));
-  const regularUsers = data.users.filter(u => u.role === 'user' && (isAdminOrFull || effectiveUserIds.includes(u.id)) && !(u.permissions?.all === true));
+  const admins = data.users.filter(u => {
+    if (u.role !== 'admin') return false;
+    if (hasFullAccess) return true;
+    const isSuperAdmin = u.permissions?.all === true || u.role === 'admin';
+    if (isSuperAdmin && !isAdminOrFull) return false;
+    return effectiveUserIds.includes(u.id);
+  });
+
+  const regularUsers = data.users.filter(u => {
+    if (u.role !== 'user') return false;
+    if (hasFullAccess) return true;
+    const isSuperAdmin = u.permissions?.all === true;
+    if (isSuperAdmin && !isAdminOrFull) return false;
+    return effectiveUserIds.includes(u.id);
+  });
 
   return (
     <AnimatePresence>

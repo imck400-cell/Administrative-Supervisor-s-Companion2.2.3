@@ -1,12 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { GlobalProvider, useGlobal } from './context/GlobalState';
 import Layout from './components/Layout';
 import Dashboard from './app/Dashboard';
-import SubstitutionPage from './app/SubstitutionPage';
-import { DailyReportsPage, ViolationsPage, StudentsReportsPage } from './app/ReportsPage';
-import StaffFollowUpPage from './app/StaffFollowUpPage';
-import SpecialReportsPage from './app/SpecialReportsPage';
-import ProfilePage from './app/ProfilePage';
 import DataManagementModal from './components/DataManagementModal';
 import AccessCodesModal from './components/AccessCodesModal';
 import IssuesAndSolutionsModal from './components/IssuesAndSolutionsModal';
@@ -14,6 +9,16 @@ import CaseStudyModal from './components/CaseStudyModal';
 import TrainingCoursesModal from './components/TrainingCoursesModal';
 import ComprehensiveIndicatorsModal from './components/ComprehensiveIndicatorsModal';
 import { QuickAccess, useQuickAccess } from './components/QuickAccess';
+import SkeletonLoader from './components/SkeletonLoader';
+
+const SubstitutionPage = React.lazy(() => import('./app/SubstitutionPage'));
+const StaffFollowUpPage = React.lazy(() => import('./app/StaffFollowUpPage'));
+const SpecialReportsPage = React.lazy(() => import('./app/SpecialReportsPage'));
+const ProfilePage = React.lazy(() => import('./app/ProfilePage'));
+const DailyReportsPage = React.lazy(() => import('./app/ReportsPage').then(module => ({ default: module.DailyReportsPage })));
+const ViolationsPage = React.lazy(() => import('./app/ReportsPage').then(module => ({ default: module.ViolationsPage })));
+const StudentsReportsPage = React.lazy(() => import('./app/ReportsPage').then(module => ({ default: module.StudentsReportsPage })));
+
 import {
   Lock, LayoutDashboard, ClipboardCheck, ClipboardList, UserX, UserPlus,
   Users, Database, FileSearch, Briefcase, BookOpen,
@@ -444,22 +449,29 @@ const MainApp: React.FC = () => {
   if (!isAuthenticated) return <AdvancedLoginPage />;
 
   const renderView = () => {
+    let Content;
     if (view.startsWith('specialReports-')) {
       const subTab = view.split('-')[1];
-      return <SpecialReportsPage initialSubTab={subTab} onNavigate={handleNavigation} />;
+      Content = <SpecialReportsPage initialSubTab={subTab} onNavigate={handleNavigation} />;
+    } else {
+      switch (view) {
+        case 'dashboard': Content = <Dashboard setView={handleNavigation} />; break;
+        case 'substitute': Content = <SubstitutionPage />; break;
+        case 'daily': Content = <DailyReportsPage />; break;
+        case 'adminReports': Content = <StaffFollowUpPage />; break;
+        case 'violations': Content = <ViolationsPage />; break;
+        case 'studentReports': Content = <StudentsReportsPage />; break;
+        case 'specialReports': Content = <SpecialReportsPage onNavigate={handleNavigation} />; break;
+        case 'profile': Content = <ProfilePage />; break;
+        default: Content = <Dashboard setView={handleNavigation} />; break;
+      }
     }
 
-    switch (view) {
-      case 'dashboard': return <Dashboard setView={handleNavigation} />;
-      case 'substitute': return <SubstitutionPage />;
-      case 'daily': return <DailyReportsPage />;
-      case 'adminReports': return <StaffFollowUpPage />;
-      case 'violations': return <ViolationsPage />;
-      case 'studentReports': return <StudentsReportsPage />;
-      case 'specialReports': return <SpecialReportsPage onNavigate={handleNavigation} />;
-      case 'profile': return <ProfilePage />;
-      default: return <Dashboard setView={handleNavigation} />;
-    }
+    return (
+      <Suspense fallback={<SkeletonLoader />}>
+        {Content}
+      </Suspense>
+    );
   };
 
   const managedIds = currentUser?.permissions?.managedUserIds || [];

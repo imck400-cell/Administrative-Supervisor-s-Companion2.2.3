@@ -194,11 +194,19 @@ const StudentsManager = () => {
 
   const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
   const isExplicitlyDisabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('disable');
+  const isAllowEdits = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('allowEdits');
   const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
-  const isReadOnly = !isGeneralSupervisor && (isReadOnlyFlag || isExplicitlyDisabled);
+  const isReadOnly = !isGeneralSupervisor && ((isReadOnlyFlag && !isAllowEdits) || isExplicitlyDisabled);
 
   const availableSchoolsKeys = Object.keys(data.profile.schoolsAndBranches || {});
   const userSchools = isGeneralSupervisor ? availableSchoolsKeys : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
+
+  const getAvailableBranches = (school: string) => {
+    if (isGeneralSupervisor) return data.profile.schoolsAndBranches?.[school] || [];
+    const userBranches = currentUser?.permissions?.schoolsAndBranches?.[school];
+    if (userBranches && userBranches.length > 0) return userBranches;
+    return userBranches || [];
+  };
 
   const filteredStudents = useMemo(() => {
     if (!searchQuery) return students;
@@ -300,7 +308,7 @@ const StudentsManager = () => {
                 <td className="p-2">
                   <select className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50" value={student.branch} onChange={e => updateRow(student.id, 'branch', e.target.value)} disabled={isReadOnly || !student.school}>
                     <option value="">اختر الفرع</option>
-                    {(data.profile.schoolsAndBranches?.[student.school] || []).map((b: string) => <option key={b} value={b}>{b}</option>)}
+                    {getAvailableBranches(student.school).map((b: string) => <option key={b} value={b}>{b}</option>)}
                   </select>
                 </td>
                 <td className="p-2">
@@ -468,11 +476,19 @@ const StaffManager = () => {
 
   const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
   const isExplicitlyDisabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('disable');
+  const isAllowEdits = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('allowEdits');
   const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
-  const isReadOnly = !isGeneralSupervisor && (isReadOnlyFlag || isExplicitlyDisabled);
+  const isReadOnly = !isGeneralSupervisor && ((isReadOnlyFlag && !isAllowEdits) || isExplicitlyDisabled);
 
   const availableSchoolsKeys = Object.keys(data.profile.schoolsAndBranches || {});
   const userSchools = isGeneralSupervisor ? availableSchoolsKeys : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
+
+  const getAvailableBranches = (school: string) => {
+    if (isGeneralSupervisor) return data.profile.schoolsAndBranches?.[school] || [];
+    const userBranches = currentUser?.permissions?.schoolsAndBranches?.[school];
+    if (userBranches && userBranches.length > 0) return userBranches;
+    return userBranches || [];
+  };
 
   const filteredStaff = useMemo(() => {
     if (!searchQuery) return staff;
@@ -570,7 +586,7 @@ const StaffManager = () => {
                 <td className="p-2">
                   <select className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50" value={employee.branch} onChange={e => updateRow(employee.id, 'branch', e.target.value)} disabled={isReadOnly || !employee.school}>
                     <option value="">اختر الفرع</option>
-                    {(data.profile.schoolsAndBranches?.[employee.school] || []).map((b: string) => <option key={b} value={b}>{b}</option>)}
+                    {getAvailableBranches(employee.school).map((b: string) => <option key={b} value={b}>{b}</option>)}
                   </select>
                 </td>
                 <td className="p-2">

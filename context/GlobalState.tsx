@@ -856,7 +856,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       for (const key of Object.keys(newData) as Array<keyof AppData>) {
         if (strictlySharedKeys.includes(key)) {
           updatedData[key] = newData[key] as any;
-          if (currentUser.role === 'admin' || currentUser.permissions?.all === true) {
+          const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
+          const isManager = currentUser.permissions?.userManagement === true || (Array.isArray(currentUser.permissions?.userManagement) && currentUser.permissions.userManagement.length > 0);
+          
+          if (isAdminOrFull || (key === 'users' && isManager)) {
             schoolsToUpdate.forEach(school => {
               setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
                 .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));

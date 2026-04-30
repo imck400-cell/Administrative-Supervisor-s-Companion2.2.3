@@ -31,7 +31,8 @@ const permissionsList = [
     label: 'السكرتارية',
     subPermissions: [
       { id: 'showButton', label: 'ظهور الزر' },
-      { id: 'disable', label: 'عدم التفعيل' }
+      { id: 'disable', label: 'عدم التفعيل' },
+      { id: 'allowEdits', label: 'السماح بتغيير البيانات' }
     ]
   },
   { 

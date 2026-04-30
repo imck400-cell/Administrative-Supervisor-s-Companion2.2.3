@@ -245,7 +245,9 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
       newUsers.push(formData);
     }
     
-    updateData({ users: newUsers });
+    const cleanUsers = JSON.parse(JSON.stringify(newUsers));
+    
+    updateData({ users: cleanUsers });
     onClose();
   };
 

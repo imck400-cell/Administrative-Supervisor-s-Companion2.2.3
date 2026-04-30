@@ -658,7 +658,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (!isMounted) return;
 
       const dataBuffer: Record<string, Record<string, any[]>> = {};
-      const arrayKeys = ['substitutions', 'timetable', 'dailyReports', 'violations', 'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports'];
+      const arrayKeys = ['substitutions', 'timetable', 'dailyReports', 'violations', 'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports', 'selfEvaluations'];
       arrayKeys.forEach(k => dataBuffer[k] = {});
 
       // Shared keys for the selected schools

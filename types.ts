@@ -391,6 +391,31 @@ export interface TrainingEvaluation {
   overallRating?: number;
 }
 
+export interface SelfEvaluationRow {
+  id: string;
+  category: string;
+  no: string;
+  activity: string;
+  planned: number | string;
+  executed: number | string;
+  total: number | string;
+  percentage: number | string;
+  note: string;
+}
+
+export interface SelfEvaluation {
+  id: string;
+  userId?: string;
+  schoolId?: string;
+  dateStr: string;
+  teacherName: string;
+  subject: string;
+  grades: string;
+  schoolName: string;
+  branchName: string;
+  rows: SelfEvaluationRow[];
+}
+
 export interface AppData {
   users: User[];
   profile: SchoolProfile;
@@ -409,6 +434,7 @@ export interface AppData {
   damageLogs?: DamageLog[];
   parentVisitLogs?: ParentVisitLog[];
   examLogs?: ExamLog[];
+  selfEvaluations?: SelfEvaluation[];
   customExitItems?: string[];
   customDamageItems?: string[];
   customVisitItems?: string[];

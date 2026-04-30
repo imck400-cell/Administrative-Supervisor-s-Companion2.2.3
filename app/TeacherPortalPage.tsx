@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckSquare, ListTodo, Star, FileSpreadsheet } from 'lucide-react';
 import { useGlobal } from '../context/GlobalState';
 import { toast } from 'sonner';
+import { SelfEvaluationView } from './SelfEvaluationView';
 
 export const TeacherPortalPage = () => {
   const { lang, currentUser } = useGlobal();
+  const [activeView, setActiveView] = useState<'menu' | 'selfEval'>('menu');
 
   const handleNotImplemented = () => {
     toast.info(lang === 'ar' ? 'هذه الخاصية قيد التطوير' : 'Feature under development');
@@ -13,30 +15,38 @@ export const TeacherPortalPage = () => {
 
   const isReadOnly = currentUser?.permissions?.readOnly === true;
 
+  if (activeView === 'selfEval') {
+    return <SelfEvaluationView onBack={() => setActiveView('menu')} />;
+  }
+
   const buttons = [
     {
       id: 'self-eval',
       label: lang === 'ar' ? 'التقييم الذاتي' : 'Self Evaluation',
       color: 'bg-blue-600 shadow-blue-200 hover:bg-blue-700',
-      icon: <CheckSquare size={48} className="mb-4 opacity-80" />
+      icon: <CheckSquare size={48} className="mb-4 opacity-80" />,
+      onClick: () => setActiveView('selfEval')
     },
     {
       id: 'daily-tasks',
       label: lang === 'ar' ? 'المهام اليومية' : 'Daily Tasks',
       color: 'bg-emerald-600 shadow-emerald-200 hover:bg-emerald-700',
-      icon: <ListTodo size={48} className="mb-4 opacity-80" />
+      icon: <ListTodo size={48} className="mb-4 opacity-80" />,
+      onClick: handleNotImplemented
     },
     {
       id: 'student-eval',
       label: lang === 'ar' ? 'تقييم الطلاب' : 'Student Evaluation',
       color: 'bg-amber-500 shadow-amber-200 hover:bg-amber-600',
-      icon: <Star size={48} className="mb-4 opacity-80" />
+      icon: <Star size={48} className="mb-4 opacity-80" />,
+      onClick: handleNotImplemented
     },
     {
       id: 'grades',
       label: lang === 'ar' ? 'كشف الدرجات' : 'Grades Sheet',
       color: 'bg-purple-600 shadow-purple-200 hover:bg-purple-700',
-      icon: <FileSpreadsheet size={48} className="mb-4 opacity-80" />
+      icon: <FileSpreadsheet size={48} className="mb-4 opacity-80" />,
+      onClick: handleNotImplemented
     }
   ];
 
@@ -60,7 +70,7 @@ export const TeacherPortalPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            onClick={isReadOnly ? () => toast.error(lang === 'ar' ? 'للقراءة فقط' : 'Read Only') : handleNotImplemented}
+            onClick={btn.onClick}
             className={`${btn.color} text-white p-8 rounded-[2rem] shadow-xl flex flex-col items-center justify-center transition-all transform hover:-translate-y-2 group`}
           >
             <div className="group-hover:scale-110 transition-transform duration-300">

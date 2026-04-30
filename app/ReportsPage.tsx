@@ -271,9 +271,16 @@ export const DailyReportsPage: React.FC = () => {
     let validStaff = secretariatStaff.filter(s => {
       if (isAdminOrFull) return true;
       let ok = true;
-      if (userSchools.length > 0 && !userSchools.includes(s.schoolBranch)) ok = false;
-      if (currentUser?.grades && !currentUser.grades.includes(s.grade)) ok = false;
-      if (currentUser?.sections && !currentUser.sections.includes(s.section)) ok = false;
+      if (userSchools.length > 0 && !userSchools.includes('all') && !userSchools.includes(s.school)) {
+        ok = false;
+      }
+      if (currentUser?.permissions?.schoolsAndBranches && ok) {
+        const branchesForSchool = currentUser.permissions.schoolsAndBranches[s.school] || [];
+        if (branchesForSchool.length > 0 && s.branch && !branchesForSchool.includes(s.branch)) ok = false;
+      }
+      if (currentUser?.grades && currentUser.grades.length > 0 && s.grades && s.grades.length > 0) {
+        if (!s.grades.some((g: string) => currentUser.grades!.includes(g))) ok = false;
+      }
       return ok;
     });
 
@@ -284,24 +291,25 @@ export const DailyReportsPage: React.FC = () => {
       if (existing) {
         return {
           ...existing,
-          className: s.grade && s.section ? `${s.grade} / ${s.section}` : s.grade || s.section || existing.className,
-          subjectCode: s.specialty || existing.subjectCode,
-          gender: 'ذكر'
+          className: s.grades && s.grades.length > 0 ? s.grades.join(' / ') : existing.className,
+          subjectCode: s.subjects && s.subjects.length > 0 ? s.subjects.join(' / ') : existing.subjectCode,
+          gender: s.gender || existing.gender || 'ذكر'
         };
       }
       return {
         id: crypto.randomUUID(),
         teacherName: s.name,
-        subjectCode: s.specialty || '',
-        className: s.grade && s.section ? `${s.grade} / ${s.section}` : s.grade || s.section || '',
-        gender: 'ذكر',
+        subjectCode: s.subjects && s.subjects.length > 0 ? s.subjects.join(' / ') : '',
+        className: s.grades && s.grades.length > 0 ? s.grades.join(' / ') : '',
+        gender: s.gender || 'ذكر',
         violations_score: 0,
         violations_notes: [],
         order: validStaff.indexOf(s) + 1
       }
     });
 
-    // We do not append teachers not in Secretariat (per requirement)
+    const manualTeachers = currentTeacherData.filter(t => !list.some(l => l.teacherName === t.teacherName));
+    list = [...list, ...manualTeachers];
 
     // Filter by accessibility for sub-users matching what was originally there
     if (!isAdminOrFull && currentReport && (currentReport.periodType || 'daily') === 'daily') {
@@ -3455,9 +3463,15 @@ export const StudentsReportsPage: React.FC = () => {
     let validStudents = secretariatList.filter(s => {
       if (isGeneralSupervisor) return true;
       let ok = true;
-      if (userSchools.length > 0 && !userSchools.includes(s.schoolBranch)) ok = false;
-      if (currentUser?.grades && !currentUser.grades.includes(s.grade)) ok = false;
-      if (currentUser?.sections && !currentUser.sections.includes(s.section)) ok = false;
+      if (userSchools.length > 0 && !userSchools.includes('all') && !userSchools.includes(s.school)) {
+        ok = false;
+      }
+      if (currentUser?.permissions?.schoolsAndBranches && ok) {
+        const branchesForSchool = currentUser.permissions.schoolsAndBranches[s.school] || [];
+        if (branchesForSchool.length > 0 && s.branch && !branchesForSchool.includes(s.branch)) ok = false;
+      }
+      if (currentUser?.grades && currentUser.grades.length > 0 && s.grade && !currentUser.grades.includes(s.grade)) ok = false;
+      if (currentUser?.sections && currentUser.sections.length > 0 && s.section && !currentUser.sections.includes(s.section)) ok = false;
       return ok;
     });
 
@@ -3505,7 +3519,24 @@ export const StudentsReportsPage: React.FC = () => {
       const filterIds = userFilter.split(',');
       list = list.filter(s => filterIds.includes(s.userId || ''));
     }
-    return list;
+
+    const manualStudents = rawStudentReports.filter(r => {
+      // Must not be already in 'list'
+      if (list.some(l => l.id === r.id || (l.name === r.name && l.grade === r.grade && l.section === r.section))) {
+        return false;
+      }
+      // Must match user schools, branches, grades, sections...
+      if (isGeneralSupervisor) return true;
+      let ok = true;
+      // We don't have r.school or r.branch natively in rawStudentReports unless it was saved. We'll skip strict school filtering for manual additions and assume they belong to the creator's school or they shouldn't be added.
+      // But we can check grades and sections
+      if (currentUser?.grades && currentUser.grades.length > 0 && r.grade && !currentUser.grades.includes(r.grade)) ok = false;
+      if (currentUser?.sections && currentUser.sections.length > 0 && r.section && !currentUser.sections.includes(r.section)) ok = false;
+      if (userFilter && userFilter !== 'all' && !userFilter.split(',').includes(r.userId || '')) ok = false;
+      return ok;
+    });
+
+    return [...list, ...manualStudents];
   }, [data.studentReports, userFilter, currentUser]);
 
   const optionsAr = {

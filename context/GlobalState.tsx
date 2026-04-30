@@ -645,7 +645,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         await setDoc(doc(db, 'users', user.uid), {
           customUserId: currentUser.id,
           role: currentUser.role,
-          schools: currentUser.selectedSchool.split(',').map(s => s.trim())
+          schools: currentUser.selectedSchool.split(',').map(s => s.trim()),
+          permissions: currentUser.permissions || {}
         });
         
         // Small delay to ensure rules engine sees the new document
@@ -869,8 +870,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           updatedData[key] = newData[key] as any;
           const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
           const isManager = currentUser.permissions?.userManagement === true || (Array.isArray(currentUser.permissions?.userManagement) && currentUser.permissions.userManagement.length > 0);
+          const isSecretariatEnabled = Array.isArray(currentUser.permissions?.secretariat) && currentUser.permissions?.secretariat.includes('allowEdits');
           
-          if (isAdminOrFull || (key === 'users' && isManager)) {
+          if (isAdminOrFull || (key === 'users' && isManager) || ((key === 'secretariatStudents' || key === 'secretariatStaff') && isSecretariatEnabled)) {
             schoolsToUpdate.forEach(school => {
               setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
                 .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));

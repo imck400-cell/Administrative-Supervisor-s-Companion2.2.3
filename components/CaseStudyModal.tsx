@@ -24,10 +24,10 @@ const ROLES = [
 
 const RATINGS = [
   { id: 'ممتاز', color: 'bg-emerald-500', text: 'text-emerald-700' },
-  { id: 'جيد جدا', color: 'bg-blue-500', text: 'text-blue-700' },
+  { id: 'جيد جداً', color: 'bg-blue-500', text: 'text-blue-700' },
   { id: 'جيد', color: 'bg-teal-500', text: 'text-teal-700' },
   { id: 'ضعيف', color: 'bg-orange-500', text: 'text-orange-700' },
-  { id: 'ضعيف جدا', color: 'bg-red-500', text: 'text-red-700' }
+  { id: 'ضعيف جداً', color: 'bg-red-500', text: 'text-red-700' }
 ];
 
 const normalizeArabic = (text: any) => {
@@ -151,6 +151,56 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     }
     return result;
   }, [logs, filterDateFrom, filterDateTo, selectedFilterStudents]);
+
+  // Sync when selectedSubject changes
+  useEffect(() => {
+    if (selectedStudent && evaluatorRole === 'teacher' && selectedSubject) {
+      const evals = data.studentEvaluations || [];
+      const studentEvals = evals.filter((e: any) => {
+        if (e.studentId !== selectedStudent.id) return false;
+        if (e.subjects) {
+           const subArr = e.subjects.split('،').map((s:string) => s.trim());
+           return subArr.includes(selectedSubject);
+        }
+        return false;
+      }).sort((a: any, b: any) => {
+        return (b.id || '').localeCompare(a.id || '');
+      });
+
+      if (studentEvals.length > 0) {
+        const latestEval = studentEvals[0];
+        const criteria: any = latestEval.criteria || {};
+        const newFormData: Record<string, { rating: string, text: string }> = {};
+
+        if (criteria.comprehension) {
+          newFormData['academic_understanding'] = { rating: criteria.comprehension.rating || '', text: criteria.comprehension.details || '' };
+        }
+        if (criteria.homework) {
+          newFormData['homework_commitment'] = { rating: criteria.homework.rating || '', text: criteria.homework.details || '' };
+        }
+        if (criteria.participation) {
+          newFormData['participation'] = { rating: criteria.participation.rating || '', text: criteria.participation.details || '' };
+        }
+        if (criteria.behavior) {
+          newFormData['classroom_behavior'] = { rating: criteria.behavior.rating || '', text: criteria.behavior.details || '' };
+        }
+        if (criteria.excellence) {
+          newFormData['strengths'] = { rating: criteria.excellence.rating || '', text: criteria.excellence.details || '' };
+        }
+
+        setFormData(newFormData);
+        
+        if (criteria.customAction?.text) {
+          setAdditionalDetails(criteria.customAction.text);
+        } else {
+          setAdditionalDetails('');
+        }
+      } else {
+         setFormData({});
+         setAdditionalDetails('');
+      }
+    }
+  }, [selectedSubject, selectedStudent, evaluatorRole, data.studentEvaluations]);
 
   if (!isOpen) return null;
 

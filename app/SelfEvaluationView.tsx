@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Save, FileSpreadsheet, Plus, Trash2, Search, Calendar, User, BookOpen, Layers, School, MapPin, Archive, X, Eye, Calculator, List, Edit2 } from 'lucide-react';
 import { useGlobal } from '../context/GlobalState';
@@ -134,10 +134,9 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
   const [showArchive, setShowArchive] = useState(false);
   const [showIndicators, setShowIndicators] = useState(false);
   const [selectedIndicators, setSelectedIndicators] = useState<string[]>([]);
+  const [highlightedRowId, setHighlightedRowId] = useState<string | null>(null);
 
-  const handleUpdateDate = () => {
-    setDateStr(getFullFormattedDate(new Date()));
-  };
+  const prevTmplRef = useRef(data.selfEvaluationTemplates?.[schoolKey]);
 
   const calculateRowSums = (currentRowList: SelfEvaluationRow[]) => {
     return currentRowList.map(row => {
@@ -165,6 +164,39 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
       }
       return { ...row, total: total.toString(), percentage };
     });
+  };
+
+  useEffect(() => {
+    const currentTmpl = data.selfEvaluationTemplates?.[schoolKey];
+    if (currentTmpl && JSON.stringify(currentTmpl) !== JSON.stringify(prevTmplRef.current)) {
+       prevTmplRef.current = currentTmpl;
+       
+       setRows(prevRows => {
+         const newRows = JSON.parse(JSON.stringify(currentTmpl.rows));
+         newRows.forEach((nr: any) => {
+            const existing = prevRows.find((pr: any) => pr.id === nr.id || pr.activity === nr.activity);
+            if (existing) {
+               Object.keys(existing).forEach(k => {
+                  if (k === 'executed' || k.startsWith('exec_')) {
+                     nr[k] = existing[k];
+                  }
+               });
+            }
+         });
+         return calculateRowSums(newRows);
+       });
+
+       setColumns(prevCols => {
+         const newCols = JSON.parse(JSON.stringify(currentTmpl.columns));
+         const planColsIds = newCols.map((c: any) => c.id);
+         const execCols = prevCols.filter((c: any) => !planColsIds.includes(c.id) && (c.id === 'executed' || c.id.startsWith('exec_')));
+         return [...newCols, ...execCols];
+       });
+    }
+  }, [data.selfEvaluationTemplates, schoolKey]);
+
+  const handleUpdateDate = () => {
+    setDateStr(getFullFormattedDate(new Date()));
   };
 
   const handleSave = () => {
@@ -428,7 +460,7 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
           <button
             onClick={handleSave}
             disabled={isReadOnly}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition"
+            className={`flex items-center gap-2 px-4 py-2 ${isReadOnly ? 'bg-slate-400 cursor-not-allowed opacity-50' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded-xl font-bold transition`}
           >
             <Save size={18} /> حفظ الجدول
           </button>
@@ -640,10 +672,16 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
                 ? "bg-[#cfe2f3] font-black border-b-2 border-slate-300"
                 : isFooter 
                   ? "bg-[#d9ead3] font-black border-t-2 border-slate-300"
-                  : index % 2 === 0 ? "bg-white" : "bg-slate-50";
+                  : highlightedRowId === row.id 
+                    ? "bg-orange-100" 
+                    : index % 2 === 0 ? "bg-white" : "bg-slate-50";
 
               return (
-                <tr key={index} className={`${trClass} hover:bg-blue-50/50 transition-colors`}>
+                <tr 
+                  key={index} 
+                  className={`${trClass} hover:bg-orange-50 cursor-pointer transition-colors`}
+                  onClick={() => setHighlightedRowId(row.id)}
+                >
                   {columns.map(col => {
                     if (isHeader && col.id !== 'activity') {
                       return <td key={col.id} className="border border-slate-200 px-2 py-1"></td>;

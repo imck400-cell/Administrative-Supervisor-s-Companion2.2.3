@@ -87,6 +87,7 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
   const [evaluatorRole, setEvaluatorRole] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedEvalId, setSelectedEvalId] = useState('');
+  const [isManualMode, setIsManualMode] = useState(false);
   const [formData, setFormData] = useState<Record<string, { rating: string, text: string }>>({});
   const [additionalDetails, setAdditionalDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -186,26 +187,37 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
            setSelectedEvalId(targetEval.id);
         }
 
+        const normalizeRating = (str: string) => {
+            if (!str) return '';
+            if (str.includes('جيد جدا')) return 'جيد جداً';
+            if (str.includes('ضعيف جدا')) return 'ضعيف جداً';
+            if (str.includes('ممتاز')) return 'ممتاز';
+            if (str.includes('ضعيف')) return 'ضعيف';
+            if (str.includes('جيد')) return 'جيد';
+            return str.trim();
+        };
+
         const criteria: any = targetEval.criteria || {};
         const newFormData: Record<string, { rating: string, text: string }> = {};
 
         if (criteria.comprehension) {
-          newFormData['academic_understanding'] = { rating: criteria.comprehension.rating || '', text: criteria.comprehension.details || '' };
+          newFormData['academic_understanding'] = { rating: normalizeRating(criteria.comprehension.rating), text: criteria.comprehension.details || '' };
         }
         if (criteria.homework) {
-          newFormData['homework_commitment'] = { rating: criteria.homework.rating || '', text: criteria.homework.details || '' };
+          newFormData['homework_commitment'] = { rating: normalizeRating(criteria.homework.rating), text: criteria.homework.details || '' };
         }
         if (criteria.participation) {
-          newFormData['participation'] = { rating: criteria.participation.rating || '', text: criteria.participation.details || '' };
+          newFormData['participation'] = { rating: normalizeRating(criteria.participation.rating), text: criteria.participation.details || '' };
         }
         if (criteria.behavior) {
-          newFormData['classroom_behavior'] = { rating: criteria.behavior.rating || '', text: criteria.behavior.details || '' };
+          newFormData['classroom_behavior'] = { rating: normalizeRating(criteria.behavior.rating), text: criteria.behavior.details || '' };
         }
         if (criteria.excellence) {
-          newFormData['strengths'] = { rating: criteria.excellence.rating || '', text: criteria.excellence.details || '' };
+          newFormData['strengths'] = { rating: normalizeRating(criteria.excellence.rating), text: criteria.excellence.details || '' };
         }
 
         setFormData(newFormData);
+        setIsManualMode(false);
         
         if (criteria.customAction?.text) {
           setAdditionalDetails(criteria.customAction.text);
@@ -719,68 +731,91 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
               {/* Dynamic Assessment Fields */}
               <div className={`transition-all duration-300 ${evaluatorRole ? 'opacity-100 translate-y-0' : 'opacity-50 translate-y-4 pointer-events-none hidden'}`}>
                 <div className="space-y-6">
-                  <div className="flex items-center gap-2 mb-2">
-                     <span className="w-8 h-8 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center font-black">1</span>
-                     <h3 className="text-lg font-black text-slate-800">المعايير المخصصة والتقييم</h3>
+                  <div className="flex items-center gap-2 mb-2 justify-between">
+                     <div className="flex items-center gap-2">
+                       <span className="w-8 h-8 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center font-black">1</span>
+                       <h3 className="text-lg font-black text-slate-800">المعايير المخصصة والتقييم</h3>
+                     </div>
+                     {evaluatorRole === 'teacher' && selectedEvalId && (
+                       <button
+                         type="button"
+                         onClick={() => setIsManualMode(!isManualMode)}
+                         className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition border-2 ${isManualMode ? 'bg-amber-100 text-amber-700 border-amber-200 shadow-sm' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 hover:border-slate-300'}`}
+                       >
+                          {isManualMode ? 'إلغاء التعبئة اليدوية' : 'تعبئة يدوية'}
+                       </button>
+                     )}
                   </div>
 
-                  {fields.map((f, i) => (
-                    <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:border-blue-200 transition-colors">
-                      <label className="block text-base font-black text-slate-800 mb-4 flex items-center gap-2">
-                        <div className="w-1.5 h-6 bg-blue-500 rounded-full"></div>
-                        {f.label}
-                      </label>
-                      
-                      {f.type === 'select' ? (
-                        <select
-                          value={formData[f.key]?.text || ''}
-                          onChange={(e) => handleFormDataChange(f.key, 'text', e.target.value)}
-                          className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl text-slate-800 focus:border-blue-500 h-[56px] px-4 font-bold"
-                        >
-                           <option value="">اختر...</option>
-                           {f.options?.map((opt, idx) => <option key={idx} value={opt}>{opt}</option>)}
-                        </select>
-                      ) : (
-                        <div className="space-y-4">
-                          {!f.noRating && (
-                            <div className="flex flex-wrap gap-2">
-                              {RATINGS.map(rating => {
-                                const isSelected = formData[f.key]?.rating === rating.id;
-                                return (
-                                  <button
-                                    key={rating.id}
-                                    onClick={() => handleFormDataChange(f.key, 'rating', rating.id)}
-                                    className={`px-4 py-2.5 rounded-xl text-sm font-black transition-all ${isSelected ? rating.color + ' text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
-                                  >
-                                    {rating.id}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                          <textarea
-                            value={formData[f.key]?.text || ''}
-                            onChange={(e) => handleFormDataChange(f.key, 'text', e.target.value)}
-                            placeholder={`أدخل تفاصيل وملاحظات ${f.label} مع الشرح...`}
-                            className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl text-slate-800 focus:border-blue-500 p-4 font-medium min-h-[100px] resize-y"
-                          />
+                  {(() => {
+                    const isReadOnly = evaluatorRole === 'teacher' && !!selectedEvalId && !isManualMode;
+                    return (
+                      <>
+                        {fields.map((f, i) => (
+                          <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:border-blue-200 transition-colors">
+                            <label className="block text-base font-black text-slate-800 mb-4 flex items-center gap-2">
+                              <div className="w-1.5 h-6 bg-blue-500 rounded-full"></div>
+                              {f.label}
+                            </label>
+                            
+                            {f.type === 'select' ? (
+                              <select
+                                value={formData[f.key]?.text || ''}
+                                onChange={(e) => handleFormDataChange(f.key, 'text', e.target.value)}
+                                disabled={isReadOnly}
+                                className={`w-full bg-slate-50 border-2 border-slate-200 rounded-2xl text-slate-800 focus:border-blue-500 h-[56px] px-4 font-bold ${isReadOnly ? 'opacity-70 cursor-not-allowed' : ''}`}
+                              >
+                                 <option value="">اختر...</option>
+                                 {f.options?.map((opt, idx) => <option key={idx} value={opt}>{opt}</option>)}
+                              </select>
+                            ) : (
+                              <div className="space-y-4">
+                                {!f.noRating && (
+                                  <div className="flex flex-wrap gap-2">
+                                    {RATINGS.map(rating => {
+                                      const isSelected = formData[f.key]?.rating === rating.id;
+                                      return (
+                                        <button
+                                          key={rating.id}
+                                          type="button"
+                                          onClick={() => handleFormDataChange(f.key, 'rating', rating.id)}
+                                          disabled={isReadOnly}
+                                          className={`px-4 py-2.5 rounded-xl text-sm font-black transition-all ${isSelected ? rating.color + ' text-white shadow-md' : 'bg-slate-50 text-slate-500'} ${isReadOnly && !isSelected ? 'opacity-50 cursor-not-allowed' : ''} ${!isReadOnly && !isSelected ? 'hover:bg-slate-100 hover:text-slate-700' : ''}`}
+                                        >
+                                          {rating.id}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                                <textarea
+                                  value={formData[f.key]?.text || ''}
+                                  onChange={(e) => handleFormDataChange(f.key, 'text', e.target.value)}
+                                  disabled={isReadOnly}
+                                  placeholder={`أدخل تفاصيل وملاحظات ${f.label} مع الشرح...`}
+                                  className={`w-full bg-slate-50 border-2 border-slate-200 rounded-2xl text-slate-800 focus:border-blue-500 p-4 font-medium min-h-[100px] resize-y ${isReadOnly ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-3xl border border-blue-100 shadow-sm mt-8">
+                           <label className="block text-base font-black text-indigo-900 mb-3 flex items-center gap-2">
+                             <CheckCircle2 size={20} className="text-indigo-500" />
+                             تفاصيل إضافية / إجراءات مخصصة
+                           </label>
+                           <textarea 
+                             value={additionalDetails}
+                             onChange={(e) => setAdditionalDetails(e.target.value)}
+                             disabled={isReadOnly}
+                             placeholder="سجل أي ملاحظات واسعة، الإجراءات التي تم اتخاذها، أو التوصيات المستقبلية..."
+                             className={`w-full bg-white border-2 border-indigo-100 rounded-2xl text-slate-800 focus:border-indigo-400 p-4 font-medium min-h-[140px] resize-y shadow-inner ${isReadOnly ? 'opacity-70 cursor-not-allowed' : ''}`}
+                           />
                         </div>
-                      )}
-                    </div>
-                  ))}
-                  
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-3xl border border-blue-100 shadow-sm mt-8">
-                     <label className="block text-base font-black text-indigo-900 mb-3 flex items-center gap-2">
-                       <CheckCircle2 size={20} className="text-indigo-500" />
-                       تفاصيل إضافية / إجراءات مخصصة
-                     </label>
-                     <textarea 
-                       value={additionalDetails}
-                       onChange={(e) => setAdditionalDetails(e.target.value)}
-                       placeholder="سجل أي ملاحظات واسعة، الإجراءات التي تم اتخاذها، أو التوصيات المستقبلية..."
-                       className="w-full bg-white border-2 border-indigo-100 rounded-2xl text-slate-800 focus:border-indigo-400 p-4 font-medium min-h-[140px] resize-y shadow-inner"
-                     />
-                  </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Save, Search, X, Check, FileSpreadsheet, Download, Table, Send } from 'lucide-react';
+import { ArrowLeft, Save, Search, X, Check, FileSpreadsheet, Download, Table, Send, Trash2, ClipboardList } from 'lucide-react';
 import { useGlobal } from '../context/GlobalState';
 import { toast } from 'sonner';
 import { StudentEvaluation } from '../types';
@@ -84,6 +84,7 @@ export const StudentEvaluationView = ({ onBack }: { onBack: () => void }) => {
   const [evaluatorRole, setEvaluatorRole] = useState('معلم المادة');
   const [subjects, setSubjects] = useState('');
   const [grades, setGrades] = useState('');
+  const [editingEvalId, setEditingEvalId] = useState<string | null>(null);
   
   const [evalData, setEvalData] = useState({
     comprehension: { rating: '', details: '' },
@@ -106,12 +107,53 @@ export const StudentEvaluationView = ({ onBack }: { onBack: () => void }) => {
   }, [students, searchQuery, selectedStudents]);
 
   const handleSelectStudent = (s: any) => {
+    const today = new Date().toLocaleDateString('en-GB');
+    const existing = (data.studentEvaluations || []).find((e: any) => 
+        e.studentId === s.id && 
+        e.dateStr === today && 
+        e.teacherName === teacherName
+    );
+
+    if (existing) {
+       if (window.confirm(`هذا الطالب (${s.name}) تم وضع تقييم له بنفس تاريخ اليوم. هل تريد التعديل عليه؟`)) {
+          setEvalData(existing.criteria || {
+            comprehension: { rating: '', details: '' },
+            homework: { rating: '', details: '' },
+            participation: { rating: '', details: '' },
+            behavior: { rating: '', details: '' },
+            excellence: { rating: '', details: '' },
+            customAction: { text: '' }
+          });
+          setEditingEvalId(existing.id);
+          setSelectedSemester(existing.semester || 'الأول');
+          setTeacherName(existing.teacherName || teacherName);
+          setEvaluatorRole(existing.evaluatorRole || evaluatorRole);
+          setSubjects(existing.subjects || subjects);
+          setGrades(existing.grades || grades);
+
+          setSelectedStudents([s]);
+          setSearchQuery('');
+          return;
+       }
+    }
+
     setSelectedStudents([...selectedStudents, s]);
     setSearchQuery('');
   };
 
   const handleRemoveStudent = (id: string) => {
     setSelectedStudents(selectedStudents.filter(s => s.id !== id));
+    if (selectedStudents.length === 1 && editingEvalId) {
+      setEditingEvalId(null);
+      setEvalData({
+        comprehension: { rating: '', details: '' },
+        homework: { rating: '', details: '' },
+        participation: { rating: '', details: '' },
+        behavior: { rating: '', details: '' },
+        excellence: { rating: '', details: '' },
+        customAction: { text: '' }
+      });
+    }
   };
 
   const updateCriteria = (criterion: string, field: 'rating' | 'details' | 'text', value: string) => {
@@ -134,28 +176,47 @@ export const StudentEvaluationView = ({ onBack }: { onBack: () => void }) => {
       return;
     }
 
-    const newEvals: StudentEvaluation[] = selectedStudents.map(student => ({
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      userId: currentUser?.id,
-      schoolId: schoolName,
-      dateStr: new Date().toLocaleDateString('en-GB'),
-      semester: selectedSemester,
-      teacherName: teacherName,
-      evaluatorRole: evaluatorRole,
-      subjects: subjects,
-      grades: grades,
-      studentId: student.id,
-      studentName: student.name,
-      grade: student.grade || '',
-      section: student.section || '',
-      criteria: evalData
-    }));
+    let existingEvals = [...(data.studentEvaluations || [])];
 
-    const existingEvals = data.studentEvaluations || [];
-    updateData({ studentEvaluations: [...existingEvals, ...newEvals] });
+    if (editingEvalId) {
+      existingEvals = existingEvals.map((ev: any) => 
+        ev.id === editingEvalId 
+          ? {
+              ...ev,
+              semester: selectedSemester,
+              teacherName,
+              evaluatorRole,
+              subjects,
+              grades,
+              criteria: evalData
+            }
+          : ev
+      );
+    } else {
+      const newEvals: StudentEvaluation[] = selectedStudents.map(student => ({
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        userId: currentUser?.id,
+        schoolId: schoolName,
+        dateStr: new Date().toLocaleDateString('en-GB'),
+        semester: selectedSemester,
+        teacherName: teacherName,
+        evaluatorRole: evaluatorRole,
+        subjects: subjects,
+        grades: grades,
+        studentId: student.id,
+        studentName: student.name,
+        grade: student.grade || '',
+        section: student.section || '',
+        criteria: evalData
+      }));
+      existingEvals = [...existingEvals, ...newEvals];
+    }
+
+    updateData({ studentEvaluations: existingEvals });
     
     toast.success('تم الحفظ بنجاح');
     setSelectedStudents([]);
+    setEditingEvalId(null);
     setEvalData({
       comprehension: { rating: '', details: '' },
       homework: { rating: '', details: '' },
@@ -166,8 +227,54 @@ export const StudentEvaluationView = ({ onBack }: { onBack: () => void }) => {
     });
   };
 
+  const handleDelete = (id: string) => {
+    if (isReadOnly) return toast.error('للقراءة فقط');
+    if (window.confirm('هل أنت متأكد من حذف هذا التقييم؟')) {
+      const existing = data.studentEvaluations || [];
+      updateData({ studentEvaluations: existing.filter((e: any) => e.id !== id) });
+      toast.success('تم الحذف بنجاح');
+    }
+  };
+
+  const handleDeleteSelected = (ids: string[]) => {
+    if (isReadOnly) return toast.error('للقراءة فقط');
+    if (window.confirm('هل أنت متأكد من حذف التقييمات المحددة؟')) {
+      const existing = data.studentEvaluations || [];
+      updateData({ studentEvaluations: existing.filter((e: any) => !ids.includes(e.id)) });
+      toast.success('تم الحذف بنجاح');
+    }
+  };
+
+  const handleEdit = (evalData: any) => {
+    setView('form');
+    setEditingEvalId(evalData.id);
+    setSelectedSemester(evalData.semester || 'الأول');
+    setTeacherName(evalData.teacherName || '');
+    setEvaluatorRole(evalData.evaluatorRole || 'معلم المادة');
+    setSubjects(evalData.subjects || '');
+    setGrades(evalData.grades || '');
+    setEvalData(evalData.criteria || {
+      comprehension: { rating: '', details: '' },
+      homework: { rating: '', details: '' },
+      participation: { rating: '', details: '' },
+      behavior: { rating: '', details: '' },
+      excellence: { rating: '', details: '' },
+      customAction: { text: '' }
+    });
+    const s = students.find(st => st.id === evalData.studentId) || { id: evalData.studentId, name: evalData.studentName, grade: evalData.grade, section: evalData.section };
+    setSelectedStudents([s]);
+  };
+
   if (view === 'table') {
-    return <StudentEvaluationTable onBack={() => setView('form')} data={data} schoolName={schoolName} currentUser={currentUser} />;
+    return <StudentEvaluationTable 
+      onBack={() => setView('form')} 
+      data={data} 
+      schoolName={schoolName} 
+      currentUser={currentUser} 
+      onEdit={handleEdit}
+      onDelete={handleDelete}
+      onDeleteSelected={handleDeleteSelected}
+    />;
   }
 
   return (
@@ -343,13 +450,14 @@ export const StudentEvaluationView = ({ onBack }: { onBack: () => void }) => {
   );
 };
 
-const StudentEvaluationTable = ({ onBack, data, schoolName, currentUser }: any) => {
+const StudentEvaluationTable = ({ onBack, data, schoolName, currentUser, onEdit, onDelete, onDeleteSelected }: any) => {
   const [semesterFilter, setSemesterFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [nameFilter, setNameFilter] = useState('');
   const [gradeFilter, setGradeFilter] = useState('');
   const [sectionFilter, setSectionFilter] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const evals = useMemo(() => {
     return (data.studentEvaluations || []).filter((e: StudentEvaluation) => {
@@ -401,6 +509,20 @@ const StudentEvaluationTable = ({ onBack, data, schoolName, currentUser }: any) 
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const deleteEvaluations = () => {
+    if (selectedIds.length === 0) return;
+    if (onDeleteSelected) onDeleteSelected(selectedIds);
+    setSelectedIds([]);
+  };
+
+  const toggleSelect = (id: string) => {
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter(i => i !== id));
+    } else {
+      setSelectedIds([...selectedIds, id]);
+    }
   };
 
   const handleExportExcel = () => {
@@ -511,6 +633,11 @@ const StudentEvaluationTable = ({ onBack, data, schoolName, currentUser }: any) 
       </div>
 
       <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-200 flex flex-wrap gap-4 items-center">
+        {selectedIds.length > 0 && (
+          <button onClick={deleteEvaluations} className="flex flex-col gap-1 items-center px-4 py-2 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition font-bold text-xs ring-2 ring-red-500 ring-offset-2">
+            <Trash2 size={16} /> تحديد وحذف
+          </button>
+        )}
         <div className="flex flex-col gap-1">
           <label className="text-xs font-bold text-slate-500">الفصل الدراسي</label>
           <select value={semesterFilter} onChange={e => setSemesterFilter(e.target.value)} className="border-2 border-slate-200 rounded-xl p-2 outline-none">
@@ -551,6 +678,8 @@ const StudentEvaluationTable = ({ onBack, data, schoolName, currentUser }: any) 
         <table className="w-full text-right text-sm">
           <thead className="bg-[#4a85c8] text-white">
             <tr>
+              <th className="p-3 font-bold border underline border-[#3768a3]">تحديد</th>
+              <th className="p-3 font-bold border underline border-[#3768a3]">إجراءات</th>
               <th className="p-3 font-bold border underline border-[#3768a3]">التاريخ</th>
               <th className="p-3 font-bold border underline border-[#3768a3]">اسم الطالب</th>
               <th className="p-3 font-bold border underline border-[#3768a3]">الصف والشعبة</th>
@@ -566,6 +695,19 @@ const StudentEvaluationTable = ({ onBack, data, schoolName, currentUser }: any) 
             ) : (
               evals.map((e: any, idx: number) => (
                 <tr key={e.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-slate-100 transition-colors`}>
+                  <td className="p-3 border border-slate-200 text-center w-12">
+                    <input type="checkbox" checked={selectedIds.includes(e.id)} onChange={() => toggleSelect(e.id)} className="w-4 h-4 cursor-pointer" />
+                  </td>
+                  <td className="p-3 border border-slate-200 w-24">
+                    <div className="flex items-center gap-2">
+                       <button onClick={() => onEdit && onEdit(e)} className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition" title="تعديل">
+                         <ClipboardList size={16} />
+                       </button>
+                       <button onClick={() => onDelete && onDelete(e.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg transition" title="حذف">
+                         <Trash2 size={16} />
+                       </button>
+                    </div>
+                  </td>
                   <td className="p-3 border border-slate-200">{e.dateStr}</td>
                   <td className="p-3 border border-slate-200 font-bold">{e.studentName}</td>
                   <td className="p-3 border border-slate-200">{e.grade} - {e.section}</td>

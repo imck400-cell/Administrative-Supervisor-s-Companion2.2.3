@@ -86,6 +86,7 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   const [evaluatorRole, setEvaluatorRole] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedEvalId, setSelectedEvalId] = useState('');
   const [formData, setFormData] = useState<Record<string, { rating: string, text: string }>>({});
   const [additionalDetails, setAdditionalDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -152,24 +153,38 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     return result;
   }, [logs, filterDateFrom, filterDateTo, selectedFilterStudents]);
 
-  // Sync when selectedSubject changes
+  // Sync when selectedSubject or selectedEvalId changes
+  const pastEvaluations = useMemo(() => {
+    if (!selectedStudent || evaluatorRole !== 'teacher' || !selectedSubject) return [];
+    return (data.studentEvaluations || []).filter((e: any) => {
+      if (e.studentId !== selectedStudent.id) return false;
+      if (e.subjects) {
+         const subArr = e.subjects.split('،').map((s:string) => s.trim());
+         return subArr.includes(selectedSubject);
+      }
+      return false;
+    }).sort((a: any, b: any) => {
+      // Sort so newest dates appear first (assuming dateStr is dd/mm/yyyy)
+      const parseDate = (dStr: string) => {
+         const parts = dStr.split('/');
+         return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0])).getTime();
+      };
+      return parseDate(b.dateStr) - parseDate(a.dateStr);
+    });
+  }, [data.studentEvaluations, selectedStudent, evaluatorRole, selectedSubject]);
+
   useEffect(() => {
     if (selectedStudent && evaluatorRole === 'teacher' && selectedSubject) {
-      const evals = data.studentEvaluations || [];
-      const studentEvals = evals.filter((e: any) => {
-        if (e.studentId !== selectedStudent.id) return false;
-        if (e.subjects) {
-           const subArr = e.subjects.split('،').map((s:string) => s.trim());
-           return subArr.includes(selectedSubject);
+      if (pastEvaluations.length > 0) {
+        let targetEval = pastEvaluations[0];
+        if (selectedEvalId) {
+           const specific = pastEvaluations.find((e: any) => e.id === selectedEvalId);
+           if (specific) targetEval = specific;
+        } else {
+           setSelectedEvalId(targetEval.id);
         }
-        return false;
-      }).sort((a: any, b: any) => {
-        return (b.id || '').localeCompare(a.id || '');
-      });
 
-      if (studentEvals.length > 0) {
-        const latestEval = studentEvals[0];
-        const criteria: any = latestEval.criteria || {};
+        const criteria: any = targetEval.criteria || {};
         const newFormData: Record<string, { rating: string, text: string }> = {};
 
         if (criteria.comprehension) {
@@ -198,9 +213,10 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
       } else {
          setFormData({});
          setAdditionalDetails('');
+         setSelectedEvalId('');
       }
     }
-  }, [selectedSubject, selectedStudent, evaluatorRole, data.studentEvaluations]);
+  }, [selectedSubject, selectedStudent, evaluatorRole, pastEvaluations, selectedEvalId]);
 
   if (!isOpen) return null;
 
@@ -675,24 +691,44 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
                   </select>
 
                   {evaluatorRole === 'teacher' && selectedStudent && (
-                    <div className="mt-4 animate-in fade-in">
-                       <label className="block text-sm font-black text-slate-700 mb-2">المادة الدراسية</label>
-                       <select 
-                          value={selectedSubject}
-                          onChange={(e) => setSelectedSubject(e.target.value)}
-                          className="w-full bg-indigo-50 border-2 border-indigo-100 rounded-2xl text-indigo-800 focus:border-indigo-500 h-[56px] px-4 font-bold transition-all cursor-pointer"
-                        >
-                          <option value="">اختر المادة...</option>
-                          {(() => {
-                             const opts = getSubjectsForGrade(selectedStudent.grade);
-                             if (selectedSubject && !opts.includes(selectedSubject)) {
-                               opts.push(selectedSubject);
-                             }
-                             return opts.map((sub, i) => (
-                               <option key={i} value={sub}>{sub}</option>
-                             ));
-                          })()}
-                        </select>
+                    <div className="mt-4 animate-in fade-in space-y-4">
+                       <div>
+                         <label className="block text-sm font-black text-slate-700 mb-2">المادة الدراسية</label>
+                         <select 
+                            value={selectedSubject}
+                            onChange={(e) => { setSelectedSubject(e.target.value); setSelectedEvalId(''); }}
+                            className="w-full bg-indigo-50 border-2 border-indigo-100 rounded-2xl text-indigo-800 focus:border-indigo-500 h-[56px] px-4 font-bold transition-all cursor-pointer"
+                          >
+                            <option value="">اختر المادة...</option>
+                            {(() => {
+                               const opts = getSubjectsForGrade(selectedStudent.grade);
+                               if (selectedSubject && !opts.includes(selectedSubject)) {
+                                 opts.push(selectedSubject);
+                               }
+                               return opts.map((sub, i) => (
+                                 <option key={i} value={sub}>{sub}</option>
+                               ));
+                            })()}
+                          </select>
+                       </div>
+                       
+                       {selectedSubject && pastEvaluations.length > 0 && (
+                         <div className="animate-in slide-in-from-top-2 fade-in">
+                           <label className="block text-sm font-black text-slate-700 mb-2">تقييمات سابقة للمادة</label>
+                           <select 
+                              value={selectedEvalId}
+                              onChange={(e) => setSelectedEvalId(e.target.value)}
+                              className="w-full bg-amber-50 border-2 border-amber-100 rounded-2xl text-amber-800 focus:border-amber-500 h-[56px] px-4 font-bold transition-all cursor-pointer"
+                            >
+                              <option value="">تقييم جديد...</option>
+                              {pastEvaluations.map((ev: any, i: number) => (
+                                <option key={ev.id} value={ev.id}>
+                                  التقييم بتاريخ {ev.dateStr} (الفصل {ev.semester})
+                                </option>
+                              ))}
+                            </select>
+                         </div>
+                       )}
                     </div>
                   )}
                 </div>

@@ -410,12 +410,14 @@ export interface SelfEvaluation {
   userId?: string;
   schoolId?: string;
   dateStr: string;
+  reportName?: string;
   teacherName: string;
   subject: string;
   grades: string;
   schoolName: string;
   branchName: string;
   rows: SelfEvaluationRow[];
+  maxScores?: { planned: number, executed: number };
 }
 
 export interface AppData {

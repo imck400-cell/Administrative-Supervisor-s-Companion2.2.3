@@ -97,13 +97,14 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
   // Create Form State
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<StudentReport | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   const [evaluatorRole, setEvaluatorRole] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [formData, setFormData] = useState<Record<string, { rating: string, text: string }>>({});
   const [additionalDetails, setAdditionalDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveStatus, setSaveStatus] = useState({ type: '', message: '' });
+  const syncedEvalIdRef = useRef<string | null>(null);
 
   // View Log State
   const [logs, setLogs] = useState<any[]>([]);
@@ -135,14 +136,24 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
   const filteredStudents = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const term = normalizeArabic(searchQuery);
-    return data.studentReports.filter(s => normalizeArabic(s.name).includes(term)).slice(0, 5);
-  }, [searchQuery, data.studentReports]);
+    const userSchools = currentUser?.role === 'admin' || currentUser?.permissions?.all ? [] : Object.keys(currentUser?.permissions?.schoolsAndBranches || {});
+
+    return (data.secretariatStudents || []).filter(s => {
+      if (userSchools.length > 0 && !userSchools.includes(s.school || s.schoolName || s.schoolId)) return false;
+      return s.name && normalizeArabic(s.name).includes(term);
+    }).slice(0, 7);
+  }, [searchQuery, data.secretariatStudents, currentUser]);
 
   const filteredFilterStudents = useMemo(() => {
     if (!filterStudentsQuery.trim()) return [];
     const term = normalizeArabic(filterStudentsQuery);
-    return data.studentReports.filter(s => normalizeArabic(s.name).includes(term)).slice(0, 5);
-  }, [filterStudentsQuery, data.studentReports]);
+    const userSchools = currentUser?.role === 'admin' || currentUser?.permissions?.all ? [] : Object.keys(currentUser?.permissions?.schoolsAndBranches || {});
+
+    return (data.secretariatStudents || []).filter(s => {
+      if (userSchools.length > 0 && !userSchools.includes(s.school || s.schoolName || s.schoolId)) return false;
+      return s.name && normalizeArabic(s.name).includes(term);
+    }).slice(0, 7);
+  }, [filterStudentsQuery, data.secretariatStudents, currentUser]);
 
   // View Log Filtering
   const filteredLogs = useMemo(() => {
@@ -157,62 +168,73 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  const handleStudentSelect = (student: StudentReport) => {
+  const handleStudentSelect = (student: any) => {
     setSelectedStudent(student);
     setSearchQuery(student.name);
     setShowSuggestions(false);
-
-    // Look for previous teacher evaluations from data.studentEvaluations
-    const evals = data.studentEvaluations || [];
-    const studentEvals = evals.filter((e: any) => e.studentId === student.id).sort((a: any, b: any) => {
-      // Sort by newest first? Just basic is enough, or grab the latest.
-      return (b.id || '').localeCompare(a.id || '');
-    });
-
-    if (studentEvals.length > 0) {
-      // Pick the most recent evaluation
-      const latestEval = studentEvals[0];
-      setEvaluatorRole('teacher');
-      if (latestEval.subjects) {
-          // It could be multiple subjects "اللغة العربية، الرياضيات", pick first or set as custom
-          const subjectsArr = latestEval.subjects.split('،').map((s: string) => s.trim()).filter(Boolean);
-          if (subjectsArr.length > 0) {
-              setSelectedSubject(subjectsArr[0]);
-          }
-      }
-
-      // Pre-fill form data
-      const criteria: any = latestEval.criteria || {};
-      const newFormData: Record<string, { rating: string, text: string }> = {};
-
-      if (criteria.comprehension) {
-        newFormData['academic_understanding'] = { rating: criteria.comprehension.rating || '', text: criteria.comprehension.details || '' };
-      }
-      if (criteria.homework) {
-        newFormData['homework_commitment'] = { rating: criteria.homework.rating || '', text: criteria.homework.details || '' };
-      }
-      if (criteria.participation) {
-        newFormData['participation'] = { rating: criteria.participation.rating || '', text: criteria.participation.details || '' };
-      }
-      if (criteria.behavior) {
-        newFormData['classroom_behavior'] = { rating: criteria.behavior.rating || '', text: criteria.behavior.details || '' };
-      }
-      if (criteria.excellence) {
-        newFormData['strengths'] = { rating: criteria.excellence.rating || '', text: criteria.excellence.details || '' };
-      }
-
-      setFormData(newFormData);
-      
-      if (criteria.customAction?.text) {
-        setAdditionalDetails(criteria.customAction.text);
-      } else {
-        setAdditionalDetails('');
-      }
-    } else {
-      setFormData({});
-      setAdditionalDetails('');
-    }
+    
+    // We will rely on the useEffect for syncing the teacher evaluation
+    syncedEvalIdRef.current = null;
   };
+
+  // Sync with Teacher Evaluations dynamically
+  useEffect(() => {
+    if (selectedStudent) {
+      const evals = data.studentEvaluations || [];
+      const studentEvals = evals.filter((e: any) => e.studentId === selectedStudent.id).sort((a: any, b: any) => {
+        return (b.id || '').localeCompare(a.id || '');
+      });
+
+      if (studentEvals.length > 0) {
+        const latestEval = studentEvals[0];
+        // Only auto-sync if we haven't already synced this specific evaluation 
+        // to avoid overwriting user edits continuously on rerenders
+        if (syncedEvalIdRef.current !== latestEval.id) {
+            syncedEvalIdRef.current = latestEval.id;
+            
+            setEvaluatorRole('teacher');
+            if (latestEval.subjects) {
+              const subjectsArr = latestEval.subjects.split('،').map((s: string) => s.trim()).filter(Boolean);
+              if (subjectsArr.length > 0) {
+                  setSelectedSubject(subjectsArr[0]);
+              }
+            }
+
+            const criteria: any = latestEval.criteria || {};
+            const newFormData: Record<string, { rating: string, text: string }> = {};
+
+            if (criteria.comprehension) {
+              newFormData['academic_understanding'] = { rating: criteria.comprehension.rating || '', text: criteria.comprehension.details || '' };
+            }
+            if (criteria.homework) {
+              newFormData['homework_commitment'] = { rating: criteria.homework.rating || '', text: criteria.homework.details || '' };
+            }
+            if (criteria.participation) {
+              newFormData['participation'] = { rating: criteria.participation.rating || '', text: criteria.participation.details || '' };
+            }
+            if (criteria.behavior) {
+              newFormData['classroom_behavior'] = { rating: criteria.behavior.rating || '', text: criteria.behavior.details || '' };
+            }
+            if (criteria.excellence) {
+              newFormData['strengths'] = { rating: criteria.excellence.rating || '', text: criteria.excellence.details || '' };
+            }
+
+            setFormData(newFormData);
+            
+            if (criteria.customAction?.text) {
+              setAdditionalDetails(criteria.customAction.text);
+            } else {
+              setAdditionalDetails('');
+            }
+        }
+      } else {
+         if (evaluatorRole === 'teacher') {
+             setFormData({});
+             setAdditionalDetails('');
+         }
+      }
+    }
+  }, [data.studentEvaluations, selectedStudent]);
 
   const handleFormDataChange = (key: string, fieldType: 'rating' | 'text', value: string) => {
     setFormData(prev => ({

@@ -73,21 +73,7 @@ const ALL_FIELDS_MAP: Record<string, string> = {
 };
 
 const getSubjectsForGrade = (grade: any) => {
-  if (!grade) return [];
-  const g = normalizeArabic(grade);
-  if (['تمهيدي', 'اول', 'ثاني', 'ثالث', 'اوله', 'ثانيه', 'ثالثه'].some(x => g.includes(x) && !g.includes('ثانوي'))) {
-    return ['القرآن الكريم', 'رأي المربية', 'اللغة الإنجليزية', 'الحاسوب', 'المهارات الحياتية'];
-  }
-  if (['رابع', 'خامس', 'سادس', 'سابع', 'ثامن', 'تاسع'].some(x => g.includes(x))) {
-    return ['القرآن الكريم', 'التربية الإسلامية', 'اللغة العربية', 'اللغة الإنجليزية', 'الرياضيات', 'العلوم', 'الاجتماعيات', 'الحاسوب', 'المهارات الحياتية'];
-  }
-  if (['الاول الثانوي', 'اول ثانوي', 'أول ثانوي'].some(x => g.includes(x))) {
-    return ['القرآن الكريم', 'التربية الإسلامية', 'اللغة العربية', 'اللغة الإنجليزية', 'الرياضيات', 'الكيمياء', 'الفيزياء', 'الأحياء', 'الاجتماعيات', 'الحاسوب', 'المهارات الحياتية'];
-  }
-  if (['ثاني ثانوي', 'ثالث ثانوي', 'الثاني الثانوي', 'الثالث الثانوي'].some(x => g.includes(x))) {
-    return ['القرآن الكريم', 'التربية الإسلامية', 'اللغة العربية', 'اللغة الإنجليزية', 'الرياضيات', 'الكيمياء', 'الفيزياء', 'الأحياء', 'الحاسوب', 'المهارات الحياتية'];
-  }
-  return ['القرآن الكريم', 'التربية الإسلامية', 'اللغة العربية', 'الرياضيات', 'العلوم'];
+  return ['مربية', 'القرآن كريم', 'التربية الإسلامية', 'اللغة العربية', 'اللغة الإنجليزية', 'الرياضيات', 'العلوم', 'الكيمياء', 'الفيزياء', 'الأحياء', 'الاجتماعيات', 'الحاسوب'];
 };
 
 const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
@@ -166,65 +152,6 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     return result;
   }, [logs, filterDateFrom, filterDateTo, selectedFilterStudents]);
 
-  // Sync with Teacher Evaluations dynamically
-  useEffect(() => {
-    if (selectedStudent) {
-      const evals = data.studentEvaluations || [];
-      const studentEvals = evals.filter((e: any) => e.studentId === selectedStudent.id).sort((a: any, b: any) => {
-        return (b.id || '').localeCompare(a.id || '');
-      });
-
-      if (studentEvals.length > 0) {
-        const latestEval = studentEvals[0];
-        // Only auto-sync if we haven't already synced this specific evaluation 
-        // to avoid overwriting user edits continuously on rerenders
-        if (syncedEvalIdRef.current !== latestEval.id) {
-            syncedEvalIdRef.current = latestEval.id;
-            
-            setEvaluatorRole('teacher');
-            if (latestEval.subjects) {
-              const subjectsArr = latestEval.subjects.split('،').map((s: string) => s.trim()).filter(Boolean);
-              if (subjectsArr.length > 0) {
-                  setSelectedSubject(subjectsArr[0]);
-              }
-            }
-
-            const criteria: any = latestEval.criteria || {};
-            const newFormData: Record<string, { rating: string, text: string }> = {};
-
-            if (criteria.comprehension) {
-              newFormData['academic_understanding'] = { rating: criteria.comprehension.rating || '', text: criteria.comprehension.details || '' };
-            }
-            if (criteria.homework) {
-              newFormData['homework_commitment'] = { rating: criteria.homework.rating || '', text: criteria.homework.details || '' };
-            }
-            if (criteria.participation) {
-              newFormData['participation'] = { rating: criteria.participation.rating || '', text: criteria.participation.details || '' };
-            }
-            if (criteria.behavior) {
-              newFormData['classroom_behavior'] = { rating: criteria.behavior.rating || '', text: criteria.behavior.details || '' };
-            }
-            if (criteria.excellence) {
-              newFormData['strengths'] = { rating: criteria.excellence.rating || '', text: criteria.excellence.details || '' };
-            }
-
-            setFormData(newFormData);
-            
-            if (criteria.customAction?.text) {
-              setAdditionalDetails(criteria.customAction.text);
-            } else {
-              setAdditionalDetails('');
-            }
-        }
-      } else {
-         if (evaluatorRole === 'teacher') {
-             setFormData({});
-             setAdditionalDetails('');
-         }
-      }
-    }
-  }, [data.studentEvaluations, selectedStudent]);
-
   if (!isOpen) return null;
 
   const handleStudentSelect = (student: any) => {
@@ -232,8 +159,54 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     setSearchQuery(student.name);
     setShowSuggestions(false);
     
-    // We will rely on the useEffect for syncing the teacher evaluation
-    syncedEvalIdRef.current = null;
+    // Perform sync immediately
+    const evals = data.studentEvaluations || [];
+    const studentEvals = evals.filter((e: any) => e.studentId === student.id).sort((a: any, b: any) => {
+      return (b.id || '').localeCompare(a.id || '');
+    });
+
+    if (studentEvals.length > 0) {
+      const latestEval = studentEvals[0];
+      setEvaluatorRole('teacher');
+      if (latestEval.subjects) {
+        const subjectsArr = latestEval.subjects.split('،').map((s: string) => s.trim()).filter(Boolean);
+        if (subjectsArr.length > 0) {
+            setSelectedSubject(subjectsArr[0]);
+        }
+      }
+
+      const criteria: any = latestEval.criteria || {};
+      const newFormData: Record<string, { rating: string, text: string }> = {};
+
+      if (criteria.comprehension) {
+        newFormData['academic_understanding'] = { rating: criteria.comprehension.rating || '', text: criteria.comprehension.details || '' };
+      }
+      if (criteria.homework) {
+        newFormData['homework_commitment'] = { rating: criteria.homework.rating || '', text: criteria.homework.details || '' };
+      }
+      if (criteria.participation) {
+        newFormData['participation'] = { rating: criteria.participation.rating || '', text: criteria.participation.details || '' };
+      }
+      if (criteria.behavior) {
+        newFormData['classroom_behavior'] = { rating: criteria.behavior.rating || '', text: criteria.behavior.details || '' };
+      }
+      if (criteria.excellence) {
+        newFormData['strengths'] = { rating: criteria.excellence.rating || '', text: criteria.excellence.details || '' };
+      }
+
+      setFormData(newFormData);
+      
+      if (criteria.customAction?.text) {
+        setAdditionalDetails(criteria.customAction.text);
+      } else {
+        setAdditionalDetails('');
+      }
+    } else {
+      setEvaluatorRole('');
+      setFormData({});
+      setAdditionalDetails('');
+      setSelectedSubject('');
+    }
   };
 
   const handleFormDataChange = (key: string, fieldType: 'rating' | 'text', value: string) => {

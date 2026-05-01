@@ -85,39 +85,39 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
 
   const defaultRows: SelfEvaluationRow[] = [
     { id: 'h1', category: 'header', no: '', activity: 'الأنشطة التربوية', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r1', category: 'الأنشطة التربوية', no: '1', activity: 'تنوع الاستراتيجيات المستخدمة لعدد 12', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r2', category: 'الأنشطة التربوية', no: '2', activity: 'تنفيذ برنامج التقوية والتأهيل 3', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r3', category: 'الأنشطة التربوية', no: '3', activity: 'الزيارة التبادلية 1', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r4', category: 'الأنشطة التربوية', no: '4', activity: 'الأنشطة اللاصفية 3', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r5', category: 'الأنشطة التربوية', no: '5', activity: 'تسليم الامتحانات في الوقت المطلوب بعد التعديل 1', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r6', category: 'الأنشطة التربوية', no: '6', activity: 'التأخر عن الخطة الشهرية في الدروس بعدد 0', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r7', category: 'الأنشطة التربوية', no: '7', activity: 'المشاركة في الدورات واللقاءات بفاعلية 1', planned: '', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r1', category: 'الأنشطة التربوية', no: '1', activity: 'تنوع الاستراتيجيات المستخدمة', planned: '12', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r2', category: 'الأنشطة التربوية', no: '2', activity: 'تنفيذ برنامج التقوية والتأهيل', planned: '3', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r3', category: 'الأنشطة التربوية', no: '3', activity: 'الزيارة التبادلية', planned: '1', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r4', category: 'الأنشطة التربوية', no: '4', activity: 'الأنشطة اللاصفية', planned: '3', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r5', category: 'الأنشطة التربوية', no: '5', activity: 'تسليم الامتحانات في الوقت المطلوب بعد التعديل', planned: '1', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r6', category: 'الأنشطة التربوية', no: '6', activity: 'التأخر عن الخطة الشهرية في الدروس', planned: '0', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r7', category: 'الأنشطة التربوية', no: '7', activity: 'المشاركة في الدورات واللقاءات بفاعلية', planned: '1', executed: '', total: '', percentage: '', note: '' },
     { id: 'h2', category: 'header', no: '', activity: 'الأنشطة الإدارية', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r8', category: 'الأنشطة الإدارية', no: '8', activity: 'الإشراف بفاعلية في الطابور 22', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r8a', category: 'الأنشطة الإدارية', no: '', activity: 'في الراحة 8', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r8b', category: 'الأنشطة الإدارية', no: '', activity: 'نهاية الدوام 8', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r9', category: 'الأنشطة الإدارية', no: '9', activity: 'التحضير اليومي عدد الأيام 22', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r10', category: 'الأنشطة الإدارية', no: '10', activity: 'تفعيل الريادة حسب الجدول 4', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r11', category: 'الأنشطة الإدارية', no: '11', activity: 'تصحيح دفاتر الطلاب مرتين في الأسبوع 8', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r12', category: 'الأنشطة الإدارية', no: '12', activity: 'كتابة ملاحظات على دفاتر المتابعة ثلاث مرات أسبوعياً 12', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r13', category: 'الأنشطة الإدارية', no: '13', activity: 'تسليم كشوف الدرجات في الوقت المطلوب 1', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r14', category: 'الأنشطة الإدارية', no: '14', activity: 'تفعيل الإذاعة 1', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r15', category: 'الأنشطة الإدارية', no: '15', activity: 'المشاركة في الأنشطة مع مسؤول الأنشطة 2', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r16', category: 'الأنشطة الإدارية', no: '16', activity: 'عدد المخالفات 0', planned: '', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r8', category: 'الأنشطة الإدارية', no: '8', activity: 'الإشراف بفاعلية في الطابور', planned: '22', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r8a', category: 'الأنشطة الإدارية', no: '', activity: 'في الراحة', planned: '8', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r8b', category: 'الأنشطة الإدارية', no: '', activity: 'نهاية الدوام', planned: '8', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r9', category: 'الأنشطة الإدارية', no: '9', activity: 'التحضير اليومي عدد الأيام', planned: '22', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r10', category: 'الأنشطة الإدارية', no: '10', activity: 'تفعيل الريادة حسب الجدول', planned: '4', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r11', category: 'الأنشطة الإدارية', no: '11', activity: 'تصحيح دفاتر الطلاب مرتين في الأسبوع', planned: '8', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r12', category: 'الأنشطة الإدارية', no: '12', activity: 'كتابة ملاحظات على دفاتر المتابعة ثلاث مرات أسبوعياً', planned: '12', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r13', category: 'الأنشطة الإدارية', no: '13', activity: 'تسليم كشوف الدرجات في الوقت المطلوب', planned: '1', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r14', category: 'الأنشطة الإدارية', no: '14', activity: 'تفعيل الإذاعة', planned: '1', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r15', category: 'الأنشطة الإدارية', no: '15', activity: 'المشاركة في الأنشطة مع مسؤول الأنشطة', planned: '2', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r16', category: 'الأنشطة الإدارية', no: '16', activity: 'عدد المخالفات', planned: '0', executed: '', total: '', percentage: '', note: '' },
     { id: 'h3', category: 'header', no: '', activity: 'الوسائل والمصادر', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r17', category: 'الوسائل والمصادر', no: '17', activity: 'عدد الوسائل المستخدمة (قصاصات وكروت 4)', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r17a', category: 'الوسائل والمصادر', no: '', activity: 'لوحات جدارية 1', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r17b', category: 'الوسائل والمصادر', no: '', activity: 'نماذج من الطبيعة 2', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r17c', category: 'الوسائل والمصادر', no: '', activity: 'صوتيات ومرئيات 1', planned: '', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r17', category: 'الوسائل والمصادر', no: '17', activity: 'عدد الوسائل المستخدمة (قصاصات وكروت)', planned: '4', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r17a', category: 'الوسائل والمصادر', no: '', activity: 'لوحات جدارية', planned: '1', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r17b', category: 'الوسائل والمصادر', no: '', activity: 'نماذج من الطبيعة', planned: '2', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r17c', category: 'الوسائل والمصادر', no: '', activity: 'صوتيات ومرئيات', planned: '1', executed: '', total: '', percentage: '', note: '' },
     { id: 'r17d', category: 'الوسائل والمصادر', no: '', activity: 'غير ذلك ـــــــ', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r18', category: 'الوسائل والمصادر', no: '18', activity: 'عدد المصادر المستخدمة (معمل الحاسوب 1)', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r18a', category: 'الوسائل والمصادر', no: '', activity: 'معمل العلوم 1', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r18b', category: 'الوسائل والمصادر', no: '', activity: 'شاشة العرض 1', planned: '', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r18', category: 'الوسائل والمصادر', no: '18', activity: 'عدد المصادر المستخدمة (معمل الحاسوب)', planned: '1', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r18a', category: 'الوسائل والمصادر', no: '', activity: 'معمل العلوم', planned: '1', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r18b', category: 'الوسائل والمصادر', no: '', activity: 'شاشة العرض', planned: '1', executed: '', total: '', percentage: '', note: '' },
     { id: 'r18c', category: 'الوسائل والمصادر', no: '', activity: 'أخرى ـــــــ', planned: '', executed: '', total: '', percentage: '', note: '' },
     { id: 'h4', category: 'header', no: '', activity: 'الغياب والتأخر', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r19', category: 'الغياب والتأخر', no: '19', activity: 'عدد أيام الغياب 0', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'r20', category: 'الغياب والتأخر', no: '20', activity: 'عدد أيام التأخر 0', planned: '', executed: '', total: '', percentage: '', note: '' },
-    { id: 'hf', category: 'footer', no: '', activity: 'الإجمالي', planned: '', executed: '', total: '120', percentage: '', note: '' },
+    { id: 'r19', category: 'الغياب والتأخر', no: '19', activity: 'عدد أيام الغياب', planned: '0', executed: '', total: '', percentage: '', note: '' },
+    { id: 'r20', category: 'الغياب والتأخر', no: '20', activity: 'عدد أيام التأخر', planned: '0', executed: '', total: '', percentage: '', note: '' },
+    { id: 'hf', category: 'footer', no: '', activity: 'الإجمالي', planned: '', executed: '', total: '', percentage: '', note: '' },
   ];
 
   const gradesOptions = ['تمهيدي', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
@@ -649,17 +649,17 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
                     }
 
                     return (
-                      <td key={col.id} className={`border border-slate-200 p-1 relative ${col.id === 'activity' ? 'w-full whitespace-nowrap' : ''}`}>
+                      <td key={col.id} className={`border border-slate-200 p-1 relative ${col.id === 'activity' ? 'whitespace-nowrap px-2' : ''}`}>
                         <input
                           type="text"
                           value={(row as any)[col.id] || ''}
                           onChange={(e) => handleRowChange(index, col.id, e.target.value)}
                           readOnly={(col.id === 'activity' || col.id === 'planned') && !canEditTemplate}
                           size={col.id === 'activity' ? Math.max(10, ((row as any)[col.id] || '').length + 2) : undefined}
-                          className={`w-full bg-transparent border-none outline-none p-1 rounded ${
+                          className={`${col.id === 'activity' ? '' : 'w-full min-w-[40px]'} bg-transparent border-none outline-none p-1 rounded ${
                             col.id === 'no' ? 'min-w-[20px] text-center' : 
                             col.id === 'activity' ? 'font-bold' : 
-                            'min-w-[40px] text-center'
+                            'text-center'
                           }`}
                         />
                       </td>

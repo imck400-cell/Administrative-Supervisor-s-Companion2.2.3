@@ -166,17 +166,6 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     return result;
   }, [logs, filterDateFrom, filterDateTo, selectedFilterStudents]);
 
-  if (!isOpen) return null;
-
-  const handleStudentSelect = (student: any) => {
-    setSelectedStudent(student);
-    setSearchQuery(student.name);
-    setShowSuggestions(false);
-    
-    // We will rely on the useEffect for syncing the teacher evaluation
-    syncedEvalIdRef.current = null;
-  };
-
   // Sync with Teacher Evaluations dynamically
   useEffect(() => {
     if (selectedStudent) {
@@ -235,6 +224,17 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
       }
     }
   }, [data.studentEvaluations, selectedStudent]);
+
+  if (!isOpen) return null;
+
+  const handleStudentSelect = (student: any) => {
+    setSelectedStudent(student);
+    setSearchQuery(student.name);
+    setShowSuggestions(false);
+    
+    // We will rely on the useEffect for syncing the teacher evaluation
+    syncedEvalIdRef.current = null;
+  };
 
   const handleFormDataChange = (key: string, fieldType: 'rating' | 'text', value: string) => {
     setFormData(prev => ({

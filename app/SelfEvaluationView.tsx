@@ -144,18 +144,24 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
       if (row.category === 'header' || row.category === 'footer') return row;
       const pStr = (row.planned || '').toString().trim();
       const p = parseFloat(pStr);
-      const e = parseFloat(row.executed as string) || 0;
+      
+      let sumE = 0;
+      Object.keys(row).forEach(k => {
+         if (k === 'executed' || k.startsWith('exec_')) {
+            sumE += parseFloat((row as any)[k]) || 0;
+         }
+      });
       
       let total;
       let percentage;
 
       if (pStr !== '' && p === 0) {
-         total = -e;
-         percentage = e > 0 ? `-${e * 100}%` : '0%';
+         total = -sumE;
+         percentage = sumE > 0 ? `-${sumE * 100}%` : '0%';
       } else {
          const plannedVal = p || 0;
-         total = plannedVal + e;
-         percentage = plannedVal > 0 ? ((e / plannedVal) * 100).toFixed(1) + '%' : '';
+         total = sumE;
+         percentage = plannedVal > 0 ? ((sumE / plannedVal) * 100).toFixed(1) + '%' : '';
       }
       return { ...row, total: total.toString(), percentage };
     });
@@ -239,13 +245,18 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
       if (r.category !== 'header' && r.category !== 'footer') {
         const pStr = (r.planned || '').toString().trim();
         const p = parseFloat(pStr);
-        const e = parseFloat(r.executed as string) || 0;
-        return acc + (pStr !== '' && p === 0 ? -e : e);
+        let cellSumE = 0;
+        Object.keys(r).forEach(k => {
+           if (k === 'executed' || k.startsWith('exec_')) {
+              cellSumE += parseFloat((r as any)[k]) || 0;
+           }
+        });
+        return acc + (pStr !== '' && p === 0 ? -cellSumE : cellSumE);
       }
       return acc;
     }, 0);
     const overallRatio = sumP > 0 ? ((sumE / sumP) * 100).toFixed(1) + '%' : '';
-    wsData.push(['', 'النسبة العامة', sumP, sumE, sumP+sumE, overallRatio, '']);
+    wsData.push(['', 'النسبة العامة', sumP, sumE, sumE, overallRatio, '']);
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
@@ -304,8 +315,13 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
     if (r.category !== 'header' && r.category !== 'footer') {
       const pStr = (r.planned || '').toString().trim();
       const p = parseFloat(pStr);
-      const e = parseFloat(r.executed as string) || 0;
-      return acc + (pStr !== '' && p === 0 ? -e : e);
+      let cellSumE = 0;
+      Object.keys(r).forEach(k => {
+         if (k === 'executed' || k.startsWith('exec_')) {
+            cellSumE += parseFloat((r as any)[k]) || 0;
+         }
+      });
+      return acc + (pStr !== '' && p === 0 ? -cellSumE : cellSumE);
     }
     return acc;
   }, 0);
@@ -358,7 +374,7 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
              newRowObj.percentage = sumE > 0 ? `-${sumE * 100}%` : '0%';
          } else {
              const plannedVal = p || 0;
-             newRowObj.total = sumE + plannedVal;
+             newRowObj.total = sumE;
              newRowObj.percentage = plannedVal > 0 ? ((sumE / plannedVal) * 100).toFixed(1) + '%' : '';
          }
          return newRowObj;
@@ -546,8 +562,8 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
         )}
       </div>
 
-      <div className="overflow-x-auto bg-white rounded-3xl shadow-sm border border-slate-200 flex justify-center pb-4">
-        <table className="w-max text-right text-sm mx-auto">
+      <div className="overflow-x-auto w-full bg-white rounded-3xl shadow-sm border border-slate-200 pb-4">
+        <table className="w-full min-w-max text-right text-sm mx-auto">
           <thead className="bg-[#4a85c8] text-white">
             <tr>
               {columns.map(col => {

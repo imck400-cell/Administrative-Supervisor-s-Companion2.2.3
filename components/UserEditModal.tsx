@@ -41,7 +41,8 @@ const permissionsList = [
     subPermissions: [
       { id: 'view', label: 'ظهور الزر' },
       { id: 'disable', label: 'عدم التفعيل' },
-      { id: 'hideButton', label: 'عدم ظهور الزر' }
+      { id: 'hideButton', label: 'عدم ظهور الزر' },
+      { id: 'editEvaluationTemplate', label: 'تعديل أنشطة التقييم والمخطط' }
     ]
   },
   { 

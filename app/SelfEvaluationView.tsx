@@ -50,6 +50,7 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
 
   const isReadOnly = currentUser?.permissions?.readOnly === true;
   const canEditStructure = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+  const canEditTemplate = canEditStructure || (Array.isArray(currentUser?.permissions?.teacherPortal) && currentUser?.permissions?.teacherPortal?.includes('editEvaluationTemplate'));
 
   const getFullFormattedDate = (d: Date = new Date()) => {
     try {
@@ -122,8 +123,12 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
   const gradesOptions = ['تمهيدي', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
   const subjectsOptions = ['القرآن كريم', 'التربية الإسلامية', 'اللغة العربية', 'اللغة الإنجليزية', 'الرياضيات', 'العلوم', 'الكيمياء', 'الفيزياء', 'الأحياء', 'الاجتماعيات', 'الحاسوب'];
 
-  const [columns, setColumns] = useState(defaultColumns);
-  const [rows, setRows] = useState<SelfEvaluationRow[]>(defaultRows);
+  const schoolKey = schoolName + '_' + branchName;
+  const initialCols = data.selfEvaluationTemplates?.[schoolKey]?.columns || defaultColumns;
+  const initialRows = data.selfEvaluationTemplates?.[schoolKey]?.rows || defaultRows;
+
+  const [columns, setColumns] = useState(initialCols);
+  const [rows, setRows] = useState<SelfEvaluationRow[]>(initialRows);
   const [searchQuery, setSearchQuery] = useState('');
   
   const [showArchive, setShowArchive] = useState(false);
@@ -380,6 +385,39 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
           >
             <FileSpreadsheet size={18} /> Excel
           </button>
+          <button
+            onClick={() => {
+               if (window.confirm('هل أنت متأكد من بدء تقييم جديد بنسخة فارغة؟')) {
+                  const tmplRows = data.selfEvaluationTemplates?.[schoolName + '_' + branchName]?.rows || defaultRows;
+                  const tmplCols = data.selfEvaluationTemplates?.[schoolName + '_' + branchName]?.columns || defaultColumns;
+                  setRows(JSON.parse(JSON.stringify(tmplRows)));
+                  setColumns(JSON.parse(JSON.stringify(tmplCols)));
+                  setReportName('تقييم جديد');
+                  setCurrentEvalId(Date.now().toString());
+               }
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition"
+          >
+            <Plus size={18} /> تقييم جديد
+          </button>
+          {canEditTemplate && (
+             <button
+                onClick={() => {
+                   if (window.confirm('هل تريد حفظ الأنشطة والمخطط كقالب افتراضي لجميع المستخدمين في هذا الفرع؟')) {
+                      const newTemplates = { ...data.selfEvaluationTemplates };
+                      newTemplates[schoolName + '_' + branchName] = {
+                         rows: JSON.parse(JSON.stringify(rows)),
+                         columns: JSON.parse(JSON.stringify(columns))
+                      };
+                      updateData({ selfEvaluationTemplates: newTemplates });
+                      toast.success('تم حفظ القالب بنجاح لجميع المستخدمين');
+                   }
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition"
+             >
+                <Edit2 size={18} /> تغيير الأنشطة والمخطط
+             </button>
+          )}
         </div>
       </div>
 
@@ -471,25 +509,56 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
         )}
       </div>
 
-      <div className="overflow-x-auto bg-white rounded-3xl shadow-sm border border-slate-200">
-        <table className="w-full text-right text-sm">
+      <div className="overflow-x-auto bg-white rounded-3xl shadow-sm border border-slate-200 flex justify-center pb-4">
+        <table className="w-max text-right text-sm mx-auto">
           <thead className="bg-[#4a85c8] text-white">
             <tr>
-              {columns.map(col => (
-                <th key={col.id} className="p-3 font-bold border border-[#3768a3] whitespace-nowrap text-center relative group">
-                  <div>{col.label}</div>
+              {columns.map(col => {
+                const isExecutedCol = col.id === 'executed' || col.id.startsWith('exec_');
+                let shortDateText = '';
+                if (isExecutedCol) {
+                  if (col.id === 'executed') {
+                     const dStrParts = dateStr.match(/\d{4}/) ? dateStr.match(/(\d{1,2})\s*[\/\-]\s*(\d{1,2})\s*[\/\-]\s*(\d{4})/) : null;
+                     if (dStrParts) {
+                       shortDateText = `${dStrParts[1]}/${dStrParts[2]}/${dStrParts[3]}`;
+                     } else {
+                       const d = new Date();
+                       shortDateText = d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear();
+                     }
+                  } else {
+                     const match = col.label.match(/\(([^)]+)\)/);
+                     if (match) {
+                        const dStrParts = match[1].match(/\d{4}/) ? match[1].match(/(\d{1,2})\s*[\/\-]\s*(\d{1,2})\s*[\/\-]\s*(\d{4})/) : null;
+                        if (dStrParts) shortDateText = `${dStrParts[1]}/${dStrParts[2]}/${dStrParts[3]}`;
+                        else shortDateText = match[1];
+                     }
+                  }
+                }
+
+                return (
+                <th key={col.id} className="p-3 font-bold border border-[#3768a3] whitespace-nowrap text-center relative group min-w-[100px]">
+                  <div>{isExecutedCol ? 'المنفذ' : col.label}</div>
                   
-                  {/* Max Scores Inputs for planned & executed */}
-                  {(col.id === 'planned' || col.id === 'executed') && (
-                     <div className="mt-1 flex items-center justify-center gap-1 opacity-90">
-                       <input 
-                         type="number" 
-                         value={maxScores[col.id as 'planned' | 'executed'] ?? 2} 
-                         onChange={e => handleMaxScoreChange(col.id as 'planned' | 'executed', e.target.value)} 
-                         className="w-12 text-center text-xs bg-white/20 border-white/40 border rounded px-1 text-white outline-none"
-                         title="الدرجة القصوى"
-                       />
+                  {isExecutedCol && (
+                     <div className="text-xs text-blue-200 mt-1 font-normal opacity-90">
+                       {shortDateText}
                      </div>
+                  )}
+
+                  {col.id === 'executed' && (
+                     <button 
+                       onClick={() => {
+                          const newRows = [...rows].map(r => 
+                            (r.category === 'header' || r.category === 'footer') 
+                            ? r 
+                            : { ...r, executed: r.planned }
+                          );
+                          setRows(calculateRowSums(newRows));
+                       }}
+                       className="mt-2 text-xs bg-white/20 hover:bg-white/30 border-white/40 border rounded px-2 py-1 text-white outline-none transition-colors w-full"
+                     >
+                       مطابقة المخطط
+                     </button>
                   )}
 
                   {canEditStructure && col.id !== 'no' && col.id !== 'activity' && (
@@ -500,7 +569,7 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
                     </div>
                   )}
                 </th>
-              ))}
+              )})}
               <th className="p-3 w-10 border border-[#3768a3]"></th>
             </tr>
           </thead>
@@ -529,6 +598,7 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
                             type="text"
                             value={(row as any)[col.id] || ''}
                             onChange={(e) => handleRowChange(index, col.id, e.target.value)}
+                            readOnly={!canEditTemplate}
                             className="w-full bg-transparent border-none outline-none text-center font-black text-blue-900"
                           />
                         </td>
@@ -541,6 +611,7 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
                           type="text"
                           value={(row as any)[col.id] || ''}
                           onChange={(e) => handleRowChange(index, col.id, e.target.value)}
+                          readOnly={(col.id === 'activity' || col.id === 'planned') && !canEditTemplate}
                           className={`w-full bg-transparent border-none outline-none min-w-[80px] p-1 rounded ${col.id === 'activity' ? 'font-bold' : 'text-center'}`}
                         />
                       </td>

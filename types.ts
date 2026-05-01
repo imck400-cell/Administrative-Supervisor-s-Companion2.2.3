@@ -439,6 +439,7 @@ export interface AppData {
   parentVisitLogs?: ParentVisitLog[];
   examLogs?: ExamLog[];
   selfEvaluations?: SelfEvaluation[];
+  selfEvaluationTemplates?: Record<string, { rows: SelfEvaluationRow[], columns: {id: string, label: string}[] }>;
   customExitItems?: string[];
   customDamageItems?: string[];
   customVisitItems?: string[];

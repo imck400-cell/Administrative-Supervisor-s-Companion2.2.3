@@ -420,6 +420,26 @@ export interface SelfEvaluation {
   maxScores?: { planned: number, executed: number };
 }
 
+export interface StudentEvaluation {
+  id: string;
+  userId?: string;
+  schoolId: string;
+  dateStr: string;
+  semester: string;
+  studentId: string; // The ID from secretariatStudents
+  studentName: string;
+  grade: string;
+  section: string;
+  criteria: {
+    comprehension: { rating: string; details: string };
+    homework: { rating: string; details: string };
+    participation: { rating: string; details: string };
+    behavior: { rating: string; details: string };
+    excellence: { rating: string; details: string };
+    customAction: { text: string };
+  };
+}
+
 export interface AppData {
   users: User[];
   profile: SchoolProfile;
@@ -439,6 +459,7 @@ export interface AppData {
   parentVisitLogs?: ParentVisitLog[];
   examLogs?: ExamLog[];
   selfEvaluations?: SelfEvaluation[];
+  studentEvaluations?: StudentEvaluation[];
   selfEvaluationTemplates?: Record<string, { rows: SelfEvaluationRow[], columns: {id: string, label: string}[] }>;
   customExitItems?: string[];
   customDamageItems?: string[];

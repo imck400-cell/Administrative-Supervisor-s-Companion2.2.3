@@ -658,7 +658,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (!isMounted) return;
 
       const dataBuffer: Record<string, Record<string, any[]>> = {};
-      const arrayKeys = ['substitutions', 'timetable', 'dailyReports', 'violations', 'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports', 'selfEvaluations'];
+      const arrayKeys = ['substitutions', 'timetable', 'dailyReports', 'violations', 'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports', 'selfEvaluations', 'studentEvaluations'];
       arrayKeys.forEach(k => dataBuffer[k] = {});
 
       // Shared keys for the selected schools
@@ -833,6 +833,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           parentVisits: 'studentAffairs',
           teacherFollowUps: 'teacherPortal',
           selfEvaluations: 'teacherPortal',
+          studentEvaluations: 'teacherPortal',
           substitutions: 'substitutions',
           schoolProfile: 'schoolProfile',
           users: 'userManagement',
@@ -968,8 +969,13 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           
           // Group by schoolId
           const itemsBySchool: Record<string, any[]> = {};
+          schoolsToUpdate.forEach(s => itemsBySchool[s] = []); // Initialize all with empty array
+          
           userItems.forEach(item => {
-             const sId = item.schoolId || item.schoolName || schoolsToUpdate[0];
+             let sId = item.schoolId || item.schoolName || schoolsToUpdate[0];
+             if (!schoolsToUpdate.includes(sId)) {
+                 sId = schoolsToUpdate[0];
+             }
              if (!itemsBySchool[sId]) itemsBySchool[sId] = [];
              itemsBySchool[sId].push(item);
           });

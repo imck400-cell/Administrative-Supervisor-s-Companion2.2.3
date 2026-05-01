@@ -816,11 +816,49 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (isAuthenticated && currentUser) {
       let isBlockedByReadOnly = currentUser.permissions?.readOnly;
 
-      // Allow bypass for secretariat if they have 'allowEdits'
-      if (isBlockedByReadOnly && (newData.secretariatStudents || newData.secretariatStaff)) {
-        if (Array.isArray(currentUser.permissions?.secretariat) && currentUser.permissions?.secretariat.includes('allowEdits')) {
-          // If the update ONLY contains secretariat data, allow it. Or just allow passing it.
-          // Since SecretariatView only updates secretariat info, we can safely bypass.
+      if (isBlockedByReadOnly) {
+        // Find if this specific update is allowed by a specific module's allowEdits
+        let canBypass = false;
+        const perms: any = currentUser.permissions || {};
+        
+        // Define mapping of data keys to their parent permission key
+        const keyToModuleMap: Record<string, string> = {
+          secretariatStudents: 'secretariat',
+          secretariatStaff: 'secretariat',
+          timetable: 'secretariat',
+          dailyReports: 'dailyFollowUp',
+          adminReports: 'adminFollowUp',
+          studentReports: 'studentAffairs',
+          violations: 'studentAffairs',
+          parentVisits: 'studentAffairs',
+          teacherFollowUps: 'teacherPortal',
+          selfEvaluations: 'teacherPortal',
+          substitutions: 'substitutions',
+          schoolProfile: 'schoolProfile',
+          users: 'userManagement',
+          taskReports: 'specialReports',
+          absenceLogs: 'specialReports',
+          studentLatenessLogs: 'specialReports',
+          studentViolationLogs: 'specialReports',
+          exitLogs: 'specialReports',
+          damageLogs: 'specialReports',
+          parentVisitLogs: 'specialReports',
+          examLogs: 'specialReports',
+          issues: 'issuesModal',
+          trainingCourses: 'trainingCourses',
+          caseStudies: 'caseStudyModal',
+          comprehensiveIndicators: 'comprehensiveIndicators',
+          taskTemplates: 'dashboard',
+        };
+
+        const tryingToUpdateKeys = Object.keys(newData);
+        canBypass = tryingToUpdateKeys.every(key => {
+          const modName = keyToModuleMap[key] || key;
+          const modPerms = perms[modName];
+          return Array.isArray(modPerms) && modPerms.includes('allowEdits');
+        });
+
+        if (canBypass) {
           isBlockedByReadOnly = false;
         }
       }

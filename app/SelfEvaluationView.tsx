@@ -4,7 +4,7 @@ import { ArrowLeft, Save, FileSpreadsheet, Plus, Trash2, Search, Calendar, User,
 import { useGlobal } from '../context/GlobalState';
 import { toast } from 'sonner';
 import { SelfEvaluation, SelfEvaluationRow } from '../types';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 
 const MultiSelectDropdown = ({ value, options, onChange, placeholder, icon: Icon, colorClass }: any) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -260,7 +260,7 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
   };
 
   const handleExportExcel = () => {
-    const wsData = [];
+    const wsData: any[][] = [];
     wsData.push([reportName]);
     wsData.push(['المدرسة', schoolName, 'الفرع', branchName, 'تاريخ التقييم', dateStr]);
     wsData.push(['المعلم', teacherName, 'المادة', subject, 'الصفوف', grades]);
@@ -288,9 +288,96 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
       return acc;
     }, 0);
     const overallRatio = sumP > 0 ? ((sumE / sumP) * 100).toFixed(1) + '%' : '';
-    wsData.push(['', 'النسبة العامة', sumP, sumE, sumE, overallRatio, '']);
+    
+    const finalRow: string[] = columns.map(() => '');
+    const actIndex = columns.findIndex(c => c.id === 'activity');
+    if (actIndex !== -1) finalRow[actIndex] = 'النسبة العامة';
+    const planIndex = columns.findIndex(c => c.id === 'planned');
+    if (planIndex !== -1) finalRow[planIndex] = sumP.toString();
+    const execIndex = columns.findIndex(c => c.id === 'executed');
+    if (execIndex !== -1) finalRow[execIndex] = sumE.toString();
+    const totalIndex = columns.findIndex(c => c.id === 'total');
+    if (totalIndex !== -1) finalRow[totalIndex] = sumE.toString();
+    const percIndex = columns.findIndex(c => c.id === 'percentage');
+    if (percIndex !== -1) finalRow[percIndex] = overallRatio;
+
+    wsData.push(finalRow);
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    ws['!cols'] = columns.map(c => {
+       if (c.id === 'no') return { wch: 5 };
+       if (c.id === 'activity') return { wch: 50 };
+       return { wch: 15 };
+    });
+    
+    ws['!dir'] = 'rtl';
+
+    const getCellStr = (R: number, C: number) => XLSX.utils.encode_cell({c: C, r: R});
+
+    const borderStyle = {
+      top: {style: 'thin', color: {auto: 1}},
+      bottom: {style: 'thin', color: {auto: 1}},
+      left: {style: 'thin', color: {auto: 1}},
+      right: {style: 'thin', color: {auto: 1}},
+    };
+
+    const headerFill = { fgColor: { rgb: "4a85c8" } };
+    const summaryFillRed = { fgColor: { rgb: "f4cccc" } };
+    const summaryFillGreen = { fgColor: { rgb: "d9ead3" } };
+    
+    for (let R = 0; R < wsData.length; ++R) {
+        for (let C = 0; C < wsData[R].length; ++C) {
+            const cellAddress = getCellStr(R, C);
+            if (!ws[cellAddress]) continue;
+            
+            let cellStyle: any = {
+                font: { name: 'Arial', sz: 12, bold: false },
+                alignment: { vertical: 'center', horizontal: 'center' },
+            };
+
+            if (R === 0) {
+               cellStyle.font.bold = true;
+               cellStyle.font.sz = 16;
+            } else if (R === 1 || R === 2) {
+               cellStyle.font.bold = true;
+               if (C === 0 || C === 2 || C === 4) {
+                 cellStyle.fill = headerFill;
+                 cellStyle.font.color = { rgb: "FFFFFF" };
+               }
+            } else if (R === 4) {
+               cellStyle.fill = headerFill;
+               cellStyle.font.color = { rgb: "FFFFFF" };
+               cellStyle.font.bold = true;
+               cellStyle.border = borderStyle;
+            } else if (R > 4 && R < wsData.length - 1) {
+               cellStyle.border = borderStyle;
+               const rowObj = rows[R - 5];
+               if (rowObj) {
+                 if (rowObj.category === 'header') {
+                    cellStyle.fill = summaryFillRed;
+                    cellStyle.font.bold = true;
+                 } else if (rowObj.category === 'footer') {
+                    cellStyle.fill = summaryFillGreen;
+                    cellStyle.font.bold = true;
+                 } else {
+                    if ((R - 5) % 2 === 0) {
+                       cellStyle.fill = { fgColor: { rgb: "FFFFFF" } };
+                    } else {
+                       cellStyle.fill = { fgColor: { rgb: "f8fafc" } };
+                    }
+                 }
+               }
+            } else if (R === wsData.length - 1) {
+               cellStyle.border = borderStyle;
+               cellStyle.font.bold = true;
+               cellStyle.fill = { fgColor: { rgb: "fff2cc" } };
+            }
+
+            ws[cellAddress].s = cellStyle;
+        }
+    }
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "التقييم الذاتي");
     XLSX.writeFile(wb, `التقييم_الذاتي_${teacherName.replace(/\s+/g, '_')}_${dateStr.replace(/\//g, '-')}.xlsx`);
@@ -365,24 +452,18 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
         return;
      }
 
-     const selectedEvalsList = prevEvals.filter(e => selectedIndicators.includes(e.id));
+     const selectedEvalsList = prevEvals.filter(e => selectedIndicators.includes(e.id)).sort((a, b) => new Date(a.dateStr).getTime() - new Date(b.dateStr).getTime());
      if(selectedEvalsList.length === 0) return;
 
      // Merge tables
      const baseEval = selectedEvalsList[0];
-     const combinedRows = [...baseEval.rows];
-     const extraHeaders = selectedEvalsList.map(e => e.dateStr);
-
-     // Here we just modify the UI to display it, ideally we set a special state or navigate to a specialized component.
+     const firstDate = selectedEvalsList[0].dateStr;
+     const lastDate = selectedEvalsList[selectedEvalsList.length - 1].dateStr;
+     
      toast.success(`تم دمج ${selectedEvalsList.length} تقارير، جاري عرض الجدول المدمج`);
      
-     // To simplify for now, we just close the modal and we could build a merged view.
-     // Implementing a full merged data structure:
      let newCols = [...defaultColumns.filter(c => c.id !== 'executed' && c.id !== 'total' && c.id !== 'percentage')];
-     
-     selectedEvalsList.forEach((e, idx) => {
-         newCols.push({ id: `exec_${idx}`, label: `المنفذ (${e.dateStr})` });
-     });
+     newCols.push({ id: 'executed', label: 'المنفذ' });
      newCols.push({ id: 'total', label: 'المجموع الكلي' });
      newCols.push({ id: 'percentage', label: 'النسبة الكلية' });
 
@@ -390,31 +471,45 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
          if (row.category === 'header' || row.category === 'footer') return row;
          
          const newRowObj: any = { ...row };
+         
+         let sumP = 0;
          let sumE = 0;
-         const pStr = (row.planned || '').toString().trim();
-         const p = parseFloat(pStr);
+         let pParts: string[] = [];
+         let eParts: string[] = [];
 
-         selectedEvalsList.forEach((ev, idx) => {
+         selectedEvalsList.forEach((ev) => {
              const matchingRow = ev.rows.find(r => r.id === row.id || r.activity === row.activity);
-             const eVal = matchingRow ? (parseFloat(matchingRow.executed as string) || 0) : 0;
-             newRowObj[`exec_${idx}`] = eVal;
+             const pVal = matchingRow ? (parseFloat(matchingRow.planned as string) || 0) : 0;
+             let eVal = 0;
+             if (matchingRow) {
+                 Object.keys(matchingRow).forEach(k => {
+                     if (k === 'executed' || k.startsWith('exec_')) {
+                        eVal += parseFloat(matchingRow[k]) || 0;
+                     }
+                 });
+             }
+             pParts.push(pVal.toString());
+             eParts.push(eVal.toString());
+             sumP += pVal;
              sumE += eVal;
          });
 
-         if (pStr !== '' && p === 0) {
+         newRowObj.planned = `${pParts.join(' + ')} = ${sumP}`;
+         newRowObj.executed = `${eParts.join(' + ')} = ${sumE}`;
+         
+         if (sumP === 0) {
              newRowObj.total = -sumE;
              newRowObj.percentage = sumE > 0 ? `-${sumE * 100}%` : '0%';
          } else {
-             const plannedVal = p || 0;
              newRowObj.total = sumE;
-             newRowObj.percentage = plannedVal > 0 ? ((sumE / plannedVal) * 100).toFixed(1) + '%' : '';
+             newRowObj.percentage = ((sumE / sumP) * 100).toFixed(1) + '%';
          }
          return newRowObj;
      });
 
      setColumns(newCols);
      setRows(newRows);
-     setReportName('المؤشرات الفصلية المدمجة');
+     setReportName(`تقييم شامل من تاريخ ${firstDate} إلى تاريخ ${lastDate}`);
      setShowIndicators(false);
   };
 
@@ -472,6 +567,13 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
           </button>
           <button
             onClick={() => {
+               const todayDate = getFullFormattedDate(new Date());
+               const existingEval = prevEvals.find(e => e.dateStr === todayDate && e.userId === currentUser?.id);
+               if (existingEval) {
+                  toast.error('التقييم الخاص بهذا اليوم موجود بالفعل، يرجى فتحه من التقييمات السابقة.');
+                  return;
+               }
+
                if (window.confirm('هل أنت متأكد من بدء تقييم جديد بنسخة فارغة؟')) {
                   const tmplRows = data.selfEvaluationTemplates?.[schoolName + '_' + branchName]?.rows || defaultRows;
                   const tmplCols = data.selfEvaluationTemplates?.[schoolName + '_' + branchName]?.columns || defaultColumns;
@@ -479,6 +581,7 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
                   setColumns(JSON.parse(JSON.stringify(tmplCols)));
                   setReportName('تقييم جديد');
                   setCurrentEvalId(Date.now().toString());
+                  setDateStr(todayDate);
                }
             }}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition"
@@ -708,13 +811,13 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
                           type="text"
                           value={(row as any)[col.id] || ''}
                           onChange={(e) => handleRowChange(index, col.id, e.target.value)}
-                          readOnly={(col.id === 'activity' || col.id === 'planned') && !canEditTemplate}
+                          readOnly={((col.id === 'activity' || col.id === 'planned') && !canEditTemplate) || col.id === 'total' || col.id === 'percentage'}
                           size={col.id === 'activity' ? Math.max(10, ((row as any)[col.id] || '').length + 2) : undefined}
                           className={`${col.id === 'activity' ? '' : 'w-full min-w-[40px]'} bg-transparent border-none outline-none p-1 rounded ${
                             col.id === 'no' ? 'min-w-[20px] text-center' : 
                             col.id === 'activity' ? 'font-bold' : 
                             'text-center'
-                          }`}
+                          } ${(col.id === 'total' || col.id === 'percentage') ? 'opacity-70 cursor-not-allowed' : ''}`}
                         />
                       </td>
                     );

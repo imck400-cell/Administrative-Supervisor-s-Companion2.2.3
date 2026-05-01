@@ -16,7 +16,8 @@ interface UserEditModalProps {
 
 const commonSubPermissions = [
   { id: 'view', label: 'ظهور الزر' },
-  { id: 'disable', label: 'عدم تفعيل الزر' }
+  { id: 'disable', label: 'عدم تفعيل الزر' },
+  { id: 'allowEdits', label: 'السماح بتغيير البيانات' }
 ];
 
 const permissionsList = [
@@ -42,7 +43,8 @@ const permissionsList = [
       { id: 'view', label: 'ظهور الزر' },
       { id: 'disable', label: 'عدم التفعيل' },
       { id: 'hideButton', label: 'عدم ظهور الزر' },
-      { id: 'editEvaluationTemplate', label: 'تعديل أنشطة التقييم والمخطط' }
+      { id: 'editEvaluationTemplate', label: 'تعديل أنشطة التقييم والمخطط' },
+      { id: 'allowEdits', label: 'السماح بتغيير البيانات' }
     ]
   },
   { 
@@ -50,7 +52,8 @@ const permissionsList = [
     label: 'التحكم بالصلاحيات',
     subPermissions: [
       { id: 'showButton', label: 'ظهور الزر' },
-      { id: 'hideButton', label: 'عدم ظهور الزر' }
+      { id: 'hideButton', label: 'عدم ظهور الزر' },
+      { id: 'allowEdits', label: 'السماح بتغيير البيانات' }
     ]
   },
   { id: 'userManagement', label: 'التحكم بالمستخدمين', subPermissions: [...commonSubPermissions] },
@@ -60,7 +63,6 @@ const permissionsList = [
     label: 'المشكلات والحلول',
     subPermissions: [
       ...commonSubPermissions,
-      { id: 'useIssuesButton', label: 'استخدام الزر' },
       { id: 'viewAllIssues', label: 'إظهار المشكلات والحلول' },
     ]
   },

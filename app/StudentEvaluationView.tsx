@@ -22,6 +22,52 @@ const CRITERIA = [
   { id: 'excellence', label: 'نقاط التميز' }
 ];
 
+const MultiSelectDropdown = ({ value, options, onChange, placeholder, colorClass }: any) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedValues = value ? value.split('،').map((v: string) => v.trim()).filter(Boolean) : [];
+
+  const toggleOption = (opt: string) => {
+    let newVals;
+    if (selectedValues.includes(opt)) {
+      newVals = selectedValues.filter((v: string) => v !== opt);
+    } else {
+      newVals = [...selectedValues, opt];
+    }
+    onChange(newVals.join('، '));
+  };
+
+  return (
+    <div className="relative w-full">
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between p-2 border-2 border-slate-200 rounded-xl cursor-pointer bg-white ${colorClass || ''}`}
+      >
+        <div className="text-sm font-bold text-slate-700 truncate px-2">
+          {selectedValues.length > 0 ? selectedValues.join('، ') : <span className="text-slate-400 font-normal">{placeholder}</span>}
+        </div>
+      </div>
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-20 max-h-48 overflow-y-auto">
+            {options.map((opt: string) => (
+              <label key={opt} className="flex items-center gap-2 p-2 hover:bg-slate-50 cursor-pointer border-b last:border-0 text-sm font-bold text-slate-700">
+                <input 
+                  type="checkbox" 
+                  checked={selectedValues.includes(opt)}
+                  onChange={() => toggleOption(opt)}
+                  className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                />
+                {opt}
+              </label>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 export const StudentEvaluationView = ({ onBack }: { onBack: () => void }) => {
   const { lang, data, currentUser, updateData } = useGlobal();
   const [view, setView] = useState<'form' | 'table'>('form');
@@ -33,6 +79,11 @@ export const StudentEvaluationView = ({ onBack }: { onBack: () => void }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudents, setSelectedStudents] = useState<any[]>([]);
   const [selectedSemester, setSelectedSemester] = useState('الأول');
+  
+  const [teacherName, setTeacherName] = useState(currentUser?.name || '');
+  const [evaluatorRole, setEvaluatorRole] = useState('معلم المادة');
+  const [subjects, setSubjects] = useState('');
+  const [grades, setGrades] = useState('');
   
   const [evalData, setEvalData] = useState({
     comprehension: { rating: '', details: '' },
@@ -89,6 +140,10 @@ export const StudentEvaluationView = ({ onBack }: { onBack: () => void }) => {
       schoolId: schoolName,
       dateStr: new Date().toLocaleDateString('en-GB'),
       semester: selectedSemester,
+      teacherName: teacherName,
+      evaluatorRole: evaluatorRole,
+      subjects: subjects,
+      grades: grades,
       studentId: student.id,
       studentName: student.name,
       grade: student.grade || '',
@@ -152,18 +207,62 @@ export const StudentEvaluationView = ({ onBack }: { onBack: () => void }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1 border border-slate-200 rounded-3xl p-5 shadow-sm bg-white space-y-4">
-          <div className="flex justify-between items-center border-b pb-2">
-            <h3 className="font-bold text-lg text-slate-800">اختيار الطلاب</h3>
-            <select 
-              value={selectedSemester} 
-              onChange={e => setSelectedSemester(e.target.value)}
-              className="px-2 py-1 bg-slate-100 rounded-lg text-sm font-bold text-slate-700 outline-none"
-            >
-              <option value="الأول">الفصل الأول</option>
-              <option value="الثاني">الفصل الثاني</option>
-            </select>
+        <div className="md:col-span-1 space-y-6">
+          <div className="border border-slate-200 rounded-3xl p-5 shadow-sm bg-white space-y-4">
+            <h3 className="font-bold text-lg text-slate-800 border-b pb-2">بيانات المعلم</h3>
+            
+            <div className="space-y-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-slate-500">اسم المعلم</label>
+                <input 
+                  type="text" 
+                  value={teacherName} 
+                  onChange={e => setTeacherName(e.target.value)} 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-slate-500">صفة المعلم المقيم</label>
+                <input 
+                  type="text" 
+                  value={evaluatorRole} 
+                  onChange={e => setEvaluatorRole(e.target.value)} 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-slate-500">المادة</label>
+                <MultiSelectDropdown 
+                  value={subjects}
+                  onChange={setSubjects}
+                  placeholder="اختر المادة..."
+                  options={['مربية', 'القرآن كريم', 'التربية الإسلامية', 'اللغة العربية', 'اللغة الإنجليزية', 'الرياضيات', 'العلوم', 'الكيمياء', 'الفيزياء', 'الأحياء', 'الاجتماعيات', 'الحاسوب']}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-slate-500">الصف</label>
+                <MultiSelectDropdown 
+                  value={grades}
+                  onChange={setGrades}
+                  placeholder="اختر الصف..."
+                  options={['تمهيدي', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']}
+                />
+              </div>
+            </div>
           </div>
+
+          <div className="border border-slate-200 rounded-3xl p-5 shadow-sm bg-white space-y-4">
+            <div className="flex justify-between items-center border-b pb-2">
+              <h3 className="font-bold text-lg text-slate-800">اختيار الطلاب</h3>
+              <select 
+                value={selectedSemester} 
+                onChange={e => setSelectedSemester(e.target.value)}
+                className="px-2 py-1 bg-slate-100 rounded-lg text-sm font-bold text-slate-700 outline-none"
+              >
+                <option value="الأول">الفصل الأول</option>
+                <option value="الثاني">الفصل الثاني</option>
+              </select>
+            </div>
           
           <div className="relative">
             <Search className="absolute right-3 top-2.5 text-slate-400 w-5 h-5" />
@@ -200,6 +299,7 @@ export const StudentEvaluationView = ({ onBack }: { onBack: () => void }) => {
               </div>
             ))}
           </div>
+        </div>
         </div>
 
         <div className="md:col-span-2 space-y-4">

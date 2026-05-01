@@ -132,12 +132,6 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     }
   }, [activeTab, isOpen]);
 
-  // Reset when role changes
-  useEffect(() => {
-    setFormData({});
-    setSelectedSubject('');
-  }, [evaluatorRole]);
-
   const filteredStudents = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const term = normalizeArabic(searchQuery);
@@ -167,6 +161,57 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     setSelectedStudent(student);
     setSearchQuery(student.name);
     setShowSuggestions(false);
+
+    // Look for previous teacher evaluations from data.studentEvaluations
+    const evals = data.studentEvaluations || [];
+    const studentEvals = evals.filter((e: any) => e.studentId === student.id).sort((a: any, b: any) => {
+      // Sort by newest first? Just basic is enough, or grab the latest.
+      return (b.id || '').localeCompare(a.id || '');
+    });
+
+    if (studentEvals.length > 0) {
+      // Pick the most recent evaluation
+      const latestEval = studentEvals[0];
+      setEvaluatorRole('teacher');
+      if (latestEval.subjects) {
+          // It could be multiple subjects "اللغة العربية، الرياضيات", pick first or set as custom
+          const subjectsArr = latestEval.subjects.split('،').map((s: string) => s.trim()).filter(Boolean);
+          if (subjectsArr.length > 0) {
+              setSelectedSubject(subjectsArr[0]);
+          }
+      }
+
+      // Pre-fill form data
+      const criteria: any = latestEval.criteria || {};
+      const newFormData: Record<string, { rating: string, text: string }> = {};
+
+      if (criteria.comprehension) {
+        newFormData['academic_understanding'] = { rating: criteria.comprehension.rating || '', text: criteria.comprehension.details || '' };
+      }
+      if (criteria.homework) {
+        newFormData['homework_commitment'] = { rating: criteria.homework.rating || '', text: criteria.homework.details || '' };
+      }
+      if (criteria.participation) {
+        newFormData['participation'] = { rating: criteria.participation.rating || '', text: criteria.participation.details || '' };
+      }
+      if (criteria.behavior) {
+        newFormData['classroom_behavior'] = { rating: criteria.behavior.rating || '', text: criteria.behavior.details || '' };
+      }
+      if (criteria.excellence) {
+        newFormData['strengths'] = { rating: criteria.excellence.rating || '', text: criteria.excellence.details || '' };
+      }
+
+      setFormData(newFormData);
+      
+      if (criteria.customAction?.text) {
+        setAdditionalDetails(criteria.customAction.text);
+      } else {
+        setAdditionalDetails('');
+      }
+    } else {
+      setFormData({});
+      setAdditionalDetails('');
+    }
   };
 
   const handleFormDataChange = (key: string, fieldType: 'rating' | 'text', value: string) => {
@@ -571,7 +616,11 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
                   <label className="block text-sm font-black text-slate-700 mb-2">صفة المُقيِّم المستهدف</label>
                   <select 
                     value={evaluatorRole}
-                    onChange={(e) => setEvaluatorRole(e.target.value)}
+                    onChange={(e) => {
+                      setEvaluatorRole(e.target.value);
+                      setFormData({});
+                      setSelectedSubject('');
+                    }}
                     className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl text-slate-800 focus:border-blue-500 h-[56px] px-4 font-bold transition-all cursor-pointer"
                   >
                     <option value="">اختر صفة المُقيِّم للبدء...</option>
@@ -589,9 +638,15 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
                           className="w-full bg-indigo-50 border-2 border-indigo-100 rounded-2xl text-indigo-800 focus:border-indigo-500 h-[56px] px-4 font-bold transition-all cursor-pointer"
                         >
                           <option value="">اختر المادة...</option>
-                          {getSubjectsForGrade(selectedStudent.grade).map((sub, i) => (
-                            <option key={i} value={sub}>{sub}</option>
-                          ))}
+                          {(() => {
+                             const opts = getSubjectsForGrade(selectedStudent.grade);
+                             if (selectedSubject && !opts.includes(selectedSubject)) {
+                               opts.push(selectedSubject);
+                             }
+                             return opts.map((sub, i) => (
+                               <option key={i} value={sub}>{sub}</option>
+                             ));
+                          })()}
                         </select>
                     </div>
                   )}

@@ -426,6 +426,10 @@ export interface StudentEvaluation {
   schoolId: string;
   dateStr: string;
   semester: string;
+  teacherName?: string;
+  evaluatorRole?: string;
+  subjects?: string;
+  grades?: string;
   studentId: string; // The ID from secretariatStudents
   studentName: string;
   grade: string;

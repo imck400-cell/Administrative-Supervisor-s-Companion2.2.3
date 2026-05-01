@@ -24,7 +24,7 @@ const CRITERIA = [
 
 const MultiSelectDropdown = ({ value, options, onChange, placeholder, colorClass }: any) => {
   const [isOpen, setIsOpen] = useState(false);
-  const selectedValues = value ? value.split('،').map((v: string) => v.trim()).filter(Boolean) : [];
+  const selectedValues = value ? value.split(/[,،]/).map((v: string) => v.trim()).filter(Boolean) : [];
 
   const toggleOption = (opt: string) => {
     let newVals;

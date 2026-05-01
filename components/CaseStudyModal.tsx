@@ -159,14 +159,16 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     return (data.studentEvaluations || []).filter((e: any) => {
       if (e.studentId !== selectedStudent.id) return false;
       if (e.subjects) {
-         const subArr = e.subjects.split('،').map((s:string) => s.trim());
+         const subArr = e.subjects.split(/[,،]/).map((s:string) => s.trim());
          return subArr.includes(selectedSubject);
       }
       return false;
     }).sort((a: any, b: any) => {
       // Sort so newest dates appear first (assuming dateStr is dd/mm/yyyy)
       const parseDate = (dStr: string) => {
+         if (!dStr) return 0;
          const parts = dStr.split('/');
+         if (parts.length !== 3) return 0;
          return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0])).getTime();
       };
       return parseDate(b.dateStr) - parseDate(a.dateStr);
@@ -224,48 +226,28 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     setSelectedStudent(student);
     setSearchQuery(student.name);
     setShowSuggestions(false);
+    setSelectedEvalId('');
     
     // Perform sync immediately
     const evals = data.studentEvaluations || [];
     const studentEvals = evals.filter((e: any) => e.studentId === student.id).sort((a: any, b: any) => {
-      return (b.id || '').localeCompare(a.id || '');
+      const parseDate = (dStr: string) => {
+         if (!dStr) return 0;
+         const parts = dStr.split('/');
+         if (parts.length !== 3) return 0;
+         return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0])).getTime();
+      };
+      return parseDate(b.dateStr) - parseDate(a.dateStr);
     });
 
     if (studentEvals.length > 0) {
       const latestEval = studentEvals[0];
       setEvaluatorRole('teacher');
       if (latestEval.subjects) {
-        const subjectsArr = latestEval.subjects.split('،').map((s: string) => s.trim()).filter(Boolean);
+        const subjectsArr = latestEval.subjects.split(/[,،]/).map((s: string) => s.trim()).filter(Boolean);
         if (subjectsArr.length > 0) {
             setSelectedSubject(subjectsArr[0]);
         }
-      }
-
-      const criteria: any = latestEval.criteria || {};
-      const newFormData: Record<string, { rating: string, text: string }> = {};
-
-      if (criteria.comprehension) {
-        newFormData['academic_understanding'] = { rating: criteria.comprehension.rating || '', text: criteria.comprehension.details || '' };
-      }
-      if (criteria.homework) {
-        newFormData['homework_commitment'] = { rating: criteria.homework.rating || '', text: criteria.homework.details || '' };
-      }
-      if (criteria.participation) {
-        newFormData['participation'] = { rating: criteria.participation.rating || '', text: criteria.participation.details || '' };
-      }
-      if (criteria.behavior) {
-        newFormData['classroom_behavior'] = { rating: criteria.behavior.rating || '', text: criteria.behavior.details || '' };
-      }
-      if (criteria.excellence) {
-        newFormData['strengths'] = { rating: criteria.excellence.rating || '', text: criteria.excellence.details || '' };
-      }
-
-      setFormData(newFormData);
-      
-      if (criteria.customAction?.text) {
-        setAdditionalDetails(criteria.customAction.text);
-      } else {
-        setAdditionalDetails('');
       }
     } else {
       setEvaluatorRole('');

@@ -142,10 +142,21 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
   const calculateRowSums = (currentRowList: SelfEvaluationRow[]) => {
     return currentRowList.map(row => {
       if (row.category === 'header' || row.category === 'footer') return row;
-      const planned = parseFloat(row.planned as string) || 0;
-      const executed = parseFloat(row.executed as string) || 0;
-      const total = planned + executed;
-      const percentage = planned > 0 ? ((executed / planned) * 100).toFixed(1) + '%' : '';
+      const pStr = (row.planned || '').toString().trim();
+      const p = parseFloat(pStr);
+      const e = parseFloat(row.executed as string) || 0;
+      
+      let total;
+      let percentage;
+
+      if (pStr !== '' && p === 0) {
+         total = -e;
+         percentage = e > 0 ? `-${e * 100}%` : '0%';
+      } else {
+         const plannedVal = p || 0;
+         total = plannedVal + e;
+         percentage = plannedVal > 0 ? ((e / plannedVal) * 100).toFixed(1) + '%' : '';
+      }
       return { ...row, total: total.toString(), percentage };
     });
   };
@@ -224,7 +235,15 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
     });
 
     const sumP = rows.reduce((acc, r) => acc + (r.category !== 'header' && r.category !== 'footer' ? (parseFloat(r.planned as string) || 0) : 0), 0);
-    const sumE = rows.reduce((acc, r) => acc + (r.category !== 'header' && r.category !== 'footer' ? (parseFloat(r.executed as string) || 0) : 0), 0);
+    const sumE = rows.reduce((acc, r) => {
+      if (r.category !== 'header' && r.category !== 'footer') {
+        const pStr = (r.planned || '').toString().trim();
+        const p = parseFloat(pStr);
+        const e = parseFloat(r.executed as string) || 0;
+        return acc + (pStr !== '' && p === 0 ? -e : e);
+      }
+      return acc;
+    }, 0);
     const overallRatio = sumP > 0 ? ((sumE / sumP) * 100).toFixed(1) + '%' : '';
     wsData.push(['', 'النسبة العامة', sumP, sumE, sumP+sumE, overallRatio, '']);
 
@@ -281,7 +300,15 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
 
   // Calculation for Overall Ratio
   const sumPlanned = rows.reduce((acc, r) => acc + (r.category !== 'header' && r.category !== 'footer' ? (parseFloat(r.planned as string) || 0) : 0), 0);
-  const sumExecuted = rows.reduce((acc, r) => acc + (r.category !== 'header' && r.category !== 'footer' ? (parseFloat(r.executed as string) || 0) : 0), 0);
+  const sumExecuted = rows.reduce((acc, r) => {
+    if (r.category !== 'header' && r.category !== 'footer') {
+      const pStr = (r.planned || '').toString().trim();
+      const p = parseFloat(pStr);
+      const e = parseFloat(r.executed as string) || 0;
+      return acc + (pStr !== '' && p === 0 ? -e : e);
+    }
+    return acc;
+  }, 0);
   const overallPercentage = sumPlanned > 0 ? ((sumExecuted / sumPlanned) * 100).toFixed(1) + '%' : '';
 
   const generateCombinedIndicators = () => {
@@ -316,14 +343,24 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
          
          const newRowObj: any = { ...row };
          let sumE = 0;
+         const pStr = (row.planned || '').toString().trim();
+         const p = parseFloat(pStr);
+
          selectedEvalsList.forEach((ev, idx) => {
              const matchingRow = ev.rows.find(r => r.id === row.id || r.activity === row.activity);
              const eVal = matchingRow ? (parseFloat(matchingRow.executed as string) || 0) : 0;
              newRowObj[`exec_${idx}`] = eVal;
              sumE += eVal;
          });
-         newRowObj.total = sumE + (parseFloat(row.planned as string) || 0); // Is total sum of executed + planned? The previous logic had sum executed + planned, usually total is sum of executed, but let's keep consistent.
-         newRowObj.percentage = (parseFloat(row.planned as string) || 0) > 0 ? ((sumE / (parseFloat(row.planned as string) || 1)) * 100).toFixed(1) + '%' : '';
+
+         if (pStr !== '' && p === 0) {
+             newRowObj.total = -sumE;
+             newRowObj.percentage = sumE > 0 ? `-${sumE * 100}%` : '0%';
+         } else {
+             const plannedVal = p || 0;
+             newRowObj.total = sumE + plannedVal;
+             newRowObj.percentage = plannedVal > 0 ? ((sumE / plannedVal) * 100).toFixed(1) + '%' : '';
+         }
          return newRowObj;
      });
 
@@ -535,8 +572,13 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
                   }
                 }
 
+                let thClass = "p-3 font-bold border border-[#3768a3] whitespace-nowrap text-center relative group";
+                if (col.id === 'no') thClass += " w-10 min-w-[40px] px-1";
+                else if (col.id === 'activity') thClass += " w-max min-w-max px-2";
+                else thClass += " w-fit min-w-[60px] px-1";
+
                 return (
-                <th key={col.id} className="p-3 font-bold border border-[#3768a3] whitespace-nowrap text-center relative group min-w-[100px]">
+                <th key={col.id} className={thClass}>
                   <div>{isExecutedCol ? 'المنفذ' : col.label}</div>
                   
                   {isExecutedCol && (
@@ -599,20 +641,26 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
                             value={(row as any)[col.id] || ''}
                             onChange={(e) => handleRowChange(index, col.id, e.target.value)}
                             readOnly={!canEditTemplate}
-                            className="w-full bg-transparent border-none outline-none text-center font-black text-blue-900"
+                            size={Math.max(10, ((row as any)[col.id] || '').length + 2)}
+                            className="bg-transparent border-none outline-none text-center font-black text-blue-900 w-full"
                           />
                         </td>
                       )
                     }
 
                     return (
-                      <td key={col.id} className="border border-slate-200 p-1 relative">
+                      <td key={col.id} className={`border border-slate-200 p-1 relative ${col.id === 'activity' ? 'w-full whitespace-nowrap' : ''}`}>
                         <input
                           type="text"
                           value={(row as any)[col.id] || ''}
                           onChange={(e) => handleRowChange(index, col.id, e.target.value)}
                           readOnly={(col.id === 'activity' || col.id === 'planned') && !canEditTemplate}
-                          className={`w-full bg-transparent border-none outline-none min-w-[80px] p-1 rounded ${col.id === 'activity' ? 'font-bold' : 'text-center'}`}
+                          size={col.id === 'activity' ? Math.max(10, ((row as any)[col.id] || '').length + 2) : undefined}
+                          className={`w-full bg-transparent border-none outline-none p-1 rounded ${
+                            col.id === 'no' ? 'min-w-[20px] text-center' : 
+                            col.id === 'activity' ? 'font-bold' : 
+                            'min-w-[40px] text-center'
+                          }`}
                         />
                       </td>
                     );

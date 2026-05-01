@@ -809,6 +809,8 @@ export const SelfEvaluationView = ({ onBack }: { onBack: () => void }) => {
                       <td key={col.id} className={`border border-slate-200 p-1 relative ${col.id === 'activity' ? 'whitespace-nowrap px-2' : ''}`}>
                         <input
                           type="text"
+                          inputMode={col.id !== 'activity' ? "decimal" : undefined}
+                          dir={col.id !== 'activity' ? "ltr" : "rtl"}
                           value={(row as any)[col.id] || ''}
                           onChange={(e) => handleRowChange(index, col.id, e.target.value)}
                           readOnly={((col.id === 'activity' || col.id === 'planned') && !canEditTemplate) || col.id === 'total' || col.id === 'percentage'}

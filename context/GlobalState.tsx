@@ -776,7 +776,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const q = doc(db, 'schools', school, 'users', uid, 'data', key);
             const unsub = onSnapshot(q, (snapshot) => {
               const items = snapshot.exists() ? snapshot.data().items : [];
-              dataBuffer[key][uid] = items;
+              dataBuffer[key][school + '_' + uid] = items;
               
               const mergedArray = Object.values(dataBuffer[key]).flat();
               const uniqueMergedArray = Array.from(new Map(mergedArray.map(item => [item.id, item])).values());
@@ -965,10 +965,18 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           if (currentUser.role !== 'admin' && uid !== currentUser.id) continue;
 
           const userItems = finalArray.filter(item => item.userId === uid);
-          const primarySchool = schoolsToUpdate[0];
-          if (primarySchool) {
-            setDoc(doc(db, 'schools', primarySchool, 'users', uid, 'data', key), { items: userItems })
-              .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${primarySchool}/users/${uid}/data/${key}`));
+          
+          // Group by schoolId
+          const itemsBySchool: Record<string, any[]> = {};
+          userItems.forEach(item => {
+             const sId = item.schoolId || item.schoolName || schoolsToUpdate[0];
+             if (!itemsBySchool[sId]) itemsBySchool[sId] = [];
+             itemsBySchool[sId].push(item);
+          });
+
+          for (const sId of Object.keys(itemsBySchool)) {
+             setDoc(doc(db, 'schools', sId, 'users', uid, 'data', key), { items: itemsBySchool[sId] })
+               .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${sId}/users/${uid}/data/${key}`));
           }
         }
       }

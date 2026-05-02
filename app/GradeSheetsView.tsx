@@ -120,7 +120,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
     { id: 'oral', label: 'شفوي' },
     { id: 'attend', label: 'مواظبة' },
     { id: 'written', label: 'تحريري' },
-    { id: 'total_m', label: 'مجموع', isTotal: true },
+    { id: 'total_m', label: 'المجموع', isTotal: true },
     { id: 'ratio_m', label: 'النسبة', isTotal: true }
   ];
 
@@ -375,27 +375,30 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
     
     try {
       const payload: GradeSheet = {
-          schoolName,
-          branch,
-          teacherName,
-          subject,
-          grade: selectedGrade,
-          section: selectedSection,
-          sheetName,
-          date: dateStr,
-          months,
-          cells: currentCells,
+          schoolName: schoolName || '',
+          branch: branch || '',
+          teacherName: teacherName || '',
+          subject: subject || '',
+          grade: selectedGrade || '',
+          section: selectedSection || '',
+          sheetName: sheetName || '',
+          date: dateStr || '',
+          months: months || [],
+          cells: currentCells || {},
           userId: currentUser?.id || 'unknown',
           timestamp: new Date().toISOString(),
-          disabledCols: currentDisabledCols,
-          maxScores: currentMaxScores
+          disabledCols: currentDisabledCols || [],
+          maxScores: currentMaxScores || {}
       };
       
+      // Clean undefined values completely
+      const cleanPayload = JSON.parse(JSON.stringify(payload));
+      
       if (currentSheetId) {
-          await updateDoc(doc(db, 'GradeSheets', currentSheetId), { ...payload });
+          await updateDoc(doc(db, 'GradeSheets', currentSheetId), cleanPayload);
       } else {
           isCreatingRef.current = true;
-          const res = await addDoc(collection(db, 'GradeSheets'), payload);
+          const res = await addDoc(collection(db, 'GradeSheets'), cleanPayload);
           setCurrentSheetId(res.id);
           isCreatingRef.current = false;
       }
@@ -442,24 +445,133 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
   };
 
   const exportTableToExcel = () => {
-    const tableElement = document.getElementById('grade-sheet-table');
-    if (!tableElement) return;
+    const hijriDate = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', {day: 'numeric', month: 'long', year: 'numeric'}).format(new Date());
+    const gregorianDate = new Intl.DateTimeFormat('ar-EG', {day: 'numeric', month: 'long', year: 'numeric'}).format(new Date());
+
     const htmlSnippet = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
       <head>
       <meta charset="utf-8" />
+      <!--[if gte mso 9]>
+      <xml>
+       <x:ExcelWorkbook>
+        <x:ExcelWorksheets>
+         <x:ExcelWorksheet>
+          <x:Name>كشف درجات</x:Name>
+          <x:WorksheetOptions>
+           <x:DisplayRightToLeft/>
+          </x:WorksheetOptions>
+         </x:ExcelWorksheet>
+        </x:ExcelWorksheets>
+       </x:ExcelWorkbook>
+      </xml>
+      <![endif]-->
       <style>
-        table { border-collapse: collapse; direction: rtl; font-family: Arial; }
-        th, td { border: 1px solid #000; padding: 4px; text-align: center; }
-        .bg-month-0 { background-color: #BFD4E4; }
-        .bg-month-1 { background-color: #E6B8B7; }
-        .bg-month-2 { background-color: #CCC0DA; }
-        .bg-yellow { background-color: #FFFF00; }
-        .bg-orange { background-color: #FCD5B4; }
+        body { direction: rtl; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #ffffff; }
+        table { border-collapse: collapse; direction: rtl; width: 100%; }
+        th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: center; vertical-align: middle; white-space: nowrap; }
+        .header-info { text-align: right; margin-bottom: 20px; font-weight: bold; }
+        .header-info div { margin-bottom: 5px; }
       </style>
       </head>
-      <body>
-        <table>${tableElement.innerHTML}</table>
+      <body dir="rtl">
+        <div class="header-info">
+            <h2 style="text-align:center; font-size:24px; margin-bottom: 20px; color: #1e293b;">${sheetName || 'كشف درجات بدون اسم'}</h2>
+            <table style="border: none; width: 100%; margin-bottom: 20px;">
+                <tr>
+                    <td style="border: none; text-align: right; font-size: 16px;">
+                        <div>المدرسة: <span style="color:#2563eb;">${schoolName || '..........'}</span></div>
+                        <div>الفرع: <span style="color:#2563eb;">${branch || '..........'}</span></div>
+                        <div>المعلم: <span style="color:#2563eb;">${teacherName || '..........'}</span></div>
+                    </td>
+                    <td style="border: none; text-align: center; font-size: 16px;">
+                        <div>المادة: <span style="color:#2563eb;">${subject || '..........'}</span></div>
+                        <div>الصف: <span style="color:#2563eb;">${selectedGrade || '..........'}</span></div>
+                        <div>الشعبة: <span style="color:#2563eb;">${selectedSection || '..........'}</span></div>
+                    </td>
+                    <td style="border: none; text-align: left; font-size: 16px;">
+                        <div>التاريخ الميلادي: <span style="color:#2563eb;">${gregorianDate}</span></div>
+                        <div>التاريخ الهجري: <span style="color:#2563eb;">${hijriDate}</span></div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                   <th rowspan="2" style="background-color: #f59e0b; color: white;">م</th>
+                   <th rowspan="2" style="background-color: #fef3c7; color: #1e293b; width: 250px;">اسم الطالب</th>
+                   ${months.map((m, i) => visibleMonths.includes(i) ? `<th colspan="7" style="background-color: ${i === 0 ? '#bfdbfe' : i === 1 ? '#fecdd3' : '#e9d5ff'}; font-size: 18px;">${m}</th>` : '').join('')}
+                   <th rowspan="2" style="background-color: #ffedd5;">
+                        <div style="font-size:12px;">المحصلة</div>
+                        <div style="font-size:10px; color:#9a3412;">القصوى: ${maxScores.term_result || 20}</div>
+                   </th>
+                   <th rowspan="2" style="background-color: #fed7aa; width: 100px;">اختبار فصلي</th>
+                </tr>
+                <tr>
+                   ${months.map((m, mIdx) => visibleMonths.includes(mIdx) ? monthCols.map(mc => `<th style="background-color: ${mc.isTotal ? '#fde047' : mIdx===0 ? '#dbeafe' : mIdx===1 ? '#ffe4e6' : '#f3e8ff'};">${mc.label}<br><span style="font-size:10px;color:#64748b;">الحد: ${maxScores[mc.id] !== undefined ? maxScores[mc.id] : ''}</span></th>`).join('') : '').join('')}
+                </tr>
+            </thead>
+            <tbody>
+                ${displayedStudents.map((s, sIdx) => {
+                    let rowHtml = `<tr>`;
+                    rowHtml += `<td style="background-color: #fffbeb;">${sIdx + 1}</td>`;
+                    rowHtml += `<td style="background-color: #f8fafc; text-align: right; font-weight: bold;">${s.name}</td>`;
+                    
+                    months.forEach((m, mIdx) => {
+                        if (visibleMonths.includes(mIdx)) {
+                            monthCols.forEach(mc => {
+                                const val = cells[`${s.id}-m${mIdx}-${mc.id}`] || '';
+                                rowHtml += `<td style="${mc.isTotal ? 'background-color:#fef08a; font-weight:bold;' : ''}">${val}</td>`;
+                            });
+                        }
+                    });
+                    
+                    const termResult = cells[`${s.id}-final-term_result`] || '';
+                    rowHtml += `<td style="background-color:#fff7ed; font-weight:bold; color: #7c2d12;">${termResult}</td>`;
+                    
+                    const termExam = cells[`${s.id}-final-term_exam`] || '';
+                    rowHtml += `<td style="background-color:#ffedd5; font-weight:bold; color: #7c2d12;">${termExam}</td>`;
+                    
+                    rowHtml += `</tr>`;
+                    return rowHtml;
+                }).join('')}
+                
+                <tr style="background-color: #f1f5f9; font-weight: bold;">
+                    <td colspan="2" style="background-color: #e2e8f0;">الإجمالي / النسبة</td>
+                    ${months.map((m, mIdx) => {
+                        if (visibleMonths.includes(mIdx)) {
+                            return monthCols.map(mc => {
+                                const colKeyStr = `m${mIdx}-${mc.id}`;
+                                const total = calculateColumnTotal(colKeyStr);
+                                const ratio = calculateColumnRatio(colKeyStr);
+                                return `<td><div>${Number(total) > 0 ? total : ''}</div><div style="color: #047857;">${Number(ratio) > 0 ? `%${ratio}` : ''}</div></td>`;
+                            }).join('');
+                        }
+                        return '';
+                    }).join('')}
+                    <td style="background-color: #e2e8f0;"></td>
+                    <td style="background-color: #e2e8f0;"></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table style="border: none; width: 100%; margin-top: 50px;">
+            <tr>
+                <td style="border: none; text-align: center; width: 33%;">
+                    <div style="font-size: 16px; margin-bottom: 20px;">معلم المادة</div>
+                    <div style="font-size: 18px; color: #1e40af; border-bottom: 2px dashed #cbd5e1; display: inline-block; min-width: 200px; padding-bottom: 4px;">${currentUser?.name || '........................'}</div>
+                </td>
+                <td style="border: none; text-align: center; width: 33%;">
+                    <div style="font-size: 18px; margin-bottom: 20px; color: #94a3b8; font-weight: bold;">( الختم )</div>
+                </td>
+                <td style="border: none; text-align: center; width: 33%;">
+                    <div style="font-size: 16px; margin-bottom: 20px;">مدير المدرسة</div>
+                    <div style="font-size: 18px; color: #94a3b8; border-bottom: 2px dashed #cbd5e1; display: inline-block; min-width: 200px; padding-bottom: 4px; height: 27px;">........................</div>
+                </td>
+            </tr>
+        </table>
       </body>
       </html>
     `;

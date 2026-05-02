@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useGlobal } from '../context/GlobalState';
 import { Save, FileSpreadsheet, Plus, Combine, History, TrendingUp, ChevronLeft, Search, CheckCircle2, ChevronDown, Download, AlertCircle, X, Trash2, Star } from 'lucide-react';
-import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { toast } from 'sonner';
 
@@ -83,7 +83,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
 
   const [months, setMonths] = useState(['شهر الأول', 'شهر الثاني', 'شهر الثالث']);
   const [cells, setCells] = useState<Record<string, string>>({});
-  const [maxScores, setMaxScores] = useState<Record<string, number>>({ w_k: 10, w_m: 10, oral: 10, attend: 10, written: 60 });
+  const [maxScores, setMaxScores] = useState<Record<string, number>>({ w_k: 10, w_m: 10, oral: 10, attend: 10, written: 60, term_result: 20 });
   const [disabledCols, setDisabledCols] = useState<string[]>([]);
   
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
@@ -98,6 +98,8 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
   // Indicators
   const [indicatorMode, setIndicatorMode] = useState<string | null>(null);
 
+  // Highlighting specific rows
+  const [highlightedRows, setHighlightedRows] = useState<string[]>([]);
 
   // Columns definition per month
   const monthCols = [
@@ -106,7 +108,8 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
     { id: 'oral', label: 'شفوي' },
     { id: 'attend', label: 'مواظبة' },
     { id: 'written', label: 'تحريري' },
-    { id: 'total_m', label: 'مجموع', isTotal: true }
+    { id: 'total_m', label: 'مجموع', isTotal: true },
+    { id: 'ratio_m', label: 'النسبة', isTotal: true }
   ];
 
   const finalCols = [
@@ -139,17 +142,39 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
     const studentsWithScore = students.map(s => {
       let total = 0;
       let hasWritten = false;
+      let hasAnyGrade = false;
+      
       months.forEach((m, mIdx) => {
         const tVal = parseFloat(cells[`${s.id}-m${mIdx}-total_m`] || '0') || 0;
         total += tVal;
         const wValStr = cells[`${s.id}-m${mIdx}-written`];
         if (wValStr && String(wValStr).trim() !== '') hasWritten = true;
+        
+        // Check if any grade exists for this month
+        ['w_k', 'w_m', 'oral', 'attend', 'written'].forEach(mc => {
+            const val = cells[`${s.id}-m${mIdx}-${mc}`];
+            if (val !== undefined && val.trim() !== '') hasAnyGrade = true;
+        });
       });
+      
       const finalVal1 = parseFloat(cells[`${s.id}-final-term_result`] || '0') || 0;
       const finalVal2 = parseFloat(cells[`${s.id}-final-term_exam`] || '0') || 0;
+      
+      if (cells[`${s.id}-final-term_result`] || cells[`${s.id}-final-term_exam`]) {
+          hasAnyGrade = true;
+      }
+
       total += finalVal1 + finalVal2;
 
-      return { ...s, totalScore: total, hasWritten };
+      // max possible
+      const monthMaxSum = (maxScores.w_k || 10) + (maxScores.w_m || 10) + (maxScores.oral || 10) + (maxScores.attend || 10) + (maxScores.written || 60);
+      const termExamMax = maxScores.term_exam || 0; 
+      // note: if term_exam is not defined maybe it's 30 or 50. Let's just use what's typed or default. We didn't add maxScores.term_exam yet, let's assume 0 if not typed, just use monthMaxSum for simple percentage if term max is weird.
+      const totalMax = (monthMaxSum * months.length) + (maxScores.term_result || 20) + (maxScores.term_exam || 0);
+
+      const percentage = totalMax > 0 ? (total / totalMax) * 100 : 0;
+
+      return { ...s, totalScore: total, percentage, hasWritten, hasAnyGrade };
     });
 
     if (indicatorMode === 'highest') {
@@ -162,26 +187,56 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
         return studentsWithScore.sort((a, b) => b.totalScore - a.totalScore).slice(Math.floor(studentsWithScore.length / 4), Math.floor(studentsWithScore.length * 3 / 4));
     }
     if (indicatorMode === 'absent_written') {
-        return studentsWithScore.filter(s => !s.hasWritten).sort((a, b) => b.totalScore - a.totalScore);
+        return studentsWithScore.filter(s => !s.hasWritten).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
     }
+    if (indicatorMode === 'no_grades') {
+        return studentsWithScore.filter(s => !s.hasAnyGrade).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
+    }
+    if (indicatorMode === 'excellent') {
+        return studentsWithScore.filter(s => s.percentage >= 90).sort((a, b) => b.totalScore - a.totalScore);
+    }
+    if (indicatorMode === 'vgood') {
+        return studentsWithScore.filter(s => s.percentage >= 80 && s.percentage < 90).sort((a, b) => b.totalScore - a.totalScore);
+    }
+    if (indicatorMode === 'good') {
+        return studentsWithScore.filter(s => s.percentage >= 65 && s.percentage < 80).sort((a, b) => b.totalScore - a.totalScore);
+    }
+    if (indicatorMode === 'fair') {
+        return studentsWithScore.filter(s => s.percentage >= 50 && s.percentage < 65).sort((a, b) => b.totalScore - a.totalScore);
+    }
+    if (indicatorMode === 'fail') {
+        return studentsWithScore.filter(s => s.percentage < 50 && s.hasAnyGrade).sort((a, b) => b.totalScore - a.totalScore);
+    }
+    
     return students;
-  }, [students, cells, months, indicatorMode]);
+  }, [students, cells, months, indicatorMode, maxScores]);
 
   // Autosave when cells change fundamentally handled by debounce or just explicit save because every keystroke is too much for firebase.
   // Actually, standard behavior: auto save periodically or on blur.
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    fetchSheets();
-  }, [data.secretariatStudents]);
+    const unsub = onSnapshot(collection(db, 'GradeSheets'), (snap) => {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as GradeSheet));
+        setSheets(list.filter(s => s.userId === (currentUser?.id || 'unknown') || currentUser?.role === 'admin' || currentUser?.permissions?.all === true));
+        
+        // Update current sheet if we are viewing one
+        if (currentSheetId) {
+            const current = list.find(l => l.id === currentSheetId);
+            if (current) {
+                // To avoid disrupting typing, only update values from server if they differ significantly or if we decide to just update maxScores and disabledCols
+                // Updating `cells` constantly might wipe local unsaved changes since typing is very fast.
+                // We'll update maxScores and disabledCols immediately.
+                setMaxScores(prev => JSON.stringify(prev) !== JSON.stringify(current.maxScores) ? (current.maxScores || prev) : prev);
+                setDisabledCols(prev => JSON.stringify(prev) !== JSON.stringify(current.disabledCols) ? (current.disabledCols || []) : prev);
+            }
+        }
+    });
 
-  const fetchSheets = async () => {
-    try {
-      const snap = await getDocs(collection(db, 'GradeSheets'));
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as GradeSheet));
-      setSheets(list.filter(s => s.userId === (currentUser?.id || 'unknown') || currentUser?.role === 'admin' || false));
-    } catch(e) {}
-  };
+    return () => unsub();
+  }, [data.secretariatStudents, currentUser, currentSheetId]);
+
+  const fetchSheets = async () => {};
 
   const handleColToggle = (colKey: string) => {
     if (!canEditData) return;
@@ -198,7 +253,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
     
     // Enforce max limits
     let finalVal = val;
-    if (colKey.startsWith('m')) {
+    if (colKey.startsWith('m') || colKey.startsWith('final')) {
         const field = colKey.split('-')[1];
         if (field && maxScores[field] !== undefined && finalVal.trim() !== '') {
             const numVal = parseFloat(finalVal);
@@ -210,21 +265,45 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
     
     const newCells = { ...cells, [`${studentId}-${colKey}`]: finalVal };
     
-    // Auto-calculate "مجموع" if in a month block
-    if (colKey.startsWith('m')) {
+    // Auto-calculate "مجموع", "نسبة" and "محصلة"
+    if (colKey.startsWith('m') || colKey.startsWith('final')) {
         const parts = colKey.split('-');
-        if (parts.length === 2) {
+        if (parts.length === 2 && colKey.startsWith('m')) {
             const mIdx = parts[0].substring(1);
             const field = parts[1];
-            if (field !== 'total_m') {
+            if (field !== 'total_m' && field !== 'ratio_m') {
                 // sum the 5 fields
                 const w_k = parseFloat(newCells[`${studentId}-m${mIdx}-w_k`] || '0') || 0;
                 const w_m = parseFloat(newCells[`${studentId}-m${mIdx}-w_m`] || '0') || 0;
                 const oral = parseFloat(newCells[`${studentId}-m${mIdx}-oral`] || '0') || 0;
                 const attend = parseFloat(newCells[`${studentId}-m${mIdx}-attend`] || '0') || 0;
                 const written = parseFloat(newCells[`${studentId}-m${mIdx}-written`] || '0') || 0;
-                newCells[`${studentId}-m${mIdx}-total_m`] = (w_k + w_m + oral + attend + written).toString();
+                const monthTotal = w_k + w_m + oral + attend + written;
+                newCells[`${studentId}-m${mIdx}-total_m`] = monthTotal.toString();
+                
+                const monthMaxSum = (maxScores.w_k || 10) + (maxScores.w_m || 10) + (maxScores.oral || 10) + (maxScores.attend || 10) + (maxScores.written || 60);
+                const ratio = monthMaxSum > 0 ? (monthTotal / monthMaxSum) * 100 : 0;
+                newCells[`${studentId}-m${mIdx}-ratio_m`] = Math.round(ratio).toString() + '%';
             }
+        }
+
+        // Recalculate term_result continuously based on all months
+        const monthMaxSum = (maxScores.w_k || 10) + (maxScores.w_m || 10) + (maxScores.oral || 10) + (maxScores.attend || 10) + (maxScores.written || 60);
+        const termTargetMax = maxScores.term_result || 20;
+        let sumOfMonths = 0;
+        
+        months.forEach((_, idx) => {
+            sumOfMonths += parseFloat(newCells[`${studentId}-m${idx}-total_m`] || '0') || 0;
+        });
+        
+        const maxAllMonths = monthMaxSum * months.length;
+        const termResult = maxAllMonths > 0 ? (sumOfMonths / maxAllMonths) * termTargetMax : 0;
+        
+        // Only set it if it's non-zero or user has entered month data
+        if (sumOfMonths > 0) {
+            newCells[`${studentId}-final-term_result`] = termResult.toFixed(1).replace(/\.0$/, '');
+        } else if (newCells[`${studentId}-final-term_result`]) {
+            newCells[`${studentId}-final-term_result`] = '';
         }
     }
     
@@ -234,7 +313,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
         handleSave(newCells);
-    }, 2000);
+    }, 1500); // 1.5 seconds instead of 2 for snappier sync
   };
 
   const calculateColumnTotal = (colKey: string) => {
@@ -498,10 +577,23 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
          <div className="font-bold text-blue-900 flex items-center gap-2 border-l border-blue-200 pl-4 ml-2">
              <TrendingUp size={18} /> مؤشرات الأداء:
          </div>
-         <button onClick={()=>setIndicatorMode(indicatorMode === 'highest' ? null : 'highest')} className={`px-3 py-1.5 rounded-lg font-bold text-sm transition-colors ${indicatorMode === 'highest' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-blue-100 hover:bg-blue-100'}`}>الأكثر درجة</button>
-         <button onClick={()=>setIndicatorMode(indicatorMode === 'lowest' ? null : 'lowest')} className={`px-3 py-1.5 rounded-lg font-bold text-sm transition-colors ${indicatorMode === 'lowest' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-blue-100 hover:bg-blue-100'}`}>الأقل درجة</button>
-         <button onClick={()=>setIndicatorMode(indicatorMode === 'average' ? null : 'average')} className={`px-3 py-1.5 rounded-lg font-bold text-sm transition-colors ${indicatorMode === 'average' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-blue-100 hover:bg-blue-100'}`}>المتوسط</button>
-         <button onClick={()=>setIndicatorMode(indicatorMode === 'absent_written' ? null : 'absent_written')} className={`px-3 py-1.5 rounded-lg font-bold text-sm transition-colors ${indicatorMode === 'absent_written' ? 'bg-red-500 text-white' : 'bg-white text-slate-600 border border-blue-100 hover:bg-red-50 hover:text-red-600 hover:border-red-200'}`}>الغائبين عن التحريري</button>
+         <select 
+            value={indicatorMode || ''} 
+            onChange={(e) => setIndicatorMode(e.target.value || null)}
+            className="bg-white border border-blue-200 text-slate-700 rounded-xl px-4 py-2 font-bold text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+         >
+             <option value="">عرض الكل</option>
+             <option value="absent_written">الغائبين عن الاختبار</option>
+             <option value="no_grades">لم تضف له درجة</option>
+             <option value="highest">الأكثر درجة</option>
+             <option value="lowest">الأقل درجة</option>
+             <option value="average">المتوسط</option>
+             <option value="excellent">ممتاز (90%+)</option>
+             <option value="vgood">جيد جداً (80%+)</option>
+             <option value="good">جيد (65%+)</option>
+             <option value="fair">ضعيف (50%+)</option>
+             <option value="fail">راسب (&lt;50%)</option>
+         </select>
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden overflow-x-auto relative min-h-[400px]">
@@ -514,7 +606,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                          <th rowSpan={2} className="border border-slate-200 bg-amber-50 w-48 text-slate-800 font-black p-2 min-w-[150px]">اسم الطالب</th>
                          
                          {months.map((m, mIdx) => (
-                             <th key={mIdx} colSpan={6} className={`border border-slate-300 font-black text-slate-800 p-2 text-lg ${mIdx===0 ? 'bg-blue-200 bg-month-0' : mIdx===1 ? 'bg-rose-200 bg-month-1' : 'bg-purple-200 bg-month-2'}`}>
+                             <th key={mIdx} colSpan={7} className={`border border-slate-300 font-black text-slate-800 p-2 text-lg ${mIdx===0 ? 'bg-blue-200 bg-month-0' : mIdx===1 ? 'bg-rose-200 bg-month-1' : 'bg-purple-200 bg-month-2'}`}>
                                  <input 
                                     className="bg-transparent text-center font-black w-full outline-none placeholder-slate-500" 
                                     value={m} 
@@ -523,7 +615,19 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                              </th>
                          ))}
                          
-                         <th rowSpan={2} className="border border-slate-300 bg-orange-100 p-2 w-24">المحصلة الفصلية</th>
+                         <th rowSpan={2} className="border border-slate-300 bg-orange-100 p-2 w-24 align-top">
+                             <div className="flex flex-col items-center justify-center gap-2 h-full">
+                                 <span>المحصلة الفصلية</span>
+                                 <input 
+                                     type="number" 
+                                     value={maxScores.term_result || 20}
+                                     onChange={(e) => canEditData && setMaxScores({...maxScores, term_result: parseFloat(e.target.value)})}
+                                     disabled={!canEditData}
+                                     className="w-12 h-6 text-center border border-slate-300 bg-white rounded outline-none text-xs text-orange-800"
+                                     title="الدرجة القصوى للمحصلة"
+                                 />
+                             </div>
+                         </th>
                          <th rowSpan={2} className="border border-slate-300 bg-orange-200 p-2 w-24">اختبار فصلي</th>
                      </tr>
                      {/* Sub Headers */}
@@ -536,14 +640,14 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                                      
                                      return (
                                          <th key={`head-${mIdx}-${mc.id}`} className={`border border-slate-300 p-2 font-bold text-xs ${mc.isTotal ? 'bg-yellow-300 text-black shadow-inner shadow-yellow-500/50' : mIdx===0 ? 'bg-blue-100 bg-month-0' : mIdx===1 ? 'bg-rose-100 bg-month-1' : 'bg-purple-100 bg-month-2'}`}>
-                                            <div className="flex flex-col items-center justify-center gap-1 w-full min-h-[5rem]">
-                                                <div className="flex flex-col md:flex-row items-center justify-between w-full">
-                                                    <span className="-rotate-90 md:rotate-0 whitespace-nowrap mb-1 md:mb-0">{mc.label}</span>
+                                            <div className="flex flex-col items-center justify-between w-full min-h-[6rem] py-1">
+                                                <div className="flex flex-col items-center gap-1 w-full flex-grow">
+                                                    <span className="whitespace-normal leading-tight text-center break-words max-w-[70px] flex-grow flex items-center">{mc.label}</span>
                                                     {!mc.isTotal && (
                                                         <button 
                                                             disabled={!canEditData}
                                                             onClick={(e) => { e.stopPropagation(); handleColToggle(colKeyStr); }} 
-                                                            className={`p-1 rounded transition-colors ${isDisabled ? 'text-red-500 bg-red-100 hover:bg-red-200' : 'text-green-500 bg-green-100 hover:bg-green-200'} ${!canEditData && 'opacity-50 cursor-not-allowed'}`}
+                                                            className={`p-1 rounded transition-colors mt-1 shrink-0 ${isDisabled ? 'text-red-500 bg-red-100 hover:bg-red-200' : 'text-green-500 bg-green-100 hover:bg-green-200'} ${!canEditData && 'opacity-50 cursor-not-allowed'}`}
                                                             title={isDisabled ? 'غير معتمد' : 'معتمد'}
                                                         >
                                                             <Star size={14} fill={isDisabled ? 'currentColor' : 'none'} className={isDisabled ? 'text-[currentColor]' : ''} />
@@ -551,7 +655,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                                                     )}
                                                 </div>
                                                 {!mc.isTotal && (
-                                                    <div className="text-[10px] sm:text-xs">
+                                                    <div className="text-[10px] sm:text-xs shrink-0 mt-2">
                                                         <input 
                                                             type="number" 
                                                             value={maxScores[mc.id] !== undefined ? maxScores[mc.id] : ''}
@@ -561,12 +665,12 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                                                                 }
                                                             }}
                                                             disabled={!canEditData}
-                                                            className="w-[3rem] h-6 text-center border border-slate-300 bg-white rounded outline-none appearance-none"
+                                                            className="w-[3rem] h-6 text-center border border-slate-400 bg-white rounded outline-none appearance-none"
                                                             title={`الحد الأقصى لـ ${mc.label}`}
                                                         />
                                                     </div>
                                                 )}
-                                                {isDisabled && <span className="text-[10px] text-red-600 font-bold bg-white/50 px-1 rounded leading-none mt-1">غير معتمد</span>}
+                                                {isDisabled && <span className="text-[10px] text-red-600 font-bold bg-white/50 px-1 rounded leading-none mt-1 shrink-0">غير معتمد</span>}
                                             </div>
                                          </th>
                                      );
@@ -577,12 +681,22 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                  </thead>
                  <tbody>
                      {displayedStudents.map((s, sIdx) => {
-                         const isRowSelected = selectedRowId === s.id;
+                         const isRowSelected = highlightedRows.includes(s.id);
+                         const toggleRow = (e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            if (isRowSelected) {
+                                setHighlightedRows(highlightedRows.filter(id => id !== s.id));
+                            } else {
+                                setHighlightedRows([...highlightedRows, s.id]);
+                            }
+                         };
                          
                          return (
-                             <tr key={s.id} onClick={() => setSelectedRowId(s.id)} className={`hover:bg-slate-50 ${isRowSelected ? 'bg-cyan-50' : ''}`}>
+                             <tr key={s.id} className={`hover:bg-slate-50 ${isRowSelected ? '!bg-orange-100/80 shadow-inner' : ''}`}>
                                  <td className="border border-slate-200 p-1 font-bold bg-amber-50">{sIdx + 1}</td>
-                                 <td className="border border-slate-200 p-2 font-bold text-right truncate max-w-[150px] bg-slate-50" title={s.name}>{s.name}</td>
+                                 <td className="border border-slate-200 p-2 font-bold text-right truncate max-w-[150px] bg-slate-50 cursor-pointer hover:bg-amber-100 transition-colors" title={s.name} onClick={toggleRow}>
+                                     {s.name}
+                                 </td>
                                  
                                  {/* Map month columns */}
                                  {months.map((m, mIdx) => (
@@ -592,23 +706,28 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                                              const cellKey = `${s.id}-${colKeyStr}`;
                                              const val = cells[cellKey] || '';
                                              const isEmpty = val.trim() === '';
-                                             const cIndex = (mIdx * 6) + mcIdx;
-                                             const isColSelected = selectedColIndex === cIndex;
+                                             const numVal = parseFloat(val);
+                                             const cIndex = (mIdx * monthCols.length) + mcIdx;
+                                             const isColSelected = selectedColIndex === cIndex && !isRowSelected;
                                              const isDisabled = disabledCols.includes(colKeyStr);
+                                             
+                                             const maxVal = maxScores[mc.id];
+                                             const isFailingField = !mc.isTotal && !isNaN(numVal) && mc.id !== 'ratio_m' && maxVal && (numVal < (maxVal / 2));
                                              
                                              return (
                                                  <td key={cellKey} 
                                                      onMouseEnter={() => setSelectedColIndex(cIndex)}
-                                                     onClick={() => setSelectedColIndex(cIndex)}
                                                      className={`border border-slate-300 p-0 transition-colors relative
                                                      ${isColSelected ? 'bg-cyan-100' : ''}
                                                      ${mc.isTotal ? 'bg-yellow-100 font-bold' : ''} 
                                                      ${isDisabled ? 'bg-red-50 cursor-not-allowed opacity-80' : ''}
-                                                     ${!mc.isTotal && isEmpty && !isDisabled ? 'bg-yellow-50/50' : ''}`}
+                                                     ${isFailingField ? '!bg-red-400/30' : ''}
+                                                     ${!mc.isTotal && isEmpty && !isDisabled && !isRowSelected ? 'bg-yellow-50/50' : ''}`}
                                                  >
                                                      <input 
                                                         type="text" 
-                                                        className={`w-full h-full p-2 text-center bg-transparent outline-blue-500 font-bold max-w-[50px] md:max-w-[80px] ${isDisabled ? 'cursor-not-allowed' : ''}`} 
+                                                        onFocus={(e) => e.target.select()}
+                                                        className={`w-full h-full p-2 text-center bg-transparent outline-blue-500 font-bold max-w-[50px] md:max-w-[80px] ${isDisabled ? 'cursor-not-allowed' : ''} ${isRowSelected ? 'text-orange-950 outline-amber-600' : ''}`} 
                                                         value={val}
                                                         readOnly={mc.isTotal || isDisabled}
                                                         onChange={e => handleCellChange(s.id, colKeyStr, e.target.value)}
@@ -625,19 +744,24 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                                       const cellKey = `${s.id}-${colKeyStr}`;
                                       const val = cells[cellKey] || '';
                                       const valNum = parseFloat(val) || 0;
-                                      const isFailing = valNum > 0 && valNum < 50; // اعتبرت درجة الرسوب أقل من 50 كأساس افتراضي
-                                      const cIndex = (months.length * 6) + fcIdx;
-                                      const isColSelected = selectedColIndex === cIndex;
+                                      const isTermResult = fc.id === 'term_result';
+                                      
+                                      const maxVal = isTermResult ? (maxScores.term_result || 20) : (maxScores.term_exam || 0);
+                                      const isFailing = !isNaN(valNum) && maxVal > 0 && (valNum < (maxVal / 2));
+                                      
+                                      const cIndex = (months.length * monthCols.length) + fcIdx;
+                                      const isColSelected = selectedColIndex === cIndex && !isRowSelected;
 
                                       return (
                                           <td key={cellKey} 
                                               onMouseEnter={() => setSelectedColIndex(cIndex)}
-                                              onClick={() => setSelectedColIndex(cIndex)}
-                                              className={`border border-slate-300 bg-orange-50/50 p-0 ${isColSelected ? 'bg-cyan-100' : ''} ${isFailing ? '!bg-orange-400/30' : ''}`}
+                                              className={`border border-slate-300 p-0 ${isColSelected ? 'bg-cyan-100' : 'bg-orange-50/50'} ${isFailing ? '!bg-red-400/30' : ''}`}
                                           >
                                               <input 
                                                 type="text" 
-                                                className="w-full h-full p-2 text-center bg-transparent outline-blue-500 font-bold max-w-[50px] md:max-w-[80px]" 
+                                                onFocus={(e) => !isTermResult && e.target.select()}
+                                                readOnly={isTermResult}
+                                                className={`w-full h-full p-2 text-center bg-transparent outline-blue-500 font-bold max-w-[50px] md:max-w-[80px] ${isRowSelected ? 'text-orange-950 outline-amber-600' : ''}`} 
                                                 value={val}
                                                 onChange={e => handleCellChange(s.id, colKeyStr, e.target.value)}
                                               />
@@ -690,6 +814,20 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
               </div>
           )}
       </div>
+
+      {/* Signatures Section */}
+      {selectedGrade && selectedSection && (
+          <div className="mt-8 px-8 flex justify-between items-center font-bold text-slate-800 pb-10 max-w-[1200px] mx-auto">
+              <div className="text-center w-48">
+                  <p className="text-lg">معلم المادة</p>
+                  <p className="mt-4 text-blue-800 text-xl border-b-2 border-dashed border-slate-300 pb-1 inline-block min-w-[200px]">{currentUser?.name || '........................'}</p>
+              </div>
+              <div className="text-center w-48">
+                  <p className="text-lg">مدير المدرسة</p>
+                  <p className="mt-4 border-b-2 border-dashed border-slate-300 pb-1 inline-block min-w-[200px] h-8 text-xl text-slate-400">........................</p>
+              </div>
+          </div>
+      )}
 
       {/* History Modal */}
       {showHistoryModal && (

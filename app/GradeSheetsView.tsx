@@ -228,11 +228,20 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
         if (currentSheetId) {
             const current = list.find(l => l.id === currentSheetId);
             if (current) {
-                // To avoid disrupting typing, only update values from server if they differ significantly or if we decide to just update maxScores and disabledCols
-                // Updating `cells` constantly might wipe local unsaved changes since typing is very fast.
-                // We'll update maxScores and disabledCols immediately.
                 setMaxScores(prev => JSON.stringify(prev) !== JSON.stringify(current.maxScores) ? (current.maxScores || prev) : prev);
                 setDisabledCols(prev => JSON.stringify(prev) !== JSON.stringify(current.disabledCols) ? (current.disabledCols || []) : prev);
+                
+                // Real-time synchronization of cells and metadata
+                // Only overwrite if it came from server or another client, and we don't have local un-debounced changes
+                if (!snap.metadata.hasPendingWrites) {
+                    setCells(prev => JSON.stringify(prev) !== JSON.stringify(current.cells || {}) ? (current.cells || {}) : prev);
+                    setSchoolName(prev => current.schoolName !== prev ? (current.schoolName || '') : prev);
+                    setBranch(prev => current.branch !== prev ? (current.branch || '') : prev);
+                    setTeacherName(prev => current.teacherName !== prev ? (current.teacherName || '') : prev);
+                    setSubject(prev => current.subject !== prev ? (current.subject || '') : prev);
+                    setSheetName(prev => current.sheetName !== prev ? (current.sheetName || '') : prev);
+                    setMonths(prev => JSON.stringify(prev) !== JSON.stringify(current.months || []) ? (current.months || prev) : prev);
+                }
             }
         }
     });
@@ -363,8 +372,17 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
   const isCreatingRef = useRef(false);
 
   const handleSave = async (currentCells: Record<string, string> = cells, currentDisabledCols = disabledCols, currentMaxScores = maxScores, isAutoSave = false) => {
-    if (!selectedGrade || !selectedSection) {
-      if (!isAutoSave) toast.error('الرجاء اختيار الصف والشعبة أولاً');
+    let missingFields = [];
+    if (!schoolName) missingFields.push('اسم المدرسة');
+    if (!branch) missingFields.push('الفرع');
+    if (!teacherName) missingFields.push('اسم المعلم');
+    if (!subject) missingFields.push('المادة');
+    if (!selectedGrade) missingFields.push('الصف');
+    if (!selectedSection) missingFields.push('الشعبة');
+    if (!sheetName) missingFields.push('اسم الكشف');
+    
+    if (missingFields.length > 0) {
+      if (!isAutoSave) toast.error(`الرجاء إكمال البيانات التالية قبل الحفظ: ${missingFields.join('، ')}`);
       return;
     }
     

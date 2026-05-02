@@ -99,12 +99,20 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
     currentUser?.permissions?.gradeSheets === undefined || 
     (Array.isArray(currentUser?.permissions?.gradeSheets) && currentUser.permissions.gradeSheets.includes('edit_data'));
   
-  // Indicators
-  const [indicatorMode, setIndicatorMode] = useState<string | null>(null);
-
   // Highlighting specific rows
   const [highlightedRows, setHighlightedRows] = useState<string[]>([]);
 
+  // Modals for Indicators and Visible Months
+  const [showIndicatorModal, setShowIndicatorModal] = useState(false);
+  const [showVisibleMonthsModal, setShowVisibleMonthsModal] = useState(false);
+  const [visibleMonths, setVisibleMonths] = useState<number[]>([0, 1, 2]);
+
+  const [indicatorConfig, setIndicatorConfig] = useState({
+      months: [] as number[],
+      fields: [] as string[],
+      level: '' as string
+  });
+  
   // Columns definition per month
   const monthCols = [
     { id: 'w_k', label: 'واجب (ك)' },
@@ -140,80 +148,72 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
 
   // Handle Indicators filter
   const displayedStudents = useMemo(() => {
-    if (!indicatorMode) return students;
+    if (!indicatorConfig.level) return students;
     
     // Calculate total score for each student to sort
     const studentsWithScore = students.map(s => {
-      let total = 0;
       let hasWritten = false;
       let hasAnyGrade = false;
       
-      months.forEach((m, mIdx) => {
-        const tVal = parseFloat(cells[`${s.id}-m${mIdx}-total_m`] || '0') || 0;
-        total += tVal;
-        const wValStr = cells[`${s.id}-m${mIdx}-written`];
-        if (wValStr && String(wValStr).trim() !== '') hasWritten = true;
-        
-        // Check if any grade exists for this month
-        ['w_k', 'w_m', 'oral', 'attend', 'written'].forEach(mc => {
-            const val = cells[`${s.id}-m${mIdx}-${mc}`];
-            if (val !== undefined && val.trim() !== '') hasAnyGrade = true;
-        });
+      const targetMonths = indicatorConfig.months.length > 0 ? indicatorConfig.months : visibleMonths;
+      const targetFields = indicatorConfig.fields.length > 0 ? indicatorConfig.fields : ['w_k', 'w_m', 'oral', 'attend', 'written'];
+      
+      let indicatorTotal = 0;
+      let indicatorMax = 0;
+      
+      targetMonths.forEach(mIdx => {
+          targetFields.forEach(f => {
+              const val = cells[`${s.id}-m${mIdx}-${f}`];
+              if (val !== undefined && val.trim() !== '') {
+                  hasAnyGrade = true;
+                  indicatorTotal += parseFloat(val) || 0;
+              }
+              if (f === 'written') {
+                  if (val && val.trim() !== '') hasWritten = true;
+              }
+              const maxF = maxScores[f] || (f === 'written' ? 60 : 10);
+              indicatorMax += maxF;
+          });
       });
       
-      const finalVal1 = parseFloat(cells[`${s.id}-final-term_result`] || '0') || 0;
-      const finalVal2 = parseFloat(cells[`${s.id}-final-term_exam`] || '0') || 0;
-      
-      if (cells[`${s.id}-final-term_result`] || cells[`${s.id}-final-term_exam`]) {
-          hasAnyGrade = true;
-      }
+      const percentage = indicatorMax > 0 ? (indicatorTotal / indicatorMax) * 100 : 0;
 
-      total += finalVal1 + finalVal2;
-
-      // max possible
-      const monthMaxSum = (maxScores.w_k || 10) + (maxScores.w_m || 10) + (maxScores.oral || 10) + (maxScores.attend || 10) + (maxScores.written || 60);
-      const termExamMax = maxScores.term_exam || 0; 
-      // note: if term_exam is not defined maybe it's 30 or 50. Let's just use what's typed or default. We didn't add maxScores.term_exam yet, let's assume 0 if not typed, just use monthMaxSum for simple percentage if term max is weird.
-      const totalMax = (monthMaxSum * months.length) + (maxScores.term_result || 20) + (maxScores.term_exam || 0);
-
-      const percentage = totalMax > 0 ? (total / totalMax) * 100 : 0;
-
-      return { ...s, totalScore: total, percentage, hasWritten, hasAnyGrade };
+      return { ...s, indicatorTotal, percentage, hasWritten, hasAnyGrade };
     });
 
-    if (indicatorMode === 'highest') {
-        return studentsWithScore.sort((a, b) => b.totalScore - a.totalScore);
+    if (indicatorConfig.level === 'highest') {
+        return studentsWithScore.sort((a, b) => b.indicatorTotal - a.indicatorTotal).slice(0, Math.max(1, Math.floor(studentsWithScore.length / 4)));
     }
-    if (indicatorMode === 'lowest') {
-        return studentsWithScore.sort((a, b) => a.totalScore - b.totalScore);
+    if (indicatorConfig.level === 'lowest') {
+        return studentsWithScore.sort((a, b) => a.indicatorTotal - b.indicatorTotal).slice(0, Math.max(1, Math.floor(studentsWithScore.length / 4)));
     }
-    if (indicatorMode === 'average') {
-        return studentsWithScore.sort((a, b) => b.totalScore - a.totalScore).slice(Math.floor(studentsWithScore.length / 4), Math.floor(studentsWithScore.length * 3 / 4));
+    if (indicatorConfig.level === 'average') {
+        return studentsWithScore.sort((a, b) => b.indicatorTotal - a.indicatorTotal).slice(Math.floor(studentsWithScore.length / 4), Math.floor(studentsWithScore.length * 3 / 4));
     }
-    if (indicatorMode === 'absent_written') {
+    if (indicatorConfig.level === 'absent_written') {
         return studentsWithScore.filter(s => !s.hasWritten).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
     }
-    if (indicatorMode === 'no_grades') {
+    if (indicatorConfig.level === 'no_grades') {
         return studentsWithScore.filter(s => !s.hasAnyGrade).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
     }
-    if (indicatorMode === 'excellent') {
-        return studentsWithScore.filter(s => s.percentage >= 90).sort((a, b) => b.totalScore - a.totalScore);
+    if (indicatorConfig.level === 'excellent') {
+        return studentsWithScore.filter(s => s.percentage >= 90).sort((a, b) => b.indicatorTotal - a.indicatorTotal);
     }
-    if (indicatorMode === 'vgood') {
-        return studentsWithScore.filter(s => s.percentage >= 80 && s.percentage < 90).sort((a, b) => b.totalScore - a.totalScore);
+    if (indicatorConfig.level === 'vgood') {
+        return studentsWithScore.filter(s => s.percentage >= 80 && s.percentage < 90).sort((a, b) => b.indicatorTotal - a.indicatorTotal);
     }
-    if (indicatorMode === 'good') {
-        return studentsWithScore.filter(s => s.percentage >= 65 && s.percentage < 80).sort((a, b) => b.totalScore - a.totalScore);
+    if (indicatorConfig.level === 'good') {
+        return studentsWithScore.filter(s => s.percentage >= 65 && s.percentage < 80).sort((a, b) => b.indicatorTotal - a.indicatorTotal);
     }
-    if (indicatorMode === 'fair') {
-        return studentsWithScore.filter(s => s.percentage >= 50 && s.percentage < 65).sort((a, b) => b.totalScore - a.totalScore);
+    if (indicatorConfig.level === 'fair') {
+        return studentsWithScore.filter(s => s.percentage >= 50 && s.percentage < 65).sort((a, b) => b.indicatorTotal - a.indicatorTotal);
     }
-    if (indicatorMode === 'fail') {
-        return studentsWithScore.filter(s => s.percentage < 50 && s.hasAnyGrade).sort((a, b) => b.totalScore - a.totalScore);
+    if (indicatorConfig.level === 'fail') {
+        return studentsWithScore.filter(s => s.percentage < 50 && s.hasAnyGrade).sort((a, b) => b.indicatorTotal - a.indicatorTotal);
     }
     
     return students;
-  }, [students, cells, months, indicatorMode, maxScores]);
+  }, [students, cells, visibleMonths, indicatorConfig, maxScores]);
 
   // Autosave when cells change fundamentally handled by debounce or just explicit save because every keystroke is too much for firebase.
   // Actually, standard behavior: auto save periodically or on blur.
@@ -242,7 +242,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
 
   const fetchSheets = async () => {};
 
-  const updateStudentCalculations = (currentCells: Record<string, string>, studentId: string, currentMaxScores: Record<string, number>) => {
+  const updateStudentCalculations = (currentCells: Record<string, string>, studentId: string, currentMaxScores: Record<string, number>, currentVisibleMonths: number[] = visibleMonths) => {
     months.forEach((_, idx) => {
        const mIdx = String(idx);
        let monthTotal = 0;
@@ -261,11 +261,11 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
     const termTargetMax = currentMaxScores.term_result || 20;
     let sumOfMonths = 0;
     
-    months.forEach((_, idx) => {
+    currentVisibleMonths.forEach((idx) => {
         sumOfMonths += parseFloat(currentCells[`${studentId}-m${idx}-total_m`] || '0') || 0;
     });
     
-    const maxAllMonths = monthMaxSum * months.length;
+    const maxAllMonths = monthMaxSum * currentVisibleMonths.length;
     const termResult = maxAllMonths > 0 ? (sumOfMonths / maxAllMonths) * termTargetMax : 0;
     
     if (sumOfMonths > 0) {
@@ -613,28 +613,21 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
           </div>
       </div>
 
-      {/* Performance Indicators */}
-      <div className="bg-blue-50 p-4 rounded-2xl mb-6 flex flex-wrap gap-2 items-center">
-         <div className="font-bold text-blue-900 flex items-center gap-2 border-l border-blue-200 pl-4 ml-2">
-             <TrendingUp size={18} /> مؤشرات الأداء:
-         </div>
-         <select 
-            value={indicatorMode || ''} 
-            onChange={(e) => setIndicatorMode(e.target.value || null)}
-            className="bg-white border border-blue-200 text-slate-700 rounded-xl px-4 py-2 font-bold text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+      {/* Performance Indicators and Visible Months */}
+      <div className="bg-blue-50 p-4 rounded-2xl mb-6 flex flex-wrap gap-4 items-center">
+         <button 
+             onClick={() => setShowIndicatorModal(true)}
+             className={`flex items-center gap-2 border px-4 py-2 rounded-xl font-bold text-sm transition-colors ${indicatorConfig.level ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-900 border-blue-200 hover:bg-blue-100'}`}
          >
-             <option value="">عرض الكل</option>
-             <option value="absent_written">الغائبين عن الاختبار</option>
-             <option value="no_grades">لم تضف له درجة</option>
-             <option value="highest">الأكثر درجة</option>
-             <option value="lowest">الأقل درجة</option>
-             <option value="average">المتوسط</option>
-             <option value="excellent">ممتاز (90%+)</option>
-             <option value="vgood">جيد جداً (80%+)</option>
-             <option value="good">جيد (65%+)</option>
-             <option value="fair">ضعيف (50%+)</option>
-             <option value="fail">راسب (&lt;50%)</option>
-         </select>
+             <TrendingUp size={18} /> مؤشرات الأداء
+         </button>
+
+         <button 
+             onClick={() => setShowVisibleMonthsModal(true)}
+             className="flex items-center gap-2 bg-white text-slate-800 border-slate-200 border hover:bg-slate-50 px-4 py-2 rounded-xl font-bold text-sm transition-colors"
+         >
+             <FileSpreadsheet size={18} /> الأشهر الظاهرة
+         </button>
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden overflow-x-auto relative min-h-[400px]">
@@ -646,7 +639,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                          <th rowSpan={2} className="border border-slate-200 bg-amber-500 text-white w-12 font-black">م</th>
                          <th rowSpan={2} className="border border-slate-200 bg-amber-50 w-48 text-slate-800 font-black p-2 min-w-[150px]">اسم الطالب</th>
                          
-                         {months.map((m, mIdx) => (
+                         {months.map((m, mIdx) => visibleMonths.includes(mIdx) && (
                              <th key={mIdx} colSpan={7} className={`border border-slate-300 font-black text-slate-800 p-2 text-lg ${mIdx===0 ? 'bg-blue-200 bg-month-0' : mIdx===1 ? 'bg-rose-200 bg-month-1' : 'bg-purple-200 bg-month-2'}`}>
                                  <input 
                                     className="bg-transparent text-center font-black w-full outline-none placeholder-slate-500" 
@@ -673,7 +666,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                      </tr>
                      {/* Sub Headers */}
                      <tr>
-                         {months.map((m, mIdx) => (
+                         {months.map((m, mIdx) => visibleMonths.includes(mIdx) && (
                              <React.Fragment key={'sub-'+mIdx}>
                                  {monthCols.map((mc, mcIdx) => {
                                      const colKeyStr = `m${mIdx}-${mc.id}`;
@@ -763,7 +756,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                                  </td>
                                  
                                  {/* Map month columns */}
-                                 {months.map((m, mIdx) => (
+                                 {months.map((m, mIdx) => visibleMonths.includes(mIdx) && (
                                      <React.Fragment key={'r-'+s.id+'-'+mIdx}>
                                          {monthCols.map((mc, mcIdx) => {
                                              const colKeyStr = `m${mIdx}-${mc.id}`;
@@ -840,7 +833,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                      {displayedStudents.length > 0 && (
                          <tr className="bg-slate-100 font-black">
                              <td colSpan={2} className="border border-slate-300 p-2 text-left bg-slate-200">الإجمالي / النسبة</td>
-                             {months.map((m, mIdx) => (
+                             {months.map((m, mIdx) => visibleMonths.includes(mIdx) && (
                                  <React.Fragment key={'tot-'+mIdx}>
                                      {monthCols.map((mc, mcIdx) => {
                                          const colKeyStr = `m${mIdx}-${mc.id}`;
@@ -889,6 +882,138 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
               <div className="text-center w-48">
                   <p className="text-lg">مدير المدرسة</p>
                   <p className="mt-4 border-b-2 border-dashed border-slate-300 pb-1 inline-block min-w-[200px] h-8 text-xl text-slate-400">........................</p>
+              </div>
+          </div>
+      )}
+
+      {/* Visible Months Modal */}
+      {showVisibleMonthsModal && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-3xl w-full max-w-sm flex flex-col shadow-2xl relative">
+                  <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                     <h3 className="font-black text-xl text-slate-800 flex items-center gap-2">
+                         <FileSpreadsheet className="text-blue-500" />
+                         الأشهر الظاهرة
+                     </h3>
+                     <button onClick={() => setShowVisibleMonthsModal(false)} className="bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors">
+                         <X size={20} />
+                     </button>
+                  </div>
+                  <div className="p-6 flex flex-col gap-4">
+                      {months.map((m, mIdx) => (
+                          <label key={mIdx} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-50 rounded-xl">
+                              <input 
+                                  type="checkbox" 
+                                  checked={visibleMonths.includes(mIdx)}
+                                  onChange={() => {
+                                      let newVm = visibleMonths.includes(mIdx) ? visibleMonths.filter(v => v !== mIdx) : [...visibleMonths, mIdx];
+                                      if (newVm.length === 0) newVm = [mIdx]; // Don't allow empty
+                                      setVisibleMonths(newVm.sort());
+                                      
+                                      // trigger recalculation based on visible months
+                                      const newCells = { ...cells };
+                                      displayedStudents.forEach(s => {
+                                          updateStudentCalculations(newCells, s.id, maxScores, newVm);
+                                      });
+                                      setCells(newCells);
+                                      triggerAutoSave(newCells, disabledCols, maxScores);
+                                  }}
+                                  className="w-5 h-5 text-blue-600 rounded"
+                              />
+                              <span className="font-bold text-slate-700">{m}</span>
+                          </label>
+                      ))}
+                      <button onClick={() => setShowVisibleMonthsModal(false)} className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors">
+                          تطبيق وإغلاق
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Indicators Modal */}
+      {showIndicatorModal && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+              <div className="bg-white rounded-3xl w-full max-w-lg flex flex-col shadow-2xl relative my-auto">
+                  <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                     <h3 className="font-black text-xl text-slate-800 flex items-center gap-2">
+                         <TrendingUp className="text-blue-500" />
+                         مؤشرات الأداء
+                     </h3>
+                     <button onClick={() => setShowIndicatorModal(false)} className="bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors">
+                         <X size={20} />
+                     </button>
+                  </div>
+                  <div className="p-6 flex flex-col gap-6">
+                      
+                      {/* Months Select */}
+                      <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">اختر الشهر (أو عدة أشهر)</label>
+                          <div className="flex flex-wrap gap-2">
+                             {months.map((m, mIdx) => (
+                                 <button 
+                                     key={mIdx}
+                                     onClick={() => {
+                                         setIndicatorConfig(prev => ({
+                                             ...prev,
+                                             months: prev.months.includes(mIdx) ? prev.months.filter(v => v !== mIdx) : [...prev.months, mIdx]
+                                         }))
+                                     }}
+                                     className={`px-4 py-2 rounded-xl font-bold text-sm border transition-colors ${indicatorConfig.months.includes(mIdx) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
+                                 >
+                                     {m}
+                                 </button>
+                             ))}
+                          </div>
+                      </div>
+
+                      {/* Fields Select */}
+                      <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">اختر البنود</label>
+                          <div className="flex flex-wrap gap-2">
+                             {monthCols.filter(mc => !mc.isTotal && mc.id !== 'ratio_m').map(mc => (
+                                 <button 
+                                     key={mc.id}
+                                     onClick={() => {
+                                         setIndicatorConfig(prev => ({
+                                             ...prev,
+                                             fields: prev.fields.includes(mc.id) ? prev.fields.filter(v => v !== mc.id) : [...prev.fields, mc.id]
+                                         }))
+                                     }}
+                                     className={`px-3 py-1.5 rounded-lg font-bold text-sm border transition-colors ${indicatorConfig.fields.includes(mc.id) ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
+                                 >
+                                     {mc.label}
+                                 </button>
+                             ))}
+                          </div>
+                      </div>
+
+                      {/* Level Select */}
+                      <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">خيارات الفرز</label>
+                          <select 
+                            value={indicatorConfig.level} 
+                            onChange={(e) => setIndicatorConfig(prev => ({...prev, level: e.target.value}))}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                          >
+                             <option value="">عرض الكل</option>
+                             <option value="absent_written">الغائبين عن الاختبار</option>
+                             <option value="no_grades">لم تضف له درجة</option>
+                             <option value="highest">الأكثر درجة</option>
+                             <option value="lowest">الأقل درجة</option>
+                             <option value="average">المتوسط</option>
+                             <option value="excellent">ممتاز (90%+)</option>
+                             <option value="vgood">جيد جداً (80%+)</option>
+                             <option value="good">جيد (65%+)</option>
+                             <option value="fair">ضعيف (50%+)</option>
+                             <option value="fail">راسب (&lt;50%)</option>
+                          </select>
+                      </div>
+
+                      <button onClick={() => setShowIndicatorModal(false)} className="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors">
+                          تطبيق
+                      </button>
+                  </div>
               </div>
           </div>
       )}

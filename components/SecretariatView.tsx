@@ -164,7 +164,7 @@ const StudentsManager = () => {
         rows.forEach((row: any) => {
           maxSerial++;
           newStudents.push({
-            id: Date.now().toString() + Math.random().toString(),
+            id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
             serialNumber: maxSerial,
             school: row['المدرسة'] || fallbackSchool,
             branch: row['الفرع'] || fallbackBranch,
@@ -468,7 +468,7 @@ const StaffManager = () => {
         rows.forEach((row: any) => {
           maxSerial++;
           newStaff.push({
-            id: Date.now().toString() + Math.random().toString(),
+            id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
             serialNumber: maxSerial,
             school: row['المدرسة'] || fallbackSchool,
             branch: row['الفرع'] || fallbackBranch,

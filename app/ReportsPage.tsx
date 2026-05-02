@@ -3201,7 +3201,7 @@ export const ViolationsPage: React.FC = () => {
 };
 
 // Memoized Row for performance optimization
-const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShowNotesModal, setShowMainNotesSelectionModal, toggleStar, isHighlighted, onRowClick, setWaSelector, isSelected, onSelect, onDelete, index, showBulkActions }: {
+const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShowNotesModal, setShowMainNotesSelectionModal, toggleStar, isHighlighted, onRowClick, setWaSelector, isSelected, onSelect, onDelete, index, showBulkActions, isSecretariatEnabled }: {
   s: StudentReport;
   optionsAr: any;
   optionsEn: any;

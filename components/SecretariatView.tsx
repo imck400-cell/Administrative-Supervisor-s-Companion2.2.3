@@ -133,7 +133,53 @@ const StudentsManager = () => {
 
   const saveStudents = (newStudents: StudentData[]) => {
     setStudents(newStudents);
-    updateData({ secretariatStudents: newStudents });
+    
+    // Sync to studentReports to ensure imported students are globally available
+    const existingReports = data.studentReports || [];
+    const mergedReports = [...existingReports];
+    
+    newStudents.forEach(s => {
+      // Find by ID, or by name + grade + section to prevent duplicates
+      const exists = mergedReports.find(r => r.id === s.id || (r.name && s.name && r.name === s.name && r.grade === s.grade && r.section === s.section));
+      if (!exists) {
+        mergedReports.push({
+          id: s.id,
+          userId: currentUser?.id || '',
+          createdAt: new Date().toISOString(),
+          name: s.name || '',
+          gender: s.gender || '',
+          grade: s.grade || '',
+          section: s.section || '',
+          address: s.residenceWork || '',
+          workOutside: '',
+          healthStatus: s.healthStatus || 'ممتاز',
+          healthDetails: '',
+          guardianName: s.guardianInfo || '',
+          guardianPhones: [],
+          academicReading: 'متوسط',
+          academicWriting: 'متوسط',
+          academicParticipation: 'متوسط',
+          behaviorLevel: 'متوسط',
+          mainNotes: [],
+          otherNotesText: '',
+          guardianEducation: 'متعلم',
+          guardianFollowUp: 'متوسط',
+          guardianCooperation: 'متوسط',
+          notes: ''
+        } as any);
+      } else {
+        // Sync immutable details so that editing in secretariat reflects globally
+        exists.name = s.name || exists.name;
+        exists.gender = s.gender || exists.gender;
+        exists.address = s.residenceWork || exists.address;
+        exists.healthStatus = s.healthStatus || exists.healthStatus;
+        exists.guardianName = s.guardianInfo || exists.guardianName;
+        exists.grade = s.grade || exists.grade;
+        exists.section = s.section || exists.section;
+      }
+    });
+
+    updateData({ secretariatStudents: newStudents, studentReports: mergedReports });
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -437,7 +483,45 @@ const StaffManager = () => {
 
   const saveStaff = (newStaff: StaffData[]) => {
     setStaff(newStaff);
-    updateData({ secretariatStaff: newStaff });
+    
+    // Auto-sync imported staff to today's daily report so they appear immediately in the Dashboard
+    const today = new Date().toISOString().split('T')[0];
+    const dailyReports = [...(data.dailyReports || [])];
+    
+    // Only update reports from today that belong to the user's school (or all if admin)
+    let updatedReports = false;
+    dailyReports.forEach(r => {
+      if (r.dateStr === today) {
+        let changed = false;
+        newStaff.forEach(s => {
+          // Check if this teacher is already in the report
+          if (!r.teachersData.some(t => t.teacherName === s.name)) {
+            r.teachersData.push({
+              id: crypto.randomUUID(),
+              teacherName: s.name,
+              subjectCode: s.subjects && s.subjects.length > 0 ? s.subjects.join(' / ') : '',
+              className: s.grades && s.grades.length > 0 ? s.grades.join(' / ') : '',
+              gender: s.gender || 'ذكر',
+              violations_score: 0, violations_notes: [], attendance: 0, appearance: 0, preparation: 0, 
+              supervision_queue: 0, supervision_rest: 0, supervision_prayer: 0, supervision_end: 0,
+              class_management: 0, teaching_strategies: 0, technology_usage: 0, active_learning: 0,
+              student_evaluation: 0, correction: 0, weak_students: 0, excellence_students: 0, enrichment: 0,
+              correction_books: 0, correction_notebooks: 0, correction_followup: 0, teaching_aids: 0,
+              extra_activities: 0, radio: 0, creativity: 0, zero_period: 0, follow_up: 0, admin_directives: 0,
+              order: r.teachersData.length + 1
+            } as any);
+            changed = true;
+          }
+        });
+        if (changed) updatedReports = true;
+      }
+    });
+
+    if (updatedReports) {
+      updateData({ secretariatStaff: newStaff, dailyReports });
+    } else {
+      updateData({ secretariatStaff: newStaff });
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -436,6 +436,41 @@ export const DailyReportsPage: React.FC = () => {
       radio: 0, creativity: 0, zero_period: 0, violations_score: 0, violations_notes: [], gender: t.gender || 'ذكر'
     })) : [];
 
+    // Synchronize newly imported secretariat staff
+    if (data.secretariatStaff && data.secretariatStaff.length > 0) {
+      // Find staff that belong to the current user's scope
+      const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+      const userSchools = isAdminOrFull ? [] : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
+      
+      const validStaff = data.secretariatStaff.filter(s => {
+        if (isAdminOrFull) return true;
+        let ok = true;
+        if (userSchools.length > 0 && !userSchools.includes('all') && !userSchools.includes(s.school)) {
+          ok = false;
+        }
+        return ok;
+      });
+
+      validStaff.forEach(s => {
+        if (!newTeachers.some(t => t.teacherName === s.name)) {
+          newTeachers.push({
+            id: crypto.randomUUID(),
+            teacherName: s.name,
+            subjectCode: s.subjects && s.subjects.length > 0 ? s.subjects.join(' / ') : '',
+            className: s.grades && s.grades.length > 0 ? s.grades.join(' / ') : '',
+            gender: s.gender || 'ذكر',
+            violations_score: 0, violations_notes: [], attendance: 0, appearance: 0, preparation: 0, 
+            supervision_queue: 0, supervision_rest: 0, supervision_prayer: 0, supervision_end: 0,
+            class_management: 0, teaching_strategies: 0, technology_usage: 0, active_learning: 0,
+            student_evaluation: 0, correction: 0, weak_students: 0, excellence_students: 0, enrichment: 0,
+            correction_books: 0, correction_notebooks: 0, correction_followup: 0, teaching_aids: 0,
+            extra_activities: 0, radio: 0, creativity: 0, zero_period: 0, follow_up: 0, admin_directives: 0,
+            order: newTeachers.length + 1
+          } as unknown as TeacherFollowUp);
+        }
+      });
+    }
+
     const newReport: DailyReportContainer = {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       userId: currentUser?.id,
@@ -3522,7 +3557,7 @@ export const StudentsReportsPage: React.FC = () => {
     const rawStudentReports = data.studentReports || [];
     
     let list = validStudents.map(s => {
-      const existing = rawStudentReports.find(r => r.name === s.name && r.grade === s.grade && r.section === s.section);
+      const existing = rawStudentReports.find(r => r.id === s.id || (r.name === s.name && r.grade === s.grade && r.section === s.section));
       if (existing) {
         return {
           ...existing,

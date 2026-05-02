@@ -33,6 +33,7 @@ const toHijri = (dateStr: string) => {
 export const DailyReportsPage: React.FC = () => {
   const { lang, data, updateData, currentUser, userFilter, effectiveUserIds, dashboardFilter, setDashboardFilter } = useGlobal();
   const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.dailyFollowUp) && currentUser.permissions.dailyFollowUp.includes('disable'));
+  const isSecretariatEnabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('allowEdits') || currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
@@ -1141,8 +1142,12 @@ export const DailyReportsPage: React.FC = () => {
               <FolderOpen size={16} /> الأرشيف
             </button>
           </div>
-          <button onClick={addNewTeacher} className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-xl font-bold border border-purple-200 hover:bg-purple-100 transition-all text-xs sm:text-sm"><UserCircle size={16} /> إضافة معلم</button>
-          <button onClick={() => setShowImportModal(true)} className="flex items-center gap-2 bg-orange-50 text-orange-700 px-4 py-2 rounded-xl font-bold border border-orange-200 hover:bg-orange-100 transition-all text-xs sm:text-sm"><Upload size={16} /> استيراد أسماء المعلمين</button>
+          {isSecretariatEnabled && (
+            <>
+              <button onClick={addNewTeacher} className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-xl font-bold border border-purple-200 hover:bg-purple-100 transition-all text-xs sm:text-sm"><UserCircle size={16} /> إضافة معلم</button>
+              <button onClick={() => setShowImportModal(true)} className="flex items-center gap-2 bg-orange-50 text-orange-700 px-4 py-2 rounded-xl font-bold border border-orange-200 hover:bg-orange-100 transition-all text-xs sm:text-sm"><Upload size={16} /> استيراد أسماء المعلمين</button>
+            </>
+          )}
           <button onClick={() => setShowTeacherReport(true)} className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-xl font-bold border border-green-200 hover:bg-green-100 transition-all text-xs sm:text-sm"><FileText size={16} /> تقرير معلم</button>
           <button onClick={() => setShowSpecialFollowUp(true)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl font-bold shadow-md hover:bg-blue-700 transition-all text-xs sm:text-sm"><Activity size={16} /> متابعة خاصة</button>
           <button onClick={() => setShowMetricPicker(true)} className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-xl font-bold border border-blue-200 hover:bg-blue-100 transition-all text-xs sm:text-sm"><Settings2 size={16} /> تخصيص المجالات</button>
@@ -1194,7 +1199,7 @@ export const DailyReportsPage: React.FC = () => {
                     />
                     <div className="flex items-center gap-1">
                       <span className="text-[10px] font-sans">م</span>
-                      {selectedTeacherIds.length > 0 && (
+                      {selectedTeacherIds.length > 0 && isSecretariatEnabled && (
                         <button
                           onClick={(e) => { e.stopPropagation(); deleteSelectedTeachers(); }}
                           className="p-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors animate-in zoom-in"
@@ -1339,7 +1344,7 @@ export const DailyReportsPage: React.FC = () => {
                           onClick={(e) => e.stopPropagation()}
                         />
                         <span className="font-bold text-xs font-sans">{idx + 1}</span>
-                        {!isReadOnly && (
+                        {!isReadOnly && isSecretariatEnabled && (
                           <button
                             onClick={(e) => { e.stopPropagation(); deleteTeacher(t.id); }}
                             className="p-1 text-slate-400 hover:text-red-600 transition-colors"
@@ -3213,14 +3218,17 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
   onDelete: (id: string) => void;
   index: number;
   showBulkActions: boolean;
+  isSecretariatEnabled?: boolean;
 }) => {
   return (
     <tr onClick={() => onRowClick(s.id)} className={`transition-colors h-10 group cursor-pointer ${isHighlighted ? 'bg-yellow-50' : 'hover:bg-blue-50/20'}`}>
       <td className={`p-1 border-e border-slate-100 transition-colors ${isHighlighted ? 'bg-yellow-50' : 'bg-white group-hover:bg-blue-50'} w-20`}>
         <div className="flex items-center justify-center gap-2">
-          <button onClick={(e) => { e.stopPropagation(); onDelete(s.id); }} className="p-1 text-slate-300 hover:text-red-500 transition-colors" title={lang === 'ar' ? 'حذف الطالب' : 'Delete Student'}>
-            <Trash2 size={12} />
-          </button>
+          {isSecretariatEnabled && (
+            <button onClick={(e) => { e.stopPropagation(); onDelete(s.id); }} className="p-1 text-slate-300 hover:text-red-500 transition-colors" title={lang === 'ar' ? 'حذف الطالب' : 'Delete Student'}>
+              <Trash2 size={12} />
+            </button>
+          )}
           <span className="text-[10px] font-black text-slate-400 w-4 text-center">{index + 1}</span>
           <input
             type="checkbox"
@@ -3445,6 +3453,11 @@ export const StudentsReportsPage: React.FC = () => {
   const [showListModal, setShowListModal] = useState<'blacklist' | 'excellence' | null>(null);
   const [listSearch, setListSearch] = useState('');
   const [tempListSelected, setTempListSelected] = useState<string[]>([]);
+  
+  const isSecretariatEnabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('allowEdits') || currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+
+  const [selectedGradesFilter, setSelectedGradesFilter] = useState<string[]>([]);
+  const [selectedSectionsFilter, setSelectedSectionsFilter] = useState<string[]>([]);
 
   useEffect(() => {
     const highlightName = localStorage.getItem('highlight_student_name');
@@ -3879,6 +3892,15 @@ export const StudentsReportsPage: React.FC = () => {
 
   const filteredData = useMemo(() => {
     let result = [...studentData];
+    
+    // Apply multi-select grade/section filters
+    if (selectedGradesFilter.length > 0) {
+      result = result.filter(s => selectedGradesFilter.includes(s.grade));
+    }
+    if (selectedSectionsFilter.length > 0) {
+      result = result.filter(s => selectedSectionsFilter.includes(s.section));
+    }
+
     if (filterMode === 'blacklist' || filterMode === 'excellence') {
       if (selectedStudentNames.length === 0) return [];
       result = result.filter(s => selectedStudentNames.includes(s.name));
@@ -4154,9 +4176,23 @@ export const StudentsReportsPage: React.FC = () => {
     <div className="space-y-4 font-arabic animate-in fade-in duration-150">
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border">
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={addStudent} className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-sm hover:bg-blue-700 shadow-md transform active:scale-95 transition-all">
-            <Plus className="w-4 h-4" /> {lang === 'ar' ? 'إضافة طالب' : 'Add Student'}
-          </button>
+          {isSecretariatEnabled && (
+            <>
+              <button onClick={addStudent} className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-sm hover:bg-blue-700 shadow-md transform active:scale-95 transition-all">
+                <Plus className="w-4 h-4" /> {lang === 'ar' ? 'إضافة طالب' : 'Add Student'}
+              </button>
+              <label className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2.5 rounded-xl font-bold text-sm border border-green-200 cursor-pointer hover:bg-green-100 transition-all">
+                <Upload className="w-4 h-4" /> {lang === 'ar' ? 'استيراد ملف' : 'Import File'}
+                <input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} />
+              </label>
+              <button
+                onClick={handleDeleteDuplicates}
+                className="flex items-center gap-2 bg-red-50 text-red-700 px-4 py-2.5 rounded-xl font-bold text-sm border border-red-200 hover:bg-red-100 transition-all font-black"
+              >
+                <Trash2 size={16} /> {lang === 'ar' ? 'حذف الطلاب' : 'Delete Students'}
+              </button>
+            </>
+          )}
 
           <button
             onClick={() => setShowIndividualReportModal(true)}
@@ -4165,17 +4201,49 @@ export const StudentsReportsPage: React.FC = () => {
             <FileText className="w-4 h-4" /> {lang === 'ar' ? 'تقرير طالب' : 'Student Report'}
           </button>
 
-          <label className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2.5 rounded-xl font-bold text-sm border border-green-200 cursor-pointer hover:bg-green-100 transition-all">
-            <Upload className="w-4 h-4" /> {lang === 'ar' ? 'استيراد ملف' : 'Import File'}
-            <input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} />
-          </label>
-
-          <button
-            onClick={handleDeleteDuplicates}
-            className="flex items-center gap-2 bg-red-50 text-red-700 px-4 py-2.5 rounded-xl font-bold text-sm border border-red-200 hover:bg-red-100 transition-all font-black"
-          >
-            <Trash2 size={16} /> {lang === 'ar' ? 'حذف الطلاب' : 'Delete Students'}
-          </button>
+          <div className="flex gap-2">
+            <select 
+              value="" 
+              onChange={(e) => {
+                 const v = e.target.value;
+                 if (v && !selectedGradesFilter.includes(v)) setSelectedGradesFilter([...selectedGradesFilter, v]);
+              }}
+              className="p-2 border rounded-xl font-bold text-sm"
+            >
+              <option value="">الصفوف (تصفية)</option>
+              {(currentUser?.grades && currentUser.grades.length > 0 ? currentUser.grades : optionsAr.grades).map(g => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+            <select 
+              value="" 
+              onChange={(e) => {
+                 const v = e.target.value;
+                 if (v && !selectedSectionsFilter.includes(v)) setSelectedSectionsFilter([...selectedSectionsFilter, v]);
+              }}
+              className="p-2 border rounded-xl font-bold text-sm"
+            >
+              <option value="">الشعب (تصفية)</option>
+              {(currentUser?.sections && currentUser.sections.length > 0 ? currentUser.sections : optionsAr.sections).map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+          
+          {(selectedGradesFilter.length > 0 || selectedSectionsFilter.length > 0) && (
+             <div className="flex gap-1 items-center bg-slate-100 p-1 rounded-xl">
+                 {selectedGradesFilter.map(g => (
+                    <span key={g} className="bg-white border text-xs px-2 py-1 rounded-lg flex items-center gap-1">
+                      {g} <X className="w-3 h-3 cursor-pointer text-red-500" onClick={() => setSelectedGradesFilter(selectedGradesFilter.filter(x => x !== g))} />
+                    </span>
+                 ))}
+                 {selectedSectionsFilter.map(s => (
+                    <span key={s} className="bg-white border text-xs px-2 py-1 rounded-lg flex items-center gap-1">
+                      {s} <X className="w-3 h-3 cursor-pointer text-red-500" onClick={() => setSelectedSectionsFilter(selectedSectionsFilter.filter(x => x !== s))} />
+                    </span>
+                 ))}
+             </div>
+          )}
 
           <button onClick={bulkAutoFill} className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2.5 rounded-xl font-bold text-sm border border-purple-200 hover:bg-purple-100 transition-all">
             <Sparkles className="w-4 h-4" /> {lang === 'ar' ? 'التعبئة التلقائية' : 'Auto Fill'}
@@ -4369,6 +4437,7 @@ export const StudentsReportsPage: React.FC = () => {
                     onDelete={deleteStudent}
                     index={idx}
                     showBulkActions={selectedStudentIds.length > 0}
+                    isSecretariatEnabled={isSecretariatEnabled}
                   />
                 ))
               )}

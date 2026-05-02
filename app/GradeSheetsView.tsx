@@ -62,21 +62,8 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
   }, [schoolName, availableBranches]);
 
   const availableTeachers = useMemo(() => {
-    if (!schoolName || !branch) return [{ id: currentUser?.id, name: currentUser?.name }];
-    const isManager = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
-    if (!isManager) {
-       return [{ id: currentUser?.id || 'id', name: currentUser?.name || 'مستخدم غير معروف' }];
-    }
-    const teachers = (data.users || []).filter(u => 
-      u.schools?.includes(schoolName) && 
-      (u.permissions?.schoolsAndBranches?.[schoolName]?.includes(branch) || u.role === 'admin' || u.permissions?.all)
-    ).map(u => ({ id: u.id, name: u.name }));
-    
-    if (!teachers.find(t => t.id === currentUser?.id)) {
-      teachers.push({ id: currentUser?.id || 'id', name: currentUser?.name || 'مستخدم غير معروف' });
-    }
-    return teachers;
-  }, [schoolName, branch, data.users, currentUser]);
+    return [{ id: currentUser?.id || 'id', name: currentUser?.name || 'مستخدم غير معروف' }];
+  }, [currentUser]);
 
   const [teacherName, setTeacherName] = useState(currentUser?.name || '');
   const [subject, setSubject] = useState('');

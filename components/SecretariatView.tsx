@@ -148,6 +148,16 @@ const StudentsManager = () => {
         const ws = wb.Sheets[wsname];
         const rows = XLSX.utils.sheet_to_json(ws);
         
+        let importedSchool = '';
+        let importedBranch = '';
+        for (const row of rows as any[]) {
+            if (row['المدرسة']) importedSchool = row['المدرسة'];
+            if (row['الفرع']) importedBranch = row['الفرع'];
+        }
+        
+        const fallbackSchool = importedSchool || data.profile?.schoolName || currentUser?.selectedSchool?.split(',')[0] || '';
+        const fallbackBranch = importedBranch || currentUser?.selectedBranch || '';
+
         let newStudents: StudentData[] = [...students];
         let maxSerial = newStudents.reduce((max, s) => Math.max(max, s.serialNumber), 0);
 
@@ -156,8 +166,8 @@ const StudentsManager = () => {
           newStudents.push({
             id: Date.now().toString() + Math.random().toString(),
             serialNumber: maxSerial,
-            school: row['المدرسة'] || '',
-            branch: row['الفرع'] || '',
+            school: row['المدرسة'] || fallbackSchool,
+            branch: row['الفرع'] || fallbackBranch,
             name: row['اسم الطالب'] || row['الاسم'] || '',
             grade: row['الصف'] || '',
             section: row['الشعبة'] || '',
@@ -167,7 +177,8 @@ const StudentsManager = () => {
             guardianInfo: row['اسم ولي الأمر / الهاتف'] || row['ولي الأمر'] || '',
           });
         });
-        saveStudents(newStudents);
+        const cleanStudents = JSON.parse(JSON.stringify(newStudents));
+        saveStudents(cleanStudents);
       } catch (err) {
         alert('حدث خطأ أثناء قراءة الملف');
       }
@@ -441,6 +452,16 @@ const StaffManager = () => {
         const ws = wb.Sheets[wsname];
         const rows = XLSX.utils.sheet_to_json(ws);
         
+        let importedSchool = '';
+        let importedBranch = '';
+        for (const row of rows as any[]) {
+            if (row['المدرسة']) importedSchool = row['المدرسة'];
+            if (row['الفرع']) importedBranch = row['الفرع'];
+        }
+        
+        const fallbackSchool = importedSchool || data.profile?.schoolName || currentUser?.selectedSchool?.split(',')[0] || '';
+        const fallbackBranch = importedBranch || currentUser?.selectedBranch || '';
+
         let newStaff: StaffData[] = [...staff];
         let maxSerial = newStaff.reduce((max, s) => Math.max(max, s.serialNumber), 0);
 
@@ -449,15 +470,16 @@ const StaffManager = () => {
           newStaff.push({
             id: Date.now().toString() + Math.random().toString(),
             serialNumber: maxSerial,
-            school: row['المدرسة'] || '',
-            branch: row['الفرع'] || '',
+            school: row['المدرسة'] || fallbackSchool,
+            branch: row['الفرع'] || fallbackBranch,
             name: row['اسم المعلم'] || row['الاسم'] || '',
             gender: row['النوع'] || '',
             subjects: row['المادة']?.toString().split(',') || [],
             grades: row['الصف']?.toString().split(',') || [],
           });
         });
-        saveStaff(newStaff);
+        const cleanStaff = JSON.parse(JSON.stringify(newStaff));
+        saveStaff(cleanStaff);
       } catch (err) {
         alert('حدث خطأ أثناء قراءة الملف');
       }

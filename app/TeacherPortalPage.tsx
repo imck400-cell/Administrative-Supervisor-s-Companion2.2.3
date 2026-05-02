@@ -29,8 +29,10 @@ export const TeacherPortalPage = () => {
     return <GradeSheetsView onBack={() => setActiveView('menu')} />;
   }
 
-  const hasGradesViewPerm = currentUser?.role === 'admin' || currentUser?.permissions?.all || (currentUser?.permissions?.gradeSheets && Array.isArray(currentUser.permissions.gradeSheets) && currentUser.permissions.gradeSheets.includes('view_button'));
-  const hasGradesDisablePerm = currentUser?.permissions?.gradeSheets && Array.isArray(currentUser.permissions.gradeSheets) && currentUser.permissions.gradeSheets.includes('disable_button');
+  const hasGradesViewPerm = currentUser?.role === 'admin' || currentUser?.permissions?.all || 
+    (currentUser?.permissions?.gradeSheets === undefined) || 
+    (Array.isArray(currentUser?.permissions?.gradeSheets) && currentUser.permissions.gradeSheets.includes('view_button'));
+  const hasGradesDisablePerm = Array.isArray(currentUser?.permissions?.gradeSheets) && currentUser.permissions.gradeSheets.includes('disable_button');
 
   const buttons = [
     {

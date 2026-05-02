@@ -91,7 +91,9 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showCombineModal, setShowCombineModal] = useState(false);
   
-  const canEditData = currentUser?.role === 'admin' || currentUser?.permissions?.all === true || (currentUser?.permissions?.gradeSheets && Array.isArray(currentUser?.permissions?.gradeSheets) && currentUser.permissions.gradeSheets.includes('edit_data'));
+  const canEditData = currentUser?.role === 'admin' || currentUser?.permissions?.all === true || 
+    currentUser?.permissions?.gradeSheets === undefined || 
+    (Array.isArray(currentUser?.permissions?.gradeSheets) && currentUser.permissions.gradeSheets.includes('edit_data'));
   
   // Indicators
   const [indicatorMode, setIndicatorMode] = useState<string | null>(null);

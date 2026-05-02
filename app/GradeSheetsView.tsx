@@ -26,9 +26,52 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
   const [sheets, setSheets] = useState<GradeSheet[]>([]);
   const [currentSheetId, setCurrentSheetId] = useState<string | null>(null);
 
+  const SUBJECTS = ['القرآن كريم', 'التربية الإسلامية', 'اللغة العربية', 'اللغة الإنجليزية', 'الرياضيات', 'العلوم', 'الكيمياء', 'الفيزياء', 'الأحياء', 'الاجتماعيات', 'الحاسوب'];
+  const GRADES = ['تمهيدي', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+  const SECTIONS = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي'];
+
+  // Calculate available permissions
+  const availableSchools = useMemo(() => {
+    if (currentUser?.role === 'admin' || currentUser?.permissions?.all) {
+      return Object.keys(data.profile?.schoolsAndBranches || {});
+    }
+    const userRecord = data.users?.find(u => u.id === currentUser?.id);
+    return userRecord?.schools || [];
+  }, [currentUser, data.profile?.schoolsAndBranches, data.users]);
+
   // Form Fields
-  const [schoolName, setSchoolName] = useState(currentUser?.selectedSchool || '');
-  const [branch, setBranch] = useState('');
+  const [schoolName, setSchoolName] = useState(currentUser?.selectedSchool || availableSchools[0] || '');
+  const [branch, setBranch] = useState(currentUser?.selectedBranch || '');
+  
+  const availableBranches = useMemo(() => {
+    if (!schoolName) return [];
+    if (currentUser?.role === 'admin' || currentUser?.permissions?.all) {
+      const branchesDict = data.profile?.schoolsAndBranches || {};
+      return branchesDict[schoolName] || [];
+    }
+    const userPerms = data.users?.find(u => u.id === currentUser?.id)?.permissions?.schoolsAndBranches;
+    return userPerms?.[schoolName] || [];
+  }, [schoolName, currentUser, data.users, data.profile?.schoolsAndBranches]);
+
+  useEffect(() => {
+    if (schoolName && availableBranches.length > 0 && !availableBranches.includes(branch)) {
+      setBranch(availableBranches[0]);
+    }
+  }, [schoolName, availableBranches]);
+
+  const availableTeachers = useMemo(() => {
+    if (!schoolName || !branch) return [{ id: currentUser?.id, name: currentUser?.name }];
+    const teachers = (data.users || []).filter(u => 
+      u.schools?.includes(schoolName) && 
+      (u.permissions?.schoolsAndBranches?.[schoolName]?.includes(branch) || u.role === 'admin' || u.permissions?.all)
+    ).map(u => ({ id: u.id, name: u.name }));
+    
+    if (!teachers.find(t => t.id === currentUser?.id)) {
+      teachers.push({ id: currentUser?.id || 'id', name: currentUser?.name || 'مستخدم غير معروف' });
+    }
+    return teachers;
+  }, [schoolName, branch, data.users, currentUser]);
+
   const [teacherName, setTeacherName] = useState(currentUser?.name || '');
   const [subject, setSubject] = useState('');
   const [selectedGrade, setSelectedGrade] = useState('');
@@ -64,15 +107,21 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
   ];
 
   const students = useMemo(() => {
-    let filtered = data.studentReports || [];
+    let filtered = (data.secretariatStudents || []) as any[];
+    if (schoolName) {
+      filtered = filtered.filter(s => s.school === schoolName);
+    }
+    if (branch) {
+      filtered = filtered.filter(s => s.branch === branch);
+    }
     if (selectedGrade) {
       filtered = filtered.filter(s => s.grade === selectedGrade);
     }
     if (selectedSection) {
       filtered = filtered.filter(s => s.section === selectedSection);
     }
-    return filtered.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
-  }, [data.studentReports, selectedGrade, selectedSection]);
+    return filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
+  }, [data.secretariatStudents, schoolName, branch, selectedGrade, selectedSection]);
 
   // Handle Indicators filter
   const displayedStudents = useMemo(() => {
@@ -116,7 +165,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
 
   useEffect(() => {
     fetchSheets();
-  }, [data.studentReports]);
+  }, [data.secretariatStudents]);
 
   const fetchSheets = async () => {
     try {
@@ -321,20 +370,20 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
           <h1 className="text-3xl font-black text-slate-800">كشف درجات الطلاب</h1>
           <p className="text-slate-500 font-bold mt-2">إعداد وإدارة كشوف المتابعة والدرجات</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <button onClick={() => setShowHistoryModal(true)} className="btn-secondary whitespace-nowrap">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3 text-sm md:text-base">
+          <button onClick={() => setShowHistoryModal(true)} className="px-3 py-2 md:px-4 md:py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-xl transition-colors font-bold flex items-center gap-1 md:gap-2 shadow-sm whitespace-nowrap">
             <History size={18} /> الكشوفات السابقة
           </button>
-          <button onClick={() => handleSave()} className="btn-primary whitespace-nowrap">
+          <button onClick={() => handleSave()} className="px-3 py-2 md:px-4 md:py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl transition-colors font-bold flex items-center gap-1 md:gap-2 shadow-sm whitespace-nowrap">
             <Save size={18} /> حفظ الكشف
           </button>
-          <button onClick={handleNewSheet} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors font-bold flex items-center gap-2 shadow-sm whitespace-nowrap">
+          <button onClick={handleNewSheet} className="px-3 py-2 md:px-4 md:py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors font-bold flex items-center gap-1 md:gap-2 shadow-sm whitespace-nowrap">
             <Plus size={18} /> جدول جديد
           </button>
-          <button onClick={() => setShowCombineModal(true)} className="btn-secondary whitespace-nowrap">
+          <button onClick={() => setShowCombineModal(true)} className="px-3 py-2 md:px-4 md:py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-xl transition-colors font-bold flex items-center gap-1 md:gap-2 shadow-sm whitespace-nowrap">
             <Combine size={18} /> جمع الجداول
           </button>
-          <button onClick={exportTableToExcel} className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-colors font-bold flex items-center gap-2 shadow-sm whitespace-nowrap">
+          <button onClick={exportTableToExcel} className="px-3 py-2 md:px-4 md:py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-xl transition-colors font-bold flex items-center gap-1 md:gap-2 shadow-sm whitespace-nowrap">
              <Download size={18} /> تصدير اكسل
           </button>
         </div>
@@ -344,25 +393,45 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
       <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">اسم المدرسة</label>
-              <input type="text" value={schoolName} onChange={e=>setSchoolName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500" />
+              <select value={schoolName} onChange={e=>setSchoolName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500">
+                  <option value="">اختيار المدرسة...</option>
+                  {availableSchools.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                  ))}
+              </select>
           </div>
           <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">الفرع</label>
-              <input type="text" value={branch} onChange={e=>setBranch(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500" />
+              <select value={branch} onChange={e=>setBranch(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500">
+                  <option value="">اختيار الفرع...</option>
+                  {availableBranches.map(b => (
+                      <option key={b} value={b}>{b}</option>
+                  ))}
+              </select>
           </div>
           <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">اسم المعلم</label>
-              <input type="text" value={teacherName} onChange={e=>setTeacherName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500" />
+              <select value={teacherName} onChange={e=>setTeacherName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500">
+                  <option value="">اختيار المعلم...</option>
+                  {availableTeachers.map(t => (
+                      <option key={t.id} value={t.name}>{t.name}</option>
+                  ))}
+              </select>
           </div>
           <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">المادة</label>
-              <input type="text" value={subject} onChange={e=>setSubject(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500" />
+              <select value={subject} onChange={e=>setSubject(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500">
+                  <option value="">اختيار المادة...</option>
+                  {SUBJECTS.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                  ))}
+              </select>
           </div>
           <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">الصف</label>
               <select value={selectedGrade} onChange={e=>setSelectedGrade(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500">
                   <option value="">اختيار الصف...</option>
-                  {Array.from(new Set((data.studentReports || []).map(s => s.grade))).filter(Boolean).map(g => (
+                  {GRADES.map(g => (
                       <option key={g} value={g}>{g}</option>
                   ))}
               </select>
@@ -371,7 +440,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
               <label className="block text-sm font-bold text-slate-700 mb-1">الشعبة</label>
               <select value={selectedSection} onChange={e=>setSelectedSection(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-blue-500">
                   <option value="">اختيار الشعبة...</option>
-                  {Array.from(new Set((data.studentReports || []).filter(s => !selectedGrade || s.grade === selectedGrade).map(s => s.section))).filter(Boolean).map(g => (
+                  {SECTIONS.map(g => (
                       <option key={g} value={g}>{g}</option>
                   ))}
               </select>

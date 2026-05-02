@@ -29,6 +29,9 @@ export const TeacherPortalPage = () => {
     return <GradeSheetsView onBack={() => setActiveView('menu')} />;
   }
 
+  const hasGradesViewPerm = currentUser?.role === 'admin' || currentUser?.permissions?.all || (currentUser?.permissions?.gradeSheets && Array.isArray(currentUser.permissions.gradeSheets) && currentUser.permissions.gradeSheets.includes('view_button'));
+  const hasGradesDisablePerm = currentUser?.permissions?.gradeSheets && Array.isArray(currentUser.permissions.gradeSheets) && currentUser.permissions.gradeSheets.includes('disable_button');
+
   const buttons = [
     {
       id: 'self-eval',
@@ -50,15 +53,21 @@ export const TeacherPortalPage = () => {
       color: 'bg-amber-500 shadow-amber-200 hover:bg-amber-600',
       icon: <Star size={48} className="mb-4 opacity-80" />,
       onClick: () => setActiveView('studentEval')
-    },
-    {
-      id: 'grades',
-      label: lang === 'ar' ? 'كشف الدرجات' : 'Grades Sheet',
-      color: 'bg-purple-600 shadow-purple-200 hover:bg-purple-700',
-      icon: <FileSpreadsheet size={48} className="mb-4 opacity-80" />,
-      onClick: () => setActiveView('grades')
     }
   ];
+
+  if (hasGradesViewPerm) {
+      buttons.push({
+          id: 'grades',
+          label: lang === 'ar' ? 'كشف الدرجات' : 'Grades Sheet',
+          color: hasGradesDisablePerm ? 'bg-slate-400 shadow-slate-200 cursor-not-allowed' : 'bg-purple-600 shadow-purple-200 hover:bg-purple-700',
+          icon: <FileSpreadsheet size={48} className="mb-4 opacity-80" />,
+          onClick: () => {
+              if (hasGradesDisablePerm) return;
+              setActiveView('grades');
+          }
+      });
+  }
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8 font-arabic">

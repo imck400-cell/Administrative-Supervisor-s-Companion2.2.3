@@ -350,6 +350,7 @@ export interface UserPermissions {
   trainingCourses?: boolean | string[];
   comprehensiveIndicators?: boolean | string[];
   comprehensiveIndicatorsUsers?: string[];
+  gradeSheets?: boolean | string[];
 }
 
 export interface User {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useGlobal } from '../context/GlobalState';
-import { Save, FileSpreadsheet, Plus, Combine, History, TrendingUp, ChevronLeft, Search, CheckCircle2, ChevronDown, Download, AlertCircle, X, Trash2 } from 'lucide-react';
+import { Save, FileSpreadsheet, Plus, Combine, History, TrendingUp, ChevronLeft, Search, CheckCircle2, ChevronDown, Download, AlertCircle, X, Trash2, Star } from 'lucide-react';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { toast } from 'sonner';
@@ -19,6 +19,8 @@ interface GradeSheet {
   cells: Record<string, string>; // key: `${studentId}-${colId}` -> value
   userId: string;
   timestamp: string;
+  maxScores?: Record<string, number>;
+  disabledCols?: string[];
 }
 
 export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
@@ -81,11 +83,15 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
 
   const [months, setMonths] = useState(['شهر الأول', 'شهر الثاني', 'شهر الثالث']);
   const [cells, setCells] = useState<Record<string, string>>({});
+  const [maxScores, setMaxScores] = useState<Record<string, number>>({ w_k: 10, w_m: 10, oral: 10, attend: 10, written: 60 });
+  const [disabledCols, setDisabledCols] = useState<string[]>([]);
   
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [selectedColIndex, setSelectedColIndex] = useState<number | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showCombineModal, setShowCombineModal] = useState(false);
+  
+  const canEditData = currentUser?.role === 'admin' || currentUser?.permissions?.all === true || (currentUser?.permissions?.gradeSheets && Array.isArray(currentUser?.permissions?.gradeSheets) && currentUser.permissions.gradeSheets.includes('edit_data'));
   
   // Indicators
   const [indicatorMode, setIndicatorMode] = useState<string | null>(null);
@@ -175,8 +181,32 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
     } catch(e) {}
   };
 
+  const handleColToggle = (colKey: string) => {
+    if (!canEditData) return;
+    setDisabledCols(prev => prev.includes(colKey) ? prev.filter(c => c !== colKey) : [...prev, colKey]);
+    // Optionally trigger an immediate save so the user's action syncs right away
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+        handleSave(cells, disabledCols.includes(colKey) ? disabledCols.filter(c => c !== colKey) : [...disabledCols, colKey], maxScores);
+    }, 1000);
+  };
+
   const handleCellChange = (studentId: string, colKey: string, val: string) => {
-    const newCells = { ...cells, [`${studentId}-${colKey}`]: val };
+    if (disabledCols.includes(colKey)) return;
+    
+    // Enforce max limits
+    let finalVal = val;
+    if (colKey.startsWith('m')) {
+        const field = colKey.split('-')[1];
+        if (field && maxScores[field] !== undefined && finalVal.trim() !== '') {
+            const numVal = parseFloat(finalVal);
+            if (!isNaN(numVal) && numVal > maxScores[field]) {
+                finalVal = maxScores[field].toString();
+            }
+        }
+    }
+    
+    const newCells = { ...cells, [`${studentId}-${colKey}`]: finalVal };
     
     // Auto-calculate "مجموع" if in a month block
     if (colKey.startsWith('m')) {
@@ -220,7 +250,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
     return (totalScore / count).toFixed(1);
   };
 
-  const handleSave = async (currentCells: Record<string, string> = cells) => {
+  const handleSave = async (currentCells: Record<string, string> = cells, currentDisabledCols = disabledCols, currentMaxScores = maxScores) => {
     if (!selectedGrade || !selectedSection) {
       toast.error('الرجاء اختيار الصف والشعبة أولاً');
       return;
@@ -238,7 +268,9 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
           months,
           cells: currentCells,
           userId: currentUser?.id || 'unknown',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          disabledCols: currentDisabledCols,
+          maxScores: currentMaxScores
       };
       
       if (currentSheetId) {
@@ -257,6 +289,8 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
       setCells({});
       setSheetName('');
       setCurrentSheetId(null);
+      setDisabledCols([]);
+      setMaxScores({ w_k: 10, w_m: 10, oral: 10, attend: 10, written: 60 });
   };
 
   const loadSheet = (sheet: GradeSheet) => {
@@ -270,6 +304,8 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
       setDateStr(sheet.date || '');
       setMonths(sheet.months || ['شهر الأول', 'شهر الثاني', 'شهر الثالث']);
       setCells(sheet.cells || {});
+      setDisabledCols(sheet.disabledCols || []);
+      setMaxScores(sheet.maxScores || { w_k: 10, w_m: 10, oral: 10, attend: 10, written: 60 });
       setCurrentSheetId(sheet.id || null);
       setShowHistoryModal(false);
   };
@@ -492,13 +528,47 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                      <tr>
                          {months.map((m, mIdx) => (
                              <React.Fragment key={'sub-'+mIdx}>
-                                 {monthCols.map((mc, mcIdx) => (
-                                     <th key={`head-${mIdx}-${mc.id}`} className={`border border-slate-300 p-2 font-bold text-xs ${mc.isTotal ? 'bg-yellow-300 text-black shadow-inner shadow-yellow-500/50' : mIdx===0 ? 'bg-blue-100 bg-month-0' : mIdx===1 ? 'bg-rose-100 bg-month-1' : 'bg-purple-100 bg-month-2'}`}>
-                                        <div className="w-full flex items-center justify-center -rotate-90 md:rotate-0 whitespace-nowrap h-12 md:h-auto">
-                                            {mc.label}
-                                        </div>
-                                     </th>
-                                 ))}
+                                 {monthCols.map((mc, mcIdx) => {
+                                     const colKeyStr = `m${mIdx}-${mc.id}`;
+                                     const isDisabled = disabledCols.includes(colKeyStr);
+                                     
+                                     return (
+                                         <th key={`head-${mIdx}-${mc.id}`} className={`border border-slate-300 p-2 font-bold text-xs ${mc.isTotal ? 'bg-yellow-300 text-black shadow-inner shadow-yellow-500/50' : mIdx===0 ? 'bg-blue-100 bg-month-0' : mIdx===1 ? 'bg-rose-100 bg-month-1' : 'bg-purple-100 bg-month-2'}`}>
+                                            <div className="flex flex-col items-center justify-center gap-1 w-full min-h-[5rem]">
+                                                <div className="flex flex-col md:flex-row items-center justify-between w-full">
+                                                    <span className="-rotate-90 md:rotate-0 whitespace-nowrap mb-1 md:mb-0">{mc.label}</span>
+                                                    {!mc.isTotal && (
+                                                        <button 
+                                                            disabled={!canEditData}
+                                                            onClick={(e) => { e.stopPropagation(); handleColToggle(colKeyStr); }} 
+                                                            className={`p-1 rounded transition-colors ${isDisabled ? 'text-red-500 bg-red-100 hover:bg-red-200' : 'text-green-500 bg-green-100 hover:bg-green-200'} ${!canEditData && 'opacity-50 cursor-not-allowed'}`}
+                                                            title={isDisabled ? 'غير معتمد' : 'معتمد'}
+                                                        >
+                                                            <Star size={14} fill={isDisabled ? 'currentColor' : 'none'} className={isDisabled ? 'text-[currentColor]' : ''} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {!mc.isTotal && (
+                                                    <div className="text-[10px] sm:text-xs">
+                                                        <input 
+                                                            type="number" 
+                                                            value={maxScores[mc.id] !== undefined ? maxScores[mc.id] : ''}
+                                                            onChange={(e) => {
+                                                                if(canEditData && e.target.value) {
+                                                                    setMaxScores({...maxScores, [mc.id]: parseFloat(e.target.value)});
+                                                                }
+                                                            }}
+                                                            disabled={!canEditData}
+                                                            className="w-[3rem] h-6 text-center border border-slate-300 bg-white rounded outline-none appearance-none"
+                                                            title={`الحد الأقصى لـ ${mc.label}`}
+                                                        />
+                                                    </div>
+                                                )}
+                                                {isDisabled && <span className="text-[10px] text-red-600 font-bold bg-white/50 px-1 rounded leading-none mt-1">غير معتمد</span>}
+                                            </div>
+                                         </th>
+                                     );
+                                 })}
                              </React.Fragment>
                          ))}
                      </tr>
@@ -522,21 +592,23 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                                              const isEmpty = val.trim() === '';
                                              const cIndex = (mIdx * 6) + mcIdx;
                                              const isColSelected = selectedColIndex === cIndex;
+                                             const isDisabled = disabledCols.includes(colKeyStr);
                                              
                                              return (
                                                  <td key={cellKey} 
                                                      onMouseEnter={() => setSelectedColIndex(cIndex)}
                                                      onClick={() => setSelectedColIndex(cIndex)}
-                                                     className={`border border-slate-300 p-0 transition-colors 
+                                                     className={`border border-slate-300 p-0 transition-colors relative
                                                      ${isColSelected ? 'bg-cyan-100' : ''}
                                                      ${mc.isTotal ? 'bg-yellow-100 font-bold' : ''} 
-                                                     ${!mc.isTotal && isEmpty ? 'bg-yellow-50/50' : ''}`}
+                                                     ${isDisabled ? 'bg-red-50 cursor-not-allowed opacity-80' : ''}
+                                                     ${!mc.isTotal && isEmpty && !isDisabled ? 'bg-yellow-50/50' : ''}`}
                                                  >
                                                      <input 
                                                         type="text" 
-                                                        className={`w-full h-full p-2 text-center bg-transparent outline-blue-500 font-bold max-w-[50px] md:max-w-[80px]`} 
+                                                        className={`w-full h-full p-2 text-center bg-transparent outline-blue-500 font-bold max-w-[50px] md:max-w-[80px] ${isDisabled ? 'cursor-not-allowed' : ''}`} 
                                                         value={val}
-                                                        readOnly={mc.isTotal}
+                                                        readOnly={mc.isTotal || isDisabled}
                                                         onChange={e => handleCellChange(s.id, colKeyStr, e.target.value)}
                                                      />
                                                  </td>

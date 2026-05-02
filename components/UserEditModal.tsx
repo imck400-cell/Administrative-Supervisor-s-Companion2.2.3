@@ -85,6 +85,15 @@ const permissionsList = [
       { id: 'managePermissions', label: 'الصلاحيات' },
     ]
   },
+  {
+    id: 'gradeSheets',
+    label: 'كشف الدرجات',
+    subPermissions: [
+      { id: 'view_button', label: 'ظهور الزر' },
+      { id: 'disable_button', label: 'عدم تفعيل الزر' },
+      { id: 'edit_data', label: 'السماح بتعديل البيانات' },
+    ]
+  },
   { 
     id: 'specialReports', 
     label: 'تقارير خاصة',

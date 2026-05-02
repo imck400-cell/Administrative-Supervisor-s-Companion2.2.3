@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useGlobal } from '../context/GlobalState';
-import { Save, FileSpreadsheet, Plus, Combine, History, TrendingUp, ChevronLeft, Search, CheckCircle2, ChevronDown, Download, AlertCircle, X, Trash2, Star } from 'lucide-react';
+import { Save, FileSpreadsheet, Plus, Combine, History, TrendingUp, ChevronLeft, Search, CheckCircle2, ChevronDown, Download, AlertCircle, X, Trash2, Star, Check } from 'lucide-react';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { toast } from 'sonner';
@@ -63,6 +63,10 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
 
   const availableTeachers = useMemo(() => {
     if (!schoolName || !branch) return [{ id: currentUser?.id, name: currentUser?.name }];
+    const isManager = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+    if (!isManager) {
+       return [{ id: currentUser?.id || 'id', name: currentUser?.name || 'مستخدم غير معروف' }];
+    }
     const teachers = (data.users || []).filter(u => 
       u.schools?.includes(schoolName) && 
       (u.permissions?.schoolsAndBranches?.[schoolName]?.includes(branch) || u.role === 'admin' || u.permissions?.all)
@@ -238,14 +242,79 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
 
   const fetchSheets = async () => {};
 
-  const handleColToggle = (colKey: string) => {
-    if (!canEditData) return;
-    setDisabledCols(prev => prev.includes(colKey) ? prev.filter(c => c !== colKey) : [...prev, colKey]);
-    // Optionally trigger an immediate save so the user's action syncs right away
+  const updateStudentCalculations = (currentCells: Record<string, string>, studentId: string, currentMaxScores: Record<string, number>) => {
+    months.forEach((_, idx) => {
+       const mIdx = String(idx);
+       let monthTotal = 0;
+       ['w_k', 'w_m', 'oral', 'attend', 'written'].forEach(mc => {
+           monthTotal += parseFloat(currentCells[`${studentId}-m${mIdx}-${mc}`] || '0') || 0;
+       });
+
+       currentCells[`${studentId}-m${mIdx}-total_m`] = monthTotal.toString();
+        
+       const monthMaxSum = (currentMaxScores.w_k || 10) + (currentMaxScores.w_m || 10) + (currentMaxScores.oral || 10) + (currentMaxScores.attend || 10) + (currentMaxScores.written || 60);
+       const ratio = monthMaxSum > 0 ? (monthTotal / monthMaxSum) * 100 : 0;
+       currentCells[`${studentId}-m${mIdx}-ratio_m`] = Math.round(ratio).toString() + '%';
+    });
+
+    const monthMaxSum = (currentMaxScores.w_k || 10) + (currentMaxScores.w_m || 10) + (currentMaxScores.oral || 10) + (currentMaxScores.attend || 10) + (currentMaxScores.written || 60);
+    const termTargetMax = currentMaxScores.term_result || 20;
+    let sumOfMonths = 0;
+    
+    months.forEach((_, idx) => {
+        sumOfMonths += parseFloat(currentCells[`${studentId}-m${idx}-total_m`] || '0') || 0;
+    });
+    
+    const maxAllMonths = monthMaxSum * months.length;
+    const termResult = maxAllMonths > 0 ? (sumOfMonths / maxAllMonths) * termTargetMax : 0;
+    
+    if (sumOfMonths > 0) {
+        currentCells[`${studentId}-final-term_result`] = termResult.toFixed(1).replace(/\.0$/, '');
+    } else if (currentCells[`${studentId}-final-term_result`]) {
+        currentCells[`${studentId}-final-term_result`] = '';
+    }
+  };
+
+  const triggerAutoSave = (newCells: Record<string, string>, disabled: string[], maxs: Record<string, number>) => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
-        handleSave(cells, disabledCols.includes(colKey) ? disabledCols.filter(c => c !== colKey) : [...disabledCols, colKey], maxScores);
-    }, 1000);
+        handleSave(newCells, disabled, maxs, true);
+    }, 1500);
+  };
+
+  const [bulkFill, setBulkFill] = useState<Record<string, string>>({});
+
+  const handleBulkFill = (colKey: string) => {
+    if (!canEditData || disabledCols.includes(colKey)) return;
+    const val = bulkFill[colKey];
+    if (val === undefined || val === '') return;
+    
+    let finalVal = val;
+    const field = colKey.split('-')[1];
+    if (field && maxScores[field] !== undefined && finalVal.trim() !== '') {
+        const numVal = parseFloat(finalVal);
+        if (!isNaN(numVal) && numVal > maxScores[field]) {
+            finalVal = maxScores[field].toString();
+        }
+    }
+
+    const newCells = { ...cells };
+    displayedStudents.forEach(s => {
+        newCells[`${s.id}-${colKey}`] = finalVal;
+        updateStudentCalculations(newCells, s.id, maxScores);
+    });
+
+    setCells(newCells);
+    setBulkFill(prev => ({...prev, [colKey]: ''}));
+    triggerAutoSave(newCells, disabledCols, maxScores);
+  };
+
+  const handleColToggle = (colKey: string) => {
+    if (!canEditData) return;
+    const newDisabled = disabledCols.includes(colKey) ? disabledCols.filter(c => c !== colKey) : [...disabledCols, colKey];
+    setDisabledCols(newDisabled);
+    // Optionally trigger an immediate save so the user's action syncs right away
+    triggerAutoSave(cells, newDisabled, maxScores);
   };
 
   const handleCellChange = (studentId: string, colKey: string, val: string) => {
@@ -267,53 +336,13 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
     
     // Auto-calculate "مجموع", "نسبة" and "محصلة"
     if (colKey.startsWith('m') || colKey.startsWith('final')) {
-        const parts = colKey.split('-');
-        if (parts.length === 2 && colKey.startsWith('m')) {
-            const mIdx = parts[0].substring(1);
-            const field = parts[1];
-            if (field !== 'total_m' && field !== 'ratio_m') {
-                // sum the 5 fields
-                const w_k = parseFloat(newCells[`${studentId}-m${mIdx}-w_k`] || '0') || 0;
-                const w_m = parseFloat(newCells[`${studentId}-m${mIdx}-w_m`] || '0') || 0;
-                const oral = parseFloat(newCells[`${studentId}-m${mIdx}-oral`] || '0') || 0;
-                const attend = parseFloat(newCells[`${studentId}-m${mIdx}-attend`] || '0') || 0;
-                const written = parseFloat(newCells[`${studentId}-m${mIdx}-written`] || '0') || 0;
-                const monthTotal = w_k + w_m + oral + attend + written;
-                newCells[`${studentId}-m${mIdx}-total_m`] = monthTotal.toString();
-                
-                const monthMaxSum = (maxScores.w_k || 10) + (maxScores.w_m || 10) + (maxScores.oral || 10) + (maxScores.attend || 10) + (maxScores.written || 60);
-                const ratio = monthMaxSum > 0 ? (monthTotal / monthMaxSum) * 100 : 0;
-                newCells[`${studentId}-m${mIdx}-ratio_m`] = Math.round(ratio).toString() + '%';
-            }
-        }
-
-        // Recalculate term_result continuously based on all months
-        const monthMaxSum = (maxScores.w_k || 10) + (maxScores.w_m || 10) + (maxScores.oral || 10) + (maxScores.attend || 10) + (maxScores.written || 60);
-        const termTargetMax = maxScores.term_result || 20;
-        let sumOfMonths = 0;
-        
-        months.forEach((_, idx) => {
-            sumOfMonths += parseFloat(newCells[`${studentId}-m${idx}-total_m`] || '0') || 0;
-        });
-        
-        const maxAllMonths = monthMaxSum * months.length;
-        const termResult = maxAllMonths > 0 ? (sumOfMonths / maxAllMonths) * termTargetMax : 0;
-        
-        // Only set it if it's non-zero or user has entered month data
-        if (sumOfMonths > 0) {
-            newCells[`${studentId}-final-term_result`] = termResult.toFixed(1).replace(/\.0$/, '');
-        } else if (newCells[`${studentId}-final-term_result`]) {
-            newCells[`${studentId}-final-term_result`] = '';
-        }
+        updateStudentCalculations(newCells, studentId, maxScores);
     }
     
     setCells(newCells);
 
     // Auto-save debounce
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-        handleSave(newCells);
-    }, 1500); // 1.5 seconds instead of 2 for snappier sync
+    triggerAutoSave(newCells, disabledCols, maxScores);
   };
 
   const calculateColumnTotal = (colKey: string) => {
@@ -331,11 +360,19 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
     return (totalScore / count).toFixed(1);
   };
 
-  const handleSave = async (currentCells: Record<string, string> = cells, currentDisabledCols = disabledCols, currentMaxScores = maxScores) => {
+  const isCreatingRef = useRef(false);
+
+  const handleSave = async (currentCells: Record<string, string> = cells, currentDisabledCols = disabledCols, currentMaxScores = maxScores, isAutoSave = false) => {
     if (!selectedGrade || !selectedSection) {
-      toast.error('الرجاء اختيار الصف والشعبة أولاً');
+      if (!isAutoSave) toast.error('الرجاء اختيار الصف والشعبة أولاً');
       return;
     }
+    
+    if (isCreatingRef.current) {
+        if (!isAutoSave) toast.error('جاري حفظ كشف جديد، الرجاء الانتظار...');
+        return;
+    }
+    
     try {
       const payload: GradeSheet = {
           schoolName,
@@ -357,12 +394,16 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
       if (currentSheetId) {
           await updateDoc(doc(db, 'GradeSheets', currentSheetId), { ...payload });
       } else {
+          isCreatingRef.current = true;
           const res = await addDoc(collection(db, 'GradeSheets'), payload);
           setCurrentSheetId(res.id);
+          isCreatingRef.current = false;
       }
-      fetchSheets();
+      if (!isAutoSave) toast.success('تم حفظ الكشف بنجاح');
     } catch(e) {
       console.error(e);
+      isCreatingRef.current = false;
+      if (!isAutoSave) toast.error('فشل حفظ الكشف');
     }
   };
 
@@ -644,18 +685,41 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                                                 <div className="flex flex-col items-center gap-1 w-full flex-grow">
                                                     <span className="whitespace-normal leading-tight text-center break-words max-w-[70px] flex-grow flex items-center">{mc.label}</span>
                                                     {!mc.isTotal && (
-                                                        <button 
-                                                            disabled={!canEditData}
-                                                            onClick={(e) => { e.stopPropagation(); handleColToggle(colKeyStr); }} 
-                                                            className={`p-1 rounded transition-colors mt-1 shrink-0 ${isDisabled ? 'text-red-500 bg-red-100 hover:bg-red-200' : 'text-green-500 bg-green-100 hover:bg-green-200'} ${!canEditData && 'opacity-50 cursor-not-allowed'}`}
-                                                            title={isDisabled ? 'غير معتمد' : 'معتمد'}
-                                                        >
-                                                            <Star size={14} fill={isDisabled ? 'currentColor' : 'none'} className={isDisabled ? 'text-[currentColor]' : ''} />
-                                                        </button>
+                                                        <div className="flex flex-col items-center gap-1 mt-1 justify-center w-full">
+                                                            <div className="flex items-center justify-center gap-1 w-full bg-white/50 p-1 rounded">
+                                                                <button 
+                                                                    disabled={!canEditData}
+                                                                    onClick={(e) => { e.stopPropagation(); handleColToggle(colKeyStr); }} 
+                                                                    className={`p-1 rounded transition-colors shrink-0 ${isDisabled ? 'text-red-500 bg-red-100 hover:bg-red-200' : 'text-green-500 bg-green-100 hover:bg-green-200'} ${!canEditData && 'opacity-50 cursor-not-allowed'}`}
+                                                                    title={isDisabled ? 'غير معتمد' : 'معتمد'}
+                                                                >
+                                                                    <Star size={14} fill={isDisabled ? 'currentColor' : 'none'} className={isDisabled ? 'text-[currentColor]' : ''} />
+                                                                </button>
+                                                                
+                                                                <input
+                                                                    type="text"
+                                                                    value={bulkFill[colKeyStr] !== undefined ? bulkFill[colKeyStr] : ''}
+                                                                    onChange={(e) => setBulkFill({...bulkFill, [colKeyStr]: e.target.value})}
+                                                                    disabled={!canEditData || isDisabled}
+                                                                    placeholder="الكل"
+                                                                    className={`w-8 h-6 text-center text-[10px] border border-slate-300 rounded outline-blue-500 ${isDisabled || !canEditData ? 'opacity-50 bg-slate-100' : 'bg-white'}`}
+                                                                    title="أدخل الدرجة لجميع الطلاب"
+                                                                />
+                                                                <button
+                                                                    disabled={!canEditData || isDisabled}
+                                                                    onClick={(e) => { e.stopPropagation(); handleBulkFill(colKeyStr); }}
+                                                                    className={`p-1 rounded text-white bg-blue-500 transition-colors ${isDisabled || !canEditData ? 'opacity-50 !bg-slate-300 cursor-not-allowed' : 'hover:bg-blue-600'}`}
+                                                                    title="تطبيق على جميع الطلاب"
+                                                                >
+                                                                    <Check size={12} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
                                                     )}
                                                 </div>
                                                 {!mc.isTotal && (
-                                                    <div className="text-[10px] sm:text-xs shrink-0 mt-2">
+                                                    <div className="text-[10px] sm:text-xs shrink-0 mt-2 flex flex-col items-center">
+                                                        <span className="text-[9px] text-slate-500 mb-0.5">الحد الأقصى</span>
                                                         <input 
                                                             type="number" 
                                                             value={maxScores[mc.id] !== undefined ? maxScores[mc.id] : ''}
@@ -692,7 +756,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                          };
                          
                          return (
-                             <tr key={s.id} className={`hover:bg-slate-50 ${isRowSelected ? '!bg-orange-100/80 shadow-inner' : ''}`}>
+                             <tr key={s.id} className={`hover:bg-slate-50 transition-all ${isRowSelected ? 'ring-2 ring-black shadow-lg relative z-20 bg-white' : ''}`}>
                                  <td className="border border-slate-200 p-1 font-bold bg-amber-50">{sIdx + 1}</td>
                                  <td className="border border-slate-200 p-2 font-bold text-right truncate max-w-[150px] bg-slate-50 cursor-pointer hover:bg-amber-100 transition-colors" title={s.name} onClick={toggleRow}>
                                      {s.name}
@@ -727,7 +791,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                                                      <input 
                                                         type="text" 
                                                         onFocus={(e) => e.target.select()}
-                                                        className={`w-full h-full p-2 text-center bg-transparent outline-blue-500 font-bold max-w-[50px] md:max-w-[80px] ${isDisabled ? 'cursor-not-allowed' : ''} ${isRowSelected ? 'text-orange-950 outline-amber-600' : ''}`} 
+                                                        className={`w-full h-full p-2 text-center bg-transparent outline-blue-500 font-bold max-w-[50px] md:max-w-[80px] ${isDisabled ? 'cursor-not-allowed' : ''} ${isRowSelected ? 'text-black' : ''}`} 
                                                         value={val}
                                                         readOnly={mc.isTotal || isDisabled}
                                                         onChange={e => handleCellChange(s.id, colKeyStr, e.target.value)}
@@ -761,7 +825,7 @@ export const GradeSheetsView = ({ onBack }: { onBack: () => void }) => {
                                                 type="text" 
                                                 onFocus={(e) => !isTermResult && e.target.select()}
                                                 readOnly={isTermResult}
-                                                className={`w-full h-full p-2 text-center bg-transparent outline-blue-500 font-bold max-w-[50px] md:max-w-[80px] ${isRowSelected ? 'text-orange-950 outline-amber-600' : ''}`} 
+                                                className={`w-full h-full p-2 text-center bg-transparent outline-blue-500 font-bold max-w-[50px] md:max-w-[80px] ${isRowSelected ? 'text-black' : ''}`} 
                                                 value={val}
                                                 onChange={e => handleCellChange(s.id, colKeyStr, e.target.value)}
                                               />

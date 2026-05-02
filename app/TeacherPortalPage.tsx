@@ -5,10 +5,11 @@ import { useGlobal } from '../context/GlobalState';
 import { toast } from 'sonner';
 import { SelfEvaluationView } from './SelfEvaluationView';
 import { StudentEvaluationView } from './StudentEvaluationView';
+import { GradeSheetsView } from './GradeSheetsView';
 
 export const TeacherPortalPage = () => {
   const { lang, currentUser } = useGlobal();
-  const [activeView, setActiveView] = useState<'menu' | 'selfEval' | 'studentEval'>('menu');
+  const [activeView, setActiveView] = useState<'menu' | 'selfEval' | 'studentEval' | 'grades'>('menu');
 
   const handleNotImplemented = () => {
     toast.info(lang === 'ar' ? 'هذه الخاصية قيد التطوير' : 'Feature under development');
@@ -22,6 +23,10 @@ export const TeacherPortalPage = () => {
 
   if (activeView === 'studentEval') {
     return <StudentEvaluationView onBack={() => setActiveView('menu')} />;
+  }
+
+  if (activeView === 'grades') {
+    return <GradeSheetsView onBack={() => setActiveView('menu')} />;
   }
 
   const buttons = [
@@ -51,7 +56,7 @@ export const TeacherPortalPage = () => {
       label: lang === 'ar' ? 'كشف الدرجات' : 'Grades Sheet',
       color: 'bg-purple-600 shadow-purple-200 hover:bg-purple-700',
       icon: <FileSpreadsheet size={48} className="mb-4 opacity-80" />,
-      onClick: handleNotImplemented
+      onClick: () => setActiveView('grades')
     }
   ];
 

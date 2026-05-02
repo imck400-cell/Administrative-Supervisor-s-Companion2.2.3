@@ -31,7 +31,7 @@ const toHijri = (dateStr: string) => {
 
 // --- Teachers Follow-up Page (DailyReportsPage) ---
 export const DailyReportsPage: React.FC = () => {
-  const { lang, data, updateData, currentUser, userFilter, effectiveUserIds, dashboardFilter, setDashboardFilter } = useGlobal();
+  const { lang, data, updateData, currentUser, userFilter, effectiveUserIds, dashboardFilter, setDashboardFilter, globalDataFilters } = useGlobal();
   const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.dailyFollowUp) && currentUser.permissions.dailyFollowUp.includes('disable'));
   const isSecretariatEnabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('allowEdits') || currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
@@ -267,8 +267,19 @@ export const DailyReportsPage: React.FC = () => {
     const userSections = currentUser?.sections || [];
 
     let validStaff = secretariatStaff.filter(s => {
-      if (isAdminOrFull) return true;
       let ok = true;
+      if (globalDataFilters) {
+        if (globalDataFilters.schools.length > 0 && !globalDataFilters.schools.includes(s.school)) ok = false;
+        if (globalDataFilters.branches.length > 0 && s.branch && !globalDataFilters.branches.includes(s.branch)) ok = false;
+        // Teachers have 'grades' array instead of single 'grade', and no 'section' usually but we can check if they have it
+        if (globalDataFilters.grades.length > 0 && s.grades && s.grades.length > 0) {
+           if (!s.grades.some((g: string) => globalDataFilters.grades.includes(g))) ok = false;
+        }
+      }
+      if (!ok) return false;
+
+      if (isAdminOrFull) return true;
+      
       if (userSchools.length > 0 && !userSchools.includes('all') && !userSchools.includes(s.school)) {
         ok = false;
       }
@@ -366,7 +377,7 @@ export const DailyReportsPage: React.FC = () => {
     });
 
     return list;
-  }, [currentReport, sortConfig, filterMode, activeTeacherFilter, currentUser, effectiveUserIds]);
+  }, [currentReport, sortConfig, filterMode, activeTeacherFilter, currentUser, effectiveUserIds, data.secretariatStaff, globalDataFilters]);
 
   const displayedTeachers = useMemo(() => teachers.slice(0, displayLimit), [teachers, displayLimit]);
 
@@ -3381,7 +3392,7 @@ const StudentRow = memo(({ s, optionsAr, optionsEn, lang, updateStudent, setShow
 });
 
 export const StudentsReportsPage: React.FC = () => {
-  const { data, updateData, lang, userFilter, currentUser, dashboardFilter, setDashboardFilter } = useGlobal();
+  const { data, updateData, lang, userFilter, currentUser, dashboardFilter, setDashboardFilter, globalDataFilters } = useGlobal();
   const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.studentAffairs) && currentUser.permissions.studentAffairs.includes('disable'));
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -3485,8 +3496,17 @@ export const StudentsReportsPage: React.FC = () => {
     const userSections = currentUser?.sections || [];
 
     let validStudents = secretariatList.filter(s => {
-      if (isGeneralSupervisor) return true;
       let ok = true;
+      if (globalDataFilters) {
+        if (globalDataFilters.schools.length > 0 && !globalDataFilters.schools.includes(s.school)) ok = false;
+        if (globalDataFilters.branches.length > 0 && s.branch && !globalDataFilters.branches.includes(s.branch)) ok = false;
+        if (globalDataFilters.grades.length > 0 && s.grade && !globalDataFilters.grades.includes(s.grade)) ok = false;
+        if (globalDataFilters.sections.length > 0 && s.section && !globalDataFilters.sections.includes(s.section)) ok = false;
+      }
+      if (!ok) return false;
+
+      if (isGeneralSupervisor) return true;
+      
       if (userSchools.length > 0 && !userSchools.includes('all') && !userSchools.includes(s.school)) {
         ok = false;
       }
@@ -3550,9 +3570,17 @@ export const StudentsReportsPage: React.FC = () => {
       if (list.some(l => l.id === r.id || (l.name === r.name && l.grade === r.grade && l.section === r.section))) {
         return false;
       }
+      
+      let ok = true;
+      if (globalDataFilters) {
+        if (globalDataFilters.grades.length > 0 && r.grade && !globalDataFilters.grades.includes(r.grade)) ok = false;
+        if (globalDataFilters.sections.length > 0 && r.section && !globalDataFilters.sections.includes(r.section)) ok = false;
+      }
+      if (!ok) return false;
+
       // Must match user schools, branches, grades, sections...
       if (isGeneralSupervisor) return true;
-      let ok = true;
+      
       // We don't have r.school or r.branch natively in rawStudentReports unless it was saved. We'll skip strict school filtering for manual additions and assume they belong to the creator's school or they shouldn't be added.
       // But we can check grades and sections
       if (currentUser?.grades && currentUser.grades.length > 0 && r.grade && !currentUser.grades.includes(r.grade)) ok = false;
@@ -3562,7 +3590,7 @@ export const StudentsReportsPage: React.FC = () => {
     });
 
     return [...list, ...manualStudents];
-  }, [data.studentReports, userFilter, currentUser]);
+  }, [data.studentReports, userFilter, currentUser, globalDataFilters, data.secretariatStudents]);
 
   const optionsAr = {
     gender: ["ذكر", "أنثى"],

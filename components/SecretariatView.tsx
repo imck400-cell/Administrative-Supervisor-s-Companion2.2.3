@@ -151,8 +151,8 @@ const StudentsManager = () => {
         let importedSchool = '';
         let importedBranch = '';
         for (const row of rows as any[]) {
-            if (row['المدرسة']) importedSchool = row['المدرسة'];
-            if (row['الفرع']) importedBranch = row['الفرع'];
+            if (row['المدرسة'] || row['اسم المدرسة']) importedSchool = row['المدرسة'] || row['اسم المدرسة'];
+            if (row['الفرع'] || row['اسم الفرع']) importedBranch = row['الفرع'] || row['اسم الفرع'];
         }
         
         const fallbackSchool = importedSchool || data.profile?.schoolName || currentUser?.selectedSchool?.split(',')[0] || '';
@@ -166,8 +166,8 @@ const StudentsManager = () => {
           newStudents.push({
             id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
             serialNumber: maxSerial,
-            school: row['المدرسة'] || fallbackSchool,
-            branch: row['الفرع'] || fallbackBranch,
+            school: row['اسم المدرسة'] || row['المدرسة'] || fallbackSchool,
+            branch: row['اسم الفرع'] || row['الفرع'] || fallbackBranch,
             name: row['اسم الطالب'] || row['الاسم'] || '',
             grade: row['الصف'] || '',
             section: row['الشعبة'] || '',
@@ -455,8 +455,8 @@ const StaffManager = () => {
         let importedSchool = '';
         let importedBranch = '';
         for (const row of rows as any[]) {
-            if (row['المدرسة']) importedSchool = row['المدرسة'];
-            if (row['الفرع']) importedBranch = row['الفرع'];
+            if (row['المدرسة'] || row['اسم المدرسة']) importedSchool = row['المدرسة'] || row['اسم المدرسة'];
+            if (row['الفرع'] || row['اسم الفرع']) importedBranch = row['الفرع'] || row['اسم الفرع'];
         }
         
         const fallbackSchool = importedSchool || data.profile?.schoolName || currentUser?.selectedSchool?.split(',')[0] || '';
@@ -470,12 +470,12 @@ const StaffManager = () => {
           newStaff.push({
             id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
             serialNumber: maxSerial,
-            school: row['المدرسة'] || fallbackSchool,
-            branch: row['الفرع'] || fallbackBranch,
+            school: row['اسم المدرسة'] || row['المدرسة'] || fallbackSchool,
+            branch: row['اسم الفرع'] || row['الفرع'] || fallbackBranch,
             name: row['اسم المعلم'] || row['الاسم'] || '',
             gender: row['النوع'] || '',
-            subjects: row['المادة']?.toString().split(',') || [],
-            grades: row['الصف']?.toString().split(',') || [],
+            subjects: row['المواد']?.toString().split(',') || row['المادة']?.toString().split(',') || [],
+            grades: row['الصفوف']?.toString().split(',') || row['الصف']?.toString().split(',') || [],
           });
         });
         const cleanStaff = JSON.parse(JSON.stringify(newStaff));

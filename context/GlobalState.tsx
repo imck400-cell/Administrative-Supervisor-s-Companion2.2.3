@@ -63,6 +63,8 @@ interface GlobalContextType {
   setUserFilter: (userId: string) => void;
   dashboardFilter: { view: string, filterValue: string } | null;
   setDashboardFilter: (filter: { view: string, filterValue: string } | null) => void;
+  globalDataFilters: { schools: string[], branches: string[], grades: string[], sections: string[] };
+  setGlobalDataFilters: (filters: { schools: string[], branches: string[], grades: string[], sections: string[] }) => void;
   dateRange: { from: string; to: string };
   setDateRange: (range: { from: string; to: string }) => void;
   login: (username: string, code: string) => User | null;
@@ -324,6 +326,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [userFilter, setUserFilter] = useState('all');
   const [dashboardFilter, setDashboardFilter] = useState<{ view: string, filterValue: string } | null>(null);
+  const [globalDataFilters, setGlobalDataFilters] = useState<{ schools: string[], branches: string[], grades: string[], sections: string[] }>({
+    schools: [], branches: [], grades: [], sections: []
+  });
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
 
   // Compute the effective set of user IDs that should be visible.
@@ -1046,6 +1051,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setUserFilter,
       dashboardFilter,
       setDashboardFilter,
+      globalDataFilters,
+      setGlobalDataFilters,
       dateRange,
       setDateRange,
       login, 

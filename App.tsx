@@ -338,7 +338,7 @@ const AdvancedLoginPage: React.FC = () => {
 };
 
 const MainApp: React.FC = () => {
-  const { isAuthenticated, currentUser, userFilter, setUserFilter, data, logout, dateRange, setDateRange } = useGlobal();
+  const { isAuthenticated, currentUser, userFilter, setUserFilter, data, logout, dateRange, setDateRange, globalDataFilters, setGlobalDataFilters } = useGlobal();
   const [view, setView] = useState('dashboard');
   const [isDataModalOpen, setIsDataModalOpen] = useState(false);
   const [isCodesModalOpen, setIsCodesModalOpen] = useState(false);
@@ -424,30 +424,29 @@ const MainApp: React.FC = () => {
 
   // Build a label that clearly describes the current filter state
   const filterLabel = React.useMemo(() => {
-    const selectedIds = userFilter === 'all'
-      ? filteredUsersForModal.map(u => u.id)
-      : userFilter.split(',');
-    const { from, to } = dateRange;
-
-    let userLabel = '';
-    if (selectedIds.length === filteredUsersForModal.length && filteredUsersForModal.length > 0) {
-      userLabel = 'كل المستخدمين';
-    } else if (selectedIds.length === 1) {
-      userLabel = data.users.find(u => u.id === selectedIds[0])?.name || 'مستخدم';
-    } else if (selectedIds.length > 1) {
-      userLabel = `${selectedIds.length} مستخدمين`;
-    } else {
-      userLabel = 'لا أحد';
+    let label = 'خيارات التصفية';
+    if (globalDataFilters) {
+      const allEmpty = !globalDataFilters.schools.length && !globalDataFilters.branches.length && !globalDataFilters.grades.length && !globalDataFilters.sections.length;
+      if (allEmpty) label = 'تصفية كل المستخدمين';
+      else {
+        const parts = [];
+        if (globalDataFilters.schools.length) parts.push(`المعاهد: ${globalDataFilters.schools.length}`);
+        if (globalDataFilters.branches.length) parts.push(`الفروع: ${globalDataFilters.branches.length}`);
+        if (globalDataFilters.grades.length) parts.push(`الصفوف: ${globalDataFilters.grades.length}`);
+        if (globalDataFilters.sections.length) parts.push(`الشعب: ${globalDataFilters.sections.length}`);
+        label = parts.length > 0 ? parts.join(' - ') : label;
+      }
     }
 
+    const { from, to } = dateRange;
     if (from || to) {
       const dateLabel = from && to ? `${from} ← ${to}` : from ? `من ${from}` : `إلى ${to}`;
-      return `${userLabel} | ${dateLabel}`;
+      return `${label} | ${dateLabel}`;
     }
-    return userLabel;
-  }, [userFilter, dateRange, filteredUsersForModal, data.users]);
+    return label;
+  }, [globalDataFilters, dateRange]);
 
-  const hasActiveFilter = dateRange.from !== '' || dateRange.to !== '' || userFilter !== 'all';
+  const hasActiveFilter = dateRange.from !== '' || dateRange.to !== '' || (globalDataFilters && (globalDataFilters.schools.length > 0 || globalDataFilters.branches.length > 0 || globalDataFilters.grades.length > 0 || globalDataFilters.sections.length > 0));
 
   const schoolsToDisplay = useMemo(() => {
     if (isAdminOrFull) return data.availableSchools || [];
@@ -665,23 +664,16 @@ const MainApp: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <UserFilterModal
+      <GlobalDataFilterModal
         isOpen={isUserFilterModalOpen}
         onClose={() => setIsUserFilterModalOpen(false)}
-        users={filteredUsersForModal}
         schools={schoolsToDisplay}
-        selectedIds={userFilter === 'all' ? filteredUsersForModal.map(u => u.id) : userFilter.split(',')}
+        globalDataFilters={globalDataFilters}
         dateRange={dateRange}
-        onApply={(ids, range) => {
+        data={data}
+        onApply={(filters, range) => {
           setDateRange(range);
-          // NEVER convert to 'all' — always store the explicit list of IDs.
-          // effectiveUserIds in GlobalState handles the 'all' case correctly.
-          if (ids.length === 0) {
-            // Nothing selected → default to current user only
-            setUserFilter(currentUser?.id || 'all');
-          } else {
-            setUserFilter(ids.join(','));
-          }
+          setGlobalDataFilters(filters);
         }}
       />
 
@@ -705,211 +697,138 @@ const MainApp: React.FC = () => {
   );
 };
 
-const UserFilterModal: React.FC<{
+
+const GlobalDataFilterModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-  users: User[];
   schools: string[];
-  selectedIds: string[];
+  globalDataFilters: { schools: string[], branches: string[], grades: string[], sections: string[] };
   dateRange: { from: string; to: string };
-  onApply: (ids: string[], range: { from: string; to: string }) => void;
-}> = ({ isOpen, onClose, users, schools, selectedIds, dateRange, onApply }) => {
-  const [tempSelected, setTempSelected] = useState<string[]>(selectedIds);
-  const [tempRange, setTempRange] = useState(dateRange);
-  const [expandedSchools, setExpandedSchools] = useState<string[]>(schools);
+  onApply: (filters: { schools: string[], branches: string[], grades: string[], sections: string[] }, range: { from: string; to: string }) => void;
+  data: any;
+}> = ({ isOpen, onClose, schools, globalDataFilters, dateRange, onApply, data }) => {
+  const [tempFilters, setTempFilters] = React.useState(globalDataFilters);
+  const [tempRange, setTempRange] = React.useState(dateRange);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (isOpen) {
-      setTempSelected(selectedIds);
+      setTempFilters(globalDataFilters);
       setTempRange(dateRange);
     }
-  }, [isOpen, selectedIds, dateRange]);
+  }, [isOpen, globalDataFilters, dateRange]);
 
   if (!isOpen) return null;
 
-  const toggleUser = (id: string) => {
-    setTempSelected(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  const validGrades = ['تمهيدي', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+  const validSections = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي'];
+  
+  // Extract all unique branches 
+  const availableBranches = new Set<string>();
+  if (data?.secretariatStudents) {
+    data.secretariatStudents.forEach((s: any) => { if (s.branch) availableBranches.add(s.branch); });
+  }
+  if (data?.secretariatStaff) {
+    data.secretariatStaff.forEach((s: any) => { if (s.branch) availableBranches.add(s.branch); });
+  }
+  const branchList = Array.from(availableBranches);
+  if (branchList.length === 0) branchList.push('بدون فرع مخصص');
+
+  const toggleArrayItem = (key: keyof typeof tempFilters, val: string) => {
+    setTempFilters(prev => ({
+      ...prev,
+      [key]: prev[key].includes(val) ? prev[key].filter(v => v !== val) : [...prev[key], val]
+    }));
   };
 
-  const toggleSchoolSelection = (schoolName: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const usersInSchool = users.filter(u => u.schools.includes(schoolName)).map(u => u.id);
-    const allSelected = usersInSchool.length > 0 && usersInSchool.every(id => tempSelected.includes(id));
-
-    if (allSelected) {
-      setTempSelected(prev => prev.filter(id => !usersInSchool.includes(id)));
-    } else {
-      setTempSelected(prev => Array.from(new Set([...prev, ...usersInSchool])));
-    }
+  const selectAll = () => {
+    setTempFilters({ schools: [...schools], branches: [...branchList], grades: [...validGrades], sections: [...validSections] });
   };
-
-  const toggleSchoolExpand = (schoolName: string) => {
-    setExpandedSchools(prev => 
-      prev.includes(schoolName) ? prev.filter(s => s !== schoolName) : [...prev, schoolName]
-    );
+  const selectNone = () => {
+    setTempFilters({ schools: [], branches: [], grades: [], sections: [] });
   };
-
-  const selectAll = () => setTempSelected(users.map(u => u.id));
-  const selectNone = () => setTempSelected([]);
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm font-arabic" dir="rtl">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border-4 border-blue-50 flex flex-col max-h-[90vh]"
+        className="bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl overflow-hidden border-4 border-blue-50 flex flex-col max-h-[90vh]"
       >
         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <h2 className="text-xl font-black text-slate-800">التحكم بالمستخدمين والبيانات</h2>
+          <h2 className="text-xl font-black text-slate-800">تصفية البيانات (شؤون الطلاب ومعلمين)</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-red-500 transition-colors"><X size={24} /></button>
         </div>
 
         <div className="p-6 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
-          {/* Date Range Section */}
           <div className="bg-blue-50/50 p-5 rounded-3xl border-2 border-blue-100/50 space-y-4">
-            <h3 className="font-black text-blue-800 flex items-center gap-2">
-              <Calendar size={18} />
-              تحديد الفترة الزمنية
-            </h3>
+            <h3 className="font-black text-blue-800 flex items-center gap-2"><Calendar size={18} /> الفترة الزمنية</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 pr-2">من تاريخ</label>
-                <input
-                  type="date"
-                  value={tempRange.from}
-                  onChange={(e) => setTempRange(prev => ({ ...prev, from: e.target.value }))}
-                  className="w-full p-3 bg-white border-2 border-blue-100 rounded-xl text-sm font-bold text-slate-700 focus:border-blue-400 focus:ring-0 transition-all"
-                />
+                <input type="date" value={tempRange.from} onChange={(e) => setTempRange(prev => ({ ...prev, from: e.target.value }))} className="w-full p-3 bg-white border-2 border-blue-100 rounded-xl text-sm font-bold text-slate-700 focus:border-blue-400" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-500 pr-2">إلى تاريخ</label>
-                <input
-                  type="date"
-                  value={tempRange.to}
-                  onChange={(e) => setTempRange(prev => ({ ...prev, to: e.target.value }))}
-                  className="w-full p-3 bg-white border-2 border-blue-100 rounded-xl text-sm font-bold text-slate-700 focus:border-blue-400 focus:ring-0 transition-all"
-                />
+                <input type="date" value={tempRange.to} onChange={(e) => setTempRange(prev => ({ ...prev, to: e.target.value }))} className="w-full p-3 bg-white border-2 border-blue-100 rounded-xl text-sm font-bold text-slate-700 focus:border-blue-400" />
               </div>
             </div>
           </div>
 
           <div className="flex gap-2">
-            <button onClick={selectAll} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-black text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">تحديد الكل</button>
+            <button onClick={selectAll} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-black text-sm hover:bg-blue-700 transition-all">تحديد الكل</button>
             <button onClick={selectNone} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-black text-sm hover:bg-slate-200 transition-all">إلغاء التحديد</button>
           </div>
 
-          {schools.map(school => {
-            const schoolBranchesFromGlobal = (window as any).__rafiquk_data?.schoolBranches?.[school] || [];
-            
-            // Collect all branches that users in this school actually have
-            const userBranches = new Set<string>();
-            users.filter(u => u.schools.includes(school)).forEach(u => {
-              const uBranches = u.permissions?.schoolsAndBranches?.[school] || [];
-              if (uBranches.length === 0) userBranches.add('بدون فرع مخصص');
-              else uBranches.forEach(b => userBranches.add(b));
-            });
-
-            const uniqueBranches = Array.from(userBranches);
-            if (uniqueBranches.length === 0) return null;
-
-            const isSchoolExpanded = expandedSchools.includes(school);
-
-            return (
-              <div key={school} className="space-y-4">
-                <div
-                  onClick={() => toggleSchoolExpand(school)}
-                  className="flex items-center justify-between p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="text-slate-400 group-hover:text-blue-500 transition-colors">
-                      {isSchoolExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                    </div>
-                    <School className="text-blue-500" size={20} />
-                    <span className="font-black text-slate-700">{school}</span>
-                  </div>
-                </div>
-
-                <AnimatePresence>
-                  {isSchoolExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden pr-6 space-y-4"
-                    >
-                      {uniqueBranches.map(branch => {
-                        const usersInBranch = users.filter(u => {
-                          if (!u.schools.includes(school)) return false;
-                          const uBranches = u.permissions?.schoolsAndBranches?.[school] || [];
-                          if (branch === 'بدون فرع مخصص') return uBranches.length === 0;
-                          return uBranches.includes(branch);
-                        });
-
-                        if (usersInBranch.length === 0) return null;
-                        
-                        const allSelected = usersInBranch.every(u => tempSelected.includes(u.id));
-
-                        return (
-                          <div key={`${school}-${branch}`} className="space-y-2">
-                            <div className="flex items-center justify-between p-3 bg-purple-50/50 rounded-xl border border-purple-100">
-                              <span className="font-bold text-sm text-purple-700 flex items-center gap-2">
-                                <Sparkles size={16}/> {branch}
-                              </span>
-                              <div 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (allSelected) {
-                                    setTempSelected(prev => prev.filter(id => !usersInBranch.map(u=>u.id).includes(id)));
-                                  } else {
-                                    setTempSelected(prev => Array.from(new Set([...prev, ...usersInBranch.map(u=>u.id)])));
-                                  }
-                                }}
-                                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all cursor-pointer ${allSelected ? 'bg-purple-600 border-purple-600' : 'bg-white border-purple-300'}`}
-                              >
-                                {allSelected && <Check size={14} className="text-white" />}
-                              </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 gap-2 pr-6">
-                              {usersInBranch.map(u => (
-                                <label key={`${school}-${branch}-${u.id}`} className="flex items-center justify-between p-3 bg-white rounded-2xl cursor-pointer hover:bg-blue-50/50 transition-all border border-slate-100 hover:border-blue-100 shadow-sm">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400">
-                                      <UserIcon size={16} />
-                                    </div>
-                                    <span className="font-bold text-slate-700">{u.name}</span>
-                                  </div>
-                                  <input
-                                    type="checkbox"
-                                    checked={tempSelected.includes(u.id)}
-                                    onChange={() => toggleUser(u.id)}
-                                    className="w-5 h-5 rounded-lg border-2 border-slate-200 text-blue-600 focus:ring-blue-500"
-                                  />
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <h4 className="font-black text-sm text-slate-700 border-b pb-2">المدارس</h4>
+              <div className="flex flex-wrap gap-2">
+                {schools.map((s: string) => (
+                  <button key={s} onClick={() => toggleArrayItem('schools', s)} className={"px-3 py-1.5 rounded-lg text-xs font-bold transition-all " + (tempFilters.schools.includes(s) ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}>
+                    {s}
+                  </button>
+                ))}
               </div>
-            );
-          })}
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-black text-sm text-slate-700 border-b pb-2">الفروع</h4>
+              <div className="flex flex-wrap gap-2">
+                {branchList.map(b => (
+                  <button key={b} onClick={() => toggleArrayItem('branches', b)} className={"px-3 py-1.5 rounded-lg text-xs font-bold transition-all " + (tempFilters.branches.includes(b) ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}>
+                    {b}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-black text-sm text-slate-700 border-b pb-2">الصفوف</h4>
+              <div className="flex flex-wrap gap-2">
+                {validGrades.map(g => (
+                  <button key={g} onClick={() => toggleArrayItem('grades', g)} className={"px-3 py-1.5 rounded-lg text-xs font-bold transition-all " + (tempFilters.grades.includes(g) ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}>
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-black text-sm text-slate-700 border-b pb-2">الشعب</h4>
+              <div className="flex flex-wrap gap-2">
+                {validSections.map(s => (
+                  <button key={s} onClick={() => toggleArrayItem('sections', s)} className={"px-3 py-1.5 rounded-lg text-xs font-bold transition-all " + (tempFilters.sections.includes(s) ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
           <button onClick={onClose} className="flex-1 py-4 bg-white border-2 border-slate-200 text-slate-600 font-black rounded-2xl hover:bg-slate-100 transition-all">إلغاء</button>
-          <button
-            onClick={() => {
-              onApply(tempSelected, tempRange);
-              onClose();
-            }}
-            className="flex-1 py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all"
-          >
-            تطبيق التصفية
-          </button>
+          <button onClick={() => { onApply(tempFilters, tempRange); onClose(); }} className="flex-1 py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all">تطبيق التصفية</button>
         </div>
       </motion.div>
     </div>

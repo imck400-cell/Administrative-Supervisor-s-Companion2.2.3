@@ -26,7 +26,7 @@ interface CardConfig {
 }
 
 const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[] }> = ({ setView, recentActions = [] }) => {
-  const { lang, data, userFilter, dateRange: globalDateRange, setDateRange: setGlobalDateRange, setDashboardFilter, currentUser } = useGlobal();
+  const { lang, data, userFilter, dateRange: globalDateRange, setDateRange: setGlobalDateRange, setDashboardFilter, currentUser, globalDataFilters } = useGlobal();
 
   const today = new Date().toISOString().split('T')[0];
   const [globalTimeRange, setGlobalTimeRange] = useState<TimeRange>('all');
@@ -275,7 +275,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
 
   const processedData = useMemo(() => {
     // Pre-merge students
-    const mergedStudents = [...(data.studentReports || [])];
+    let mergedStudents = [...(data.studentReports || [])];
     (data.secretariatStudents || []).forEach((s: any) => {
       if (!mergedStudents.some(r => r.id === s.id)) {
         mergedStudents.push({
@@ -287,6 +287,24 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
         } as any);
       }
     });
+
+    if (globalDataFilters) {
+      mergedStudents = mergedStudents.filter(s => {
+        let ok = true;
+        const secMatch = (data.secretariatStudents || []).find((ss: any) => ss.id === s.id || (ss.name === s.name));
+        if (secMatch) {
+          if (globalDataFilters.schools.length > 0 && (!secMatch.school || !globalDataFilters.schools.includes(String(secMatch.school).trim()))) ok = false;
+          if (globalDataFilters.branches.length > 0 && secMatch.branch && !globalDataFilters.branches.includes(String(secMatch.branch).trim())) ok = false;
+        } else if (globalDataFilters.schools.length > 0) {
+           const userSchoolArr = currentUser?.selectedSchool?.split(',').map(ss=>ss.trim()) || [];
+           if (!userSchoolArr.some(us => globalDataFilters.schools.includes(us))) ok = false;
+        }
+
+        if (globalDataFilters.grades.length > 0 && s.grade && !globalDataFilters.grades.includes(String(s.grade).trim())) ok = false;
+        if (globalDataFilters.sections.length > 0 && s.section && !globalDataFilters.sections.includes(String(s.section).trim())) ok = false;
+        return ok;
+      });
+    }
 
     const results: Record<string, any[]> = {
       students: mergedStudents.map(s => {
@@ -308,7 +326,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
         };
       }),
       teachers: (() => {
-        const mergedTeachers = (data.dailyReports || []).flatMap(r => (r.teachersData || []).map(t => ({ ...t, date: r.dateStr, displayName: t.teacherName, type: 'teacher' })));
+        let mergedTeachers = (data.dailyReports || []).flatMap(r => (r.teachersData || []).map(t => ({ ...t, date: r.dateStr, displayName: t.teacherName, type: 'teacher' })));
         (data.secretariatStaff || []).forEach((st: any) => {
           if (!mergedTeachers.some(mt => mt.displayName === st.name)) {
             mergedTeachers.push({
@@ -320,24 +338,61 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
             } as any);
           }
         });
+
+        if (globalDataFilters) {
+          mergedTeachers = mergedTeachers.filter(t => {
+            let ok = true;
+            const secMatch = (data.secretariatStaff || []).find((ss: any) => ss.id === t.id || (ss.name === t.teacherName));
+            if (secMatch) {
+              if (globalDataFilters.schools.length > 0 && (!secMatch.school || !globalDataFilters.schools.includes(String(secMatch.school).trim()))) ok = false;
+              if (globalDataFilters.branches.length > 0 && secMatch.branch && !globalDataFilters.branches.includes(String(secMatch.branch).trim())) ok = false;
+              if (globalDataFilters.grades.length > 0 && secMatch.grades && secMatch.grades.length > 0) {
+                 if (!secMatch.grades.some((g: string) => globalDataFilters.grades.includes(String(g).trim()))) ok = false;
+              }
+            } else if (globalDataFilters.schools.length > 0) {
+               const userSchoolArr = currentUser?.selectedSchool?.split(',').map(ss=>ss.trim()) || [];
+               if (!userSchoolArr.some(us => globalDataFilters.schools.includes(us))) ok = false;
+            }
+            return ok;
+          });
+        }
         return mergedTeachers;
       })(),
-      violations: (data.violations || []).map(v => ({ ...v, displayName: v.studentName || v.teacherName, type: 'violation' })),
-      substitutions: (data.substitutions || []).map(s => ({ ...s, displayName: s.absentTeacher, type: 'substitution' })),
-      special_reports: [
-        ...(data.absenceLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'الغياب اليومي', icon: <UserX size={12} /> })),
-        ...(data.studentLatenessLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'التأخر', icon: <Clock size={12} /> })),
-        ...(data.exitLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'خروج طالب أثناء الدراسة', icon: <UserPlusIcon size={12} /> })),
-        ...(data.damageLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل الإتلاف المدرسي', icon: <Hammer size={12} /> })),
-        ...(data.studentViolationLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'المخالفات الطلابية', icon: <ShieldAlert size={12} /> })),
-        ...(data.parentVisitLogs || []).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل زيارة أولياء الأمور والتواصل بهم', icon: <Users size={12} /> })),
-        ...(data.genericSpecialReports || []).map(l => ({ ...l, displayName: l.title, cat: l.category === 'supervisor' ? 'supervisor' : l.category === 'staff' ? 'staff' : l.category === 'tests' ? 'tests' : 'supervisor', sub: l.subCategory, icon: <FileText size={12} /> })),
-      ],
-      staff_followup: (data.adminReports || []).flatMap(r => (r.employeesData || []).map(e => ({ ...e, displayName: e.employeeName, type: 'staff_followup', followUpType: r.followUpType, date: r.dateStr })))
     };
 
+    // Extract valid names
+    const validStudentNames = new Set(results.students.map((s: any) => s.displayName || s.name));
+    const validTeacherNames = new Set(results.teachers.map((t: any) => t.displayName || t.teacherName));
+
+    // Filter secondary lists
+    results.violations = (data.violations || [])
+      .map(v => ({ ...v, displayName: v.studentName || v.teacherName, type: 'violation' }))
+      .filter(v => {
+         if (v.type === 'students') return validStudentNames.has(v.displayName);
+         if (v.type === 'teachers') return validTeacherNames.has(v.displayName);
+         return true; // fallback
+      });
+
+    results.substitutions = (data.substitutions || [])
+      .map(s => ({ ...s, displayName: s.absentTeacher, type: 'substitution' }))
+      .filter(s => validTeacherNames.has(s.displayName));
+
+    results.staff_followup = (data.adminReports || [])
+      .flatMap(r => (r.employeesData || []).map(e => ({ ...e, displayName: e.employeeName, type: 'staff_followup', followUpType: r.followUpType, date: r.dateStr })))
+      .filter(e => validTeacherNames.has(e.displayName));
+
+    results.special_reports = [
+      ...(data.absenceLogs || []).filter(l => validStudentNames.has(l.studentName)).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'الغياب اليومي', icon: <UserX size={12} /> })),
+      ...(data.studentLatenessLogs || []).filter(l => validStudentNames.has(l.studentName)).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'التأخر', icon: <Clock size={12} /> })),
+      ...(data.exitLogs || []).filter(l => validStudentNames.has(l.studentName)).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'خروج طالب أثناء الدراسة', icon: <UserPlusIcon size={12} /> })),
+      ...(data.damageLogs || []).filter(l => validStudentNames.has(l.studentName)).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل الإتلاف المدرسي', icon: <Hammer size={12} /> })),
+      ...(data.studentViolationLogs || []).filter(l => validStudentNames.has(l.studentName)).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'المخالفات الطلابية', icon: <ShieldAlert size={12} /> })),
+      ...(data.parentVisitLogs || []).filter(l => validStudentNames.has(l.studentName)).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل زيارة أولياء الأمور والتواصل بهم', icon: <Users size={12} /> })),
+      ...(data.genericSpecialReports || []).map(l => ({ ...l, displayName: l.title, cat: l.category === 'supervisor' ? 'supervisor' : l.category === 'staff' ? 'staff' : l.category === 'tests' ? 'tests' : 'supervisor', sub: l.subCategory, icon: <FileText size={12} /> })),
+    ];
+
     return results;
-  }, [data]);
+  }, [data, currentUser, globalDataFilters]);
 
   const [cards, setCards] = useState<CardConfig[]>(() => {
     const saved = localStorage.getItem('dashboardCards');

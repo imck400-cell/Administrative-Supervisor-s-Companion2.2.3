@@ -269,11 +269,11 @@ export const DailyReportsPage: React.FC = () => {
     let validStaff = secretariatStaff.filter(s => {
       let ok = true;
       if (globalDataFilters) {
-        if (globalDataFilters.schools.length > 0 && !globalDataFilters.schools.includes(s.school)) ok = false;
-        if (globalDataFilters.branches.length > 0 && s.branch && !globalDataFilters.branches.includes(s.branch)) ok = false;
+        if (globalDataFilters.schools.length > 0 && (!s.school || !globalDataFilters.schools.includes(String(s.school).trim()))) ok = false;
+        if (globalDataFilters.branches.length > 0 && s.branch && !globalDataFilters.branches.includes(String(s.branch).trim())) ok = false;
         // Teachers have 'grades' array instead of single 'grade', and no 'section' usually but we can check if they have it
         if (globalDataFilters.grades.length > 0 && s.grades && s.grades.length > 0) {
-           if (!s.grades.some((g: string) => globalDataFilters.grades.includes(g))) ok = false;
+           if (!s.grades.some((g: string) => globalDataFilters.grades.includes(String(g).trim()))) ok = false;
         }
       }
       if (!ok) return false;
@@ -429,7 +429,7 @@ export const DailyReportsPage: React.FC = () => {
 
     const allReports = [...(data.dailyReports || [])].sort((a, b) => new Date(a.dateStr).getTime() - new Date(b.dateStr).getTime());
     const lastReport = allReports[allReports.length - 1];
-    const newTeachers = lastReport ? lastReport.teachersData.map(t => ({
+    const newTeachers: TeacherFollowUp[] = lastReport ? lastReport.teachersData.map(t => ({
       ...t,
       attendance: 0, appearance: 0, preparation: 0, supervision_queue: 0, supervision_rest: 0, supervision_end: 0,
       correction_books: 0, correction_notebooks: 0, correction_followup: 0, teaching_aids: 0, extra_activities: 0,
@@ -3533,10 +3533,10 @@ export const StudentsReportsPage: React.FC = () => {
     let validStudents = secretariatList.filter(s => {
       let ok = true;
       if (globalDataFilters) {
-        if (globalDataFilters.schools.length > 0 && !globalDataFilters.schools.includes(s.school)) ok = false;
-        if (globalDataFilters.branches.length > 0 && s.branch && !globalDataFilters.branches.includes(s.branch)) ok = false;
-        if (globalDataFilters.grades.length > 0 && s.grade && !globalDataFilters.grades.includes(s.grade)) ok = false;
-        if (globalDataFilters.sections.length > 0 && s.section && !globalDataFilters.sections.includes(s.section)) ok = false;
+        if (globalDataFilters.schools.length > 0 && (!s.school || !globalDataFilters.schools.includes(String(s.school).trim()))) ok = false;
+        if (globalDataFilters.branches.length > 0 && s.branch && !globalDataFilters.branches.includes(String(s.branch).trim())) ok = false;
+        if (globalDataFilters.grades.length > 0 && s.grade && !globalDataFilters.grades.includes(String(s.grade).trim())) ok = false;
+        if (globalDataFilters.sections.length > 0 && s.section && !globalDataFilters.sections.includes(String(s.section).trim())) ok = false;
       }
       if (!ok) return false;
 
@@ -3608,8 +3608,8 @@ export const StudentsReportsPage: React.FC = () => {
       
       let ok = true;
       if (globalDataFilters) {
-        if (globalDataFilters.grades.length > 0 && r.grade && !globalDataFilters.grades.includes(r.grade)) ok = false;
-        if (globalDataFilters.sections.length > 0 && r.section && !globalDataFilters.sections.includes(r.section)) ok = false;
+        if (globalDataFilters.grades.length > 0 && r.grade && !globalDataFilters.grades.includes(String(r.grade).trim())) ok = false;
+        if (globalDataFilters.sections.length > 0 && r.section && !globalDataFilters.sections.includes(String(r.section).trim())) ok = false;
       }
       if (!ok) return false;
 
@@ -3710,8 +3710,17 @@ export const StudentsReportsPage: React.FC = () => {
 
   const updateStudent = (id: string, field: string, value: any) => {
     if (isReadOnly) return;
-    const updated = studentData.map(s => s.id === id ? { ...s, [field]: value } : s);
-    updateData({ studentReports: updated });
+    const allReports = [...(data.studentReports || [])];
+    const index = allReports.findIndex(s => s.id === id);
+    if (index >= 0) {
+      allReports[index] = { ...allReports[index], [field]: value };
+    } else {
+      const st = studentData.find(s => s.id === id);
+      if (st) {
+        allReports.push({ ...st, [field]: value });
+      }
+    }
+    updateData({ studentReports: allReports });
   };
 
   const addStudent = () => {

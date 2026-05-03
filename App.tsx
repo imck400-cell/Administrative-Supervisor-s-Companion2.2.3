@@ -725,10 +725,10 @@ const GlobalDataFilterModal: React.FC<{
   // Extract all unique branches 
   const availableBranches = new Set<string>();
   if (data?.secretariatStudents) {
-    data.secretariatStudents.forEach((s: any) => { if (s.branch) availableBranches.add(s.branch); });
+    data.secretariatStudents.forEach((s: any) => { if (s.branch) availableBranches.add(String(s.branch).trim()); });
   }
   if (data?.secretariatStaff) {
-    data.secretariatStaff.forEach((s: any) => { if (s.branch) availableBranches.add(s.branch); });
+    data.secretariatStaff.forEach((s: any) => { if (s.branch) availableBranches.add(String(s.branch).trim()); });
   }
   const branchList = Array.from(availableBranches);
   if (branchList.length === 0) branchList.push('بدون فرع مخصص');

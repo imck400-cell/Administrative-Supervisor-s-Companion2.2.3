@@ -264,7 +264,40 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<StudentReport | null>(null);
   // END OF CHANGE
 
-  const students = data.studentReports || [];
+  const students = useMemo(() => {
+    const reports = data.studentReports || [];
+    const sec = data.secretariatStudents || [];
+    const merged = [...reports];
+    sec.forEach((s: any) => {
+      if (!merged.some(r => r.id === s.id)) {
+        merged.push({
+          id: s.id,
+          name: s.name || '',
+          gender: s.gender || '',
+          grade: s.grade || '',
+          section: s.section || '',
+          address: s.residenceWork || '',
+          workOutside: '',
+          healthStatus: s.healthStatus || 'ممتاز',
+          healthDetails: '',
+          guardianName: s.guardianInfo || '',
+          guardianPhones: [],
+          academicReading: 'متوسط',
+          academicWriting: 'متوسط',
+          academicParticipation: 'متوسط',
+          behaviorLevel: 'متوسط',
+          mainNotes: [],
+          otherNotesText: '',
+          guardianEducation: 'متعلم',
+          guardianFollowUp: 'متوسط',
+          guardianCooperation: 'متوسط',
+          notes: '',
+          createdAt: new Date().toISOString()
+        } as StudentReport);
+      }
+    });
+    return merged;
+  }, [data.studentReports, data.secretariatStudents]);
 
   // FIXED TypeError: ensures field conversion to string before .trim()
   const filteredPresence = useMemo(() => {

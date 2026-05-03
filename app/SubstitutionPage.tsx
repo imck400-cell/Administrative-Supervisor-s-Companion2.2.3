@@ -39,8 +39,11 @@ const SubstitutionPage: React.FC = () => {
     (data.timetable || []).forEach(t => {
       if (t.teacherName) names.add(t.teacherName);
     });
+    (data.secretariatStaff || []).forEach((t: any) => {
+      if (t.name) names.add(t.name);
+    });
     return Array.from(names);
-  }, [data.dailyReports, data.timetable]);
+  }, [data.dailyReports, data.timetable, data.secretariatStaff]);
 
   // START OF CHANGE - Filtering Logic
   const filteredSubstitutions = useMemo(() => {

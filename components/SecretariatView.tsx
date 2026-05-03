@@ -235,10 +235,12 @@ const StudentsManager = () => {
   
   const addEmptyRow = () => {
     const maxSerial = students.reduce((max, s) => Math.max(max, s.serialNumber), 0);
+    const fallbackSchool = data.profile?.schoolName || currentUser?.selectedSchool?.split(',')[0] || '';
+    const fallbackBranch = currentUser?.selectedBranch || '';
     saveStudents([...students, {
       id: Date.now().toString(),
       serialNumber: maxSerial + 1,
-      school: '', branch: '', name: '', grade: '', section: '', gender: '', residenceWork: '', healthStatus: '', guardianInfo: ''
+      school: fallbackSchool, branch: fallbackBranch, name: '', grade: '', section: '', gender: '', residenceWork: '', healthStatus: '', guardianInfo: ''
     }]);
   };
 
@@ -574,10 +576,12 @@ const StaffManager = () => {
   
   const addEmptyRow = () => {
     const maxSerial = staff.reduce((max, s) => Math.max(max, s.serialNumber), 0);
+    const fallbackSchool = data.profile?.schoolName || currentUser?.selectedSchool?.split(',')[0] || '';
+    const fallbackBranch = currentUser?.selectedBranch || '';
     saveStaff([...staff, {
       id: Date.now().toString(),
       serialNumber: maxSerial + 1,
-      school: '', branch: '', name: '', gender: '', subjects: [], grades: []
+      school: fallbackSchool, branch: fallbackBranch, name: '', gender: '', subjects: [], grades: []
     }]);
   };
 

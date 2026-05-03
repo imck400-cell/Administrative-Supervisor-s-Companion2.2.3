@@ -274,8 +274,22 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
   };
 
   const processedData = useMemo(() => {
+    // Pre-merge students
+    const mergedStudents = [...(data.studentReports || [])];
+    (data.secretariatStudents || []).forEach((s: any) => {
+      if (!mergedStudents.some(r => r.id === s.id)) {
+        mergedStudents.push({
+          id: s.id,
+          name: s.name || '',
+          gender: s.gender || '',
+          grade: s.grade || '',
+          section: s.section || '',
+        } as any);
+      }
+    });
+
     const results: Record<string, any[]> = {
-      students: (data.studentReports || []).map(s => {
+      students: mergedStudents.map(s => {
         const hasAbsence = (data.absenceLogs || []).some(l => l.studentId === s.id);
         const hasLateness = (data.studentLatenessLogs || []).some(l => l.studentId === s.id);
         const hasExit = (data.exitLogs || []).some(l => l.studentId === s.id);
@@ -293,7 +307,21 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
           damageSummary: hasDamage ? 'has_data' : ''
         };
       }),
-      teachers: (data.dailyReports || []).flatMap(r => (r.teachersData || []).map(t => ({ ...t, date: r.dateStr, displayName: t.teacherName, type: 'teacher' }))),
+      teachers: (() => {
+        const mergedTeachers = (data.dailyReports || []).flatMap(r => (r.teachersData || []).map(t => ({ ...t, date: r.dateStr, displayName: t.teacherName, type: 'teacher' })));
+        (data.secretariatStaff || []).forEach((st: any) => {
+          if (!mergedTeachers.some(mt => mt.displayName === st.name)) {
+            mergedTeachers.push({
+              id: st.id,
+              teacherName: st.name,
+              displayName: st.name,
+              type: 'teacher',
+              date: today,
+            } as any);
+          }
+        });
+        return mergedTeachers;
+      })(),
       violations: (data.violations || []).map(v => ({ ...v, displayName: v.studentName || v.teacherName, type: 'violation' })),
       substitutions: (data.substitutions || []).map(s => ({ ...s, displayName: s.absentTeacher, type: 'substitution' })),
       special_reports: [

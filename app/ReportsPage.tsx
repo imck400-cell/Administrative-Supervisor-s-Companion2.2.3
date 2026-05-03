@@ -306,7 +306,7 @@ export const DailyReportsPage: React.FC = () => {
         };
       }
       return {
-        id: crypto.randomUUID(),
+        id: s.id || crypto.randomUUID(),
         teacherName: s.name,
         subjectCode: s.subjects && s.subjects.length > 0 ? s.subjects.join(' / ') : '',
         className: s.grades && s.grades.length > 0 ? s.grades.join(' / ') : '',
@@ -454,7 +454,7 @@ export const DailyReportsPage: React.FC = () => {
       validStaff.forEach(s => {
         if (!newTeachers.some(t => t.teacherName === s.name)) {
           newTeachers.push({
-            id: crypto.randomUUID(),
+            id: s.id || crypto.randomUUID(),
             teacherName: s.name,
             subjectCode: s.subjects && s.subjects.length > 0 ? s.subjects.join(' / ') : '',
             className: s.grades && s.grades.length > 0 ? s.grades.join(' / ') : '',
@@ -2722,7 +2722,20 @@ export const ViolationsPage: React.FC = () => {
   const [showFilter, setShowFilter] = useState(false);
   const [activeSearchId, setActiveSearchId] = useState<string | null>(null);
 
-  const studentList = data.studentReports || [];
+  const studentList = useMemo(() => {
+    const list = [...(data.studentReports || [])];
+    (data.secretariatStudents || []).forEach((ss: any) => {
+      if (!list.some(r => r.id === ss.id)) {
+        list.push({
+          id: ss.id,
+          name: ss.name || '',
+          grade: ss.grade || '',
+          section: ss.section || ''
+        } as any);
+      }
+    });
+    return list;
+  }, [data.studentReports, data.secretariatStudents]);
 
   // Map teacher names to their profiles for quick lookup and auto-fill
   const teacherProfiles = useMemo(() => {
@@ -3569,7 +3582,7 @@ export const StudentsReportsPage: React.FC = () => {
         };
       }
       return {
-        id: crypto.randomUUID(),
+        id: s.id,
         userId: currentUser?.id,
         createdAt: new Date().toISOString(),
         name: s.name || '',
@@ -3607,7 +3620,17 @@ export const StudentsReportsPage: React.FC = () => {
       }
       
       let ok = true;
+      const secMatch = data.secretariatStudents?.find((ss: any) => ss.id === r.id || (ss.name === r.name));
       if (globalDataFilters) {
+        if (secMatch) {
+          if (globalDataFilters.schools.length > 0 && (!secMatch.school || !globalDataFilters.schools.includes(String(secMatch.school).trim()))) ok = false;
+          if (globalDataFilters.branches.length > 0 && secMatch.branch && !globalDataFilters.branches.includes(String(secMatch.branch).trim())) ok = false;
+        } else if (globalDataFilters.schools.length > 0) {
+           // If it's a truly manual student (not in secretariat), we should only show it if the creator's school matches the filter, but since we don't store school on StudentReport, we'll allow it if they are an admin, OR if the filter matches user's own school, otherwise we might hide it. Easiest is to say: if schools filter is strictly applied, and it's not in secretariat, only show if currentUser selectedSchool is in the filter.
+           const userSchoolArr = currentUser?.selectedSchool?.split(',').map(s=>s.trim()) || [];
+           if (!userSchoolArr.some(us => globalDataFilters.schools.includes(us))) ok = false;
+        }
+
         if (globalDataFilters.grades.length > 0 && r.grade && !globalDataFilters.grades.includes(String(r.grade).trim())) ok = false;
         if (globalDataFilters.sections.length > 0 && r.section && !globalDataFilters.sections.includes(String(r.section).trim())) ok = false;
       }

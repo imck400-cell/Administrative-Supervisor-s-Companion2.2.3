@@ -31,10 +31,10 @@ export const AddedTasksView: React.FC = () => {
 
   // Initialize from user
   const supervisorName = currentUser?.name || 'بدون اسم';
-  const supervisorJob = currentUser?.role === 'admin' ? 'مدير نظام' : 'مشرف إداري';
-  const school = data.profile?.schoolName || currentUser?.selectedSchool?.split(',')[0] || '';
+  const supervisorJob = currentUser?.jobTitle || (currentUser?.role === 'admin' ? 'مدير نظام' : 'مشرف إداري');
+  const school = currentUser?.selectedSchool?.split(',')[0] || data.profile?.schoolName || '';
   const branch = currentUser?.selectedBranch || '';
-  const academicYear = data.profile?.year || '1445-1446';
+  const academicYear = currentUser?.selectedYear || data.profile?.year || data.profile?.academicYear || '1445-1446';
   const grade = currentUser?.grades && currentUser.grades.length > 0 ? currentUser.grades.join(', ') : 'بدون صف';
   const section = currentUser?.sections && currentUser.sections.length > 0 ? currentUser.sections.join(', ') : 'بدون شعبة';
 

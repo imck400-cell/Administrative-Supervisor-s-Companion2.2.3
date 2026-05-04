@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useGlobal } from '../context/GlobalState';
 import { AddedTask, AddedTaskItem } from '../types';
-import { Calendar, Save, Archive, Filter, CheckCircle, Clock, XCircle, Plus, Trash2, Briefcase } from 'lucide-react';
+import { Calendar, Save, Archive, Filter, CheckCircle, Clock, XCircle, Plus, Trash2, Briefcase, FileSpreadsheet, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { exportToStyledExcel } from '../src/lib/excelExport';
 
 export const AddedTasksView: React.FC = () => {
   const { data, updateData, currentUser } = useGlobal();
@@ -112,18 +113,125 @@ export const AddedTasksView: React.FC = () => {
   };
 
   const handleApplyFilter = () => {
-    let results: (AddedTaskItem & { _parent: AddedTask })[] = [];
+    let results: (AddedTaskItem & { _parent: AddedTask, uniqueId: string })[] = [];
     existingTasks.forEach(task => {
       if (task.dateStr >= filterStartDate && task.dateStr <= filterEndDate) {
         task.tasks.forEach(t => {
           if (filterStatus[t.status]) {
-            results.push({ ...t, _parent: task });
+            results.push({ ...t, _parent: task, uniqueId: `${task.id}-${t.id}` });
           }
         });
       }
     });
+
+    results.sort((a,b) => {
+      if(a._parent.dateStr !== b._parent.dateStr) return b._parent.dateStr.localeCompare(a._parent.dateStr);
+      return 0;
+    });
+
+    // Reset selection when repopulating results
+    setSelectedTaskIds([]);
     setFilteredResults(results);
     setShowFilter(false);
+  };
+
+  const handleExportExcel = async () => {
+    if (!filteredResults || filteredResults.length === 0) {
+      toast.error('لا توجد بيانات للتصدير');
+      return;
+    }
+
+    const headers = ['م', 'المهمة', 'من تاريخ', 'إلى تاريخ', 'المنفذ', 'الوظيفة', 'المدرسة والفرع', 'الحالة', 'الملاحظات'];
+    const exportData = filteredResults.map((t, idx) => [
+      idx + 1,
+      t.taskText,
+      t.dateFrom,
+      t.dateTo,
+      t._parent.supervisorName,
+      t._parent.supervisorJob,
+      `${t._parent.school} - ${t._parent.branch}`,
+      t.status === 'done' ? 'تم التنفيذ' : t.status === 'in_progress' ? 'قيد التنفيذ' : 'لم ينفذ',
+      t.notes
+    ]);
+
+    await exportToStyledExcel({
+      title: 'تقرير المهام المضافة',
+      filename: 'added_tasks_report',
+      headers,
+      data: exportData,
+      columnWidths: [5, 40, 15, 15, 20, 15, 20, 15, 30],
+      profile: data.profile || {},
+      onRow: (row, rowData) => {
+        const status = rowData[7];
+        const statusCell = row.getCell(8);
+        if (status === 'تم التنفيذ') {
+           statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }; // emerald-100
+           statusCell.font = { name: 'Arial', bold: true, color: { argb: 'FF065F46' } }; // emerald-800
+        } else if (status === 'قيد التنفيذ') {
+           statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; // amber-100
+           statusCell.font = { name: 'Arial', bold: true, color: { argb: 'FF92400E' } }; // amber-800
+        } else if (status === 'لم ينفذ') {
+           statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE4E6' } }; // rose-100
+           statusCell.font = { name: 'Arial', bold: true, color: { argb: 'FF9F1239' } }; // rose-800
+        }
+      }
+    });
+  };
+
+  const generateWhatsAppMessage = (tasksToExport: (AddedTaskItem & { _parent: AddedTask })[]) => {
+    let msg = `*📋 تقرير المهام المضافة*\n`;
+    msg += `*التاريخ:* ${new Date().toLocaleDateString('ar-EG')}\n`;
+    msg += `----------------------------------\n\n`;
+
+    tasksToExport.forEach((t, idx) => {
+      const statusIcon = t.status === 'done' ? '✅' : t.status === 'in_progress' ? '⏳' : '❌';
+      const statusText = t.status === 'done' ? 'تم التنفيذ' : t.status === 'in_progress' ? 'قيد التنفيذ' : 'لم ينفذ';
+      
+      msg += `*المهمة (${idx + 1}):* ${t.taskText}\n`;
+      msg += `👤 *المنفذ:* ${t._parent.supervisorName} (${t._parent.supervisorJob})\n`;
+      msg += `📅 *الفترة:* من ${t.dateFrom} إلى ${t.dateTo}\n`;
+      msg += `🏢 *المدرسة:* ${t._parent.school} - ${t._parent.branch}\n`;
+      msg += `📊 *الحالة:* ${statusIcon} ${statusText}\n`;
+      if (t.notes) msg += `📝 *ملاحظات:* ${t.notes}\n`;
+      msg += `\n`;
+    });
+    
+    // Add signature space
+    msg += `----------------------------------\n`;
+    msg += `✍️ *إعداد التقرير:* ${data.profile?.writerName || currentUser?.name || '...'}\n`;
+    msg += `🧑‍💼 *المدير المباشر:* ${data.profile?.branchManager || '...'}\n`;
+
+    return encodeURIComponent(msg);
+  };
+
+  const handleExportWhatsAppAll = () => {
+    if (!filteredResults || filteredResults.length === 0) return;
+    const itemsToSend = selectedTaskIds.length > 0 
+      ? filteredResults.filter(t => selectedTaskIds.includes((t as Record<string,any>).uniqueId))
+      : filteredResults;
+      
+    if (itemsToSend.length === 0) {
+      toast.error('لم يتم تحديد مهام للإرسال');
+      return;
+    }
+    
+    const uri = generateWhatsAppMessage(itemsToSend);
+    window.open(`https://wa.me/?text=${uri}`, '_blank');
+  };
+
+  const handleToggleRowSelection = (uniqueId: string) => {
+    setSelectedTaskIds(prev => 
+      prev.includes(uniqueId) ? prev.filter(id => id !== uniqueId) : [...prev, uniqueId]
+    );
+  };
+
+  const handleToggleAllSelection = () => {
+    if (!filteredResults) return;
+    if (selectedTaskIds.length === filteredResults.length) {
+      setSelectedTaskIds([]);
+    } else {
+      setSelectedTaskIds(filteredResults.map(t => (t as Record<string,any>).uniqueId));
+    }
   };
 
   if (filteredResults) {
@@ -134,41 +242,87 @@ export const AddedTasksView: React.FC = () => {
             <Filter className="text-blue-500" />
             نتائج مؤشرات المهام المضافة
           </h2>
-          <button onClick={() => setFilteredResults(null)} className="btn-secondary">عضوة إلى المهام</button>
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={handleExportExcel} className="btn-secondary flex items-center gap-2 bg-green-50 text-green-700 border-green-200 hover:bg-green-100">
+               <FileSpreadsheet size={18} /> تصدير إكسل
+            </button>
+            <button onClick={handleExportWhatsAppAll} className="btn-secondary flex items-center gap-2 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
+               <MessageCircle size={18} /> إرسال واتساب
+            </button>
+            <button onClick={() => setFilteredResults(null)} className="btn-secondary bg-slate-100">عودة إلى المهام</button>
+          </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
           <table className="w-full text-right whitespace-nowrap">
             <thead>
-              <tr className="bg-slate-50 text-slate-700">
-                <th className="p-4 border-b">المهمة</th>
-                <th className="p-4 border-b">التاريخ من</th>
-                <th className="p-4 border-b">التاريخ إلى</th>
-                <th className="p-4 border-b">المنفذ (المشرف)</th>
-                <th className="p-4 border-b">المدرسة والفرع</th>
-                <th className="p-4 border-b">الحالة</th>
-                <th className="p-4 border-b">ملاحظات عامة</th>
+              <tr className="bg-gradient-to-l from-blue-600 to-blue-800 text-white">
+                <th className="p-4 border-b border-blue-900 w-12 text-center">
+                  <input 
+                    type="checkbox" 
+                    checked={filteredResults.length > 0 && selectedTaskIds.length === filteredResults.length}
+                    onChange={handleToggleAllSelection}
+                    className="w-4 h-4 rounded text-blue-500 cursor-pointer"
+                  />
+                </th>
+                <th className="p-4 border-b border-blue-900">المهمة</th>
+                <th className="p-4 border-b border-blue-900">من تاريخ</th>
+                <th className="p-4 border-b border-blue-900">إلى تاريخ</th>
+                <th className="p-4 border-b border-blue-900">المنفذ (المشرف)</th>
+                <th className="p-4 border-b border-blue-900">المدرسة والفرع</th>
+                <th className="p-4 border-b border-blue-900">حالة التنفيذ</th>
+                <th className="p-4 border-b border-blue-900">ملاحظات عامة</th>
+                <th className="p-4 border-b border-blue-900 text-center w-16"><MessageCircle size={16} className="mx-auto"/></th>
               </tr>
             </thead>
             <tbody>
-              {filteredResults.map((t, idx) => (
-                <tr key={idx} className="border-b last:border-0 hover:bg-slate-50">
-                  <td className="p-4 whitespace-normal min-w-[200px]">{t.taskText}</td>
-                  <td className="p-4">{t.dateFrom}</td>
-                  <td className="p-4">{t.dateTo}</td>
-                  <td className="p-4">{(t as any)._parent.supervisorName} ({(t as any)._parent.supervisorJob})</td>
-                  <td className="p-4">{(t as any)._parent.school} - {(t as any)._parent.branch}</td>
-                  <td className="p-4">
-                    {t.status === 'done' && <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded text-sm font-bold flex flex-row items-center gap-1 w-max"><CheckCircle size={16}/> تم التنفيذ</span>}
-                    {t.status === 'in_progress' && <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-sm font-bold flex flex-row items-center gap-1 w-max"><Clock size={16}/> قيد التنفيذ</span>}
-                    {t.status === 'not_done' && <span className="bg-rose-100 text-rose-800 px-2 py-1 rounded text-sm font-bold flex flex-row items-center gap-1 w-max"><XCircle size={16}/> لم ينفذ</span>}
-                  </td>
-                  <td className="p-4 whitespace-normal min-w-[200px]">{t.notes}</td>
-                </tr>
-              ))}
+              {filteredResults.map((t, idx) => {
+                const uniqueId = (t as Record<string,any>).uniqueId;
+                const isSelected = selectedTaskIds.includes(uniqueId);
+                return (
+                  <tr 
+                    key={idx} 
+                    className={`border-b last:border-0 hover:bg-orange-50 cursor-pointer transition-colors ${isSelected ? 'bg-orange-100' : ''}`}
+                    onClick={() => handleToggleRowSelection(uniqueId)}
+                  >
+                    <td className="p-4 text-center" onClick={e => e.stopPropagation()}>
+                       <input 
+                         type="checkbox" 
+                         checked={isSelected}
+                         onChange={() => handleToggleRowSelection(uniqueId)}
+                         className="w-4 h-4 rounded text-blue-600 cursor-pointer"
+                       />
+                    </td>
+                    <td className="p-4 whitespace-normal min-w-[200px] border-e border-slate-100">{t.taskText}</td>
+                    <td className="p-4 border-e border-slate-100">{t.dateFrom}</td>
+                    <td className="p-4 border-e border-slate-100">{t.dateTo}</td>
+                    <td className="p-4 border-e border-slate-100">{(t as any)._parent.supervisorName} ({(t as any)._parent.supervisorJob})</td>
+                    <td className="p-4 border-e border-slate-100">{(t as any)._parent.school} - {(t as any)._parent.branch}</td>
+                    <td className="p-4 border-e border-slate-100 font-bold">
+                      {t.status === 'done' && <span className="bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-lg flex flex-row items-center gap-1.5 w-max"><CheckCircle size={16}/> تم التنفيذ</span>}
+                      {t.status === 'in_progress' && <span className="bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg flex flex-row items-center gap-1.5 w-max"><Clock size={16}/> قيد التنفيذ</span>}
+                      {t.status === 'not_done' && <span className="bg-rose-100 text-rose-800 px-3 py-1.5 rounded-lg flex flex-row items-center gap-1.5 w-max"><XCircle size={16}/> لم ينفذ</span>}
+                    </td>
+                    <td className="p-4 whitespace-normal min-w-[200px] border-e border-slate-100">{t.notes}</td>
+                    <td className="p-4 text-center">
+                       <button 
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           const uri = generateWhatsAppMessage([t]);
+                           window.open(`https://wa.me/?text=${uri}`, '_blank');
+                         }} 
+                         className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors"
+                         title="إرسال عبر واتساب"
+                       >
+                         <MessageCircle size={18} />
+                       </button>
+                    </td>
+                  </tr>
+                );
+              })}
               {filteredResults.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-500">لا توجد نتائج مطابقة للفلترة</td>
+                  <td colSpan={9} className="p-8 text-center text-slate-500">لا توجد نتائج مطابقة للفلترة</td>
                 </tr>
               )}
             </tbody>
@@ -229,7 +383,7 @@ export const AddedTasksView: React.FC = () => {
         </button>
         <button onClick={() => setShowArchive(true)} className="flex items-center gap-2 px-6 py-3 bg-orange-50 text-orange-600 border border-orange-200 rounded-xl font-bold hover:bg-orange-100 transition-colors">
           <Archive size={20} />
-          الارشيف لفتح المهام السابقة للتعديل عليها
+          الأرشيف
         </button>
         <button onClick={() => setShowFilter(true)} className="flex items-center gap-2 px-6 py-3 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-xl font-bold hover:bg-emerald-100 transition-colors mr-auto">
           <Filter size={20} />

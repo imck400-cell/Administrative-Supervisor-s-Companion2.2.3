@@ -19,6 +19,7 @@ import { defaultTaskTemplates } from '../context/GlobalState';
 import { exportToStyledExcel } from '../src/lib/excelExport';
 import * as XLSX from 'xlsx';
 import { AddedTasksView } from '../components/AddedTasksView';
+import { PostponedTasksView } from '../components/PostponedTasksView';
 
 type MainTab = 'supervisor' | 'staff' | 'students' | 'tests';
 type SubTab = string;
@@ -3134,7 +3135,8 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       case 'سجل زيارة أولياء الأمور والتواصل بهم': return renderParentVisitModule();
       case 'الاختبار الشهري':
       case 'الاختبار الفصلي': return renderExamModule();
-      case 'المهام المضافة': return <AddedTasksView />;
+      case 'المهام المضافة': return <AddedTasksView onClose={() => setActiveSubTab(null)} />;
+      case 'المهام المرحلة': return <PostponedTasksView onClose={() => setActiveSubTab(null)} />;
       default:
         return (
           <div className="bg-white p-4 md:p-8 rounded-[2rem] md:rounded-[3rem] border shadow-2xl relative overflow-hidden font-arabic text-right">

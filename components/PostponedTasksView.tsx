@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useGlobal } from '../context/GlobalState';
-import { AddedTask, AddedTaskItem } from '../types';
+import { PostponedTask, PostponedTaskItem } from '../types';
 import { Calendar, Save, Archive, Filter, CheckCircle, Clock, XCircle, Plus, Trash2, Briefcase, FileSpreadsheet, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { exportToStyledExcel } from '../src/lib/excelExport';
@@ -9,16 +9,16 @@ interface Props {
   onClose?: () => void;
 }
 
-export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
+export const PostponedTasksView: React.FC<Props> = ({ onClose }) => {
   const { data, updateData, currentUser } = useGlobal();
   const today = new Date().toISOString().split('T')[0];
 
   const [dateStr, setDateStr] = useState(today);
-  const [tasks, setTasks] = useState<AddedTaskItem[]>([
+  const [tasks, setTasks] = useState<PostponedTaskItem[]>([
     { id: crypto.randomUUID(), taskText: '', dateFrom: today, dateTo: today, notes: '', status: 'in_progress' }
   ]);
 
-  const existingTasks = data.addedTasks || [];
+  const existingTasks = data.postponedTasks || [];
 
   const [showArchive, setShowArchive] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
@@ -29,7 +29,7 @@ export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
     in_progress: true,
     not_done: true
   });
-  const [filteredResults, setFilteredResults] = useState<(AddedTaskItem & { _parent: AddedTask, uniqueId: string })[] | null>(null);
+  const [filteredResults, setFilteredResults] = useState<(PostponedTaskItem & { _parent: PostponedTask, uniqueId: string })[] | null>(null);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 
@@ -42,7 +42,7 @@ export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
   const grade = currentUser?.grades && currentUser.grades.length > 0 ? currentUser.grades.join(', ') : 'بدون صف';
   const section = currentUser?.sections && currentUser.sections.length > 0 ? currentUser.sections.join(', ') : 'بدون شعبة';
 
-  // Find if there's already a task for today that we can just edit? The user said "مع أنه يظهر تاريخ اليوم الحالي تلقائيا بمجرد الفتح ولا يكرر مرة أخرى في نفس اليوم" -> "does not repeat again on the same day". So we auto-load today's entry if it exists.
+  // Find if there's already a task for today that we can just edit
   useEffect(() => {
     if (!showArchive && !showFilter && !activeTaskId) {
       const todaysEntry = existingTasks.find(t => t.dateStr === dateStr && t.userId === currentUser?.id);
@@ -63,7 +63,7 @@ export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
       return;
     }
 
-    const newObj: AddedTask = {
+    const newObj: PostponedTask = {
       id: activeTaskId || crypto.randomUUID(),
       userId: currentUser?.id,
       school,
@@ -87,7 +87,7 @@ export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
       updatedTasks.push(newObj);
     }
 
-    updateData({ addedTasks: updatedTasks });
+    updateData({ postponedTasks: updatedTasks });
     setActiveTaskId(newObj.id);
     toast.success('تم حفظ المهام بنجاح');
   };
@@ -96,7 +96,7 @@ export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
     setTasks([...tasks, { id: crypto.randomUUID(), taskText: '', dateFrom: dateStr, dateTo: dateStr, notes: '', status: 'in_progress' }]);
   };
 
-  const updateTask = (id: string, updates: Partial<AddedTaskItem>) => {
+  const updateTask = (id: string, updates: Partial<PostponedTaskItem>) => {
     setTasks(prev => {
       const newTasks = [...prev];
       const i = newTasks.findIndex(t => t.id === id);
@@ -117,7 +117,7 @@ export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
   };
 
   const handleApplyFilter = () => {
-    let results: (AddedTaskItem & { _parent: AddedTask, uniqueId: string })[] = [];
+    let results: (PostponedTaskItem & { _parent: PostponedTask, uniqueId: string })[] = [];
     existingTasks.forEach(task => {
       if (task.dateStr >= filterStartDate && task.dateStr <= filterEndDate) {
         task.tasks.forEach(t => {
@@ -159,8 +159,8 @@ export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
     ]);
 
     await exportToStyledExcel({
-      title: 'تقرير المهام المضافة',
-      filename: 'added_tasks_report',
+      title: 'تقرير المهام المرحلة',
+      filename: 'postponed_tasks_report',
       headers,
       data: exportData,
       columnWidths: [5, 40, 15, 15, 20, 15, 20, 15, 30],
@@ -182,8 +182,8 @@ export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
     });
   };
 
-  const generateWhatsAppMessage = (tasksToExport: (AddedTaskItem & { _parent: AddedTask })[]) => {
-    let msg = `*📋 تقرير المهام المضافة*\n`;
+  const generateWhatsAppMessage = (tasksToExport: (PostponedTaskItem & { _parent: PostponedTask })[]) => {
+    let msg = `*📋 تقرير المهام المرحلة*\n`;
     msg += `*التاريخ:* ${new Date().toLocaleDateString('ar-EG')}\n`;
     msg += `----------------------------------\n\n`;
 
@@ -244,7 +244,7 @@ export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Filter className="text-blue-500" />
-            نتائج مؤشرات المهام المضافة
+            نتائج مؤشرات المهام المرحلة
           </h2>
           <div className="flex gap-2 flex-wrap">
             <button onClick={handleExportExcel} className="btn-secondary flex items-center gap-2 bg-green-50 text-green-700 border-green-200 hover:bg-green-100">
@@ -391,7 +391,7 @@ export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
         </button>
         <button onClick={() => setShowFilter(true)} className="flex items-center gap-2 px-6 py-3 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-xl font-bold hover:bg-emerald-100 transition-colors">
           <Filter size={20} />
-          مؤشرات المهام المضافة
+          مؤشرات المهام المرحلة
         </button>
         {onClose && (
           <button onClick={onClose} className="mr-auto btn-secondary bg-slate-100">
@@ -453,7 +453,7 @@ export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
                 <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg">
                   {index + 1}
                 </span>
-                المهام المضافة
+                المهام المرحلة
               </h4>
               <button 
                 onClick={() => removeTask(task.id)} 
@@ -557,7 +557,7 @@ export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
             <div className="p-6 border-b border-slate-100">
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <Filter className="text-blue-500" />
-                مؤشرات المهام المضافة
+                مؤشرات المهام المرحلة
               </h3>
             </div>
             <div className="p-6 space-y-6">

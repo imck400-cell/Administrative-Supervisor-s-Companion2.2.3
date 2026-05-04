@@ -469,6 +469,30 @@ export interface AddedTask {
   createdAt: string;
 }
 
+export interface PostponedTaskItem {
+  id: string;
+  taskText: string;
+  dateFrom: string;
+  dateTo: string;
+  notes: string;
+  status: 'done' | 'in_progress' | 'not_done';
+}
+
+export interface PostponedTask {
+  id: string;
+  userId?: string;
+  school: string;
+  branch: string;
+  academicYear: string;
+  supervisorName: string;
+  supervisorJob: string;
+  grade: string;
+  section: string;
+  dateStr: string;
+  tasks: PostponedTaskItem[];
+  createdAt: string;
+}
+
 export interface AppData {
   users: User[];
   profile: SchoolProfile;
@@ -500,6 +524,7 @@ export interface AppData {
   secretariatStudents?: any[];
   secretariatStaff?: any[];
   addedTasks?: AddedTask[];
+  postponedTasks?: PostponedTask[];
   customViolationElements?: {
     behavior?: string[];
     duties?: string[];

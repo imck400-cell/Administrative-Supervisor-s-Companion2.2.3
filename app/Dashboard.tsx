@@ -389,7 +389,8 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
       ...(data.studentViolationLogs || []).filter(l => validStudentNames.has(l.studentName)).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'المخالفات الطلابية', icon: <ShieldAlert size={12} /> })),
       ...(data.parentVisitLogs || []).filter(l => validStudentNames.has(l.studentName)).map(l => ({ ...l, displayName: l.studentName, cat: 'students_sr', sub: 'سجل زيارة أولياء الأمور والتواصل بهم', icon: <Users size={12} /> })),
       ...(data.genericSpecialReports || []).map(l => ({ ...l, displayName: l.title, cat: l.category === 'supervisor' ? 'supervisor' : l.category === 'staff' ? 'staff' : l.category === 'tests' ? 'tests' : 'supervisor', sub: l.subCategory, icon: <FileText size={12} /> })),
-      ...(data.addedTasks || []).flatMap(at => at.tasks.map(t => ({ ...t, date: at.dateStr, displayName: at.supervisorName, cat: 'supervisor', sub: 'المهام المضافة', icon: <FileText size={12} /> })))
+      ...(data.addedTasks || []).flatMap(at => at.tasks.map(t => ({ ...t, date: at.dateStr, displayName: at.supervisorName, cat: 'supervisor', sub: 'المهام المضافة', icon: <FileText size={12} /> }))),
+      ...(data.postponedTasks || []).flatMap(at => at.tasks.map(t => ({ ...t, date: at.dateStr, displayName: at.supervisorName, cat: 'supervisor', sub: 'المهام المرحلة', icon: <FileText size={12} /> })))
     ];
 
     return results;

@@ -56,10 +56,10 @@ export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
     }
   }, [dateStr, existingTasks.length, showArchive, showFilter]);
 
-  const saveWork = () => {
-    const validTasks = tasks.filter(t => t.taskText.trim() !== '');
-    if (validTasks.length === 0 && tasks.length > 0) {
-      toast.error('الرجاء كتابة المهام قبل الحفظ');
+  const saveWork = (currentTasks: AddedTaskItem[] = tasks, showMessage: boolean = true) => {
+    const validTasks = currentTasks.filter(t => t.taskText.trim() !== '');
+    if (validTasks.length === 0 && currentTasks.length > 0) {
+      if (showMessage) toast.error('الرجاء كتابة المهام قبل الحفظ');
       return;
     }
 
@@ -89,7 +89,7 @@ export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
 
     updateData({ addedTasks: updatedTasks });
     setActiveTaskId(newObj.id);
-    toast.success('تم حفظ المهام بنجاح');
+    if (showMessage) toast.success('تم حفظ المهام بنجاح');
   };
 
   const addTaskRow = () => {
@@ -108,12 +108,15 @@ export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
            newTasks.push({ id: crypto.randomUUID(), taskText: '', dateFrom: dateStr, dateTo: dateStr, notes: '', status: 'in_progress' });
         }
       }
+      setTimeout(() => saveWork(newTasks, false), 500);
       return newTasks;
     });
   };
 
   const removeTask = (id: string) => {
-    setTasks(tasks.filter(t => t.id !== id));
+    const newTasks = tasks.filter(t => t.id !== id);
+    setTasks(newTasks);
+    setTimeout(() => saveWork(newTasks, false), 500);
   };
 
   const handleApplyFilter = () => {
@@ -381,9 +384,9 @@ export const AddedTasksView: React.FC<Props> = ({ onClose }) => {
       
       {/* Top Buttons */}
       <div className="flex flex-wrap items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-        <button onClick={saveWork} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-xl hover:-translate-y-0.5 transition-all">
+        <button onClick={() => saveWork(tasks)} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-xl hover:-translate-y-0.5 transition-all">
           <Save size={20} />
-          حفظ العمل
+          حفظ العمل (تلقائي)
         </button>
         <button onClick={() => setShowArchive(true)} className="flex items-center gap-2 px-6 py-3 bg-orange-50 text-orange-600 border border-orange-200 rounded-xl font-bold hover:bg-orange-100 transition-colors">
           <Archive size={20} />

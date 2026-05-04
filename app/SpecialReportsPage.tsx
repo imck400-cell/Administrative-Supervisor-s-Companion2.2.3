@@ -20,6 +20,7 @@ import { exportToStyledExcel } from '../src/lib/excelExport';
 import * as XLSX from 'xlsx';
 import { AddedTasksView } from '../components/AddedTasksView';
 import { PostponedTasksView } from '../components/PostponedTasksView';
+import { IssuesAndRecommendationsView } from '../components/IssuesAndRecommendationsView';
 
 type MainTab = 'supervisor' | 'staff' | 'students' | 'tests';
 type SubTab = string;
@@ -212,7 +213,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
   });
 
   const structure = {
-    supervisor: { title: 'المشرف الإداري', icon: <Briefcase />, items: ['المهام', 'الخطة الفصلية', 'الخلاصة الشهرية', 'المهام اليومية', 'المهام المضافة', 'المهام المرحلة', 'أهم المشكلات اليومية', 'التوصيات العامة', 'احتياجات الدور', 'سجل متابعة الدفاتر والتصحيح', 'الجرد العام للعهد', 'ملاحظات عامة'] },
+    supervisor: { title: 'المشرف الإداري', icon: <Briefcase />, items: ['المهام', 'الخطة الفصلية', 'الخلاصة الشهرية', 'المهام المضافة', 'المهام المرحلة', 'المشكلات والتوصيات والمقترحات', 'احتياجات الدور', 'سجل متابعة الدفاتر والتصحيح', 'الجرد العام للعهد'] },
     staff: { title: 'الكادر التعليمي', icon: <Users />, items: ['سجل الإبداع والتميز', 'كشف الاستلام والتسليم', 'المخالفات', 'التعميمات'] },
     students: { title: 'الطلاب/ الطالبات', icon: <GraduationCap />, items: ['الغياب اليومي', 'التأخر', 'خروج طالب أثناء الدراسة', 'المخالفات الطلابية', 'سجل الإتلاف المدرسي', 'سجل الحالات الخاصة', 'سجل الحالة الصحية', 'سجل زيارة أولياء الأمور والتواصل بهم'] },
     tests: { title: 'تقارير الاختبار', icon: <FileSearch />, items: ['الاختبار الشهري', 'الاختبار الفصلي'] }
@@ -3137,6 +3138,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       case 'الاختبار الفصلي': return renderExamModule();
       case 'المهام المضافة': return <AddedTasksView onClose={() => setActiveSubTab(null)} />;
       case 'المهام المرحلة': return <PostponedTasksView onClose={() => setActiveSubTab(null)} />;
+      case 'المشكلات والتوصيات والمقترحات': return <IssuesAndRecommendationsView onClose={() => setActiveSubTab(null)} />;
       default:
         return (
           <div className="bg-white p-4 md:p-8 rounded-[2rem] md:rounded-[3rem] border shadow-2xl relative overflow-hidden font-arabic text-right">

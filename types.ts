@@ -493,6 +493,31 @@ export interface PostponedTask {
   createdAt: string;
 }
 
+export interface IssueRecommendationItem {
+  id: string;
+  type: 'issue' | 'recommendation' | 'suggestion';
+  content: string;
+  dateFrom: string;
+  dateTo: string;
+  notes: string;
+  status: 'solved' | 'in_progress_issue' | 'not_solved' | 'adopted' | 'under_review' | 'implemented_differently';
+}
+
+export interface IssueRecommendationReport {
+  id: string;
+  userId?: string;
+  school: string;
+  branch: string;
+  academicYear: string;
+  supervisorName: string;
+  supervisorJob: string;
+  grade: string;
+  section: string;
+  dateStr: string;
+  items: IssueRecommendationItem[];
+  createdAt: string;
+}
+
 export interface AppData {
   users: User[];
   profile: SchoolProfile;
@@ -525,6 +550,7 @@ export interface AppData {
   secretariatStaff?: any[];
   addedTasks?: AddedTask[];
   postponedTasks?: PostponedTask[];
+  issueRecommendations?: IssueRecommendationReport[];
   customViolationElements?: {
     behavior?: string[];
     duties?: string[];

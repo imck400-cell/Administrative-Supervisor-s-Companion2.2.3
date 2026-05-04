@@ -445,6 +445,30 @@ export interface StudentEvaluation {
   };
 }
 
+export interface AddedTaskItem {
+  id: string;
+  taskText: string;
+  dateFrom: string;
+  dateTo: string;
+  notes: string;
+  status: 'done' | 'in_progress' | 'not_done';
+}
+
+export interface AddedTask {
+  id: string;
+  userId?: string;
+  school: string;
+  branch: string;
+  academicYear: string;
+  supervisorName: string;
+  supervisorJob: string;
+  grade: string;
+  section: string;
+  dateStr: string;
+  tasks: AddedTaskItem[];
+  createdAt: string;
+}
+
 export interface AppData {
   users: User[];
   profile: SchoolProfile;
@@ -475,6 +499,7 @@ export interface AppData {
   genericSpecialReports?: GenericSpecialReport[];
   secretariatStudents?: any[];
   secretariatStaff?: any[];
+  addedTasks?: AddedTask[];
   customViolationElements?: {
     behavior?: string[];
     duties?: string[];

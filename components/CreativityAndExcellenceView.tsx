@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGlobal } from '../context/GlobalState';
 import { CreativityRecordReport, CreativityRecordItem } from '../types';
-import { Calendar, Save, Archive, Filter, CheckCircle, Plus, Trash2, Briefcase, FileSpreadsheet, MessageCircle, Star } from 'lucide-react';
+import { Calendar, Save, Archive, Filter, CheckCircle, Plus, Trash2, Briefcase, FileSpreadsheet, MessageCircle, Star, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { exportToStyledExcel } from '../src/lib/excelExport';
 
@@ -52,6 +52,7 @@ export const CreativityAndExcellenceView: React.FC<Props> = ({ onClose }) => {
   const [filteredResults, setFilteredResults] = useState<(CreativityRecordItem & { _parent: CreativityRecordReport, uniqueId: string })[] | null>(null);
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [openTeacherDropdown, setOpenTeacherDropdown] = useState<string | null>(null);
 
   const supervisorName = currentUser?.name || 'بدون اسم';
   const supervisorJob = currentUser?.jobTitle || (currentUser?.role === 'admin' ? 'مدير نظام' : 'مشرف إداري');
@@ -207,18 +208,18 @@ export const CreativityAndExcellenceView: React.FC<Props> = ({ onClose }) => {
       onRow: (row, rowData) => {
         const evalValue = rowData[6];
         const evalCell = row.getCell(7);
-        if (evalValue === '1') {
+        if (evalValue === '4') {
            evalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }; 
            evalCell.font = { name: 'Arial', bold: true, color: { argb: 'FF065F46' } }; 
-        } else if (evalValue === '2') {
-           evalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }; 
-           evalCell.font = { name: 'Arial', bold: true, color: { argb: 'FF1E40AF' } }; 
         } else if (evalValue === '3') {
-           evalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; 
-           evalCell.font = { name: 'Arial', bold: true, color: { argb: 'FF92400E' } }; 
-        } else if (evalValue === '4') {
-           evalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEDE9FE' } }; 
-           evalCell.font = { name: 'Arial', bold: true, color: { argb: 'FF5B21B6' } }; 
+           evalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0F2FE' } }; 
+           evalCell.font = { name: 'Arial', bold: true, color: { argb: 'FF075985' } }; 
+        } else if (evalValue === '2') {
+           evalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEDD5' } }; 
+           evalCell.font = { name: 'Arial', bold: true, color: { argb: 'FF9A3412' } }; 
+        } else if (evalValue === '1') {
+           evalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } }; 
+           evalCell.font = { name: 'Arial', bold: true, color: { argb: 'FF991B1B' } }; 
         }
       }
     });
@@ -343,10 +344,11 @@ export const CreativityAndExcellenceView: React.FC<Props> = ({ onClose }) => {
                     <td className="p-4 border-e border-slate-100 whitespace-normal min-w-[150px]">{t.teacherNames ? t.teacherNames.join('، ') : '--'}</td>
                     <td className="p-4 border-e border-slate-100 font-bold text-center">
                       <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${
-                        t.evaluation === 1 ? 'bg-emerald-100 text-emerald-700' :
-                        t.evaluation === 2 ? 'bg-blue-100 text-blue-700' :
-                        t.evaluation === 3 ? 'bg-amber-100 text-amber-700' :
-                        'bg-purple-100 text-purple-700'
+                        t.evaluation === 4 ? 'bg-emerald-100 text-emerald-700' :
+                        t.evaluation === 3 ? 'bg-sky-100 text-sky-700' :
+                        t.evaluation === 2 ? 'bg-orange-100 text-orange-700' :
+                        t.evaluation === 1 ? 'bg-red-100 text-red-700' :
+                        'bg-slate-100 text-slate-700'
                       }`}>
                         {t.evaluation}
                       </span>
@@ -552,30 +554,48 @@ export const CreativityAndExcellenceView: React.FC<Props> = ({ onClose }) => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-                <div className="space-y-4">
+                <div className="space-y-4 relative">
                   <div>
                     <label className="text-sm font-bold text-slate-700 block mb-2">أسماء المعلمين المشتركين في العمل</label>
-                    <div className="max-h-56 overflow-y-auto bg-slate-50 border border-slate-200 rounded-xl p-2 space-y-1">
-                      {uniqueTeachers.map(teacher => (
-                         <label key={teacher} className="flex items-center gap-2 cursor-pointer bg-white p-2 rounded-lg hover:bg-blue-50 border border-transparent hover:border-blue-100 transition-colors">
-                           <input 
-                             type="checkbox" 
-                             checked={task.teacherNames?.includes(teacher) || false} 
-                             onChange={e => {
-                               const currentNames = task.teacherNames || [];
-                               if (e.target.checked) {
-                                 updateTask(task.id, { teacherNames: [...currentNames, teacher] });
-                               } else {
-                                 updateTask(task.id, { teacherNames: currentNames.filter(n => n !== teacher) });
-                               }
-                             }} 
-                             className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" 
-                           />
-                           <span className="text-sm font-medium text-slate-700">{teacher}</span>
-                         </label>
-                      ))}
-                      {uniqueTeachers.length === 0 && <div className="text-xs text-slate-500 text-center py-4">لا يوجد معلمين مسجلين</div>}
-                    </div>
+                    <button 
+                      onClick={() => setOpenTeacherDropdown(openTeacherDropdown === task.id ? null : task.id)}
+                      className="w-full h-[42px] bg-slate-50 border border-slate-200 rounded-xl px-3 flex items-center justify-between hover:bg-slate-100 transition-colors"
+                    >
+                      <span className="text-sm text-slate-600 truncate flex-1 text-right">
+                        {task.teacherNames && task.teacherNames.length > 0 ? `${task.teacherNames.length} معلمين محددين` : 'اختر المعلمين...'}
+                      </span>
+                      <ChevronDown size={16} className="text-slate-400" />
+                    </button>
+
+                    {openTeacherDropdown === task.id && (
+                      <div className="absolute z-10 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-lg p-2 max-h-56 overflow-y-auto">
+                        {uniqueTeachers.map(teacher => (
+                           <label key={teacher} className="flex items-center gap-2 cursor-pointer bg-white p-2 rounded-lg hover:bg-blue-50 border border-transparent hover:border-blue-100 transition-colors">
+                             <input 
+                               type="checkbox" 
+                               checked={task.teacherNames?.includes(teacher) || false} 
+                               onChange={e => {
+                                 const currentNames = task.teacherNames || [];
+                                 if (e.target.checked) {
+                                   updateTask(task.id, { teacherNames: [...currentNames, teacher] });
+                                 } else {
+                                   updateTask(task.id, { teacherNames: currentNames.filter(n => n !== teacher) });
+                                 }
+                               }} 
+                               className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" 
+                             />
+                             <span className="text-sm font-medium text-slate-700">{teacher}</span>
+                           </label>
+                        ))}
+                        {uniqueTeachers.length === 0 && <div className="text-xs text-slate-500 text-center py-4">لا يوجد معلمين مسجلين</div>}
+                        <button 
+                          onClick={() => setOpenTeacherDropdown(null)}
+                          className="w-full mt-2 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-colors"
+                        >
+                          موافق
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -588,17 +608,25 @@ export const CreativityAndExcellenceView: React.FC<Props> = ({ onClose }) => {
                   <div>
                     <div className="text-center font-bold text-slate-600 mb-3 text-sm">— تقييم الإبداع —</div>
                     <div className="grid grid-cols-4 gap-3">
-                      {[1, 2, 3, 4].map(num => (
+                      {[1, 2, 3, 4].map(num => {
+                        let activeColor = '';
+                        let hoverColor = '';
+                        if(num === 4) { activeColor = 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm'; hoverColor = 'hover:border-emerald-200'; }
+                        else if(num === 3) { activeColor = 'bg-sky-50 border-sky-500 text-sky-700 shadow-sm'; hoverColor = 'hover:border-sky-200'; }
+                        else if(num === 2) { activeColor = 'bg-orange-50 border-orange-500 text-orange-700 shadow-sm'; hoverColor = 'hover:border-orange-200'; }
+                        else if(num === 1) { activeColor = 'bg-red-50 border-red-500 text-red-700 shadow-sm'; hoverColor = 'hover:border-red-200'; }
+
+                        return (
                         <button 
                           key={num}
                           onClick={() => updateTask(task.id, { evaluation: num as any })}
                           className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${
-                            task.evaluation === num ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm' : 'border-slate-100 hover:border-blue-200 text-slate-500'
+                            task.evaluation === num ? activeColor : `border-slate-100 hover:bg-slate-50 text-slate-500 ${hoverColor}`
                           }`}
                         >
                           <span className="text-2xl font-black mb-1">{num}</span>
                         </button>
-                      ))}
+                      )})}
                     </div>
                   </div>
                 </div>

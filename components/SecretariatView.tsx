@@ -130,6 +130,10 @@ const StudentsManager = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; type?: 'danger' }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  const [studentPage, setStudentPage] = useState(1);
+  const [studentPageSize, setStudentPageSize] = useState(50);
+  const [studentFilterGrade, setStudentFilterGrade] = useState('');
+  const [studentFilterSection, setStudentFilterSection] = useState('');
 
   const saveStudents = (newStudents: StudentData[]) => {
     setStudents(newStudents);
@@ -285,17 +289,36 @@ const StudentsManager = () => {
   };
 
   const filteredStudents = useMemo(() => {
-    if (!searchQuery) return students;
-    const lowerQ = searchQuery.toLowerCase();
-    return students.filter(s => 
-      s.name.toLowerCase().includes(lowerQ) ||
-      s.school.toLowerCase().includes(lowerQ) ||
-      s.branch.toLowerCase().includes(lowerQ) ||
-      s.grade.toLowerCase().includes(lowerQ) ||
-      s.guardianInfo.toLowerCase().includes(lowerQ) ||
-      s.residenceWork.toLowerCase().includes(lowerQ)
-    );
-  }, [students, searchQuery]);
+    let result = students;
+    if (studentFilterGrade) {
+      result = result.filter(s => s.grade === studentFilterGrade);
+    }
+    if (studentFilterSection) {
+      result = result.filter(s => s.section === studentFilterSection);
+    }
+    if (searchQuery) {
+      const lowerQ = searchQuery.toLowerCase();
+      result = result.filter(s => 
+        s.name.toLowerCase().includes(lowerQ) ||
+        s.school.toLowerCase().includes(lowerQ) ||
+        s.branch.toLowerCase().includes(lowerQ) ||
+        s.grade.toLowerCase().includes(lowerQ) ||
+        s.guardianInfo.toLowerCase().includes(lowerQ) ||
+        s.residenceWork.toLowerCase().includes(lowerQ)
+      );
+    }
+    return result;
+  }, [students, searchQuery, studentFilterGrade, studentFilterSection]);
+
+  const paginatedStudents = useMemo(() => {
+    const startIndex = (studentPage - 1) * studentPageSize;
+    return filteredStudents.slice(startIndex, startIndex + studentPageSize);
+  }, [filteredStudents, studentPage, studentPageSize]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setStudentPage(1);
+  }, [searchQuery, studentFilterGrade, studentFilterSection, studentPageSize]);
 
   const toggleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) setSelectedIds(filteredStudents.map(s => s.id));
@@ -309,15 +332,33 @@ const StudentsManager = () => {
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-200">
-        <div className="relative w-full md:w-96">
-          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-          <input 
-            type="text" 
-            placeholder="بحث عن طالب، صف، فرع، ولي أمر..." 
-            className="w-full bg-white border-2 border-slate-200 rounded-xl py-3 pr-12 pl-4 outline-none focus:border-blue-500 transition-colors font-bold text-sm"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div className="flex gap-2 flex-wrap sm:flex-nowrap w-full md:w-auto">
+          <div className="relative flex-1 md:w-96">
+            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+            <input 
+              type="text" 
+              placeholder="بحث عن طالب، صف، فرع، ولي أمر..." 
+              className="w-full bg-white border-2 border-slate-200 rounded-xl py-3 pr-12 pl-4 outline-none focus:border-blue-500 transition-colors font-bold text-sm"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <select 
+            value={studentFilterGrade} 
+            onChange={e => setStudentFilterGrade(e.target.value)}
+            className="bg-white border-2 border-slate-200 rounded-xl py-3 px-4 outline-none focus:border-blue-500 font-bold text-sm min-w-[120px]"
+          >
+            <option value="">كل الصفوف</option>
+            {['تمهيدي', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+          <select 
+            value={studentFilterSection} 
+            onChange={e => setStudentFilterSection(e.target.value)}
+            className="bg-white border-2 border-slate-200 rounded-xl py-3 px-4 outline-none focus:border-blue-500 font-bold text-sm min-w-[120px]"
+          >
+            <option value="">كل الشعب</option>
+            {['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي'].map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
         </div>
         
         {!isReadOnly && (
@@ -367,7 +408,7 @@ const StudentsManager = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredStudents.map((student, index) => (
+            {paginatedStudents.map((student, index) => (
               <tr key={student.id} className={`border-b border-slate-200 transition-colors ${selectedIds.includes(student.id) ? 'bg-blue-50' : 'hover:bg-white'}`}>
                 <td className="p-2 text-center">
                   {!isReadOnly && (
@@ -427,14 +468,73 @@ const StudentsManager = () => {
                 </td>
               </tr>
             ))}
-            {filteredStudents.length === 0 && (
+            {paginatedStudents.length === 0 && (
               <tr>
-                <td colSpan={12} className="p-8 text-center text-slate-500 font-bold">لا يوجد طلاب مطابقين للبحث، قم بالإضافة أو الاستيراد من إكسل</td>
+                <td colSpan={12} className="p-8 text-center text-slate-500 font-bold">لا يوجد طلاب مطابقين، قم بالإضافة أو الاستيراد من إكسل</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {filteredStudents.length > 0 && (
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="text-sm font-bold text-slate-600">
+            إجمالي الطلاب: {filteredStudents.length} (عرض {((studentPage - 1) * studentPageSize) + 1} إلى {Math.min(studentPage * studentPageSize, filteredStudents.length)})
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              disabled={studentPage === 1}
+              onClick={() => setStudentPage(p => p - 1)}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded-lg font-bold transition-colors"
+            >
+              السابق
+            </button>
+            <div className="flex gap-1">
+              {Array.from({ length: Math.ceil(filteredStudents.length / studentPageSize) }).map((_, i) => {
+                // Show a limited number of page buttons
+                const totalPages = Math.ceil(filteredStudents.length / studentPageSize);
+                if (totalPages > 7) {
+                  if (i !== 0 && i !== totalPages - 1 && Math.abs(i + 1 - studentPage) > 2) {
+                    if (Math.abs(i + 1 - studentPage) === 3) return <span key={i} className="px-2 text-slate-400">...</span>;
+                    return null;
+                  }
+                }
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setStudentPage(i + 1)}
+                    className={`w-10 h-10 rounded-lg font-bold transition-colors ${studentPage === i + 1 ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
+            <button 
+              disabled={studentPage * studentPageSize >= filteredStudents.length}
+              onClick={() => setStudentPage(p => p + 1)}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded-lg font-bold transition-colors"
+            >
+              التالي
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-500 font-bold">العرض:</span>
+            <select 
+              value={studentPageSize} 
+              onChange={e => setStudentPageSize(Number(e.target.value))}
+              className="bg-slate-50 border border-slate-200 rounded-lg p-2 outline-none text-sm font-bold"
+            >
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}

@@ -518,6 +518,29 @@ export interface IssueRecommendationReport {
   createdAt: string;
 }
 
+export interface CreativityRecordItem {
+  id: string;
+  category: string;
+  notes: string;
+  evaluation: 1 | 2 | 3 | 4 | null;
+  dateStr: string;
+}
+
+export interface CreativityRecordReport {
+  id: string;
+  userId?: string;
+  school: string;
+  branch: string;
+  academicYear: string;
+  supervisorName: string;
+  supervisorJob: string;
+  grade: string;
+  section: string;
+  dateStr: string;
+  items: CreativityRecordItem[];
+  createdAt: string;
+}
+
 export interface AppData {
   users: User[];
   profile: SchoolProfile;
@@ -551,6 +574,7 @@ export interface AppData {
   addedTasks?: AddedTask[];
   postponedTasks?: PostponedTask[];
   issueRecommendations?: IssueRecommendationReport[];
+  creativityRecords?: CreativityRecordReport[];
   customViolationElements?: {
     behavior?: string[];
     duties?: string[];

@@ -21,6 +21,7 @@ import * as XLSX from 'xlsx';
 import { AddedTasksView } from '../components/AddedTasksView';
 import { PostponedTasksView } from '../components/PostponedTasksView';
 import { IssuesAndRecommendationsView } from '../components/IssuesAndRecommendationsView';
+import { CreativityAndExcellenceView } from '../components/CreativityAndExcellenceView';
 
 type MainTab = 'supervisor' | 'staff' | 'students' | 'tests';
 type SubTab = string;
@@ -213,8 +214,8 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
   });
 
   const structure = {
-    supervisor: { title: 'المشرف الإداري', icon: <Briefcase />, items: ['المهام', 'الخطة الفصلية', 'الخلاصة الشهرية', 'المهام المضافة', 'المهام المرحلة', 'المشكلات والتوصيات والمقترحات', 'احتياجات الدور', 'سجل متابعة الدفاتر والتصحيح', 'الجرد العام للعهد'] },
-    staff: { title: 'الكادر التعليمي', icon: <Users />, items: ['سجل الإبداع والتميز', 'كشف الاستلام والتسليم', 'المخالفات', 'التعميمات'] },
+    supervisor: { title: 'المشرف الإداري', icon: <Briefcase />, items: ['المهام', 'الخطة الفصلية', 'الخلاصة الشهرية', 'المهام المضافة', 'المهام المرحلة', 'المشكلات والتوصيات والمقترحات', 'احتياجات الدور', 'سجل متابعة الدفاتر والتصحيح', 'الجرد العام للعهد', 'سجل الإبداع والتميز'] },
+    staff: { title: 'الكادر التعليمي', icon: <Users />, items: ['كشف الاستلام والتسليم', 'المخالفات', 'التعميمات'] },
     students: { title: 'الطلاب/ الطالبات', icon: <GraduationCap />, items: ['الغياب اليومي', 'التأخر', 'خروج طالب أثناء الدراسة', 'المخالفات الطلابية', 'سجل الإتلاف المدرسي', 'سجل الحالات الخاصة', 'سجل الحالة الصحية', 'سجل زيارة أولياء الأمور والتواصل بهم'] },
     tests: { title: 'تقارير الاختبار', icon: <FileSearch />, items: ['الاختبار الشهري', 'الاختبار الفصلي'] }
   };
@@ -3139,6 +3140,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       case 'المهام المضافة': return <AddedTasksView onClose={() => setActiveSubTab(null)} />;
       case 'المهام المرحلة': return <PostponedTasksView onClose={() => setActiveSubTab(null)} />;
       case 'المشكلات والتوصيات والمقترحات': return <IssuesAndRecommendationsView onClose={() => setActiveSubTab(null)} />;
+      case 'سجل الإبداع والتميز': return <CreativityAndExcellenceView onClose={() => setActiveSubTab(null)} />;
       default:
         return (
           <div className="bg-white p-4 md:p-8 rounded-[2rem] md:rounded-[3rem] border shadow-2xl relative overflow-hidden font-arabic text-right">

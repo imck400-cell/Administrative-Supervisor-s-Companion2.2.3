@@ -22,6 +22,7 @@ import { AddedTasksView } from '../components/AddedTasksView';
 import { PostponedTasksView } from '../components/PostponedTasksView';
 import { IssuesAndRecommendationsView } from '../components/IssuesAndRecommendationsView';
 import { CreativityAndExcellenceView } from '../components/CreativityAndExcellenceView';
+import { DeliveryReceiptView } from '../components/DeliveryReceiptView';
 
 type MainTab = 'supervisor' | 'staff' | 'students' | 'tests';
 type SubTab = string;
@@ -3141,6 +3142,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({ initialSubTab, 
       case 'المهام المرحلة': return <PostponedTasksView onClose={() => setActiveSubTab(null)} />;
       case 'المشكلات والتوصيات والمقترحات': return <IssuesAndRecommendationsView onClose={() => setActiveSubTab(null)} />;
       case 'سجل الإبداع والتميز': return <CreativityAndExcellenceView onClose={() => setActiveSubTab(null)} />;
+      case 'كشف الاستلام والتسليم': return <DeliveryReceiptView onClose={() => setActiveSubTab(null)} />;
       default:
         return (
           <div className="bg-white p-4 md:p-8 rounded-[2rem] md:rounded-[3rem] border shadow-2xl relative overflow-hidden font-arabic text-right">

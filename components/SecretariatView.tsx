@@ -34,9 +34,13 @@ interface StaffData {
 }
 
 import ConfirmDialog from './ConfirmDialog';
+import { TeacherCriteriaModal } from './TeacherCriteriaModal';
+import { AdminCriteriaModal } from './AdminCriteriaModal';
 
 export const SecretariatView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(null);
+  const [isTeacherCriteriaOpen, setIsTeacherCriteriaOpen] = useState(false);
+  const [isAdminCriteriaOpen, setIsAdminCriteriaOpen] = useState(false);
   
   return (
     <div className="space-y-6" dir="rtl">
@@ -48,32 +52,66 @@ export const SecretariatView: React.FC = () => {
       </div>
 
       {!activeTab ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setActiveTab('students')}
-            className="p-8 bg-blue-500 rounded-3xl text-white shadow-lg hover:shadow-blue-500/30 transition-all text-center group relative overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="relative z-10 flex flex-col items-center">
-              <Users size={48} className="mb-4" />
-              <h3 className="text-2xl font-black">شؤون الطلاب</h3>
-            </div>
-          </motion.button>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setActiveTab('students')}
+              className="p-8 bg-blue-500 rounded-3xl text-white shadow-lg hover:shadow-blue-500/30 transition-all text-center group relative overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative z-10 flex flex-col items-center">
+                <Users size={48} className="mb-4" />
+                <h3 className="text-2xl font-black">شؤون الطلاب</h3>
+              </div>
+            </motion.button>
+            
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setActiveTab('staff')}
+              className="p-8 bg-emerald-500 rounded-3xl text-white shadow-lg hover:shadow-emerald-500/30 transition-all text-center group relative overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-400 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative z-10 flex flex-col items-center">
+                <Briefcase size={48} className="mb-4" />
+                <h3 className="text-2xl font-black">شؤون الموظفين</h3>
+              </div>
+            </motion.button>
+          </div>
           
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setActiveTab('staff')}
-            className="p-8 bg-emerald-500 rounded-3xl text-white shadow-lg hover:shadow-emerald-500/30 transition-all text-center group relative overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-400 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="relative z-10 flex flex-col items-center">
-              <Briefcase size={48} className="mb-4" />
-              <h3 className="text-2xl font-black">شؤون الموظفين</h3>
-            </div>
-          </motion.button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsTeacherCriteriaOpen(true)}
+              className="p-6 bg-slate-50 border border-slate-200 rounded-3xl text-slate-700 shadow-sm hover:shadow-md transition-all text-center group relative overflow-hidden"
+            >
+              <div className="relative z-10 flex flex-col items-center">
+                <div className="bg-blue-100 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                  <FileSpreadsheet size={32} className="text-blue-600" />
+                </div>
+                <h3 className="text-lg font-black">التحكم بمعايير متابعة المعلمين</h3>
+                <p className="text-sm text-slate-500 mt-2">إضافة، تعديل، وحذف المعايير الافتراضية</p>
+              </div>
+            </motion.button>
+            
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsAdminCriteriaOpen(true)}
+              className="p-6 bg-slate-50 border border-slate-200 rounded-3xl text-slate-700 shadow-sm hover:shadow-md transition-all text-center group relative overflow-hidden"
+            >
+              <div className="relative z-10 flex flex-col items-center">
+                <div className="bg-emerald-100 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                  <Briefcase size={32} className="text-emerald-600" />
+                </div>
+                <h3 className="text-lg font-black">التحكم بمعايير متابعة الموظفين والعاملين</h3>
+                <p className="text-sm text-slate-500 mt-2">تخصيص مجالات التقارير ومعايير التقييم</p>
+              </div>
+            </motion.button>
+          </div>
         </div>
       ) : (
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
@@ -92,6 +130,16 @@ export const SecretariatView: React.FC = () => {
           {activeTab === 'students' ? <StudentsManager /> : <StaffManager />}
         </div>
       )}
+
+      <TeacherCriteriaModal 
+        isOpen={isTeacherCriteriaOpen} 
+        onClose={() => setIsTeacherCriteriaOpen(false)} 
+      />
+      
+      <AdminCriteriaModal 
+        isOpen={isAdminCriteriaOpen} 
+        onClose={() => setIsAdminCriteriaOpen(false)} 
+      />
     </div>
   );
 };

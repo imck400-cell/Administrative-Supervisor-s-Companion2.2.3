@@ -667,7 +667,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       arrayKeys.forEach(k => dataBuffer[k] = {});
 
       // Shared keys for the selected schools
-      const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates'];
+      const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList'];
       const customizableKeys = ['taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
       const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
       const schoolsToListen = selectedSchools.includes('all') ? data.availableSchools : selectedSchools;
@@ -876,7 +876,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
       const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
       const schoolsToUpdate = selectedSchools.includes('all') ? data.availableSchools : selectedSchools;
-      const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates'];
+      const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList'];
       const customizableKeys = ['taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
 
       // Helper to check if an item matches the current active filters (user + date).
@@ -918,7 +918,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           
           const canEditTemplate = Array.isArray(currentUser.permissions?.teacherPortal) && currentUser.permissions.teacherPortal.includes('editEvaluationTemplate');
 
-          if (isAdminOrFull || (key === 'users' && isManager) || ((key === 'secretariatStudents' || key === 'secretariatStaff') && isSecretariatEnabled) || (key === 'selfEvaluationTemplates' && canEditTemplate)) {
+          if (isAdminOrFull || (key === 'users' && isManager) || ((key === 'secretariatStudents' || key === 'secretariatStaff' || key === 'metricsList' || key === 'adminMetricsList') && isSecretariatEnabled) || (key === 'selfEvaluationTemplates' && canEditTemplate)) {
             schoolsToUpdate.forEach(school => {
               setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
                 .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));

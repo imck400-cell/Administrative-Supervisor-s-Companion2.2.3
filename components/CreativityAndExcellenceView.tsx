@@ -61,6 +61,27 @@ export const CreativityAndExcellenceView: React.FC<Props> = ({ onClose }) => {
   const grade = currentUser?.grades && currentUser.grades.length > 0 ? currentUser.grades.join(', ') : 'بدون صف';
   const section = currentUser?.sections && currentUser.sections.length > 0 ? currentUser.sections.join(', ') : 'بدون شعبة';
 
+  // Available Staff for Current User Scope
+  const availableStaff = React.useMemo(() => {
+    let staff = data.secretariatStaff || [];
+    const isAdmin = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+    if (!isAdmin) {
+      if (currentUser?.selectedSchool) {
+        const userSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
+        staff = staff.filter((s:any) => userSchools.includes(String(s.school || '').trim()));
+      }
+      if (currentUser?.selectedBranch) {
+        staff = staff.filter((s:any) => s.branch === currentUser.selectedBranch);
+      }
+      if (currentUser?.grades && currentUser.grades.length > 0) {
+        staff = staff.filter((s:any) => !s.grade || currentUser.grades!.includes(String(s.grade).trim()));
+      }
+    }
+    return staff;
+  }, [data.secretariatStaff, currentUser]);
+
+  const uniqueTeachers = Array.from(new Set(availableStaff.map((s:any) => s.name).filter(Boolean))) as string[];
+
   useEffect(() => {
     if (!showArchive && !showFilter && !activeTaskId) {
       const todaysEntry = existingTasks.find(t => t.dateStr === dateStr && t.userId === currentUser?.id);
@@ -164,13 +185,14 @@ export const CreativityAndExcellenceView: React.FC<Props> = ({ onClose }) => {
       return;
     }
 
-    const headers = ['م', 'مجال التميز', 'تاريخ العمل', 'المنفذ', 'المدرسة والفرع', 'تقييم الإبداع', 'ملاحظات عامة'];
+    const headers = ['م', 'مجال التميز', 'تاريخ العمل', 'المنفذ', 'المدرسة والفرع', 'المعلمين', 'تقييم الإبداع', 'ملاحظات عامة'];
     const exportData = filteredResults.map((t, idx) => [
       idx + 1,
       t.category,
       t.dateStr,
       t._parent.supervisorName,
       `${t._parent.school} - ${t._parent.branch}`,
+      t.teacherNames ? t.teacherNames.join('، ') : '',
       t.evaluation ? String(t.evaluation) : '',
       t.notes
     ]);
@@ -180,11 +202,11 @@ export const CreativityAndExcellenceView: React.FC<Props> = ({ onClose }) => {
       filename: 'creativity_excellence_report',
       headers,
       data: exportData,
-      columnWidths: [5, 40, 15, 20, 20, 15, 30],
+      columnWidths: [5, 40, 15, 20, 20, 25, 15, 30],
       profile: data.profile || {},
       onRow: (row, rowData) => {
-        const evalValue = rowData[5];
-        const evalCell = row.getCell(6);
+        const evalValue = rowData[6];
+        const evalCell = row.getCell(7);
         if (evalValue === '1') {
            evalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }; 
            evalCell.font = { name: 'Arial', bold: true, color: { argb: 'FF065F46' } }; 
@@ -210,6 +232,9 @@ export const CreativityAndExcellenceView: React.FC<Props> = ({ onClose }) => {
     tasksToExport.forEach((t, idx) => {
       msg += `*${idx + 1}- 💡 مجال التميز:*\n${t.category}\n`;
       msg += `👤 *المنفذ:* ${t._parent.supervisorName} (${t._parent.supervisorJob})\n`;
+      if (t.teacherNames && t.teacherNames.length > 0) {
+        msg += `🧑‍🏫 *المعلمين:* ${t.teacherNames.join('، ')}\n`;
+      }
       msg += `📅 *تاريخ العمل:* ${t.dateStr}\n`;
       msg += `🏢 *المدرسة:* ${t._parent.school} - ${t._parent.branch}\n`;
       if (t.evaluation) msg += `⭐ *تقييم الإبداع:* ${t.evaluation}\n`;
@@ -285,11 +310,12 @@ export const CreativityAndExcellenceView: React.FC<Props> = ({ onClose }) => {
                     className="w-4 h-4 rounded text-blue-500 cursor-pointer"
                   />
                 </th>
-                <th className="p-4 border-b border-blue-900">مجال التميز</th>
-                <th className="p-4 border-b border-blue-900">تاريخ العمل</th>
-                <th className="p-4 border-b border-blue-900">المدرسة والفرع</th>
-                <th className="p-4 border-b border-blue-900 text-center">التقييم</th>
-                <th className="p-4 border-b border-blue-900">ملاحظات عامة</th>
+                <th className="p-4 border-b border-blue-900 border-e border-blue-800">مجال التميز</th>
+                <th className="p-4 border-b border-blue-900 border-e border-blue-800">تاريخ العمل</th>
+                <th className="p-4 border-b border-blue-900 border-e border-blue-800">المدرسة والفرع</th>
+                <th className="p-4 border-b border-blue-900 border-e border-blue-800">المعلمين</th>
+                <th className="p-4 border-b border-blue-900 border-e border-blue-800 text-center">التقييم</th>
+                <th className="p-4 border-b border-blue-900 border-e border-blue-800">ملاحظات عامة</th>
                 <th className="p-4 border-b border-blue-900 text-center w-16"><MessageCircle size={16} className="mx-auto"/></th>
               </tr>
             </thead>
@@ -300,10 +326,10 @@ export const CreativityAndExcellenceView: React.FC<Props> = ({ onClose }) => {
                 return (
                   <tr 
                     key={idx} 
-                    className={`border-b last:border-0 hover:bg-orange-50 cursor-pointer transition-colors ${isSelected ? 'bg-orange-100' : ''}`}
+                    className={`border-b border-slate-100 last:border-0 hover:bg-orange-50 cursor-pointer transition-colors ${isSelected ? 'bg-orange-100' : ''}`}
                     onClick={() => handleToggleRowSelection(uniqueId)}
                   >
-                    <td className="p-4 text-center" onClick={e => e.stopPropagation()}>
+                    <td className="p-4 text-center border-e border-slate-100" onClick={e => e.stopPropagation()}>
                        <input 
                          type="checkbox" 
                          checked={isSelected}
@@ -314,6 +340,7 @@ export const CreativityAndExcellenceView: React.FC<Props> = ({ onClose }) => {
                     <td className="p-4 whitespace-normal min-w-[200px] border-e border-slate-100">{t.category}</td>
                     <td className="p-4 border-e border-slate-100">{t.dateStr}</td>
                     <td className="p-4 border-e border-slate-100">{t._parent.school} - {t._parent.branch}</td>
+                    <td className="p-4 border-e border-slate-100 whitespace-normal min-w-[150px]">{t.teacherNames ? t.teacherNames.join('، ') : '--'}</td>
                     <td className="p-4 border-e border-slate-100 font-bold text-center">
                       <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${
                         t.evaluation === 1 ? 'bg-emerald-100 text-emerald-700' :
@@ -524,7 +551,34 @@ export const CreativityAndExcellenceView: React.FC<Props> = ({ onClose }) => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-bold text-slate-700 block mb-2">أسماء المعلمين المشتركين في العمل</label>
+                    <div className="max-h-56 overflow-y-auto bg-slate-50 border border-slate-200 rounded-xl p-2 space-y-1">
+                      {uniqueTeachers.map(teacher => (
+                         <label key={teacher} className="flex items-center gap-2 cursor-pointer bg-white p-2 rounded-lg hover:bg-blue-50 border border-transparent hover:border-blue-100 transition-colors">
+                           <input 
+                             type="checkbox" 
+                             checked={task.teacherNames?.includes(teacher) || false} 
+                             onChange={e => {
+                               const currentNames = task.teacherNames || [];
+                               if (e.target.checked) {
+                                 updateTask(task.id, { teacherNames: [...currentNames, teacher] });
+                               } else {
+                                 updateTask(task.id, { teacherNames: currentNames.filter(n => n !== teacher) });
+                               }
+                             }} 
+                             className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" 
+                           />
+                           <span className="text-sm font-medium text-slate-700">{teacher}</span>
+                         </label>
+                      ))}
+                      {uniqueTeachers.length === 0 && <div className="text-xs text-slate-500 text-center py-4">لا يوجد معلمين مسجلين</div>}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm text-slate-500 block mb-1 font-bold">تاريخ العمل</label>
@@ -555,7 +609,7 @@ export const CreativityAndExcellenceView: React.FC<Props> = ({ onClose }) => {
                     value={task.notes}
                     onChange={(e) => updateTask(task.id, { notes: e.target.value })}
                     placeholder="ملاحظات..."
-                    className="w-full h-[155px] p-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-400 focus:border-slate-400 transition-all resize-none"
+                    className="w-full h-[225px] p-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-400 focus:border-slate-400 transition-all resize-none"
                   />
                 </div>
               </div>

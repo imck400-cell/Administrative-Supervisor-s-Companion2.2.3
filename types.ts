@@ -524,6 +524,7 @@ export interface CreativityRecordItem {
   notes: string;
   evaluation: 1 | 2 | 3 | 4 | null;
   dateStr: string;
+  teacherNames?: string[];
 }
 
 export interface CreativityRecordReport {

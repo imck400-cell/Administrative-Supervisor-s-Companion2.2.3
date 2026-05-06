@@ -933,11 +933,27 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           updatedData[key] = newData[key] as any;
           const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
           const isManager = currentUser.permissions?.userManagement === true || (Array.isArray(currentUser.permissions?.userManagement) && currentUser.permissions.userManagement.length > 0);
-          const isSecretariatEnabled = Array.isArray(currentUser.permissions?.secretariat) ? currentUser.permissions?.secretariat.includes('allowEdits') : currentUser.permissions?.secretariat === true;
+          
+          const isSecretariatRole = ['مدير عام المدارس', 'مدير الفرع', 'السكرتارية'].includes(currentUser.jobTitle || '');
+          const isSecretariatDisabled = Array.isArray(currentUser.permissions?.secretariat) && currentUser.permissions.secretariat.includes('disable');
+          const isSecretariatEnabled = !isSecretariatDisabled && (isSecretariatRole || (Array.isArray(currentUser.permissions?.secretariat) ? currentUser.permissions?.secretariat.includes('allowEdits') : currentUser.permissions?.secretariat === true));
           
           const canEditTemplate = Array.isArray(currentUser.permissions?.teacherPortal) ? currentUser.permissions.teacherPortal.includes('editEvaluationTemplate') : currentUser.permissions?.teacherPortal === true;
 
-          if (isAdminOrFull || (key === 'users' && isManager) || ((key === 'secretariatStudents' || key === 'secretariatStaff' || key === 'metricsList' || key === 'branchMetrics' || key === 'adminMetricsList' || key === 'adminBranchMetrics') && isSecretariatEnabled) || (key === 'selfEvaluationTemplates' && canEditTemplate)) {
+          const isGeneralSupervisor = currentUser.role === 'general_supervisor' || currentUser.permissions?.specialCodes === true || (Array.isArray(currentUser.permissions?.specialCodes) && currentUser.permissions.specialCodes.length > 0);
+          const canEditDaily = isGeneralSupervisor || currentUser.permissions?.dailyFollowUp === true || (Array.isArray(currentUser.permissions?.dailyFollowUp) && !currentUser.permissions.dailyFollowUp.includes('view') && !currentUser.permissions.dailyFollowUp.includes('disable'));
+          const canEditAdminFollowUp = isGeneralSupervisor || currentUser.permissions?.adminFollowUp === true || (Array.isArray(currentUser.permissions?.adminFollowUp) && !currentUser.permissions.adminFollowUp.includes('view') && !currentUser.permissions.adminFollowUp.includes('disable'));
+
+          let canSave = false;
+          if (isAdminOrFull) canSave = true;
+          else if (key === 'users' && isManager) canSave = true;
+          else if ((key === 'secretariatStudents' || key === 'secretariatStaff') && isSecretariatEnabled) canSave = true;
+          else if ((key === 'metricsList' || key === 'branchMetrics') && (isSecretariatEnabled || canEditDaily)) canSave = true;
+          else if ((key === 'adminMetricsList' || key === 'adminBranchMetrics') && (isSecretariatEnabled || canEditAdminFollowUp)) canSave = true;
+          else if (key === 'selfEvaluationTemplates' && canEditTemplate) canSave = true;
+          else if (key === 'profile' || key === 'availableSchools' || key === 'availableYears') canSave = true;
+
+          if (canSave) {
             schoolsToUpdate.forEach(school => {
               setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
                 .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));

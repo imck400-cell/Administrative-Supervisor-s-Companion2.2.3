@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Briefcase, Users, FileSpreadsheet, Plus, Trash2, Search } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Briefcase, Users, FileSpreadsheet, Plus, Trash2, Search, AlertTriangle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useGlobal } from '../context/GlobalState';
 import * as XLSX from 'xlsx';
 
@@ -389,12 +389,12 @@ const StudentsManager = () => {
     if (searchQuery) {
       const lowerQ = searchQuery.toLowerCase();
       result = result.filter(s => 
-        (s.name || '').toLowerCase().includes(lowerQ) ||
-        (s.school || '').toLowerCase().includes(lowerQ) ||
-        (s.branch || '').toLowerCase().includes(lowerQ) ||
-        (s.grade || '').toLowerCase().includes(lowerQ) ||
-        (s.guardianInfo || '').toLowerCase().includes(lowerQ) ||
-        (s.residenceWork || '').toLowerCase().includes(lowerQ)
+        String(s.name || '').toLowerCase().includes(lowerQ) ||
+        String(s.school || '').toLowerCase().includes(lowerQ) ||
+        String(s.branch || '').toLowerCase().includes(lowerQ) ||
+        String(s.grade || '').toLowerCase().includes(lowerQ) ||
+        String(s.guardianInfo || '').toLowerCase().includes(lowerQ) ||
+        String(s.residenceWork || '').toLowerCase().includes(lowerQ)
       );
     }
     return result;
@@ -421,6 +421,32 @@ const StudentsManager = () => {
 
   return (
     <div className="space-y-4">
+      <AnimatePresence>
+        {showMissingAlert && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" dir="rtl">
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden border border-slate-200">
+              <div className="p-6 text-center space-y-4">
+                <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <AlertTriangle size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-800">تنبيه: حقول غير مكتملة</h3>
+                <p className="text-slate-600 font-medium text-sm leading-relaxed">
+                  بقيت هناك حقول لم تتم تعبئتها في مجموعة من الأسماء، هل تود أن أظهر لك جدول الطلاب الذين بقيت عليهم حقول تحتاج إلى تعبئة؟
+                </p>
+                <div className="flex gap-3 pt-6">
+                  <button onClick={() => { setShowMissingAlert(false); setShowMissingOnly(true); }} className="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition">
+                    موافق
+                  </button>
+                  <button onClick={() => { setShowMissingAlert(false); setShowMissingOnly(false); }} className="flex-1 bg-slate-100 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-200 transition">
+                    الرجوع للجدول
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-200">
         <div className="flex gap-2 flex-wrap sm:flex-nowrap w-full md:w-auto">
           <div className="relative flex-1 md:w-96">
@@ -875,11 +901,11 @@ const StaffManager = () => {
     if (!searchQuery) return staff;
     const lowerQ = searchQuery.toLowerCase();
     return staff.filter(s => 
-      (s.name || '').toLowerCase().includes(lowerQ) ||
-      (s.school || '').toLowerCase().includes(lowerQ) ||
-      (s.branch || '').toLowerCase().includes(lowerQ) ||
-      (s.subjects || []).join(' ').toLowerCase().includes(lowerQ) ||
-      (s.grades || []).join(' ').toLowerCase().includes(lowerQ)
+      String(s.name || '').toLowerCase().includes(lowerQ) ||
+      String(s.school || '').toLowerCase().includes(lowerQ) ||
+      String(s.branch || '').toLowerCase().includes(lowerQ) ||
+      String((s.subjects || []).join(' ')).toLowerCase().includes(lowerQ) ||
+      String((s.grades || []).join(' ')).toLowerCase().includes(lowerQ)
     );
   }, [staff, searchQuery]);
 

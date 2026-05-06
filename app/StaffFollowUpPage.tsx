@@ -127,18 +127,11 @@ const StaffFollowUpPage: React.FC = () => {
         return ACTIVITIES_DATA[field] || [];
     };
 
-    const customActivities: any = new Proxy({}, {
-        get: (target, prop: string) => getActivitiesForField(prop)
-    });
-
-    const setCustomActivities = (newValue: any) => {
-        const currentField = individualForm.reportField;
-        if (newValue && newValue[currentField]) {
-            const newBranches = { ...(data.adminBranchActivities || {}) };
-            if (!newBranches[activeBranchKey]) newBranches[activeBranchKey] = {};
-            newBranches[activeBranchKey][currentField] = newValue[currentField];
-            updateData({ adminBranchActivities: newBranches });
-        }
+    const updateActivitiesForField = (field: string, newActivities: any[]) => {
+        const newBranches = { ...(data.adminBranchActivities || {}) };
+        if (!newBranches[activeBranchKey]) newBranches[activeBranchKey] = {};
+        newBranches[activeBranchKey][field] = newActivities;
+        updateData({ adminBranchActivities: newBranches });
     };
 
     // Initialize Executed Counts when report field changes
@@ -289,7 +282,7 @@ const StaffFollowUpPage: React.FC = () => {
             reasons: failureReasons,
             unaccredited: unaccreditedItems,
             reportDate,
-            activities: customActivities[individualForm.reportField]
+            activities: getActivitiesForField(individualForm.reportField)
         };
         const updatedArchive = [newReport, ...individualArchive];
         setIndividualArchive(updatedArchive);
@@ -321,10 +314,7 @@ const StaffFollowUpPage: React.FC = () => {
         setReportDate(report.reportDate);
 
         if (report.activities) {
-            setCustomActivities({
-                ...customActivities,
-                [report.form.reportField]: report.activities
-            });
+            updateActivitiesForField(report.form.reportField, report.activities);
         }
 
         setShowArchive(false);
@@ -898,7 +888,7 @@ const StaffFollowUpPage: React.FC = () => {
         const styleTitle = 'font-size: 18px; font-weight: bold; text-align: center; padding: 15px; background-color: #f8fafc; border: 1px solid #cbd5e1;';
         const styleLabel = 'font-weight: bold; background-color: #f1f5f9; border: 1px solid #cbd5e1; padding: 8px;';
 
-        const activitesList = isIndicators ? [] : (customActivities[individualForm.reportField] || []);
+        const activitesList = isIndicators ? [] : (getActivitiesForField(individualForm.reportField) || []);
         const indicatorsList = isIndicators ? INDICATORS_DATA : [];
 
         let html = `
@@ -1049,7 +1039,7 @@ const StaffFollowUpPage: React.FC = () => {
                 content += '\n';
             });
         } else {
-            (customActivities[individualForm.reportField] || []).forEach((a, i) => {
+            (getActivitiesForField(individualForm.reportField) || []).forEach((a, i) => {
                 const k = `${individualForm.reportField}_${i}`;
                 const score = individualScores[k] ?? 0;
                 const executed = executedCounts[k] !== undefined ? executedCounts[k] : (parseInt(a.planned) || 0);
@@ -1298,7 +1288,7 @@ const StaffFollowUpPage: React.FC = () => {
                                 </div>
                                 <div className="flex flex-wrap gap-3">
                                     {(() => {
-                                        const activities = customActivities[individualForm.reportField] || [];
+                                        const activities = getActivitiesForField(individualForm.reportField) || [];
                                         const selected = activities.filter((_, idx) => {
                                             const key = `${individualForm.reportField}_${idx}`;
                                             return !unaccreditedItems[key] && (individualScores[key] !== undefined && individualScores[key] !== -1);
@@ -1375,7 +1365,7 @@ const StaffFollowUpPage: React.FC = () => {
                                         <p className="text-slate-400 font-bold mt-2">جاري العمل على إضافة المعايير الخاصة بهذا المجال</p>
                                     </div>
                                 ) : (
-                                    (customActivities[individualForm.reportField] || []).map((activity, idx) => {
+                                    (getActivitiesForField(individualForm.reportField) || []).map((activity, idx) => {
                                         const key = `${individualForm.reportField}_${idx}`;
                                         const score = individualScores[key] ?? -1;
                                         const executed = executedCounts[key] !== undefined ? executedCounts[key] : (parseInt(activity.planned) || 0);
@@ -1529,7 +1519,7 @@ const StaffFollowUpPage: React.FC = () => {
                                     {individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
                                         ? INDICATORS_DATA.reduce((acc, d) => acc + d.items.length * 4, 0)
                                         : (() => {
-                                            const activities = customActivities[individualForm.reportField] || [];
+                                            const activities = getActivitiesForField(individualForm.reportField) || [];
                                             const totalMax = activities.reduce((acc, _, idx) => {
                                                 const key = `${individualForm.reportField}_${idx}`;
                                                 return unaccreditedItems[key] ? acc : acc + 4;
@@ -1545,7 +1535,7 @@ const StaffFollowUpPage: React.FC = () => {
                                     {individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
                                         ? Object.values(individualScores).reduce((acc, s) => acc + (s === -1 ? 0 : s), 0)
                                         : (() => {
-                                            const activities = customActivities[individualForm.reportField] || [];
+                                            const activities = getActivitiesForField(individualForm.reportField) || [];
                                             const obtained = activities.reduce((acc, _, idx) => {
                                                 const key = `${individualForm.reportField}_${idx}`;
                                                 if (unaccreditedItems[key]) return acc;
@@ -1562,7 +1552,7 @@ const StaffFollowUpPage: React.FC = () => {
                             const possible = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
                                 ? INDICATORS_DATA.reduce((acc, d) => acc + d.items.length * 4, 0)
                                 : (() => {
-                                    const activities = customActivities[individualForm.reportField] || [];
+                                    const activities = getActivitiesForField(individualForm.reportField) || [];
                                     const totalMax = activities.reduce((acc, _, idx) => {
                                         const key = `${individualForm.reportField}_${idx}`;
                                         return unaccreditedItems[key] ? acc : acc + 4;
@@ -1572,7 +1562,7 @@ const StaffFollowUpPage: React.FC = () => {
                             const earned = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
                                 ? Object.values(individualScores).reduce((acc, s) => acc + (s === -1 ? 0 : s), 0)
                                 : (() => {
-                                    const activities = customActivities[individualForm.reportField] || [];
+                                    const activities = getActivitiesForField(individualForm.reportField) || [];
                                     const obtained = activities.reduce((acc, _, idx) => {
                                         const key = `${individualForm.reportField}_${idx}`;
                                         if (unaccreditedItems[key]) return acc;
@@ -1604,7 +1594,7 @@ const StaffFollowUpPage: React.FC = () => {
                                             const possible = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
                                                 ? INDICATORS_DATA.reduce((acc, d) => acc + d.items.length * 4, 0)
                                                 : (() => {
-                                                    const activities = customActivities[individualForm.reportField] || [];
+                                                    const activities = getActivitiesForField(individualForm.reportField) || [];
                                                     const totalMax = activities.reduce((acc, _, idx) => {
                                                         const key = `${individualForm.reportField}_${idx}`;
                                                         return unaccreditedItems[key] ? acc : acc + 4;
@@ -1614,7 +1604,7 @@ const StaffFollowUpPage: React.FC = () => {
                                             const earned = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
                                                 ? Object.values(individualScores).reduce((acc, s) => acc + (s === -1 ? 0 : s), 0)
                                                 : (() => {
-                                                    const activities = customActivities[individualForm.reportField] || [];
+                                                    const activities = getActivitiesForField(individualForm.reportField) || [];
                                                     const obtained = activities.reduce((acc, _, idx) => {
                                                         const key = `${individualForm.reportField}_${idx}`;
                                                         if (unaccreditedItems[key]) return acc;
@@ -1630,7 +1620,7 @@ const StaffFollowUpPage: React.FC = () => {
                                         const possible = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
                                             ? INDICATORS_DATA.reduce((acc, d) => acc + d.items.length * 4, 0)
                                             : (() => {
-                                                const activities = customActivities[individualForm.reportField] || [];
+                                                const activities = getActivitiesForField(individualForm.reportField) || [];
                                                 const totalMax = activities.reduce((acc, _, idx) => {
                                                     const key = `${individualForm.reportField}_${idx}`;
                                                     return unaccreditedItems[key] ? acc : acc + 4;
@@ -1640,7 +1630,7 @@ const StaffFollowUpPage: React.FC = () => {
                                         const earned = individualForm.reportField === 'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس'
                                             ? Object.values(individualScores).reduce((acc, s) => acc + (s === -1 ? 0 : s), 0)
                                             : (() => {
-                                                const activities = customActivities[individualForm.reportField] || [];
+                                                const activities = getActivitiesForField(individualForm.reportField) || [];
                                                 const obtained = activities.reduce((acc, _, idx) => {
                                                     const key = `${individualForm.reportField}_${idx}`;
                                                     if (unaccreditedItems[key]) return acc;
@@ -1819,7 +1809,7 @@ const StaffFollowUpPage: React.FC = () => {
                                         msg += `◽ *${d.label}:* ${ds} / ${d.items.length * 4}\n`;
                                     });
                                 } else {
-                                    (customActivities[individualForm.reportField] || []).forEach((a, i) => {
+                                    (getActivitiesForField(individualForm.reportField) || []).forEach((a, i) => {
                                         const k = `${individualForm.reportField}_${i}`;
                                         if (unaccreditedItems[k]) return;
                                         const s = individualScores[k] || 0;

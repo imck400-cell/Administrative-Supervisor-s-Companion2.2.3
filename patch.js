@@ -1,0 +1,1 @@
+const fs = require('fs'); let c = fs.readFileSync('app/StaffFollowUpPage.tsx', 'utf8'); c = c.split('customActivities[individualForm.reportField]').join('getActivitiesForField(individualForm.reportField)'); fs.writeFileSync('app/StaffFollowUpPage.tsx', c);

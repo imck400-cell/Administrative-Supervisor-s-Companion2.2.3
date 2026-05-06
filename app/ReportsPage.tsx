@@ -381,8 +381,14 @@ export const DailyReportsPage: React.FC = () => {
 
   const displayedTeachers = useMemo(() => teachers.slice(0, displayLimit), [teachers, displayLimit]);
 
-  const activeBranch = globalDataFilters?.branches?.[0];
-  const activeSchool = globalDataFilters?.schools?.[0];
+  const userSchoolArr = currentUser?.selectedSchool?.split(',').map(s => s.trim()) || [];
+  const defaultSchool = userSchoolArr.length === 1 && userSchoolArr[0] !== 'all' ? userSchoolArr[0] : null;
+  const activeSchool = globalDataFilters?.schools?.[0] || defaultSchool;
+  
+  const userBranches = activeSchool ? currentUser?.permissions?.schoolsAndBranches?.[activeSchool] || [] : [];
+  const defaultBranch = userBranches.length === 1 ? userBranches[0] : null;
+  const activeBranch = globalDataFilters?.branches?.[0] || defaultBranch;
+
   const branchKey = activeSchool && activeBranch ? `${activeSchool}_${activeBranch}` : null;
   const metricsList = (branchKey && data.branchMetrics?.[branchKey] ? data.branchMetrics[branchKey] : data.metricsList) || [];
 
@@ -860,9 +866,17 @@ export const DailyReportsPage: React.FC = () => {
     { key: 'percent', label: 'النسبة', emoji: '📊', color: 'bg-blue-800' },
   ], [metricsList]);
 
-  const handleTeacherReportSave = () => {
-    // Data is already bound to main state via updateTeacher, so just close
-    setShowTeacherReport(false);
+  const updateMetricsData = (newList: MetricDefinition[]) => {
+    if (branchKey) {
+      updateData({
+        branchMetrics: {
+          ...(data.branchMetrics || {}),
+          [branchKey]: newList
+        }
+      });
+    } else {
+      updateData({ metricsList: newList });
+    }
   };
 
   const handleWhatsAppExport = (selectedForExport: string[]) => {
@@ -1889,7 +1903,7 @@ export const DailyReportsPage: React.FC = () => {
                       if (name) {
                         const newKey = `metric_${Date.now()}`;
                         const newList = [...metricsList, { key: newKey, label: name, emoji: '🎯', max: 10, color: '#DDEBF7' }];
-                        updateData({ metricsList: newList });
+                        updateMetricsData(newList);
                         setSelectedMetrics(prev => [...prev, newKey]);
                       }
                     }}
@@ -1914,7 +1928,7 @@ export const DailyReportsPage: React.FC = () => {
                             if (isReadOnly) return;
                             const newList = [...metricsList];
                             [newList[mIdx - 1], newList[mIdx]] = [newList[mIdx], newList[mIdx - 1]];
-                            updateData({ metricsList: newList });
+                            updateMetricsData(newList);
                           }}
                           className={`p-1 rounded bg-white border border-slate-200 text-slate-400 hover:text-blue-600 transition-colors ${mIdx === 0 ? 'opacity-30' : ''}`}
                         >
@@ -1926,7 +1940,7 @@ export const DailyReportsPage: React.FC = () => {
                             if (isReadOnly) return;
                             const newList = [...metricsList];
                             [newList[mIdx], newList[mIdx + 1]] = [newList[mIdx + 1], newList[mIdx]];
-                            updateData({ metricsList: newList });
+                            updateMetricsData(newList);
                           }}
                           className={`p-1 rounded bg-white border border-slate-200 text-slate-400 hover:text-blue-600 transition-colors ${mIdx === metricsConfig.length - 1 ? 'opacity-30' : ''}`}
                         >
@@ -1946,7 +1960,7 @@ export const DailyReportsPage: React.FC = () => {
                         value={m.label}
                         onChange={(e) => {
                           const newList = metricsList.map(item => item.key === m.key ? { ...item, label: e.target.value } : item);
-                          updateData({ metricsList: newList });
+                          updateMetricsData(newList);
                         }}
                         placeholder="مسمى المجال.."
                       />
@@ -1959,7 +1973,7 @@ export const DailyReportsPage: React.FC = () => {
                               type: 'danger',
                               onConfirm: () => {
                                 const newList = metricsList.filter(item => item.key !== m.key);
-                                updateData({ metricsList: newList });
+                                updateMetricsData(newList);
                                 setSelectedMetrics(prev => prev.filter(k => k !== m.key));
                                 toast.success('تم حذف المجال بنجاح');
                               }
@@ -1982,7 +1996,7 @@ export const DailyReportsPage: React.FC = () => {
                           onChange={(e) => {
                             const val = Math.max(1, parseInt(e.target.value) || 0);
                             const newList = metricsList.map(item => item.key === m.key ? { ...item, max: val } : item);
-                            updateData({ metricsList: newList });
+                            updateMetricsData(newList);
                           }}
                         />
                       </div>
@@ -1997,7 +2011,7 @@ export const DailyReportsPage: React.FC = () => {
                               key={color}
                               onClick={() => {
                                 const newList = metricsList.map(item => item.key === m.key ? { ...item, color: color } : item);
-                                updateData({ metricsList: newList });
+                                updateMetricsData(newList);
                               }}
                               className={`w-5 h-5 rounded-full border border-slate-200 transition-all ${metricsList.find(i => i.key === m.key)?.color === color ? 'scale-125 ring-2 ring-blue-400' : 'hover:scale-110'}`}
                               style={{ backgroundColor: color }}
@@ -2010,7 +2024,7 @@ export const DailyReportsPage: React.FC = () => {
                               value={metricsList.find(i => i.key === m.key)?.color || '#ffffff'}
                               onChange={(e) => {
                                 const newList = metricsList.map(item => item.key === m.key ? { ...item, color: e.target.value } : item);
-                                updateData({ metricsList: newList });
+                                updateMetricsData(newList);
                               }}
                             />
                             <Palette size={10} className="text-slate-400 pointer-events-none" />

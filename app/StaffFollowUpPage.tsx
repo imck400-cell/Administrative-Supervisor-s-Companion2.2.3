@@ -15,7 +15,7 @@ import { INDICATORS_DATA, ACTIVITIES_DATA } from './evaluationData';
 import { exportToStyledExcel } from '../src/lib/excelExport';
 
 const StaffFollowUpPage: React.FC = () => {
-    const { lang, data, updateData, currentUser, userFilter } = useGlobal();
+    const { lang, data, updateData, currentUser, userFilter, globalDataFilters } = useGlobal();
     const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.adminFollowUp) && currentUser.permissions.adminFollowUp.includes('disable'));
 
     // Local State

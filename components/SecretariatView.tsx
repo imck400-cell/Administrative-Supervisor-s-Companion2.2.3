@@ -184,6 +184,43 @@ const StudentsManager = () => {
   const [studentPageSize, setStudentPageSize] = useState(50);
   const [studentFilterGrade, setStudentFilterGrade] = useState('');
   const [studentFilterSection, setStudentFilterSection] = useState('');
+  
+  const [showMissingOnly, setShowMissingOnly] = useState(false);
+  const [hasPromptedMissing, setHasPromptedMissing] = useState(false);
+  const [showMissingAlert, setShowMissingAlert] = useState(false);
+
+  const getMissingFields = (s: StudentData) => {
+    const missing = [];
+    if (!s.school) missing.push('school');
+    if (!s.branch) missing.push('branch');
+    if (!s.name) missing.push('name');
+    if (!s.grade) missing.push('grade');
+    if (!s.section) missing.push('section');
+    if (!s.gender) missing.push('gender');
+    return missing;
+  };
+
+  useEffect(() => {
+    if (students.length > 0 && !hasPromptedMissing) {
+      const hasMissing = students.some(s => getMissingFields(s).length > 0);
+      if (hasMissing) {
+        setShowMissingAlert(true);
+        setHasPromptedMissing(true);
+      }
+    }
+  }, [students, hasPromptedMissing]);
+
+  const bulkUpdateField = (field: string, value: any) => {
+    if (!value) return;
+    const newStudents = students.map(s => {
+      if (filteredStudents.find(fs => fs.id === s.id)) {
+        return { ...s, [field]: value };
+      }
+      return s;
+    });
+    saveStudents(newStudents);
+  };
+
 
   const saveStudents = (newStudents: StudentData[]) => {
     setStudents(newStudents);
@@ -340,6 +377,9 @@ const StudentsManager = () => {
 
   const filteredStudents = useMemo(() => {
     let result = students;
+    if (showMissingOnly) {
+      result = result.filter(s => getMissingFields(s).length > 0);
+    }
     if (studentFilterGrade) {
       result = result.filter(s => s.grade === studentFilterGrade);
     }
@@ -358,7 +398,7 @@ const StudentsManager = () => {
       );
     }
     return result;
-  }, [students, searchQuery, studentFilterGrade, studentFilterSection]);
+  }, [students, searchQuery, studentFilterGrade, studentFilterSection, showMissingOnly]);
 
   const paginatedStudents = useMemo(() => {
     const startIndex = (studentPage - 1) * studentPageSize;
@@ -409,6 +449,10 @@ const StudentsManager = () => {
             <option value="">كل الشعب</option>
             {['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي'].map(v => <option key={v} value={v}>{v}</option>)}
           </select>
+          <label className="flex items-center gap-2 bg-orange-50 border-2 border-orange-200 text-orange-700 px-4 py-3 rounded-xl cursor-pointer hover:bg-orange-100 transition-colors">
+            <input type="checkbox" checked={showMissingOnly} onChange={e => setShowMissingOnly(e.target.checked)} className="w-5 h-5 rounded text-orange-600 focus:ring-orange-500" />
+            <span className="font-bold text-sm whitespace-nowrap">عرض النواقص فقط</span>
+          </label>
         </div>
         
         {!isReadOnly && (
@@ -458,8 +502,51 @@ const StudentsManager = () => {
             </tr>
           </thead>
           <tbody>
-            {paginatedStudents.map((student, index) => (
-              <tr key={student.id} className={`border-b border-slate-200 transition-colors ${selectedIds.includes(student.id) ? 'bg-blue-50' : 'hover:bg-white'}`}>
+            {(showMissingOnly && !isReadOnly && filteredStudents.length > 0) && (
+              <tr className="bg-orange-100/60 border-b border-orange-200">
+                <td className="p-2 text-center" colSpan={2}>
+                  <span className="font-bold text-xs text-orange-800">تعميم للكل:</span>
+                </td>
+                <td className="p-2">
+                  <select className="w-full bg-white border border-orange-300 rounded-lg p-2 outline-none focus:border-orange-500 text-sm" onChange={e => { bulkUpdateField('school', e.target.value); e.target.value = ''; }}>
+                    <option value="">تطبيق مدرسة...</option>
+                    {userSchools.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </td>
+                <td className="p-2">
+                  <select className="w-full bg-white border border-orange-300 rounded-lg p-2 outline-none focus:border-orange-500 text-sm" onChange={e => { bulkUpdateField('branch', e.target.value); e.target.value = ''; }}>
+                    <option value="">تطبيق فرع...</option>
+                    {data.profile.schoolsAndBranches && Object.values(data.profile.schoolsAndBranches).flat().filter((v, i, a) => a.indexOf(v) === i).map((b: any) => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </td>
+                <td className="p-2 text-center text-orange-700 text-xs font-bold">لا يمكن تعميم الاسم</td>
+                <td className="p-2">
+                  <select className="w-full bg-white border border-orange-300 rounded-lg p-2 outline-none focus:border-orange-500 text-sm" onChange={e => { bulkUpdateField('grade', e.target.value); e.target.value = ''; }}>
+                    <option value="">تطبيق صف...</option>
+                    {['تمهيدي', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                </td>
+                <td className="p-2">
+                  <select className="w-full bg-white border border-orange-300 rounded-lg p-2 outline-none focus:border-orange-500 text-sm" onChange={e => { bulkUpdateField('section', e.target.value); e.target.value = ''; }}>
+                     <option value="">تطبيق شعبة...</option>
+                    {['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي'].map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                </td>
+                <td className="p-2">
+                  <select className="w-full bg-white border border-orange-300 rounded-lg p-2 outline-none focus:border-orange-500 text-sm" onChange={e => { bulkUpdateField('gender', e.target.value); e.target.value = ''; }}>
+                    <option value="">تطبيق نوع...</option>
+                    <option value="ذكر">ذكر</option>
+                    <option value="أنثى">أنثى</option>
+                  </select>
+                </td>
+                <td colSpan={4}></td>
+              </tr>
+            )}
+            {paginatedStudents.map((student, index) => {
+              const missingFields = getMissingFields(student);
+              const isMissingRow = showMissingOnly || missingFields.length > 0;
+              return (
+              <tr key={student.id} className={`border-b border-slate-200 transition-colors ${(selectedIds.includes(student.id)) ? 'bg-blue-50' : (isMissingRow ? 'bg-orange-50/30 hover:bg-orange-50' : 'hover:bg-white')}`}>
                 <td className="p-2 text-center">
                   {!isReadOnly && (
                     <input type="checkbox" checked={selectedIds.includes(student.id)} onChange={() => toggleSelect(student.id)} className="rounded border-slate-300 w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer" />
@@ -467,34 +554,34 @@ const StudentsManager = () => {
                 </td>
                 <td className="p-2 text-center font-bold text-slate-500">{student.serialNumber}</td>
                 <td className="p-2">
-                  <select className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50" value={student.school} onChange={e => updateRow(student.id, 'school', e.target.value)} disabled={isReadOnly}>
+                  <select className={`w-full bg-transparent border rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50 ${missingFields.includes('school') ? 'border-orange-400 bg-orange-100/50' : 'border-slate-200'}`} value={student.school} onChange={e => updateRow(student.id, 'school', e.target.value)} disabled={isReadOnly}>
                     <option value="">اختر المدرسة</option>
                     {userSchools.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </td>
                 <td className="p-2">
-                  <select className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50" value={student.branch} onChange={e => updateRow(student.id, 'branch', e.target.value)} disabled={isReadOnly || !student.school}>
+                  <select className={`w-full bg-transparent border rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50 ${missingFields.includes('branch') ? 'border-orange-400 bg-orange-100/50' : 'border-slate-200'}`} value={student.branch} onChange={e => updateRow(student.id, 'branch', e.target.value)} disabled={isReadOnly || !student.school}>
                     <option value="">اختر الفرع</option>
                     {getAvailableBranches(student.school).map((b: string) => <option key={b} value={b}>{b}</option>)}
                   </select>
                 </td>
                 <td className="p-2">
-                  <input disabled={isReadOnly} type="text" className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50" value={student.name} onChange={e => updateRow(student.id, 'name', e.target.value)} />
+                  <input disabled={isReadOnly} type="text" className={`w-full bg-transparent border rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50 ${missingFields.includes('name') ? 'border-orange-400 bg-orange-100/50' : 'border-slate-200'}`} value={student.name} onChange={e => updateRow(student.id, 'name', e.target.value)} />
                 </td>
                 <td className="p-2">
-                  <select disabled={isReadOnly} className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50" value={student.grade} onChange={e => updateRow(student.id, 'grade', e.target.value)}>
+                  <select disabled={isReadOnly} className={`w-full bg-transparent border rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50 ${missingFields.includes('grade') ? 'border-orange-400 bg-orange-100/50' : 'border-slate-200'}`} value={student.grade} onChange={e => updateRow(student.id, 'grade', e.target.value)}>
                     <option value="">اختر...</option>
                     {['تمهيدي', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 </td>
                 <td className="p-2">
-                  <select disabled={isReadOnly} className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50" value={student.section} onChange={e => updateRow(student.id, 'section', e.target.value)}>
+                  <select disabled={isReadOnly} className={`w-full bg-transparent border rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50 ${missingFields.includes('section') ? 'border-orange-400 bg-orange-100/50' : 'border-slate-200'}`} value={student.section} onChange={e => updateRow(student.id, 'section', e.target.value)}>
                      <option value="">اختر...</option>
                     {['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي'].map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 </td>
                 <td className="p-2">
-                  <select disabled={isReadOnly} className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50" value={student.gender} onChange={e => updateRow(student.id, 'gender', e.target.value)}>
+                  <select disabled={isReadOnly} className={`w-full bg-transparent border rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50 ${missingFields.includes('gender') ? 'border-orange-400 bg-orange-100/50' : 'border-slate-200'}`} value={student.gender} onChange={e => updateRow(student.id, 'gender', e.target.value)}>
                     <option value="">اختر...</option>
                     <option value="ذكر">ذكر</option>
                     <option value="أنثى">أنثى</option>
@@ -517,7 +604,7 @@ const StudentsManager = () => {
                   )}
                 </td>
               </tr>
-            ))}
+            )})}
             {paginatedStudents.length === 0 && (
               <tr>
                 <td colSpan={12} className="p-8 text-center text-slate-500 font-bold">لا يوجد طلاب مطابقين، قم بالإضافة أو الاستيراد من إكسل</td>

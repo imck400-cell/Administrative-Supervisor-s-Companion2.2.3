@@ -590,6 +590,7 @@ export interface AppData {
   branchMetrics?: Record<string, MetricDefinition[]>;
   adminReports?: AdminReportContainer[];
   adminMetricsList?: Record<string, MetricDefinition[]>; // key is followUpType
+  adminBranchMetrics?: Record<string, Record<string, MetricDefinition[]>>; // branch -> followUpType -> metrics
   adminFollowUpTypes?: string[];
   availableSchools?: string[];
   availableYears?: string[];

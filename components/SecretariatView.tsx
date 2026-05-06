@@ -102,14 +102,15 @@ export const SecretariatView: React.FC = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsAdminCriteriaOpen(true)}
-              className="p-6 bg-slate-50 border border-slate-200 rounded-3xl text-slate-700 shadow-sm hover:shadow-md transition-all text-center group relative overflow-hidden"
+              className="p-6 bg-gradient-to-l from-emerald-600 to-teal-600 rounded-3xl text-white shadow-lg hover:shadow-emerald-500/30 transition-all text-center group relative overflow-hidden"
             >
+              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="relative z-10 flex flex-col items-center">
-                <div className="bg-emerald-100 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
-                  <Briefcase size={32} className="text-emerald-600" />
+                <div className="bg-white/20 backdrop-blur-sm p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                  <Briefcase size={32} className="text-white" />
                 </div>
                 <h3 className="text-lg font-black">التحكم بمعايير متابعة الموظفين والعاملين</h3>
-                <p className="text-sm text-slate-500 mt-2">تخصيص مجالات التقارير ومعايير التقييم</p>
+                <p className="text-sm text-emerald-100 mt-2">تخصيص مجالات التقارير ومعايير التقييم</p>
               </div>
             </motion.button>
           </div>

@@ -17,15 +17,50 @@ export const TeacherCriteriaModal: React.FC<TeacherCriteriaModalProps> = ({ isOp
   const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
 
+  const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+  const userSchools = isAdminOrFull 
+    ? (data.availableSchools || []) 
+    : Object.keys(currentUser?.permissions?.schoolsAndBranches || {});
+
+  const [availableBranches, setAvailableBranches] = useState<string[]>([]);
+
   useEffect(() => {
     if (isOpen) {
-      const defaultSchools = currentUser?.selectedSchool === 'all' ? (data.availableSchools || []) : (currentUser?.selectedSchool ? currentUser.selectedSchool.split(',').map(s => s.trim()) : []);
-      setSelectedSchools(defaultSchools);
+      const defaultSchools = currentUser?.selectedSchool === 'all' 
+        ? userSchools 
+        : (currentUser?.selectedSchool ? currentUser.selectedSchool.split(',').map(s => s.trim()).filter(s => userSchools.includes(s)) : []);
+      
+      setSelectedSchools(defaultSchools.length > 0 ? defaultSchools : userSchools);
+
       if (currentUser?.selectedBranch) {
         setSelectedBranches([currentUser.selectedBranch]);
       }
     }
   }, [isOpen, data.availableSchools, currentUser]);
+
+  useEffect(() => {
+    const branches = new Set<string>();
+    if (isAdminOrFull) {
+      data.secretariatStudents?.forEach(s => { if (s.branch) branches.add(s.branch); });
+      data.secretariatStaff?.forEach(s => { if (s.branch) branches.add(s.branch); });
+      if (branches.size === 0) branches.add('بدون فرع مخصص');
+    } else {
+      selectedSchools.forEach(s => {
+        const sb = currentUser?.permissions?.schoolsAndBranches?.[s] || [];
+        sb.forEach(b => branches.add(b));
+      });
+    }
+    const branchList = Array.from(branches);
+    setAvailableBranches(branchList);
+    
+    // Auto-select valid branches or reset
+    if (selectedBranches.length > 0) {
+      const validSelected = selectedBranches.filter(b => branchList.includes(b));
+      if (validSelected.length !== selectedBranches.length) {
+        setSelectedBranches(validSelected);
+      }
+    }
+  }, [selectedSchools, isAdminOrFull, data.secretariatStudents, data.secretariatStaff, currentUser]);
 
   useEffect(() => {
     if (isOpen) {
@@ -120,7 +155,7 @@ export const TeacherCriteriaModal: React.FC<TeacherCriteriaModalProps> = ({ isOp
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">اسم المدرسة</label>
                 <select multiple value={selectedSchools} onChange={handleSchoolChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 outline-none h-24">
-                  {(data.availableSchools || []).map(s => <option key={s} value={s}>{s}</option>)}
+                  {userSchools.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <p className="text-xs text-slate-500 mt-1">اضغط باستمرار على Ctrl لاختيار أكثر من مدرسة</p>
               </div>
@@ -128,11 +163,9 @@ export const TeacherCriteriaModal: React.FC<TeacherCriteriaModalProps> = ({ isOp
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">الفرع</label>
                 <select multiple value={selectedBranches} onChange={handleBranchChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 outline-none h-24">
-                   <option value="بنين">بنين</option>
-                   <option value="بنات">بنات</option>
-                   <option value="تمهيدي">تمهيدي</option>
-                   <option value="عربي">عربي</option>
-                   <option value="English">English</option>
+                   {availableBranches.map(b => (
+                     <option key={b} value={b}>{b}</option>
+                   ))}
                 </select>
                 <p className="text-xs text-slate-500 mt-1">اضغط باستمرار على Ctrl لاختيار أكثر من فرع</p>
               </div>

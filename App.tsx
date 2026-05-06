@@ -20,6 +20,7 @@ const DailyReportsPage = React.lazy(() => import('./app/ReportsPage').then(modul
 const ViolationsPage = React.lazy(() => import('./app/ReportsPage').then(module => ({ default: module.ViolationsPage })));
 const StudentsReportsPage = React.lazy(() => import('./app/ReportsPage').then(module => ({ default: module.StudentsReportsPage })));
 const TeacherPortalPage = React.lazy(() => import('./app/TeacherPortalPage').then(module => ({ default: module.TeacherPortalPage })));
+const IntroPage = React.lazy(() => import('./app/IntroPage'));
 
 import {
   Lock, LayoutDashboard, ClipboardCheck, ClipboardList, UserX, UserPlus,
@@ -339,7 +340,7 @@ const AdvancedLoginPage: React.FC = () => {
 
 const MainApp: React.FC = () => {
   const { isAuthenticated, currentUser, userFilter, setUserFilter, data, logout, dateRange, setDateRange, globalDataFilters, setGlobalDataFilters } = useGlobal();
-  const [view, setView] = useState('dashboard');
+  const [view, setView] = useState('intro');
   const [isDataModalOpen, setIsDataModalOpen] = useState(false);
   const [isCodesModalOpen, setIsCodesModalOpen] = useState(false);
   const [isUserFilterModalOpen, setIsUserFilterModalOpen] = useState(false);
@@ -462,6 +463,7 @@ const MainApp: React.FC = () => {
       Content = <SpecialReportsPage initialSubTab={subTab} onNavigate={handleNavigation} />;
     } else {
       switch (view) {
+        case 'intro': Content = <IntroPage onEnter={() => setView('dashboard')} />; break;
         case 'dashboard': Content = <Dashboard setView={handleNavigation} />; break;
         case 'substitute': Content = <SubstitutionPage />; break;
         case 'daily': Content = <DailyReportsPage />; break;
@@ -526,60 +528,64 @@ const MainApp: React.FC = () => {
             <LogOut size={18} /> تسجيل الخروج
           </button>
 
-          {/* User + Date Filter Button */}
-          {(currentUser?.role === 'admin' || currentUser?.permissions?.all || currentUser?.permissions?.userManagement) && (
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setIsUserFilterModalOpen(true)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-[1.2rem] font-black text-sm shadow-sm transition-all border-2 ${
-                  hasActiveFilter
-                    ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
-                    : 'bg-white border-slate-100 text-slate-600 hover:border-blue-200 hover:shadow-md'
-                }`}
-              >
-                <Users size={18} className={hasActiveFilter ? 'text-white' : 'text-blue-600'} />
-                <span className="max-w-[180px] truncate">{filterLabel}</span>
-              </button>
-              {hasActiveFilter && (
+          {view !== 'intro' && (
+            <>
+              {/* User + Date Filter Button */}
+              {(currentUser?.role === 'admin' || currentUser?.permissions?.all || currentUser?.permissions?.userManagement) && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setIsUserFilterModalOpen(true)}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-[1.2rem] font-black text-sm shadow-sm transition-all border-2 ${
+                      hasActiveFilter
+                        ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-white border-slate-100 text-slate-600 hover:border-blue-200 hover:shadow-md'
+                    }`}
+                  >
+                    <Users size={18} className={hasActiveFilter ? 'text-white' : 'text-blue-600'} />
+                    <span className="max-w-[180px] truncate">{filterLabel}</span>
+                  </button>
+                  {hasActiveFilter && (
+                    <button
+                      onClick={() => {
+                        setUserFilter('all');
+                        setDateRange({ from: '', to: '' });
+                      }}
+                      title="مسح الفلترة"
+                      className="p-2 bg-red-50 border-2 border-red-100 rounded-xl text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {canUseComprehensiveIndicators && (
                 <button
-                  onClick={() => {
-                    setUserFilter('all');
-                    setDateRange({ from: '', to: '' });
-                  }}
-                  title="مسح الفلترة"
-                  className="p-2 bg-red-50 border-2 border-red-100 rounded-xl text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                  onClick={() => setIsComprehensiveIndicatorsOpen(true)}
+                  className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-emerald-100 rounded-[1.2rem] text-emerald-700 font-black text-sm hover:bg-emerald-50 hover:border-emerald-200 hover:shadow-md transition-all whitespace-nowrap"
                 >
-                  <X size={16} />
+                  <BarChart className="text-emerald-600" size={18} /> مؤشرات الأداء الشاملة
                 </button>
               )}
-            </div>
-          )}
 
-          {canUseComprehensiveIndicators && (
-            <button
-              onClick={() => setIsComprehensiveIndicatorsOpen(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-emerald-100 rounded-[1.2rem] text-emerald-700 font-black text-sm hover:bg-emerald-50 hover:border-emerald-200 hover:shadow-md transition-all whitespace-nowrap"
-            >
-              <BarChart className="text-emerald-600" size={18} /> مؤشرات الأداء الشاملة
-            </button>
-          )}
+              {(isAdminOrFull || (Array.isArray(currentUser?.permissions?.specialCodes) && currentUser.permissions.specialCodes.includes('showButton'))) && (
+                <button
+                  onClick={handleOpenCodesModal}
+                  className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all whitespace-nowrap"
+                >
+                  <Key className="text-blue-600" size={18} /> التحكم بالصلاحيات
+                </button>
+              )}
 
-          {(isAdminOrFull || (Array.isArray(currentUser?.permissions?.specialCodes) && currentUser.permissions.specialCodes.includes('showButton'))) && (
-            <button
-              onClick={handleOpenCodesModal}
-              className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all whitespace-nowrap"
-            >
-              <Key className="text-blue-600" size={18} /> التحكم بالصلاحيات
-            </button>
-          )}
-
-          {(currentUser?.role === 'admin' || currentUser?.permissions?.all) && (
-            <button
-              onClick={() => setIsDataModalOpen(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all"
-            >
-              <Database className="text-blue-600" size={18} /> إدارة البيانات
-            </button>
+              {(currentUser?.role === 'admin' || currentUser?.permissions?.all) && (
+                <button
+                  onClick={() => setIsDataModalOpen(true)}
+                  className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-100 rounded-[1.2rem] text-slate-600 font-black text-sm hover:border-blue-200 hover:shadow-md transition-all"
+                >
+                  <Database className="text-blue-600" size={18} /> إدارة البيانات
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

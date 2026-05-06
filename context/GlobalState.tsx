@@ -933,9 +933,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           updatedData[key] = newData[key] as any;
           const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
           const isManager = currentUser.permissions?.userManagement === true || (Array.isArray(currentUser.permissions?.userManagement) && currentUser.permissions.userManagement.length > 0);
-          const isSecretariatEnabled = Array.isArray(currentUser.permissions?.secretariat) && currentUser.permissions?.secretariat.includes('allowEdits');
+          const isSecretariatEnabled = Array.isArray(currentUser.permissions?.secretariat) ? currentUser.permissions?.secretariat.includes('allowEdits') : currentUser.permissions?.secretariat === true;
           
-          const canEditTemplate = Array.isArray(currentUser.permissions?.teacherPortal) && currentUser.permissions.teacherPortal.includes('editEvaluationTemplate');
+          const canEditTemplate = Array.isArray(currentUser.permissions?.teacherPortal) ? currentUser.permissions.teacherPortal.includes('editEvaluationTemplate') : currentUser.permissions?.teacherPortal === true;
 
           if (isAdminOrFull || (key === 'users' && isManager) || ((key === 'secretariatStudents' || key === 'secretariatStaff' || key === 'metricsList' || key === 'branchMetrics' || key === 'adminMetricsList' || key === 'adminBranchMetrics') && isSecretariatEnabled) || (key === 'selfEvaluationTemplates' && canEditTemplate)) {
             schoolsToUpdate.forEach(school => {

@@ -26,6 +26,13 @@ const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
 
   const isTeacher = !!currentUser?.jobTitle && currentUser.jobTitle.includes('معلم');
 
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      onEnter();
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [onEnter]);
+
   return (
     <div className="flex flex-col items-center justify-between min-h-[70vh] w-full relative font-arabic overflow-hidden rounded-[2rem] bg-slate-50/50" dir="rtl">
       

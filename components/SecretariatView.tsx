@@ -86,14 +86,15 @@ export const SecretariatView: React.FC = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsTeacherCriteriaOpen(true)}
-              className="p-6 bg-slate-50 border border-slate-200 rounded-3xl text-slate-700 shadow-sm hover:shadow-md transition-all text-center group relative overflow-hidden"
+              className="p-6 bg-gradient-to-l from-blue-600 to-indigo-600 rounded-3xl text-white shadow-lg hover:shadow-blue-500/30 transition-all text-center group relative overflow-hidden"
             >
+              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="relative z-10 flex flex-col items-center">
-                <div className="bg-blue-100 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
-                  <FileSpreadsheet size={32} className="text-blue-600" />
+                <div className="bg-white/20 backdrop-blur-sm p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                  <FileSpreadsheet size={32} className="text-white" />
                 </div>
                 <h3 className="text-lg font-black">التحكم بمعايير متابعة المعلمين</h3>
-                <p className="text-sm text-slate-500 mt-2">إضافة، تعديل، وحذف المعايير الافتراضية</p>
+                <p className="text-sm text-blue-100 mt-2">إضافة، تعديل، وحذف المعايير الافتراضية</p>
               </div>
             </motion.button>
             

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Trash2, Save, FileSpreadsheet } from 'lucide-react';
+import { X, Plus, Trash2, Save, FileSpreadsheet, Building } from 'lucide-react';
 import { useGlobal } from '../context/GlobalState';
 import { MetricDefinition } from '../types';
 import { toast } from 'sonner';
@@ -11,19 +11,48 @@ interface TeacherCriteriaModalProps {
 }
 
 export const TeacherCriteriaModal: React.FC<TeacherCriteriaModalProps> = ({ isOpen, onClose }) => {
-  const { data, updateData } = useGlobal();
+  const { data, updateData, currentUser } = useGlobal();
   const [metrics, setMetrics] = useState<MetricDefinition[]>([]);
+  
+  const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
+  const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
 
   useEffect(() => {
     if (isOpen) {
-      setMetrics(data.metricsList ? JSON.parse(JSON.stringify(data.metricsList)) : []);
+      const defaultSchools = currentUser?.selectedSchool === 'all' ? (data.availableSchools || []) : (currentUser?.selectedSchool ? currentUser.selectedSchool.split(',').map(s => s.trim()) : []);
+      setSelectedSchools(defaultSchools);
+      if (currentUser?.selectedBranch) {
+        setSelectedBranches([currentUser.selectedBranch]);
+      }
     }
-  }, [isOpen, data.metricsList]);
+  }, [isOpen, data.availableSchools, currentUser]);
+
+  useEffect(() => {
+    if (isOpen) {
+      const activeBranch = selectedBranches.length > 0 ? selectedBranches[0] : '';
+      if (activeBranch && data.branchMetrics?.[activeBranch]) {
+        setMetrics(JSON.parse(JSON.stringify(data.branchMetrics[activeBranch])));
+      } else {
+        setMetrics(data.metricsList ? JSON.parse(JSON.stringify(data.metricsList)) : []);
+      }
+    }
+  }, [isOpen, data.metricsList, data.branchMetrics, selectedBranches]);
 
   if (!isOpen) return null;
 
   const handleSave = () => {
-    updateData({ metricsList: metrics });
+    const updatedBranchMetrics = { ...(data.branchMetrics || {}) };
+    
+    // Save to all selected branches
+    if (selectedBranches.length > 0) {
+      selectedBranches.forEach(branch => {
+        updatedBranchMetrics[branch] = metrics;
+      });
+      updateData({ branchMetrics: updatedBranchMetrics });
+    } else {
+      updateData({ metricsList: metrics });
+    }
+    
     toast.success('تم الحفظ وتعميم المعايير بنجاح');
     onClose();
   };
@@ -47,13 +76,23 @@ export const TeacherCriteriaModal: React.FC<TeacherCriteriaModalProps> = ({ isOp
     setMetrics(newMetrics);
   };
 
+  const handleSchoolChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = Array.from(e.target.selectedOptions, option => option.value);
+    setSelectedSchools(value);
+  };
+
+  const handleBranchChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = Array.from(e.target.selectedOptions, option => option.value);
+    setSelectedBranches(value);
+  };
+
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-3xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-white rounded-3xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]"
         dir="rtl"
       >
         <div className="bg-gradient-to-l from-blue-600 to-indigo-600 p-6 flex justify-between items-center text-white">
@@ -72,6 +111,34 @@ export const TeacherCriteriaModal: React.FC<TeacherCriteriaModalProps> = ({ isOp
         </div>
 
         <div className="p-6 overflow-y-auto flex-1 bg-slate-50">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-6">
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
+              <Building size={20} className="text-blue-600" />
+              البيانات الأساسية للمجال
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">اسم المدرسة</label>
+                <select multiple value={selectedSchools} onChange={handleSchoolChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 outline-none h-24">
+                  {(data.availableSchools || []).map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <p className="text-xs text-slate-500 mt-1">اضغط باستمرار على Ctrl لاختيار أكثر من مدرسة</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">الفرع</label>
+                <select multiple value={selectedBranches} onChange={handleBranchChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 outline-none h-24">
+                   <option value="بنين">بنين</option>
+                   <option value="بنات">بنات</option>
+                   <option value="تمهيدي">تمهيدي</option>
+                   <option value="عربي">عربي</option>
+                   <option value="English">English</option>
+                </select>
+                <p className="text-xs text-slate-500 mt-1">اضغط باستمرار على Ctrl لاختيار أكثر من فرع</p>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-4">
             {metrics.map((metric, idx) => (
               <div key={metric.key} className="flex flex-col md:flex-row items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
@@ -120,8 +187,8 @@ export const TeacherCriteriaModal: React.FC<TeacherCriteriaModalProps> = ({ isOp
             إلغاء
           </button>
           <button
-            onClick={handleSave}
-            className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+             onClick={handleSave}
+             className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
           >
             <Save size={20} />
             تغيير وتعميم على المدارس والفروع المشتركة

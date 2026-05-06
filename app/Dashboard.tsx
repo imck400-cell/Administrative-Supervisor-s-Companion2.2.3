@@ -140,15 +140,18 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
           { id: 'damageSummary', label: 'الإتلاف المدرسي', icon: <Hammer size={12} /> },
           { id: 'notes', label: 'ملاحظات أخرى', icon: <MessageSquare size={12} /> },
         ];
-      case 'teachers':
+      case 'teachers': {
+        const activeBranch = globalDataFilters?.branches?.[0];
+        const currentMetrics = activeBranch && data.branchMetrics?.[activeBranch] ? data.branchMetrics[activeBranch] : (data.metricsList || []);
         return [
           { id: 'all', label: 'الكل', icon: <Users size={12} /> },
-          ...(data.metricsList || []).map(m => ({
+          ...currentMetrics.map(m => ({
             id: m.key,
             label: m.label,
             icon: <Activity size={12} /> // Default icon for dynamic metrics
           }))
         ];
+      }
       case 'special_reports':
         return [
           { id: 'all', label: 'جميع التقارير', icon: <History size={12} /> },
@@ -429,6 +432,8 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
     const subSubOptions = getSubSubTypes(card.category, card.subType);
 
     if (card.category === 'teachers') {
+      const activeBranch = globalDataFilters?.branches?.[0];
+      const currentMetrics = activeBranch && data.branchMetrics?.[activeBranch] ? data.branchMetrics[activeBranch] : (data.metricsList || []);
       const getTeacherMetricPercent = (teacher: any, metricKey: string, metricsList: any[]) => {
         if (metricKey === 'all') {
           let total = 0;
@@ -458,7 +463,7 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
 
       // Filter and categorize by percentage
       list = list.filter(i => {
-        const pt = getTeacherMetricPercent(i, card.subType, data.metricsList || []);
+        const pt = getTeacherMetricPercent(i, card.subType, currentMetrics);
         if (pt === undefined) return false;
         
         if (card.subSubTypes.length > 0) {
@@ -481,14 +486,14 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
       // Apply sorting
       if (card.subSubTypes.includes('highest')) {
         list = list.sort((a, b) => {
-           const pa = getTeacherMetricPercent(a, card.subType, data.metricsList || []) || 0;
-           const pb = getTeacherMetricPercent(b, card.subType, data.metricsList || []) || 0;
+           const pa = getTeacherMetricPercent(a, card.subType, currentMetrics) || 0;
+           const pb = getTeacherMetricPercent(b, card.subType, currentMetrics) || 0;
            return pb - pa;
         });
       } else if (card.subSubTypes.includes('lowest')) {
         list = list.sort((a, b) => {
-           const pa = getTeacherMetricPercent(a, card.subType, data.metricsList || []) || 0;
-           const pb = getTeacherMetricPercent(b, card.subType, data.metricsList || []) || 0;
+           const pa = getTeacherMetricPercent(a, card.subType, currentMetrics) || 0;
+           const pb = getTeacherMetricPercent(b, card.subType, currentMetrics) || 0;
            return pa - pb;
         });
       }

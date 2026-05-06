@@ -587,6 +587,7 @@ export interface AppData {
   taskReports?: TaskReport[];
   metricLabels?: Record<string, string>;
   metricsList?: MetricDefinition[];
+  branchMetrics?: Record<string, MetricDefinition[]>;
   adminReports?: AdminReportContainer[];
   adminMetricsList?: Record<string, MetricDefinition[]>; // key is followUpType
   adminFollowUpTypes?: string[];

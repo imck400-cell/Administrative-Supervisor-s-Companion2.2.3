@@ -381,7 +381,8 @@ export const DailyReportsPage: React.FC = () => {
 
   const displayedTeachers = useMemo(() => teachers.slice(0, displayLimit), [teachers, displayLimit]);
 
-  const metricsList = data.metricsList || [];
+  const activeBranch = globalDataFilters?.branches?.[0];
+  const metricsList = (activeBranch && data.branchMetrics?.[activeBranch] ? data.branchMetrics[activeBranch] : data.metricsList) || [];
 
   const metricsConfig = useMemo(() => metricsList.map(m => ({
     key: m.key,

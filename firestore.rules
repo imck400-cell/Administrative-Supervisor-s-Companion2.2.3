@@ -55,7 +55,7 @@ service cloud.firestore {
       // Shared data (profile, templates, etc.)
       match /shared/{key} {
         allow read: if isAuthenticated() && (key == 'users' || key == 'profile' || key == 'availableSchools' || key == 'availableYears' || key == 'selfEvaluationTemplates' || (userExists() && hasSchool(school)));
-        allow write: if isAuthenticated() && userExists() && hasSchool(school) && (getUserData().role == 'admin' || key == 'secretariatStudents' || key == 'secretariatStaff' || key == 'users' || key == 'profile' || key == 'availableSchools' || key == 'availableYears' || key == 'selfEvaluationTemplates' || key == 'metricsList' || key == 'adminMetricsList' || key == 'branchMetrics' || key == 'adminBranchMetrics' || key == 'adminActivitiesList' || key == 'adminBranchActivities' || key == 'adminIndividualReportFields');
+        allow write: if isAuthenticated() && userExists() && hasSchool(school) && (getUserData().role == 'admin' || key == 'secretariatStudents' || key == 'secretariatStaff' || key == 'users' || key == 'profile' || key == 'availableSchools' || key == 'availableYears' || key == 'selfEvaluationTemplates' || key == 'metricsList' || key == 'adminMetricsList' || key == 'branchMetrics' || key == 'adminBranchMetrics' || key == 'adminFollowUpTypes' || key == 'adminActivitiesList' || key == 'adminBranchActivities' || key == 'adminIndividualReportFields');
       }
 
       // User-specific data

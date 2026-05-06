@@ -22,6 +22,7 @@ const ALL_ACTIONS = [
   { id: 'codesModal', label: 'التحكم بالصلاحيات', icon: <Key size={18} /> },
   { id: 'dataModal', label: 'إدارة البيانات', icon: <Database size={18} /> },
   { id: 'secretariat', label: 'السكرتارية', icon: <Briefcase size={18} /> },
+  { id: 'teacherPortal', label: 'بوابة المعلم', icon: <BookOpen size={18} /> },
   // Sub-items for Special Reports
   { id: 'specialReports-الغياب اليومي', label: 'سجل الغياب اليومي', icon: <Users size={18} /> },
   { id: 'specialReports-التأخر', label: 'سجل التأخر المتكرر', icon: <AlertCircle size={18} /> },
@@ -127,7 +128,9 @@ export const QuickAccess: React.FC<{
   const compIndPerm = currentUser?.permissions?.comprehensiveIndicators;
   const canUseComprehensiveIndicators = checkPerm(compIndPerm, 'showButton');
 
-  const canUseDashboard = checkPerm(currentUser?.permissions?.dashboard) && currentUser?.role !== 'teacher';
+  const isTeacher = !!currentUser?.jobTitle && currentUser.jobTitle.includes('معلم');
+  const canUseDashboard = checkPerm(currentUser?.permissions?.dashboard) && !isTeacher;
+  const canUseTeacherPortal = checkPerm(currentUser?.permissions?.teacherPortal) || isTeacher;
   const canUseDaily = checkPerm(currentUser?.permissions?.dailyFollowUp);
   const canUseAdmin = checkPerm(currentUser?.permissions?.adminFollowUp);
   const canUseSpecial = checkPerm(currentUser?.permissions?.specialReports);
@@ -165,6 +168,7 @@ export const QuickAccess: React.FC<{
     ...(canUseCodesModal ? ['codesModal'] : []),
     ...(canUseDataModal ? ['dataModal'] : []),
     ...(canUseSecretariat ? ['secretariat'] : []),
+    ...(canUseTeacherPortal ? ['teacherPortal'] : []),
   ];
 
   const allowedActions = ALL_ACTIONS.filter(a => allowedIds.includes(a.id));

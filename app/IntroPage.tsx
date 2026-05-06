@@ -24,6 +24,8 @@ const FloatingIcon = ({ icon, color, bg, pos, size, delay }: any) => (
 const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
   const { currentUser } = useGlobal();
 
+  const isTeacher = !!currentUser?.jobTitle && currentUser.jobTitle.includes('معلم');
+
   return (
     <div className="flex flex-col items-center justify-between min-h-[70vh] w-full relative font-arabic overflow-hidden rounded-[2rem] bg-slate-50/50" dir="rtl">
       
@@ -116,7 +118,7 @@ const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
         transition={{ delay: 0.5 }}
         className="w-full max-w-2xl flex flex-col sm:flex-row items-center justify-center gap-6 pb-12 px-4 z-20"
       >
-        {currentUser?.role !== 'teacher' && (
+        {!isTeacher && (
           <button
             onClick={onEnter}
             className="w-full sm:w-auto px-12 py-5 bg-gradient-to-l from-blue-600 to-blue-500 text-white rounded-[2rem] font-black text-2xl hover:from-blue-700 hover:to-blue-600 shadow-xl shadow-blue-200/50 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-3 border-2 border-white/20"

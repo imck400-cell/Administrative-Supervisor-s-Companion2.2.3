@@ -127,7 +127,7 @@ export const QuickAccess: React.FC<{
   const compIndPerm = currentUser?.permissions?.comprehensiveIndicators;
   const canUseComprehensiveIndicators = checkPerm(compIndPerm, 'showButton');
 
-  const canUseDashboard = checkPerm(currentUser?.permissions?.dashboard);
+  const canUseDashboard = checkPerm(currentUser?.permissions?.dashboard) && currentUser?.role !== 'teacher';
   const canUseDaily = checkPerm(currentUser?.permissions?.dailyFollowUp);
   const canUseAdmin = checkPerm(currentUser?.permissions?.adminFollowUp);
   const canUseSpecial = checkPerm(currentUser?.permissions?.specialReports);

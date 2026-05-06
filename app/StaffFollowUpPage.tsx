@@ -78,58 +78,79 @@ const StaffFollowUpPage: React.FC = () => {
     const [unaccreditedItems, setUnaccreditedItems] = useState<Record<string, boolean>>({});
     const [executedCounts, setExecutedCounts] = useState<Record<string, number>>({});
 
-    const [reportFields, setReportFields] = useState<string[]>(() => {
+    const DEFAULT_INDIVIDUAL_FIELDS = [
+        'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس',
+        'متابعة المدير العام',
+        'متابعة مدير الفرع',
+        'متابعة إدارة الجودة',
+        'متابعة وكيل المدرسة',
+        'متابعة السكرتارية',
+        'متابعة المشرف التربوي',
+        'متابعة المشرف الإداري',
+        'متابعة المشرف الأكاديمي',
+        'متابعة المختص الاجتماعي',
+        'متابعة مسؤول معمل العلوم',
+        'متابعة مسؤول الأنشطة',
+        'متابعة مسؤول الرياضة',
+        'متابعة مسؤول الفنية',
+        'متابعة مسؤول المخازن',
+        'متابعة معمل الوسائل',
+        'متابعة مسؤول المكتبة',
+        'متابعة شاشة العرض',
+        'متابعة مهندس البيئة',
+        'متابعة الحراسة',
+        'متابعة حركة المواصلات',
+        'متابعة أداء المقصف'
+    ];
+
+    const reportFields = data.adminIndividualReportFields?.length ? data.adminIndividualReportFields : (() => {
         const saved = localStorage.getItem('admin_report_fields');
         if (saved) return JSON.parse(saved);
-        return [
-            'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس',
-            'متابعة المدير العام',
-            'متابعة مدير الفرع',
-            'متابعة إدارة الجودة',
-            'متابعة وكيل المدرسة',
-            'متابعة السكرتارية',
-            'متابعة المشرف التربوي',
-            'متابعة المشرف الإداري',
-            'متابعة المشرف الأكاديمي',
-            'متابعة المختص الاجتماعي',
-            'متابعة مسؤول معمل العلوم',
-            'متابعة مسؤول الأنشطة',
-            'متابعة مسؤول الرياضة',
-            'متابعة مسؤول الفنية',
-            'متابعة مسؤول المخازن',
-            'متابعة معمل الوسائل',
-            'متابعة مسؤول المكتبة',
-            'متابعة شاشة العرض',
-            'متابعة مهندس البيئة',
-            'متابعة الحراسة',
-            'متابعة حركة المواصلات',
-            'متابعة أداء المقصف'
-        ];
+        return DEFAULT_INDIVIDUAL_FIELDS;
+    })();
+
+    const setReportFields = (newFields: string[]) => {
+        updateData({ adminIndividualReportFields: newFields });
+        localStorage.setItem('admin_report_fields', JSON.stringify(newFields));
+    };
+
+    const activeBranchKey = selectedBranch ? `${selectedSchool}_${selectedBranch}` : `${selectedSchool}_بدون فرع مخصص`;
+
+    const getActivitiesForField = (field: string) => {
+        if (!field) return [];
+        if (data.adminBranchActivities?.[activeBranchKey]?.[field]) {
+            return data.adminBranchActivities[activeBranchKey][field];
+        }
+        if (data.adminActivitiesList?.[field]) {
+            return data.adminActivitiesList[field];
+        }
+        return ACTIVITIES_DATA[field] || [];
+    };
+
+    const customActivities: any = new Proxy({}, {
+        get: (target, prop: string) => getActivitiesForField(prop)
     });
 
-    useEffect(() => {
-        localStorage.setItem('admin_report_fields', JSON.stringify(reportFields));
-    }, [reportFields]);
-
-    const [customActivities, setCustomActivities] = useState<Record<string, Array<{ text: string, planned: string, evidence: string }>>>(() => {
-        const saved = localStorage.getItem('admin_custom_activities');
-        return saved ? JSON.parse(saved) : ACTIVITIES_DATA;
-    });
-
-    useEffect(() => {
-        localStorage.setItem('admin_custom_activities', JSON.stringify(customActivities));
-    }, [customActivities]);
+    const setCustomActivities = (newValue: any) => {
+        const currentField = individualForm.reportField;
+        if (newValue && newValue[currentField]) {
+            const newBranches = { ...(data.adminBranchActivities || {}) };
+            if (!newBranches[activeBranchKey]) newBranches[activeBranchKey] = {};
+            newBranches[activeBranchKey][currentField] = newValue[currentField];
+            updateData({ adminBranchActivities: newBranches });
+        }
+    };
 
     // Initialize Executed Counts when report field changes
     useEffect(() => {
-        const activities = customActivities[individualForm.reportField] || [];
+        const activities = getActivitiesForField(individualForm.reportField);
         const newCounts: Record<string, number> = {};
         let hasNew = false;
         activities.forEach((a, i) => {
             const key = `${individualForm.reportField}_${i}`;
             // If we don't have a value yet, default to planned
             if (executedCounts[key] === undefined) {
-                newCounts[key] = parseInt(a.planned) || 0;
+                newCounts[key] = parseInt(String(a.planned)) || 0;
                 hasNew = true;
             }
         });
@@ -137,7 +158,7 @@ const StaffFollowUpPage: React.FC = () => {
         if (hasNew) {
             setExecutedCounts(prev => ({ ...prev, ...newCounts }));
         }
-    }, [individualForm.reportField, customActivities]);
+    }, [individualForm.reportField, data.adminBranchActivities, data.adminActivitiesList, activeBranchKey]);
 
     // Utility function to convert Arabic numerals to English
     const toEnglishNum = (num: number | string): string => {
@@ -2692,7 +2713,7 @@ const StaffFollowUpPage: React.FC = () => {
                             </div>
                             <div className="flex-1 overflow-auto p-10 space-y-6 custom-scrollbar bg-slate-50/40">
                                 <div className="grid grid-cols-1 gap-4">
-                                    {(customActivities[individualForm.reportField] || []).map((activity, idx) => (
+                                    {getActivitiesForField(individualForm.reportField).map((activity, idx) => (
                                         <div key={`custom-activity-${idx}`} className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-sm hover:shadow-xl hover:border-amber-200 transition-all group animate-in slide-in-from-bottom-3" style={{ animationDelay: `${idx * 40}ms` }}>
                                             <div className="flex items-center gap-5">
                                                 <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center font-black text-xl border-2 border-slate-50 shadow-inner group-hover:bg-amber-50 group-hover:text-amber-500 transition-all">{idx + 1}</div>
@@ -2702,18 +2723,24 @@ const StaffFollowUpPage: React.FC = () => {
                                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-black text-slate-800 focus:border-amber-500 focus:bg-white focus:ring-4 focus:ring-amber-50 outline-none transition-all"
                                                         value={activity.text || ''}
                                                         onChange={(e) => {
-                                                            const newAct = [...(customActivities[individualForm.reportField] || [])];
+                                                            const newAct = [...getActivitiesForField(individualForm.reportField)];
                                                             newAct[idx] = { ...newAct[idx], text: e.target.value };
-                                                            setCustomActivities({ ...customActivities, [individualForm.reportField]: newAct });
+                                                            const newBranches = { ...(data.adminBranchActivities || {}) };
+                                                            if (!newBranches[activeBranchKey]) newBranches[activeBranchKey] = {};
+                                                            newBranches[activeBranchKey][individualForm.reportField] = newAct;
+                                                            updateData({ adminBranchActivities: newBranches });
                                                         }}
                                                         placeholder="مثلاً: الإشراف على صلاة الظهر..."
                                                     />
                                                 </div>
                                                 <button
                                                     onClick={() => {
-                                                        const newAct = [...(customActivities[individualForm.reportField] || [])];
+                                                        const newAct = [...getActivitiesForField(individualForm.reportField)];
                                                         newAct.splice(idx, 1);
-                                                        setCustomActivities({ ...customActivities, [individualForm.reportField]: newAct });
+                                                        const newBranches = { ...(data.adminBranchActivities || {}) };
+                                                        if (!newBranches[activeBranchKey]) newBranches[activeBranchKey] = {};
+                                                        newBranches[activeBranchKey][individualForm.reportField] = newAct;
+                                                        updateData({ adminBranchActivities: newBranches });
                                                     }}
                                                     className="mt-6 p-4 text-rose-300 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all active:scale-90"
                                                 >
@@ -2729,9 +2756,12 @@ const StaffFollowUpPage: React.FC = () => {
                                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3.5 text-xs font-black focus:border-amber-400 focus:bg-white transition-all outline-none"
                                                         value={activity.planned || ''}
                                                         onChange={(e) => {
-                                                            const newAct = [...(customActivities[individualForm.reportField] || [])];
+                                                            const newAct = [...getActivitiesForField(individualForm.reportField)];
                                                             newAct[idx] = { ...newAct[idx], planned: e.target.value };
-                                                            setCustomActivities({ ...customActivities, [individualForm.reportField]: newAct });
+                                                            const newBranches = { ...(data.adminBranchActivities || {}) };
+                                                            if (!newBranches[activeBranchKey]) newBranches[activeBranchKey] = {};
+                                                            newBranches[activeBranchKey][individualForm.reportField] = newAct;
+                                                            updateData({ adminBranchActivities: newBranches });
                                                         }}
                                                     />
                                                 </div>
@@ -2743,9 +2773,12 @@ const StaffFollowUpPage: React.FC = () => {
                                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3.5 text-xs font-black focus:border-amber-400 focus:bg-white transition-all outline-none"
                                                         value={activity.evidence || ''}
                                                         onChange={(e) => {
-                                                            const newAct = [...(customActivities[individualForm.reportField] || [])];
+                                                            const newAct = [...getActivitiesForField(individualForm.reportField)];
                                                             newAct[idx] = { ...newAct[idx], evidence: e.target.value };
-                                                            setCustomActivities({ ...customActivities, [individualForm.reportField]: newAct });
+                                                            const newBranches = { ...(data.adminBranchActivities || {}) };
+                                                            if (!newBranches[activeBranchKey]) newBranches[activeBranchKey] = {};
+                                                            newBranches[activeBranchKey][individualForm.reportField] = newAct;
+                                                            updateData({ adminBranchActivities: newBranches });
                                                         }}
                                                     />
                                                 </div>
@@ -2755,11 +2788,11 @@ const StaffFollowUpPage: React.FC = () => {
                                 </div>
                                 <button
                                     onClick={() => {
-                                        const current = customActivities[individualForm.reportField] || [];
-                                        setCustomActivities({
-                                            ...customActivities,
-                                            [individualForm.reportField]: [...current, { text: 'معيار جديد', planned: 'بالملاحظة المباشرة', evidence: 'سجل المتابعة' }]
-                                        });
+                                        const newAct = [...getActivitiesForField(individualForm.reportField), { text: 'معيار جديد', planned: 'بالملاحظة المباشرة', evidence: 'سجل المتابعة' }];
+                                        const newBranches = { ...(data.adminBranchActivities || {}) };
+                                        if (!newBranches[activeBranchKey]) newBranches[activeBranchKey] = {};
+                                        newBranches[activeBranchKey][individualForm.reportField] = newAct;
+                                        updateData({ adminBranchActivities: newBranches });
                                     }}
                                     className="w-full py-8 border-4 border-dashed border-slate-200 rounded-[3rem] text-slate-400 font-black hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-all flex items-center justify-center gap-4 group"
                                 >

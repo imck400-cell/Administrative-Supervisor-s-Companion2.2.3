@@ -542,6 +542,12 @@ export interface CreativityRecordReport {
   createdAt: string;
 }
 
+export interface AdminActivity {
+  text: string;
+  planned: string;
+  evidence: string;
+}
+
 export interface AppData {
   users: User[];
   profile: SchoolProfile;
@@ -592,6 +598,9 @@ export interface AppData {
   adminMetricsList?: Record<string, MetricDefinition[]>; // key is followUpType
   adminBranchMetrics?: Record<string, Record<string, MetricDefinition[]>>; // branch -> followUpType -> metrics
   adminFollowUpTypes?: string[];
+  adminIndividualReportFields?: string[];
+  adminActivitiesList?: Record<string, AdminActivity[]>;
+  adminBranchActivities?: Record<string, Record<string, AdminActivity[]>>;
   availableSchools?: string[];
   availableYears?: string[];
   schoolBranches?: Record<string, string[]>;

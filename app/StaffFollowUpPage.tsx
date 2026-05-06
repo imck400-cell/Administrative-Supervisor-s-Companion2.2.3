@@ -114,7 +114,9 @@ const StaffFollowUpPage: React.FC = () => {
         localStorage.setItem('admin_report_fields', JSON.stringify(newFields));
     };
 
-    const activeBranchKey = selectedBranch ? `${selectedSchool}_${selectedBranch}` : `${selectedSchool}_بدون فرع مخصص`;
+    const activeSchool = globalDataFilters?.schools?.[0] || data.profile?.schoolName || 'بدون مدرسة';
+    const activeBranch = globalDataFilters?.branches?.[0] || data.profile?.branch || '';
+    const activeBranchKey = activeBranch ? `${activeSchool}_${activeBranch}` : `${activeSchool}_بدون فرع مخصص`;
 
     const getActivitiesForField = (field: string) => {
         if (!field) return [];
@@ -223,8 +225,6 @@ const StaffFollowUpPage: React.FC = () => {
 
     const displayedEmployees = useMemo(() => employees.slice(0, displayLimit), [employees, displayLimit]);
 
-    const activeSchool = globalDataFilters?.schools?.[0];
-    const activeBranch = globalDataFilters?.branches?.[0];
     const branchKey = activeSchool && activeBranch ? `${activeSchool}_${activeBranch}` : null;
     const displayedMetrics = useMemo(() => {
         if (branchKey && data.adminBranchMetrics?.[branchKey]?.[followUpType]) {

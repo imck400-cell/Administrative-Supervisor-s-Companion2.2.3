@@ -382,7 +382,9 @@ export const DailyReportsPage: React.FC = () => {
   const displayedTeachers = useMemo(() => teachers.slice(0, displayLimit), [teachers, displayLimit]);
 
   const activeBranch = globalDataFilters?.branches?.[0];
-  const metricsList = (activeBranch && data.branchMetrics?.[activeBranch] ? data.branchMetrics[activeBranch] : data.metricsList) || [];
+  const activeSchool = globalDataFilters?.schools?.[0];
+  const branchKey = activeSchool && activeBranch ? `${activeSchool}_${activeBranch}` : null;
+  const metricsList = (branchKey && data.branchMetrics?.[branchKey] ? data.branchMetrics[branchKey] : data.metricsList) || [];
 
   const metricsConfig = useMemo(() => metricsList.map(m => ({
     key: m.key,

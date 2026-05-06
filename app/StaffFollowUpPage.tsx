@@ -209,9 +209,15 @@ const StaffFollowUpPage: React.FC = () => {
 
     const displayedEmployees = useMemo(() => employees.slice(0, displayLimit), [employees, displayLimit]);
 
+    const activeSchool = globalDataFilters?.schools?.[0];
+    const activeBranch = globalDataFilters?.branches?.[0];
+    const branchKey = activeSchool && activeBranch ? `${activeSchool}_${activeBranch}` : null;
     const displayedMetrics = useMemo(() => {
+        if (branchKey && data.adminBranchMetrics?.[branchKey]?.[followUpType]) {
+            return data.adminBranchMetrics[branchKey][followUpType];
+        }
         return data.adminMetricsList?.[followUpType] || [];
-    }, [data.adminMetricsList, followUpType]);
+    }, [data.adminMetricsList, data.adminBranchMetrics, followUpType, branchKey]);
 
     // Auto-save logic for current individual form draft
     useEffect(() => {
@@ -566,10 +572,31 @@ const StaffFollowUpPage: React.FC = () => {
         return ((sum / totalMax) * 100).toFixed(1);
     };
 
+    const saveMetrics = (newMetrics: MetricDefinition[]) => {
+        if (branchKey) {
+            updateData({
+                adminBranchMetrics: {
+                    ...(data.adminBranchMetrics || {}),
+                    [branchKey]: {
+                        ...(data.adminBranchMetrics?.[branchKey] || {}),
+                        [followUpType]: newMetrics
+                    }
+                }
+            });
+        } else {
+            updateData({
+                adminMetricsList: {
+                    ...(data.adminMetricsList || {}),
+                    [followUpType]: newMetrics
+                }
+            });
+        }
+    };
+
     const handleMaxChange = (key: string, newMax: number) => {
         if (isReadOnly) return;
         const updated = displayedMetrics.map(m => m.key === key ? { ...m, max: newMax } : m);
-        updateData({ adminMetricsList: { ...(data.adminMetricsList || {}), [followUpType]: updated } });
+        saveMetrics(updated);
     };
 
     const reorderDomain = (index: number, direction: 'up' | 'down') => {
@@ -578,14 +605,14 @@ const StaffFollowUpPage: React.FC = () => {
         const targetIndex = direction === 'up' ? index - 1 : index + 1;
         if (targetIndex >= 0 && targetIndex < newMetrics.length) {
             [newMetrics[index], newMetrics[targetIndex]] = [newMetrics[targetIndex], newMetrics[index]];
-            updateData({ adminMetricsList: { ...(data.adminMetricsList || {}), [followUpType]: newMetrics } });
+            saveMetrics(newMetrics);
         }
     };
 
     const renameDomain = (key: string, newLabel: string) => {
         if (isReadOnly) return;
         const updated = displayedMetrics.map(m => m.key === key ? { ...m, label: newLabel } : m);
-        updateData({ adminMetricsList: { ...(data.adminMetricsList || {}), [followUpType]: updated } });
+        saveMetrics(updated);
     };
 
     const handleAddOption = (field: 'gender' | 'role' | 'branch', empId: string) => {
@@ -1045,11 +1072,7 @@ const StaffFollowUpPage: React.FC = () => {
             color: '#fbbf24'
         };
 
-        const updatedMetrics = {
-            ...(data.adminMetricsList || {}),
-            [followUpType]: [...displayedMetrics, newMetric]
-        };
-        updateData({ adminMetricsList: updatedMetrics });
+        saveMetrics([...displayedMetrics, newMetric]);
     };
 
     const deleteDomain = (key: string) => {
@@ -1059,11 +1082,7 @@ const StaffFollowUpPage: React.FC = () => {
             message: 'حذف هذا المجال؟ سيؤدي ذلك لحذف درجاته في هذا الجدول.',
             type: 'danger',
             onConfirm: () => {
-                const updatedMetrics = {
-                    ...(data.adminMetricsList || {}),
-                    [followUpType]: displayedMetrics.filter(m => m.key !== key)
-                };
-                updateData({ adminMetricsList: updatedMetrics });
+                saveMetrics(displayedMetrics.filter(m => m.key !== key));
                 toast.success('تم حذف المجال بنجاح');
             }
         });

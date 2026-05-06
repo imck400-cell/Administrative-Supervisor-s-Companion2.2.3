@@ -142,7 +142,9 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
         ];
       case 'teachers': {
         const activeBranch = globalDataFilters?.branches?.[0];
-        const currentMetrics = activeBranch && data.branchMetrics?.[activeBranch] ? data.branchMetrics[activeBranch] : (data.metricsList || []);
+        const activeSchool = globalDataFilters?.schools?.[0];
+        const key = activeSchool && activeBranch ? `${activeSchool}_${activeBranch}` : null;
+        const currentMetrics = key && data.branchMetrics?.[key] ? data.branchMetrics[key] : (data.metricsList || []);
         return [
           { id: 'all', label: 'الكل', icon: <Users size={12} /> },
           ...currentMetrics.map(m => ({
@@ -433,7 +435,9 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
 
     if (card.category === 'teachers') {
       const activeBranch = globalDataFilters?.branches?.[0];
-      const currentMetrics = activeBranch && data.branchMetrics?.[activeBranch] ? data.branchMetrics[activeBranch] : (data.metricsList || []);
+      const activeSchool = globalDataFilters?.schools?.[0];
+      const key = activeSchool && activeBranch ? `${activeSchool}_${activeBranch}` : null;
+      const currentMetrics = key && data.branchMetrics?.[key] ? data.branchMetrics[key] : (data.metricsList || []);
       const getTeacherMetricPercent = (teacher: any, metricKey: string, metricsList: any[]) => {
         if (metricKey === 'all') {
           let total = 0;

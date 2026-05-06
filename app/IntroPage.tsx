@@ -118,16 +118,6 @@ const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
         transition={{ delay: 0.5 }}
         className="w-full max-w-2xl flex flex-col sm:flex-row items-center justify-center gap-6 pb-12 px-4 z-20"
       >
-        {!isTeacher && (
-          <button
-            onClick={onEnter}
-            className="w-full sm:w-auto px-12 py-5 bg-gradient-to-l from-blue-600 to-blue-500 text-white rounded-[2rem] font-black text-2xl hover:from-blue-700 hover:to-blue-600 shadow-xl shadow-blue-200/50 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-3 border-2 border-white/20"
-          >
-            <PlayCircle size={32} />
-            الدخول إلى البرنامج
-          </button>
-        )}
-
         <button
           onClick={() => {
             toast.info('التعريف بالبرنامج', {

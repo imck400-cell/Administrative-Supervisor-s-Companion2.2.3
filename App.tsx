@@ -341,6 +341,12 @@ const AdvancedLoginPage: React.FC = () => {
 const MainApp: React.FC = () => {
   const { isAuthenticated, currentUser, userFilter, setUserFilter, data, logout, dateRange, setDateRange, globalDataFilters, setGlobalDataFilters } = useGlobal();
   const [view, setView] = useState('intro');
+
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      setView('intro');
+    }
+  }, [isAuthenticated]);
   const [isDataModalOpen, setIsDataModalOpen] = useState(false);
   const [isCodesModalOpen, setIsCodesModalOpen] = useState(false);
   const [isUserFilterModalOpen, setIsUserFilterModalOpen] = useState(false);

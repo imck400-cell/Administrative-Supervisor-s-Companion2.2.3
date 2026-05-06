@@ -713,6 +713,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   }
                   return { ...prev, [key]: merged };
                 } else {
+                  if (typeof remoteData === 'object' && !Array.isArray(remoteData) && remoteData !== null) {
+                    const existingObj = (prev[key] || {}) as any;
+                    const mergedObj = { ...existingObj, ...remoteData };
+                    if (JSON.stringify(existingObj) === JSON.stringify(mergedObj)) return prev;
+                    return { ...prev, [key]: mergedObj };
+                  }
                   if (JSON.stringify(prev[key]) === JSON.stringify(remoteData)) return prev;
                   return { ...prev, [key]: remoteData };
                 }

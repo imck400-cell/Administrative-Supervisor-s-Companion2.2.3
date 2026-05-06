@@ -73,16 +73,19 @@ export const AdminCriteriaModal: React.FC<AdminCriteriaModalProps> = ({ isOpen, 
 
   useEffect(() => {
     if (isOpen && selectedCategory) {
+      const activeSchool = selectedSchools.length > 0 ? selectedSchools[0] : '';
       const activeBranch = selectedBranches.length > 0 ? selectedBranches[0] : '';
-      if (activeBranch && data.adminBranchMetrics?.[activeBranch]?.[selectedCategory]) {
-        setMetrics(JSON.parse(JSON.stringify(data.adminBranchMetrics[activeBranch][selectedCategory])));
+      const key = `${activeSchool}_${activeBranch}`;
+
+      if (activeSchool && activeBranch && data.adminBranchMetrics?.[key]?.[selectedCategory]) {
+        setMetrics(JSON.parse(JSON.stringify(data.adminBranchMetrics[key][selectedCategory])));
       } else if (data.adminMetricsList?.[selectedCategory]) {
         setMetrics(JSON.parse(JSON.stringify(data.adminMetricsList[selectedCategory])));
       } else {
         setMetrics([]);
       }
     }
-  }, [isOpen, selectedCategory, data.adminMetricsList, data.adminBranchMetrics, selectedBranches]);
+  }, [isOpen, selectedCategory, data.adminMetricsList, data.adminBranchMetrics, selectedBranches, selectedSchools]);
 
   if (!isOpen) return null;
 
@@ -92,16 +95,19 @@ export const AdminCriteriaModal: React.FC<AdminCriteriaModalProps> = ({ isOpen, 
       return;
     }
 
-    if (selectedBranches.length > 0) {
+    if (selectedSchools.length > 0 && selectedBranches.length > 0) {
       const updatedAdminBranchMetrics = { ...(data.adminBranchMetrics || {}) };
-      selectedBranches.forEach(branch => {
-        if (!updatedAdminBranchMetrics[branch]) {
-          updatedAdminBranchMetrics[branch] = {};
-        }
-        updatedAdminBranchMetrics[branch] = {
-          ...updatedAdminBranchMetrics[branch],
-          [selectedCategory]: metrics
-        };
+      selectedSchools.forEach(school => {
+        selectedBranches.forEach(branch => {
+          const key = `${school}_${branch}`;
+          if (!updatedAdminBranchMetrics[key]) {
+            updatedAdminBranchMetrics[key] = {};
+          }
+          updatedAdminBranchMetrics[key] = {
+            ...updatedAdminBranchMetrics[key],
+            [selectedCategory]: metrics
+          };
+        });
       });
       updateData({ adminBranchMetrics: updatedAdminBranchMetrics }, selectedSchools);
     } else {
@@ -174,21 +180,49 @@ export const AdminCriteriaModal: React.FC<AdminCriteriaModalProps> = ({ isOpen, 
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">اسم المدرسة</label>
-                <select multiple value={selectedSchools} onChange={handleSchoolChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 outline-none h-24">
-                  {(currentUser?.role === 'admin' || currentUser?.permissions?.all === true ? (data.availableSchools || []) : Object.keys(currentUser?.permissions?.schoolsAndBranches || {})).map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <p className="text-xs text-slate-500 mt-1">اضغط باستمرار على Ctrl لاختيار أكثر من مدرسة</p>
+                <label className="block text-sm font-bold text-slate-700 mb-2">اسم المدارس المستهدفة</label>
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 h-32 overflow-y-auto space-y-2">
+                  {(currentUser?.role === 'admin' || currentUser?.permissions?.all === true ? (data.availableSchools || []) : Object.keys(currentUser?.permissions?.schoolsAndBranches || {})).map(s => (
+                    <label key={s} className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1.5 rounded-lg transition-colors">
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-emerald-500" 
+                        checked={selectedSchools.includes(s)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedSchools([...selectedSchools, s]);
+                          } else {
+                            setSelectedSchools(selectedSchools.filter(x => x !== s));
+                          }
+                        }}
+                      />
+                      <span className="text-sm text-slate-700">{s}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
               
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">الفرع</label>
-                <select multiple value={selectedBranches} onChange={handleBranchChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 outline-none h-24">
+                <label className="block text-sm font-bold text-slate-700 mb-2">الفروع المستهدفة</label>
+                <div className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 h-32 overflow-y-auto space-y-2">
                    {availableBranches.map(b => (
-                     <option key={b} value={b}>{b}</option>
+                    <label key={b} className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1.5 rounded-lg transition-colors">
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-emerald-500" 
+                        checked={selectedBranches.includes(b)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedBranches([...selectedBranches, b]);
+                          } else {
+                            setSelectedBranches(selectedBranches.filter(x => x !== b));
+                          }
+                        }}
+                      />
+                      <span className="text-sm text-slate-700">{b}</span>
+                    </label>
                    ))}
-                </select>
-                <p className="text-xs text-slate-500 mt-1">اضغط باستمرار على Ctrl لاختيار أكثر من فرع</p>
+                </div>
               </div>
 
               <div>

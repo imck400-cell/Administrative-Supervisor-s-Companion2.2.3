@@ -691,6 +691,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   const newUsers = Array.isArray(remoteData) ? remoteData : [];
                   const merged = [...existingUsers];
                   let changed = false;
+                  let updated: any;
                   newUsers.forEach(nu => {
                     const idx = merged.findIndex(u => u.id === nu.id);
                     if (idx >= 0) {
@@ -703,7 +704,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                       changed = true;
                     }
                   });
-                  return changed ? { ...prev, users: merged } : prev;
+                  if (changed) {
+                    updated = { ...prev, users: merged };
+                    localStorage.setItem('rafiquk_data', JSON.stringify(updated));
+                    return updated;
+                  }
+                  return prev;
                 } else if (key === 'availableSchools' || key === 'availableYears') {
                   const existing = prev[key] as any[] || [];
                   const incoming = Array.isArray(remoteData) ? remoteData : [];
@@ -711,16 +717,23 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   if (merged.length === existing.length && merged.every((v, i) => v === existing[i])) {
                     return prev;
                   }
-                  return { ...prev, [key]: merged };
+                  const updated = { ...prev, [key]: merged };
+                  localStorage.setItem('rafiquk_data', JSON.stringify(updated));
+                  return updated;
                 } else {
+                  let updated: any;
                   if (typeof remoteData === 'object' && !Array.isArray(remoteData) && remoteData !== null) {
                     const existingObj = (prev[key] || {}) as any;
                     const mergedObj = { ...existingObj, ...remoteData };
                     if (JSON.stringify(existingObj) === JSON.stringify(mergedObj)) return prev;
-                    return { ...prev, [key]: mergedObj };
+                    updated = { ...prev, [key]: mergedObj };
+                  } else if (JSON.stringify(prev[key]) === JSON.stringify(remoteData)) {
+                    return prev;
+                  } else {
+                    updated = { ...prev, [key]: remoteData };
                   }
-                  if (JSON.stringify(prev[key]) === JSON.stringify(remoteData)) return prev;
-                  return { ...prev, [key]: remoteData };
+                  localStorage.setItem('rafiquk_data', JSON.stringify(updated));
+                  return updated;
                 }
               });
             }

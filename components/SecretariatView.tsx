@@ -349,12 +349,12 @@ const StudentsManager = () => {
     if (searchQuery) {
       const lowerQ = searchQuery.toLowerCase();
       result = result.filter(s => 
-        s.name.toLowerCase().includes(lowerQ) ||
-        s.school.toLowerCase().includes(lowerQ) ||
-        s.branch.toLowerCase().includes(lowerQ) ||
-        s.grade.toLowerCase().includes(lowerQ) ||
-        s.guardianInfo.toLowerCase().includes(lowerQ) ||
-        s.residenceWork.toLowerCase().includes(lowerQ)
+        (s.name || '').toLowerCase().includes(lowerQ) ||
+        (s.school || '').toLowerCase().includes(lowerQ) ||
+        (s.branch || '').toLowerCase().includes(lowerQ) ||
+        (s.grade || '').toLowerCase().includes(lowerQ) ||
+        (s.guardianInfo || '').toLowerCase().includes(lowerQ) ||
+        (s.residenceWork || '').toLowerCase().includes(lowerQ)
       );
     }
     return result;
@@ -788,9 +788,9 @@ const StaffManager = () => {
     if (!searchQuery) return staff;
     const lowerQ = searchQuery.toLowerCase();
     return staff.filter(s => 
-      s.name.toLowerCase().includes(lowerQ) ||
-      s.school.toLowerCase().includes(lowerQ) ||
-      s.branch.toLowerCase().includes(lowerQ) ||
+      (s.name || '').toLowerCase().includes(lowerQ) ||
+      (s.school || '').toLowerCase().includes(lowerQ) ||
+      (s.branch || '').toLowerCase().includes(lowerQ) ||
       (s.subjects || []).join(' ').toLowerCase().includes(lowerQ) ||
       (s.grades || []).join(' ').toLowerCase().includes(lowerQ)
     );

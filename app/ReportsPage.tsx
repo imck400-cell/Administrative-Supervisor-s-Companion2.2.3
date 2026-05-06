@@ -4004,7 +4004,7 @@ export const StudentsReportsPage: React.FC = () => {
       result = result.filter(s => selectedStudentNames.includes(s.name));
     } else if (filterMode === 'student') {
       if (selectedStudentNames.length === 0) return [];
-      result = result.filter(s => selectedStudentNames.some(name => s.name.toLowerCase().includes(name.toLowerCase())));
+      result = result.filter(s => selectedStudentNames.some(name => (s.name || '').toLowerCase().includes(name.toLowerCase())));
     } else if (filterMode === 'grade' && filterValue) {
       result = result.filter(s => normalizeArabic(s.grade) === normalizeArabic(filterValue));
     } else if (filterMode === 'section' && filterValue) {
@@ -4048,7 +4048,7 @@ export const StudentsReportsPage: React.FC = () => {
   const suggestions = useMemo(() => {
     if (!studentInput.trim()) return [];
     return studentData
-      .filter(s => s.name.toLowerCase().includes(studentInput.toLowerCase()))
+      .filter(s => (s.name || '').toLowerCase().includes(studentInput.toLowerCase()))
       .map(s => s.name)
       .filter((name, idx, self) => self.indexOf(name) === idx && !selectedStudentNames.includes(name));
   }, [studentInput, studentData, selectedStudentNames]);
@@ -4058,7 +4058,7 @@ export const StudentsReportsPage: React.FC = () => {
     const isBlacklist = showListModal === 'blacklist';
     return studentData
       .filter(s => isBlacklist ? s.isBlacklisted : s.isExcellent)
-      .filter(s => s.name.toLowerCase().includes(listSearch.toLowerCase()));
+      .filter(s => (s.name || '').toLowerCase().includes(listSearch.toLowerCase()));
   }, [showListModal, studentData, listSearch]);
 
   const isOnlyMetricView = filterMode === 'metric' && activeMetricFilter.length > 0;
@@ -4844,7 +4844,7 @@ export const StudentsReportsPage: React.FC = () => {
                 {detailModalSearch.length > 1 && !currentDetailStudent && (
                   <div className="absolute top-full left-0 right-0 z-[100] mt-2 bg-white border-2 border-slate-100 rounded-2xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
                     {studentData
-                      .filter(s => s.name.toLowerCase().includes(detailModalSearch.toLowerCase()))
+                      .filter(s => (s.name || '').toLowerCase().includes(detailModalSearch.toLowerCase()))
                       .map(s => (
                         <button key={s.id} onClick={() => handleDetailStudentSearch(s.name)} className="w-full text-right p-4 font-bold border-b last:border-none hover:bg-emerald-50 transition-colors flex items-center justify-between">
                           <span>{s.name}</span>

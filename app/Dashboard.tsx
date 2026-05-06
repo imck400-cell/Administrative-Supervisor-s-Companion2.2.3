@@ -141,8 +141,8 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
           { id: 'notes', label: 'ملاحظات أخرى', icon: <MessageSquare size={12} /> },
         ];
       case 'teachers': {
-        const activeBranch = globalDataFilters?.branches?.length ? globalDataFilters.branches[0] : currentUser?.selectedBranch;
-        const activeSchool = globalDataFilters?.schools?.length ? globalDataFilters.schools[0] : (currentUser?.selectedSchool !== 'all' ? currentUser?.selectedSchool?.split(',')[0]?.trim() : '');
+        const activeBranch = globalDataFilters?.branches?.[0];
+        const activeSchool = globalDataFilters?.schools?.[0];
         const key = activeSchool && activeBranch ? `${activeSchool}_${activeBranch}` : null;
         const currentMetrics = key && data.branchMetrics?.[key] ? data.branchMetrics[key] : (data.metricsList || []);
         return [
@@ -434,8 +434,8 @@ const Dashboard: React.FC<{ setView?: (v: string) => void, recentActions?: any[]
     const subSubOptions = getSubSubTypes(card.category, card.subType);
 
     if (card.category === 'teachers') {
-      const activeBranch = globalDataFilters?.branches?.length ? globalDataFilters.branches[0] : currentUser?.selectedBranch;
-      const activeSchool = globalDataFilters?.schools?.length ? globalDataFilters.schools[0] : (currentUser?.selectedSchool !== 'all' ? currentUser?.selectedSchool?.split(',')[0]?.trim() : '');
+      const activeBranch = globalDataFilters?.branches?.[0];
+      const activeSchool = globalDataFilters?.schools?.[0];
       const key = activeSchool && activeBranch ? `${activeSchool}_${activeBranch}` : null;
       const currentMetrics = key && data.branchMetrics?.[key] ? data.branchMetrics[key] : (data.metricsList || []);
       const getTeacherMetricPercent = (teacher: any, metricKey: string, metricsList: any[]) => {

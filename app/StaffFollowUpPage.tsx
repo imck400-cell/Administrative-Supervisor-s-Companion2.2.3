@@ -209,8 +209,8 @@ const StaffFollowUpPage: React.FC = () => {
 
     const displayedEmployees = useMemo(() => employees.slice(0, displayLimit), [employees, displayLimit]);
 
-    const activeSchool = globalDataFilters?.schools?.length ? globalDataFilters.schools[0] : (currentUser?.selectedSchool !== 'all' ? currentUser?.selectedSchool?.split(',')[0]?.trim() : '');
-    const activeBranch = globalDataFilters?.branches?.length ? globalDataFilters.branches[0] : currentUser?.selectedBranch;
+    const activeSchool = globalDataFilters?.schools?.[0];
+    const activeBranch = globalDataFilters?.branches?.[0];
     const branchKey = activeSchool && activeBranch ? `${activeSchool}_${activeBranch}` : null;
     const displayedMetrics = useMemo(() => {
         if (branchKey && data.adminBranchMetrics?.[branchKey]?.[followUpType]) {
@@ -573,7 +573,7 @@ const StaffFollowUpPage: React.FC = () => {
     };
 
     const saveMetrics = (newMetrics: MetricDefinition[]) => {
-        if (branchKey && activeSchool) {
+        if (branchKey) {
             updateData({
                 adminBranchMetrics: {
                     ...(data.adminBranchMetrics || {}),
@@ -582,15 +582,14 @@ const StaffFollowUpPage: React.FC = () => {
                         [followUpType]: newMetrics
                     }
                 }
-            }, [activeSchool]);
+            });
         } else {
-            // General adminMetricsList is typically shared among all schools the user manages
             updateData({
                 adminMetricsList: {
                     ...(data.adminMetricsList || {}),
                     [followUpType]: newMetrics
                 }
-            }, activeSchool ? [activeSchool] : undefined);
+            });
         }
     };
 

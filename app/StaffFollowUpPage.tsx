@@ -51,7 +51,7 @@ const StaffFollowUpPage: React.FC = () => {
     });
 
     const [individualScores, setIndividualScores] = useState<Record<string, number>>({});
-    const [evidenceStatus, setEvidenceStatus] = useState<Record<string, 'توفر' | 'ناقص' | 'لم يتوفر'>>({});
+    const [evidenceStatus, setEvidenceStatus] = useState<Record<string, 'توفر الشاهد' | 'الشاهد ناقص' | 'لم يتوفر الشاهد'>>({});
     const [failureReasons, setFailureReasons] = useState<Record<string, string>>({});
     const [customItems, setCustomItems] = useState<{ id: string, label: string }[]>([]);
     const [violationTags, setViolationTags] = useState<string[]>([]);
@@ -961,7 +961,7 @@ const StaffFollowUpPage: React.FC = () => {
                 const k = `${individualForm.reportField}_${i}`;
                 const score = individualScores[k] ?? 0;
                 const executed = executedCounts[k] !== undefined ? executedCounts[k] : (parseInt(a.planned) || 0);
-                const stat = evidenceStatus[k] || 'توفر';
+                const stat = evidenceStatus[k] || 'توفر الشاهد';
                 const reason = failureReasons[k] || '';
                 const isUnacc = unaccreditedItems[k];
 
@@ -976,7 +976,7 @@ const StaffFollowUpPage: React.FC = () => {
                         <td style="${styleCell}">${a.planned}</td>
                         <td style="${styleCell}">${isUnacc ? '-' : executed}</td>
                         <td style="${styleCell}">${a.evidence}</td>
-                        <td style="${styleCell} ${stat === 'توفر' ? 'color: green;' : stat === 'ناقص' ? 'color: orange;' : 'color: red;'}">
+                        <td style="${styleCell} ${stat === 'توفر الشاهد' ? 'color: green;' : stat === 'الشاهد ناقص' ? 'color: orange;' : 'color: red;'}">
                             ${stat}
                         </td>
                         <td style="${styleCell}">${reason}</td>
@@ -1043,7 +1043,7 @@ const StaffFollowUpPage: React.FC = () => {
                 const k = `${individualForm.reportField}_${i}`;
                 const score = individualScores[k] ?? 0;
                 const executed = executedCounts[k] !== undefined ? executedCounts[k] : (parseInt(a.planned) || 0);
-                const stat = evidenceStatus[k] || 'توفر';
+                const stat = evidenceStatus[k] || 'توفر الشاهد';
                 const reason = failureReasons[k] || '';
                 const isUnacc = unaccreditedItems[k];
 
@@ -1445,19 +1445,19 @@ const StaffFollowUpPage: React.FC = () => {
                                                         </div>
                                                         <button
                                                             onClick={() => {
-                                                                const states: ('توفر' | 'ناقص' | 'لم يتوفر')[] = ['توفر', 'ناقص', 'لم يتوفر'];
-                                                                const currentIdx = states.indexOf(evidenceStatus[key] as any);
+                                                                const states: ('توفر الشاهد' | 'الشاهد ناقص' | 'لم يتوفر الشاهد')[] = ['توفر الشاهد', 'الشاهد ناقص', 'لم يتوفر الشاهد'];
+                                                                const currentIdx = states.indexOf((evidenceStatus[key] || 'توفر الشاهد') as any);
                                                                 const nextIdx = (currentIdx + 1) % states.length;
                                                                 setEvidenceStatus({ ...evidenceStatus, [key]: states[nextIdx] });
                                                             }}
                                                             disabled={isUnaccredited}
-                                                            className={`px-4 py-2 rounded-xl font-black text-[10px] transition-all active:scale-95 shadow-sm border ${evidenceStatus[key] === 'توفر' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
-                                                                evidenceStatus[key] === 'ناقص' ? 'bg-amber-50 text-amber-600 border-amber-200' :
-                                                                    evidenceStatus[key] === 'لم يتوفر' ? 'bg-rose-50 text-rose-600 border-rose-200' :
+                                                            className={`px-4 py-2 rounded-xl font-black text-[10px] transition-all active:scale-95 shadow-sm border ${(!evidenceStatus[key] || evidenceStatus[key] === 'توفر الشاهد') ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                                                                evidenceStatus[key] === 'الشاهد ناقص' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                                                                    evidenceStatus[key] === 'لم يتوفر الشاهد' ? 'bg-rose-50 text-rose-600 border-rose-200' :
                                                                         'bg-slate-50 text-slate-400 border-slate-200'
                                                                 }`}
                                                         >
-                                                            {evidenceStatus[key] || 'حالة الشاهد'}
+                                                            {evidenceStatus[key] || 'توفر الشاهد'}
                                                         </button>
                                                     </div>
 

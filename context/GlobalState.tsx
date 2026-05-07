@@ -666,35 +666,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       if (!isMounted) return;
 
-      // Global system config listeners
-      ['aboutSliderImages', 'aboutExternalLinks'].forEach(key => {
-        const listenerId = `system-introConfig-${key}`;
-        if (dataListeners.current.has(listenerId)) return;
-        dataListeners.current.add(listenerId);
-        
-        const q = doc(db, 'system', 'introConfig', 'data', key);
-        const unsub = onSnapshot(q, (snapshot) => {
-          if (snapshot.exists()) {
-            const remoteData = snapshot.data().data;
-            setData(prev => {
-              if (JSON.stringify(prev[key as keyof AppData]) === JSON.stringify(remoteData)) return prev;
-              const updated = { ...prev, [key]: remoteData };
-              localStorage.setItem('rafiquk_data', JSON.stringify(updated));
-              return updated;
-            });
-          }
-        }, (error) => {
-          console.error(`System introConfig sync error [${key}]:`, error);
-        });
-        unsubscribes.push(unsub);
-      });
-
       const dataBuffer: Record<string, Record<string, any[]>> = {};
       const arrayKeys = ['substitutions', 'timetable', 'dailyReports', 'violations', 'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports', 'selfEvaluations', 'studentEvaluations'];
       arrayKeys.forEach(k => dataBuffer[k] = {});
 
       // Shared keys for the selected schools
-      const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList', 'branchMetrics', 'adminBranchMetrics', 'adminFollowUpTypes', 'adminActivitiesList', 'adminBranchActivities', 'adminIndividualReportFields'];
+      const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList', 'branchMetrics', 'adminBranchMetrics', 'adminFollowUpTypes', 'adminActivitiesList', 'adminBranchActivities', 'adminIndividualReportFields', 'aboutSliderImages', 'aboutExternalLinks', 'aboutLogoImg'];
       const customizableKeys = ['taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
       const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
       const schoolsToListen = selectedSchools.includes('all') ? data.availableSchools : selectedSchools;
@@ -932,7 +909,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
       const selectedSchools = overrideSchools && overrideSchools.length > 0 ? overrideSchools : currentUser.selectedSchool.split(',').map(s => s.trim());
       const schoolsToUpdate = selectedSchools.includes('all') ? data.availableSchools : selectedSchools;
-      const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList', 'branchMetrics', 'adminBranchMetrics', 'adminFollowUpTypes', 'adminActivitiesList', 'adminBranchActivities', 'adminIndividualReportFields'];
+      const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList', 'branchMetrics', 'adminBranchMetrics', 'adminFollowUpTypes', 'adminActivitiesList', 'adminBranchActivities', 'adminIndividualReportFields', 'aboutSliderImages', 'aboutExternalLinks', 'aboutLogoImg'];
       const customizableKeys = ['taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
 
       // Helper to check if an item matches the current active filters (user + date).
@@ -987,6 +964,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           else if ((key === 'secretariatStudents' || key === 'secretariatStaff') && isSecretariatEnabled) canSave = true;
           else if ((key === 'metricsList' || key === 'branchMetrics') && (isSecretariatEnabled || canEditDaily)) canSave = true;
           else if ((key === 'adminMetricsList' || key === 'adminBranchMetrics' || key === 'adminActivitiesList' || key === 'adminBranchActivities' || key === 'adminIndividualReportFields' || key === 'adminFollowUpTypes') && (isSecretariatEnabled || canEditAdminFollowUp)) canSave = true;
+          else if ((key === 'aboutSliderImages' || key === 'aboutExternalLinks' || key === 'aboutLogoImg') && isAdminOrFull) canSave = true;
           else if (key === 'selfEvaluationTemplates' && canEditTemplate) canSave = true;
           else if (key === 'profile' || key === 'availableSchools' || key === 'availableYears') canSave = true;
 
@@ -995,15 +973,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
                 .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));
             });
-          }
-          continue;
-        }
-
-        if (key === 'aboutSliderImages' || key === 'aboutExternalLinks') {
-          updatedData[key] = newData[key] as any;
-          if (isAdminOrFull) {
-            setDoc(doc(db, 'system', 'introConfig', 'data', key), { data: newData[key] })
-              .catch(err => handleFirestoreError(err, OperationType.WRITE, `system/introConfig/data/${key}`));
           }
           continue;
         }

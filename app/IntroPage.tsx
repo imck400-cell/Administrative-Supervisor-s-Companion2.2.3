@@ -120,14 +120,6 @@ const IntroPage: React.FC<IntroPageProps> = ({ onEnter, onAbout }) => {
         className="w-full max-w-2xl flex flex-col sm:flex-row items-center justify-center gap-6 pb-12 px-4 z-20"
       >
         <button
-          onClick={onEnter}
-          className="w-full sm:w-auto px-10 py-5 bg-gradient-to-l from-blue-600 to-teal-500 text-white rounded-[2rem] font-black text-xl hover:from-blue-700 hover:to-teal-600 shadow-xl shadow-blue-500/30 transition-all flex items-center justify-center gap-3 hover:-translate-y-1 active:scale-95"
-        >
-          <PlayCircle size={28} className="text-white" />
-          البدء والاستخدام
-        </button>
-
-        <button
           onClick={onAbout}
           className="w-full sm:w-auto px-8 py-5 bg-white/80 backdrop-blur-sm border-2 border-slate-200 text-slate-700 rounded-[2rem] font-black text-xl hover:border-slate-300 hover:bg-white shadow-lg shadow-slate-200/50 transition-all flex items-center justify-center gap-3 active:scale-95"
         >

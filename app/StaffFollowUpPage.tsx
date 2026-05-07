@@ -83,6 +83,7 @@ const StaffFollowUpPage: React.FC = () => {
         'متابعة المدير العام',
         'متابعة مدير الفرع',
         'متابعة إدارة الجودة',
+        'متابعة المالية',
         'متابعة وكيل المدرسة',
         'متابعة السكرتارية',
         'متابعة المشرف التربوي',
@@ -103,11 +104,14 @@ const StaffFollowUpPage: React.FC = () => {
         'متابعة أداء المقصف'
     ];
 
-    const reportFields = data.adminIndividualReportFields?.length ? data.adminIndividualReportFields : (() => {
-        const saved = localStorage.getItem('admin_report_fields');
-        if (saved) return JSON.parse(saved);
-        return DEFAULT_INDIVIDUAL_FIELDS;
-    })();
+    const reportFields = Array.from(new Set([
+        ...DEFAULT_INDIVIDUAL_FIELDS,
+        ...(data.adminIndividualReportFields?.length ? data.adminIndividualReportFields : (() => {
+            const saved = localStorage.getItem('admin_report_fields');
+            if (saved) return JSON.parse(saved);
+            return [];
+        })())
+    ]));
 
     const setReportFields = (newFields: string[]) => {
         updateData({ adminIndividualReportFields: newFields });

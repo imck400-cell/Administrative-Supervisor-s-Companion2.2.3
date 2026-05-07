@@ -80,8 +80,8 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 2 ميجابايت.');
+      if (file.size > 500 * 1024) {
+        toast.error('حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 500 كيلوبايت.');
         return;
       }
       const reader = new FileReader();
@@ -309,8 +309,8 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
                      onChange={(e) => {
                        const file = e.target.files?.[0];
                        if (file) {
-                         if (file.size > 2 * 1024 * 1024) {
-                           toast.error('حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 2 ميجابايت.');
+                         if (file.size > 500 * 1024) {
+                           toast.error('حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 500 كيلوبايت.');
                            return;
                          }
                          const reader = new FileReader();

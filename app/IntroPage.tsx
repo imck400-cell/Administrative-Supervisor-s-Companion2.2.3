@@ -44,12 +44,18 @@ const IntroPage: React.FC<IntroPageProps> = ({ onEnter, onAbout }) => {
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-3 bg-white/70 backdrop-blur-md px-6 py-2 rounded-full shadow-sm border border-white/80 mb-6"
         >
-          <Bot className="text-blue-600" size={32} />
-          <div className="flex flex-col items-center justify-center">
-            <span className="font-black text-2xl text-slate-800 leading-none">رفيقك</span>
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none mt-1">Al-Taqareer</span>
-          </div>
-          <PenTool className="text-teal-600" size={28} />
+          {data.aboutLogoImg ? (
+            <img src={data.aboutLogoImg} alt="شعار البرنامج" className="h-16 object-contain" />
+          ) : (
+            <>
+              <Bot className="text-blue-600" size={32} />
+              <div className="flex flex-col items-center justify-center">
+                <span className="font-black text-2xl text-slate-800 leading-none">رفيقك</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none mt-1">Al-Taqareer</span>
+              </div>
+              <PenTool className="text-teal-600" size={28} />
+            </>
+          )}
         </motion.div>
 
         {/* Text Headers */}

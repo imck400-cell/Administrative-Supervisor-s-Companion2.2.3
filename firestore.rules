@@ -25,6 +25,12 @@ service cloud.firestore {
     //
     // ===============================================================
 
+    // System configuration (e.g. intro page settings)
+    match /system/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && userExists() && (getUserData().role == 'admin' || getUserData().permissions.all == true);
+    }
+
     // Helper functions
     function isAuthenticated() {
       return request.auth != null;

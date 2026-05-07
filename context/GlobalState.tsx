@@ -761,8 +761,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               // For simplicity, we just use the shared snap if no personal data is set. (See personal listener logic)
               if (sharedSnap.exists() && isAdminOrFull) {
                  setData(prev => {
-                   if (JSON.stringify(prev[key]) === JSON.stringify(sharedSnap.data().data)) return prev;
-                   return { ...prev, [key]: sharedSnap.data().data };
+                   let fetchedData = sharedSnap.data().data;
+                   if (key === 'adminFollowUpTypes') {
+                     fetchedData = Array.from(new Set([...adminFollowUpTypes, ...(fetchedData || [])]));
+                   }
+                   if (JSON.stringify(prev[key]) === JSON.stringify(fetchedData)) return prev;
+                   return { ...prev, [key]: fetchedData };
                  });
               }
             });
@@ -776,7 +780,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const punsub = onSnapshot(pq, async (personalSnap) => {
                if (personalSnap.exists() && personalSnap.data().data !== undefined) {
                  // Personal override exists
-                 setData(prev => ({ ...prev, [key]: personalSnap.data().data }));
+                 let fetchedData = personalSnap.data().data;
+                 if (key === 'adminFollowUpTypes') {
+                   fetchedData = Array.from(new Set([...adminFollowUpTypes, ...(fetchedData || [])]));
+                 }
+                 setData(prev => ({ ...prev, [key]: fetchedData }));
                } else {
                  // Personal override does not exist => fetch once from shared baseline as initial value
                  try {
@@ -784,7 +792,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                    const sq = doc(db, 'schools', school, 'shared', key);
                    const sharedDoc = await getDoc(sq);
                    if (sharedDoc.exists()) {
-                     setData(prev => ({ ...prev, [key]: sharedDoc.data().data }));
+                     let x = sharedDoc.data().data;
+                     if (key === 'adminFollowUpTypes') x = Array.from(new Set([...adminFollowUpTypes, ...(x||[])]));
+                     setData(prev => ({ ...prev, [key]: x }));
                    }
                  } catch(e){}
                }

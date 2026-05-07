@@ -601,6 +601,8 @@ export interface AppData {
   adminIndividualReportFields?: string[];
   adminActivitiesList?: Record<string, AdminActivity[]>;
   adminBranchActivities?: Record<string, Record<string, AdminActivity[]>>;
+  aboutSliderImages?: { id: string; title: string; description: string; image: string; duration: number }[];
+  aboutExternalLinks?: { id: string; name: string; url: string }[];
   availableSchools?: string[];
   availableYears?: string[];
   schoolBranches?: Record<string, string[]>;

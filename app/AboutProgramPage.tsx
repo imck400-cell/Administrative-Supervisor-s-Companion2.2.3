@@ -1,18 +1,98 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGlobal } from '../context/GlobalState';
 import { 
   Building, CheckCircle2, ShieldCheck, Cog, 
   MessageCircle, Mail, ArrowRight, HeartHandshake,
-  Bot, Clock, Users, FileSignature, CheckCircle
+  Bot, Clock, Users, FileSignature, CheckCircle,
+  ChevronRight, ChevronLeft, Settings, X, Plus, Trash2, Link as LinkIcon, Upload
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 interface AboutProgramPageProps {
   onBack: () => void;
 }
 
 const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
-  const { data } = useGlobal();
+  const { data, updateData, currentUser } = useGlobal();
   const profile = data?.profile || {};
+  
+  const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+
+  const [showSettings, setShowSettings] = useState(false);
+
+  const images = data.aboutSliderImages || [];
+  const externalLinks = data.aboutExternalLinks || [];
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Default duration in seconds to 5 if not specified
+  const currentDuration = images[currentIndex]?.duration || 5;
+
+  const handleNext = () => {
+    setDirection(1);
+    setCurrentIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const handlePrev = () => {
+    setDirection(-1);
+    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  useEffect(() => {
+    if (images.length <= 1 || showSettings) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      return;
+    }
+    timerRef.current = setTimeout(() => {
+      handleNext();
+    }, currentDuration * 1000);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [currentIndex, images.length, currentDuration, showSettings]);
+
+  const variants = {
+    enter: (dir: number) => ({
+      x: dir > 0 ? 1000 : -1000,
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (dir: number) => ({
+      x: dir < 0 ? 1000 : -1000,
+      opacity: 0,
+    }),
+  };
+
+  // Setting helpers
+  const updateImages = (newImages: any[]) => {
+    updateData({ aboutSliderImages: newImages });
+  };
+  const updateLinks = (newLinks: any[]) => {
+    updateData({ aboutExternalLinks: newLinks });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 2 ميجابايت.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const newImages = [...images];
+        newImages[index].image = reader.result as string;
+        updateImages(newImages);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 pb-12" dir="rtl">
@@ -26,9 +106,186 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
           >
             <ArrowRight size={24} />
           </button>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">التعريف بالبرنامج</h2>
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">التعريف بالنظام</h2>
         </div>
+        {isAdminOrFull && (
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold transition-all ${
+              showSettings ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <Settings size={20} />
+            <span className="hidden md:inline">التحكم بزر التعريف بالنظام</span>
+          </button>
+        )}
       </div>
+
+      {showSettings && isAdminOrFull ? (
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border-2 border-amber-200 space-y-8 animate-in slide-in-from-top-4">
+          <div className="flex items-center justify-between border-b pb-4">
+            <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+              <Settings className="text-amber-500" /> لوحة تحكم التعريف بالنظام
+            </h3>
+            <button onClick={() => setShowSettings(false)} className="p-2 text-slate-400 hover:text-red-500 transition-all bg-slate-50 rounded-xl hover:bg-red-50">
+              <X size={24} />
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            <h4 className="font-extrabold text-lg text-slate-700 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">1</div>
+              التحكم بشاشة العرض (الصور)
+            </h4>
+            <div className="grid gap-6">
+              {images.map((img, idx) => (
+                <div key={img.id || idx} className="p-6 bg-slate-50 border border-slate-200 rounded-[2rem] space-y-4 shadow-sm relative">
+                  <div className="absolute top-4 left-4">
+                    <button
+                      onClick={() => {
+                        const newArr = [...images];
+                        newArr.splice(idx, 1);
+                        updateImages(newArr);
+                      }}
+                      className="p-2 text-red-500 hover:bg-red-100 rounded-xl transition-all"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-6">
+                    <div className="w-full md:w-1/3 flex flex-col gap-2">
+                      <label className="text-xs font-bold text-slate-500">صورة العرض</label>
+                      <div className="relative w-full h-32 bg-white rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden group cursor-pointer hover:border-blue-400 transition-all">
+                        {img.image ? (
+                          <img src={img.image} className="w-full h-full object-cover" alt="" />
+                        ) : (
+                          <div className="text-slate-400 flex flex-col items-center">
+                            <Upload size={24} />
+                            <span className="text-xs font-bold mt-1">رفع صورة</span>
+                          </div>
+                        )}
+                        <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleImageUpload(e, idx)} />
+                      </div>
+                    </div>
+                    <div className="flex-1 space-y-4 pr-0 md:pr-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-500">عنوان الصورة</label>
+                        <input
+                          type="text"
+                          value={img.title}
+                          onChange={(e) => {
+                            const newArr = [...images];
+                            newArr[idx].title = e.target.value;
+                            updateImages(newArr);
+                          }}
+                          className="w-full p-3 rounded-xl border border-slate-200 mt-1 font-bold outline-none focus:border-blue-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-500">وصف الصورة</label>
+                        <textarea
+                          value={img.description}
+                          onChange={(e) => {
+                            const newArr = [...images];
+                            newArr[idx].description = e.target.value;
+                            updateImages(newArr);
+                          }}
+                          className="w-full p-3 rounded-xl border border-slate-200 mt-1 font-bold outline-none focus:border-blue-400 resize-none h-20"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-500">فترة العرض (ثواني)</label>
+                        <input
+                          type="number"
+                          value={img.duration || 5}
+                          onChange={(e) => {
+                            const newArr = [...images];
+                            newArr[idx].duration = parseInt(e.target.value) || 5;
+                            updateImages(newArr);
+                          }}
+                          className="w-full p-3 rounded-xl border border-slate-200 mt-1 font-bold outline-none focus:border-blue-400"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={() => {
+                  updateImages([...images, { id: Date.now().toString(), title: 'عنوان جديد', description: 'وصف جديد', image: '', duration: 5 }]);
+                }}
+                className="w-full py-4 border-2 border-dashed border-blue-300 text-blue-600 rounded-[2rem] font-bold hover:bg-blue-50 transition-all flex justify-center items-center gap-2"
+              >
+                <Plus size={20} /> إضافة صورة أخرى
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-6 pt-6 border-t">
+            <h4 className="font-extrabold text-lg text-slate-700 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">2</div>
+              روابط خارجية
+            </h4>
+            <div className="grid gap-4">
+              {externalLinks.map((link, idx) => (
+                <div key={link.id || idx} className="flex flex-col md:flex-row gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 items-start md:items-end relative">
+                  <div className="absolute top-2 left-2 md:static md:mb-1">
+                    <button
+                      onClick={() => {
+                        const newArr = [...externalLinks];
+                        newArr.splice(idx, 1);
+                        updateLinks(newArr);
+                      }}
+                      className="p-2 text-red-500 hover:bg-red-100 rounded-xl transition-all"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
+                  <div className="flex-1 w-full pt-6 md:pt-0">
+                    <label className="text-xs font-bold text-slate-500">اسم الرابط (ما سيظهر للزائر)</label>
+                    <input
+                      type="text"
+                      value={link.name}
+                      onChange={(e) => {
+                        const newArr = [...externalLinks];
+                        newArr[idx].name = e.target.value;
+                        updateLinks(newArr);
+                      }}
+                      className="w-full p-3 rounded-xl border border-slate-200 mt-1 font-bold outline-none focus:border-emerald-400"
+                      placeholder="مثال: منصة نور"
+                    />
+                  </div>
+                  <div className="flex-1 w-full">
+                    <label className="text-xs font-bold text-slate-500">الرابط الخارجي (URL)</label>
+                    <input
+                      type="url"
+                      value={link.url}
+                      onChange={(e) => {
+                        const newArr = [...externalLinks];
+                        newArr[idx].url = e.target.value;
+                        updateLinks(newArr);
+                      }}
+                      className="w-full p-3 rounded-xl border border-slate-200 mt-1 font-bold outline-none focus:border-emerald-400 text-left"
+                      dir="ltr"
+                      placeholder="https://..."
+                    />
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={() => {
+                  updateLinks([...externalLinks, { id: Date.now().toString(), name: 'رابط جديد', url: '' }]);
+                }}
+                className="w-full py-4 border-2 border-dashed border-emerald-300 text-emerald-600 rounded-[2rem] font-bold hover:bg-emerald-50 transition-all flex justify-center items-center gap-2"
+              >
+                <Plus size={20} /> إضافة رابط جديد
+              </button>
+            </div>
+          </div>
+
+        </div>
+      ) : null}
 
       {/* القسم الأول: الهوية والرسالة */}
       <div className="bg-white p-12 rounded-[3.5rem] shadow-sm border border-slate-100 flex flex-col items-center text-center relative overflow-hidden">
@@ -50,6 +307,91 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
           الحل التقني الشامل للإدارة المدرسية الحديثة.. وبديلك الأمثل للأدبيات الورقية
         </p>
       </div>
+
+      {/* شاشة العرض (Carousel) */}
+      {images && images.length > 0 && (
+        <div className="relative w-full overflow-hidden shadow-2xl bg-black/5 rounded-[3rem] aspect-[16/9] min-h-[400px]">
+          <div className="grid grid-cols-1 grid-rows-1 w-full h-full">
+            <AnimatePresence initial={false} custom={direction}>
+              <motion.div
+                key={currentIndex}
+                custom={direction}
+                variants={variants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{
+                  x: { type: "spring", stiffness: 300, damping: 30 },
+                  opacity: { duration: 0.2 },
+                }}
+                className="col-start-1 row-start-1 w-full h-full relative flex items-center justify-center bg-black"
+              >
+                {images[currentIndex].image ? (
+                  <img
+                    src={images[currentIndex].image}
+                    className="w-full h-auto max-h-[80vh] object-contain"
+                    alt={images[currentIndex].title}
+                  />
+                ) : (
+                  <div className="text-white/20 font-black text-4xl">صورة غير متوفرة</div>
+                )}
+
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-20" />
+                
+                <div className="absolute inset-0 z-30 flex flex-col justify-end p-6 md:p-12 text-white text-right">
+                  <motion.div
+                    initial={{ y: 15, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <h2 className="text-3xl md:text-5xl font-heading font-bold drop-shadow-2xl mb-3">
+                      {images[currentIndex].title}
+                    </h2>
+                    <p className="text-lg md:text-xl text-white/95 leading-relaxed drop-shadow-xl max-w-3xl">
+                      {images[currentIndex].description}
+                    </p>
+                  </motion.div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {images.length > 1 && (
+            <>
+              {/* أزرار اليمين واليسار */}
+              <button
+                className="absolute z-40 right-4 top-1/2 -translate-y-1/2 p-3 bg-black/20 hover:bg-black/40 border border-white/20 rounded-full text-white transition-all backdrop-blur-sm"
+                onClick={handlePrev}
+              >
+                <ChevronRight size={32} />
+              </button>
+              <button
+                className="absolute z-40 left-4 top-1/2 -translate-y-1/2 p-3 bg-black/20 hover:bg-black/40 border border-white/20 rounded-full text-white transition-all backdrop-blur-sm"
+                onClick={handleNext}
+              >
+                <ChevronLeft size={32} />
+              </button>
+
+              {/* النقاط السفلية */}
+              <div className="absolute z-40 bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
+                {images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      setDirection(index > currentIndex ? 1 : -1);
+                      setCurrentIndex(index);
+                    }}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      index === currentIndex ? "bg-white w-8" : "bg-white/40 w-2"
+                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* القسم الثاني: الميزات الأساسية */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

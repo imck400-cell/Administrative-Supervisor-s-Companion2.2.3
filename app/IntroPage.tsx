@@ -23,7 +23,7 @@ const FloatingIcon = ({ icon, color, bg, pos, size, delay }: any) => (
 );
 
 const IntroPage: React.FC<IntroPageProps> = ({ onEnter, onAbout }) => {
-  const { currentUser } = useGlobal();
+  const { currentUser, data } = useGlobal();
 
   const isTeacher = !!currentUser?.jobTitle && currentUser.jobTitle.includes('معلم');
 
@@ -117,8 +117,16 @@ const IntroPage: React.FC<IntroPageProps> = ({ onEnter, onAbout }) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="w-full max-w-2xl flex flex-col items-center justify-center gap-6 pb-12 px-4 z-20"
+        className="w-full max-w-2xl flex flex-col sm:flex-row items-center justify-center gap-6 pb-12 px-4 z-20"
       >
+        <button
+          onClick={onEnter}
+          className="w-full sm:w-auto px-10 py-5 bg-gradient-to-l from-blue-600 to-teal-500 text-white rounded-[2rem] font-black text-xl hover:from-blue-700 hover:to-teal-600 shadow-xl shadow-blue-500/30 transition-all flex items-center justify-center gap-3 hover:-translate-y-1 active:scale-95"
+        >
+          <PlayCircle size={28} className="text-white" />
+          البدء والاستخدام
+        </button>
+
         <button
           onClick={onAbout}
           className="w-full sm:w-auto px-8 py-5 bg-white/80 backdrop-blur-sm border-2 border-slate-200 text-slate-700 rounded-[2rem] font-black text-xl hover:border-slate-300 hover:bg-white shadow-lg shadow-slate-200/50 transition-all flex items-center justify-center gap-3 active:scale-95"
@@ -126,9 +134,16 @@ const IntroPage: React.FC<IntroPageProps> = ({ onEnter, onAbout }) => {
           <Info size={28} className="text-slate-500" />
           التعريف بالنظام
         </button>
+      </motion.div>
 
-        {data.aboutExternalLinks && data.aboutExternalLinks.length > 0 && (
-          <div className="w-full mt-6 bg-white/80 backdrop-blur-sm p-8 rounded-[2.5rem] border-2 border-slate-200 shadow-xl">
+      {data.aboutExternalLinks && data.aboutExternalLinks.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="w-full max-w-4xl px-4 z-20 pb-12"
+        >
+          <div className="w-full bg-white/80 backdrop-blur-sm p-8 rounded-[2.5rem] border-2 border-slate-200 shadow-xl">
             <h3 className="text-center font-black text-slate-800 text-2xl mb-6">روابط تهمك</h3>
             <div className="flex flex-wrap items-center justify-center gap-4">
               {data.aboutExternalLinks.map((link) => (
@@ -145,8 +160,8 @@ const IntroPage: React.FC<IntroPageProps> = ({ onEnter, onAbout }) => {
               ))}
             </div>
           </div>
-        )}
-      </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 };

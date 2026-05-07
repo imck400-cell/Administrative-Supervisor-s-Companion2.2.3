@@ -15,7 +15,7 @@ interface AboutProgramPageProps {
 
 const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
   const { data, updateData, currentUser } = useGlobal();
-  const profile = data?.profile || {};
+  const profile = (data?.profile || {}) as any;
   
   const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
 

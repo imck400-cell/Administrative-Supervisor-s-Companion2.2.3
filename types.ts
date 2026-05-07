@@ -17,6 +17,7 @@ export interface SchoolProfile {
   classes?: string;
   qualityOfficer?: string;
   managerName?: string;
+  logoImg?: string;
 }
 
 export interface TimetableEntry {

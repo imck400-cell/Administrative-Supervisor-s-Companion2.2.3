@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 
 interface IntroPageProps {
   onEnter: () => void;
+  onAbout: () => void;
 }
 
 const FloatingIcon = ({ icon, color, bg, pos, size, delay }: any) => (
@@ -21,7 +22,7 @@ const FloatingIcon = ({ icon, color, bg, pos, size, delay }: any) => (
   </motion.div>
 );
 
-const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
+const IntroPage: React.FC<IntroPageProps> = ({ onEnter, onAbout }) => {
   const { currentUser } = useGlobal();
 
   const isTeacher = !!currentUser?.jobTitle && currentUser.jobTitle.includes('معلم');
@@ -119,11 +120,7 @@ const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
         className="w-full max-w-2xl flex flex-col sm:flex-row items-center justify-center gap-6 pb-12 px-4 z-20"
       >
         <button
-          onClick={() => {
-            toast.info('التعريف بالبرنامج', {
-              description: 'هذه الخاصية قيد التنفيذ حالياً'
-            });
-          }}
+          onClick={onAbout}
           className="w-full sm:w-auto px-8 py-5 bg-white/80 backdrop-blur-sm border-2 border-slate-200 text-slate-700 rounded-[2rem] font-black text-xl hover:border-slate-300 hover:bg-white shadow-lg shadow-slate-200/50 transition-all flex items-center justify-center gap-3 active:scale-95"
         >
           <Info size={28} className="text-slate-500" />

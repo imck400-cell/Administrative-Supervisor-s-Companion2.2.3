@@ -21,6 +21,7 @@ const ViolationsPage = React.lazy(() => import('./app/ReportsPage').then(module 
 const StudentsReportsPage = React.lazy(() => import('./app/ReportsPage').then(module => ({ default: module.StudentsReportsPage })));
 const TeacherPortalPage = React.lazy(() => import('./app/TeacherPortalPage').then(module => ({ default: module.TeacherPortalPage })));
 const IntroPage = React.lazy(() => import('./app/IntroPage'));
+const AboutProgramPage = React.lazy(() => import('./app/AboutProgramPage'));
 
 import {
   Lock, LayoutDashboard, ClipboardCheck, ClipboardList, UserX, UserPlus,
@@ -469,7 +470,8 @@ const MainApp: React.FC = () => {
       Content = <SpecialReportsPage initialSubTab={subTab} onNavigate={handleNavigation} />;
     } else {
       switch (view) {
-        case 'intro': Content = <IntroPage onEnter={() => setView('dashboard')} />; break;
+        case 'intro': Content = <IntroPage onEnter={() => setView('dashboard')} onAbout={() => setView('about')} />; break;
+        case 'about': Content = <AboutProgramPage onBack={() => setView('intro')} />; break;
         case 'dashboard': Content = <Dashboard setView={handleNavigation} />; break;
         case 'substitute': Content = <SubstitutionPage />; break;
         case 'daily': Content = <DailyReportsPage />; break;

@@ -357,11 +357,16 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const schoolsToListen = selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools;
 
     const activeUnsubs = schoolsToListen.filter(Boolean).map(school => {
+      console.log(`📡 جاري بدء الاستماع لتحديثات ملف المدرسة رقم (المسار): schools/${school}/shared/profile`);
       const q = doc(db, 'schools', school, 'shared', 'profile');
       return onSnapshot(q, (snapshot) => {
+        if (!snapshot.exists()) {
+          console.warn(`⚠️ مستند ملف المدرسة ${school} غير موجود بعد.`);
+          return;
+        }
         const remoteData = snapshot.data()?.data;
         if (remoteData) {
-          console.log(`استلمت تحديثاً للمدرسة رقم: ${school} والبيانات هي:`, remoteData);
+          console.log(`✨ استلمت تحديثاً للمدرسة رقم: ${school} والبيانات هي:`, remoteData);
           setData(prev => ({
             ...prev,
             profiles: {
@@ -370,6 +375,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             }
           }));
         }
+      }, (error) => {
+        console.error(`❌ خطأ في الاستماع للمدرسة ${school}:`, error);
       });
     });
 

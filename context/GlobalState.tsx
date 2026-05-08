@@ -764,17 +764,32 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   let updated: any;
                   if (typeof remoteData === 'object' && !Array.isArray(remoteData) && remoteData !== null) {
                     if (key === 'profile') {
-                      // 🔥 FORCED SYNC: School Profile is strictly server-authoritative.
-                      // We ensure we don't overwrite a valid profile with an empty one from another branch's listener
-                      const isPrimarySchool = school === selectedSchools[0];
+                      // 🔥 FORCED SYNC & RACE-CONDITION GUARD
+                      // When Admin listens to 'all' schools, multiple listeners fire for 'profile' simultaneously.
+                      // We must prevent late-firing branches (e.g. Branch B) from overwriting the logo/data of Branch A.
+                      const isPrimarySchool = school === schoolsToListen.filter(Boolean)[0];
                       const isEmptyRemote = !remoteData || Object.keys(remoteData).length === 0;
                       
-                      if (isEmptyRemote && !isPrimarySchool && prev.profile && Object.keys(prev.profile).length > 0) {
-                         return prev;
+                      const existingProfile = prev.profile || {};
+                      const incomingProfile = remoteData || {};
+                      
+                      let mergedProfile = { ...existingProfile };
+
+                      if (isPrimarySchool) {
+                         // The primary school dictates the baseline truth.
+                         mergedProfile = { ...mergedProfile, ...incomingProfile };
+                      } else {
+                         // Non-primary schools can ONLY supplement missing data. 
+                         // They are FORBIDDEN from erasing existing logos or names.
+                         if (!isEmptyRemote) {
+                           if (!mergedProfile.logoImg && incomingProfile.logoImg) mergedProfile.logoImg = incomingProfile.logoImg;
+                           if (!mergedProfile.schoolName && incomingProfile.schoolName) mergedProfile.schoolName = incomingProfile.schoolName;
+                           if (!mergedProfile.year && incomingProfile.year) mergedProfile.year = incomingProfile.year;
+                         }
                       }
 
-                      console.log(`✅ [Firebase Sync] Profile Update from ${school}:`, remoteData);
-                      const deepCopy = JSON.parse(JSON.stringify(remoteData || {}));
+                      console.log(`✅ [Firebase Sync] Profile Update resolved from ${school}. isPrimary: ${isPrimarySchool}`);
+                      const deepCopy = JSON.parse(JSON.stringify(mergedProfile));
                       updated = { ...prev, [key]: deepCopy };
                     } else {
                       const existingObj = (prev[key] || {}) as any;

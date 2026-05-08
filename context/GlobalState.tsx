@@ -710,11 +710,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList', 'branchMetrics', 'adminBranchMetrics', 'adminFollowUpTypes', 'adminActivitiesList', 'adminBranchActivities', 'adminIndividualReportFields'];
       const customizableKeys = ['taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
       const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
-      const schoolsToListen = selectedSchools.includes('all') ? data.availableSchools : selectedSchools;
+      const schoolsToListen = selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools;
 
       const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
 
-      schoolsToListen.forEach(school => {
+      schoolsToListen.filter(Boolean).forEach(school => {
         // 1. Strictly Shared Keys
         strictlySharedKeys.forEach(key => {
           const listenerId = `auth-shared-${school}-${key}`;
@@ -765,10 +765,17 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   if (typeof remoteData === 'object' && !Array.isArray(remoteData) && remoteData !== null) {
                     if (key === 'profile') {
                       // 🔥 FORCED SYNC: School Profile is strictly server-authoritative.
-                      // We perform a total replacement to ensure all devices are 100% aligned with Firebase.
-                      const forcedProfile = remoteData ? JSON.parse(JSON.stringify(remoteData)) : {};
-                      console.log(`✅ [Firebase Sync] Forced update for ${key}:`, forcedProfile);
-                      updated = { ...prev, [key]: forcedProfile };
+                      // We ensure we don't overwrite a valid profile with an empty one from another branch's listener
+                      const isPrimarySchool = school === selectedSchools[0];
+                      const isEmptyRemote = !remoteData || Object.keys(remoteData).length === 0;
+                      
+                      if (isEmptyRemote && !isPrimarySchool && prev.profile && Object.keys(prev.profile).length > 0) {
+                         return prev;
+                      }
+
+                      console.log(`✅ [Firebase Sync] Profile Update from ${school}:`, remoteData);
+                      const deepCopy = JSON.parse(JSON.stringify(remoteData || {}));
+                      updated = { ...prev, [key]: deepCopy };
                     } else {
                       const existingObj = (prev[key] || {}) as any;
                       const mergedObj = { ...existingObj, ...remoteData };
@@ -891,7 +898,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       unsubscribes.forEach(u => u());
       dataListeners.current.clear();
     };
-  }, [isAuthenticated, currentUser?.id, currentUser?.selectedSchool, targetUserIds]);
+  }, [isAuthenticated, currentUser?.id, currentUser?.selectedSchool, targetUserIds, data.availableSchools]);
 
 
   const updateData = (newData: Partial<AppData>, overrideSchools?: string[]) => {

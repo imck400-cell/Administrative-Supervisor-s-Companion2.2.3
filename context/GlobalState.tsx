@@ -763,10 +763,15 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 } else {
                   let updated: any;
                   if (typeof remoteData === 'object' && !Array.isArray(remoteData) && remoteData !== null) {
-                    const existingObj = (prev[key] || {}) as any;
-                    const mergedObj = { ...existingObj, ...remoteData };
-                    if (JSON.stringify(existingObj) === JSON.stringify(mergedObj)) return prev;
-                    updated = { ...prev, [key]: mergedObj };
+                    if (key === 'profile') {
+                      // Profile MUST be fully overwritten from Firebase to ensure instant cross-device sync
+                      updated = { ...prev, [key]: remoteData };
+                    } else {
+                      const existingObj = (prev[key] || {}) as any;
+                      const mergedObj = { ...existingObj, ...remoteData };
+                      if (JSON.stringify(existingObj) === JSON.stringify(mergedObj)) return prev;
+                      updated = { ...prev, [key]: mergedObj };
+                    }
                   } else if (JSON.stringify(prev[key]) === JSON.stringify(remoteData)) {
                     return prev;
                   } else {
@@ -1007,6 +1012,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           if (canSave) {
             schoolsToUpdate.forEach(school => {
               setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
+                .then(() => {
+                  if (key === 'profile') console.log(`Successfully synced profile to Firebase for school: ${school}`);
+                })
                 .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));
             });
           }

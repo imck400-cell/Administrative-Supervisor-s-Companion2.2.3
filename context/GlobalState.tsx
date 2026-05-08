@@ -989,9 +989,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return true;
       };
 
-      // We always work against the raw (unfiltered) data, not filteredData
-      const rawData = data as AppData;
-      const updatedData = { ...rawData };
+      const rawData = data;
+      const pendingChanges: Partial<AppData> = {};
 
       for (const key of Object.keys(newData) as Array<keyof AppData>) {
         if (strictlySharedKeys.includes(key)) {
@@ -1030,14 +1029,14 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             // For School Profile, we DO NOT update local state immediately to force Server-First flow.
             // This ensures the local user also receives the update through the listener, verifying sync.
             if (key !== 'profile') {
-              updatedData[key] = newData[key] as any;
+              pendingChanges[key] = newData[key] as any;
             }
           }
           continue;
         }
 
         if (key === 'aboutSliderImages' || key === 'aboutExternalLinks' || key === 'aboutLogoImg') {
-          updatedData[key] = newData[key] as any;
+          pendingChanges[key] = newData[key] as any;
           if (currentUser.role === 'admin' || currentUser.permissions?.all === true) {
             setDoc(doc(db, 'system', 'introConfig', 'data', key), { data: newData[key] })
               .catch(err => handleFirestoreError(err, OperationType.WRITE, `system/introConfig/data/${key}`));
@@ -1046,7 +1045,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         if (customizableKeys.includes(key)) {
-          updatedData[key] = newData[key] as any;
+          pendingChanges[key] = newData[key] as any;
           const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
           
           schoolsToUpdate.forEach(school => {
@@ -1063,7 +1062,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         const newArray = newData[key] as any[];
         if (!Array.isArray(newArray)) {
-          updatedData[key] = newData[key] as any;
+          pendingChanges[key] = newData[key] as any;
           continue;
         }
 
@@ -1073,7 +1072,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const itemsNotMatchingFilter = oldArray.filter(item => !matchesCurrentFilter(item, key));
         const finalArray = [...itemsNotMatchingFilter, ...newArray];
 
-        updatedData[key] = finalArray as any;
+        pendingChanges[key] = finalArray as any;
 
         const userIds = new Set<string>();
         finalArray.forEach(item => {
@@ -1111,7 +1110,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
 
       setData(prev => {
-        const final = { ...prev, ...updatedData };
+        const final = { ...prev, ...pendingChanges };
         StorageHelper.setItem('rafiquk_data', JSON.stringify(final));
         return final;
       });

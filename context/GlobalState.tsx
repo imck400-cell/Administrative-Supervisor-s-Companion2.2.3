@@ -371,6 +371,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.log(`📡 جاري بدء الاستماع لتحديثات ملف المدرسة رقم (المسار الكامل): ${fullPath}`);
       const q = doc(db, 'schools', school, 'shared', 'profile');
       return onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+        const isFromCache = snapshot.metadata.fromCache;
+        console.log(`📶 connectionState: fromCache=${isFromCache}, navigator.onLine=${typeof navigator !== 'undefined' ? navigator.onLine : 'unknown'}`);
         if (!snapshot.exists()) {
           console.warn(`⚠️ مستند ملف المدرسة ${school} غير موجود بعد في المسار: ${fullPath}`);
           return;
@@ -387,7 +389,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           }));
         }
       }, (error) => {
-        console.error(`❌ خطأ في الاستماع للمدرسة ${school} على المسار ${fullPath}:`, error);
+        console.error(`❌ فشل الاستماع بسبب: ${error.message} (الكود: ${error.code}) في المسار ${fullPath}`);
       });
     });
 
@@ -941,7 +943,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [isAuthenticated, currentUser?.id, currentUser?.selectedSchool, targetUserIds, data.availableSchools]);
 
 
-  const updateData = (newData: Partial<AppData>, overrideSchools?: string[]) => {
+  const updateData = async (newData: Partial<AppData>, overrideSchools?: string[]) => {
     if (isAuthenticated && currentUser) {
       let isBlockedByReadOnly = currentUser.permissions?.readOnly;
 
@@ -1064,15 +1066,21 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             }
 
             // Priority: Send to Firestore first for strictly shared data
-            schoolsToUpdate.forEach(school => {
+            const promises = schoolsToUpdate.map(async school => {
               const fullPath = `schools/${school}/shared/${key}`;
               if (key === 'profile') {
                 console.log(`جاري الإرسال للمدرسة رقم: ${school} عبر المسار الكامل: ${fullPath}`);
               } else {
                 console.log(`📤 Pushing ${key} update to Firebase via: ${fullPath}`);
               }
-              setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
+              
+              const setPromise = setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
                 .catch(err => handleFirestoreError(err, OperationType.WRITE, fullPath));
+
+              if (key === 'profile') {
+                await setPromise;
+                console.log(`✅ تأكيد النجاح من السيرفر: تم الإرسال بنجاح للمدرسة ${school}`);
+              }
 
               if (key === 'profile') {
                 pendingChanges.profiles = {
@@ -1081,6 +1089,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 } as any;
               }
             });
+
+            await Promise.all(promises);
 
             // Update local state immediately for instant feedback
             pendingChanges[key] = newData[key] as any;

@@ -380,13 +380,17 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const remoteData = snapshot.data()?.data;
         if (remoteData) {
           console.log(`✨ استلمت تحديثاً للمدرسة رقم: ${school} من المسار المباشر (${fullPath}) والبيانات هي:`, remoteData);
-          setData(prev => ({
-            ...prev,
-            profiles: {
-              ...(prev.profiles || {}),
-              [school]: remoteData
-            }
-          }));
+          setData(prev => {
+            const isCurrentlyActive = currentUser?.selectedSchool?.split(',')[0]?.trim() === school || (currentUser?.selectedSchool?.split(',')[0]?.trim() === 'all' && prev.availableSchools?.[0] === school);
+            return {
+              ...prev,
+              profiles: {
+                ...(prev.profiles || {}),
+                [school]: remoteData
+              },
+              ...(isCurrentlyActive ? { profile: { ...prev.profile, ...remoteData } } : {})
+            };
+          });
         }
       }, (error) => {
         console.error(`❌ فشل الاستماع بسبب: ${error.message} (الكود: ${error.code}) في المسار ${fullPath}`);

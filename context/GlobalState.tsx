@@ -503,7 +503,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const newData = { ...data };
 
     // Inject current active school's profile
-    const activeSchool = currentUser?.selectedSchool?.split(',')[0]?.trim();
+    let activeSchool = currentUser?.selectedSchool?.split(',')[0]?.trim();
+    if (activeSchool === 'all') {
+      activeSchool = data.availableSchools?.[0];
+    }
+    
     if (activeSchool && newData.profiles && newData.profiles[activeSchool]) {
       newData.profile = { ...newData.profile, ...newData.profiles[activeSchool] };
     }

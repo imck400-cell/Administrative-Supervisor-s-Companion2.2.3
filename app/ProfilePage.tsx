@@ -55,24 +55,10 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 font-arabic animate-in fade-in duration-500 pb-20">
-      <header className="bg-white p-8 rounded-[2.5rem] border shadow-sm flex items-center justify-between">
+      <header className="bg-white p-8 rounded-[2.5rem] border shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-black text-slate-800">بيانات ملف المدرسة</h2>
-          <div className="flex items-center gap-4 mt-2">
-            <p className="text-blue-500 font-bold text-sm">إدارة المعلومات التنظيمية والإدارية للمؤسسة</p>
-            <button
-               onClick={() => {
-                 const currentCounter = (profile as any).testCounter || 0;
-                 updateData({ 
-                   profile: { ...profile, testCounter: currentCounter + 1 } 
-                 });
-                 toast.success('تم إرسال إشارة التحدي!');
-               }}
-               className="bg-red-500 text-white px-6 py-2 rounded-xl text-sm font-black hover:bg-red-600 transition-all shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-pulse"
-            >
-              اختبار المزامنة الآن
-            </button>
-          </div>
+          <p className="text-blue-500 font-bold text-sm mt-1">إدارة المعلومات التنظيمية والإدارية للمؤسسة</p>
         </div>
         <div className="p-4 bg-blue-600 text-white rounded-3xl shadow-xl">
           <School size={32} />

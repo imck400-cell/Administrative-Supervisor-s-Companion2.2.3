@@ -358,9 +358,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    // const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
-    // const schoolsToListen = (selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools).map(s => s.trim());
-    const schoolsToListen = ['TEST_SCHOOL']; // 🔥 HARDCODED FOR TEST
+    const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
+    const schoolsToListen = (selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools).map(s => s.trim());
+    // const schoolsToListen = ['TEST_SCHOOL']; // 🔥 HARDCODED FOR TEST
 
     if (schoolsToListen.length === 0) {
       console.warn('⚠️ لا يمكن بدء الاستماع، قائمة المدارس فارغة.');
@@ -379,14 +379,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           return;
         }
         const remoteData = snapshot.data()?.data;
-        if (remoteData?.testCounter) {
-            console.log(`وصل التحدي! الرقم الحالي هو: [${remoteData.testCounter}]`);
-            document.body.style.transition = 'background-color 0.1s';
-            document.body.style.backgroundColor = '#22c55e'; // tailwind green-500
-            setTimeout(() => {
-                document.body.style.backgroundColor = '';
-            }, 1000);
-        }
         
         if (remoteData) {
           console.log(`✨ استلمت تحديثاً للمدرسة رقم: ${school} من المسار المباشر (${fullPath}) والبيانات هي:`, remoteData);
@@ -1018,9 +1010,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         toast.error(lang === 'ar' ? 'غير مسموح بتغيير البيانات للرتب الممنوحة لك (للقراءة فقط)' : 'Data change not allowed for your role (Read-Only)');
         return;
       }
-      // const selectedSchools = overrideSchools && overrideSchools.length > 0 ? overrideSchools.map(s => s.trim()) : currentUser.selectedSchool.split(',').map(s => s.trim());
-      // const schoolsToUpdate = (selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools).map(s => s.trim());
-      const schoolsToUpdate = ['TEST_SCHOOL']; // 🔥 HARDCODED FOR TEST
+      const selectedSchools = overrideSchools && overrideSchools.length > 0 ? overrideSchools.map(s => s.trim()) : currentUser.selectedSchool.split(',').map(s => s.trim());
+      const schoolsToUpdate = (selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools).map(s => s.trim());
+      // const schoolsToUpdate = ['TEST_SCHOOL']; // 🔥 HARDCODED FOR TEST
       const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList', 'branchMetrics', 'adminBranchMetrics', 'adminFollowUpTypes', 'adminActivitiesList', 'adminBranchActivities', 'adminIndividualReportFields'];
       const customizableKeys = ['taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
 

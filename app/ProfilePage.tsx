@@ -6,7 +6,7 @@ import { Save, Plus, Trash2, School, Building, Calendar, Users, Briefcase, Spark
 
 const ProfilePage: React.FC = () => {
   const { data, updateData, lang, currentUser } = useGlobal();
-  const isReadOnly = currentUser?.permissions?.readOnly === true || (Array.isArray(currentUser?.permissions?.schoolProfile) && currentUser.permissions.schoolProfile.includes('disable'));
+  const isReadOnly = true;
   const profile = data.profile;
 
   const isManagerOrAdmin = currentUser?.role === 'admin' || currentUser?.permissions?.all === true || currentUser?.permissions?.userManagement === true;
@@ -125,12 +125,14 @@ const ProfilePage: React.FC = () => {
         <div className="border-t pt-8 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-black text-slate-800">بنود إضافية مخصصة</h3>
-            <button
-              onClick={handleAddCustomField}
-              className="flex items-center gap-2 bg-slate-900 text-white px-6 py-2 rounded-xl font-black text-sm hover:bg-black transition-all shadow-md active:scale-95"
-            >
-              <Plus size={16} /> إضافة حقل جديد
-            </button>
+            {!isReadOnly && (
+              <button
+                onClick={handleAddCustomField}
+                className="flex items-center gap-2 bg-slate-900 text-white px-6 py-2 rounded-xl font-black text-sm hover:bg-black transition-all shadow-md active:scale-95"
+              >
+                <Plus size={16} /> إضافة حقل جديد
+              </button>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -163,7 +165,7 @@ const ProfilePage: React.FC = () => {
                       />
                       <button
                         onClick={() => deleteCustomField(idx)}
-                        className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                        className={`p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors ${isReadOnly ? 'hidden' : ''}`}
                       >
                         <Trash2 size={18} />
                       </button>
@@ -175,13 +177,6 @@ const ProfilePage: React.FC = () => {
           </div>
         </div>
 
-        <button
-          onClick={() => toast.success('تم حفظ التغييرات تلقائياً في قاعدة البيانات المحلية')}
-          className="w-full bg-blue-600 text-white p-5 rounded-2xl font-black text-xl hover:bg-blue-700 shadow-2xl shadow-blue-100 transition-all transform active:scale-[0.98] flex items-center justify-center gap-4 mt-6"
-        >
-          <Save size={24} />
-          تأكيد وحفظ بيانات الملف
-        </button>
       </div>
     </div>
   );

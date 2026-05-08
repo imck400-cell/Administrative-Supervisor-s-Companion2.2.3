@@ -18,6 +18,7 @@ export interface SchoolProfile {
   qualityOfficer?: string;
   managerName?: string;
   logoImg?: string;
+  lastUpdated?: number;
 }
 
 export interface TimetableEntry {
@@ -583,6 +584,7 @@ export interface DeliveryReceiptReport {
 export interface AppData {
   users: User[];
   profile: SchoolProfile;
+  profiles?: Record<string, SchoolProfile>;
   deliveryReceiptRecords?: DeliveryReceiptReport[];
   substitutions: SubstitutionEntry[];
   timetable: TimetableEntry[];

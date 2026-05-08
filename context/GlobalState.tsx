@@ -292,6 +292,7 @@ const defaultData: AppData = {
   availableYears: ['2024-2025', '2025-2026'],
   schoolBranches: {},
   trainingEvaluations: [],
+  profiles: {},
   profile: {
     ministry: '',
     district: '',
@@ -450,6 +451,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     const newData = { ...data };
+
+    // Inject current active school's profile
+    const activeSchool = currentUser?.selectedSchool?.split(',')[0]?.trim();
+    if (activeSchool && newData.profiles && newData.profiles[activeSchool]) {
+      newData.profile = { ...newData.profile, ...newData.profiles[activeSchool] };
+    }
 
     // Activity arrays — filter by both user and date
     const activityKeys = [
@@ -764,10 +771,25 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   let updated: any;
                   if (typeof remoteData === 'object' && !Array.isArray(remoteData) && remoteData !== null) {
                     if (key === 'profile') {
-                      if (JSON.stringify(prev.profile) === JSON.stringify(remoteData)) return prev;
+                      const allProfiles = prev.profiles || {};
+                      const existingSchoolProfile = allProfiles[school] || {};
                       
-                      console.log(`✅ [Firebase Sync] Profile globally synced from ${school}`);
-                      updated = { ...prev, profile: remoteData };
+                      const remoteUpdated = remoteData.lastUpdated || 0;
+                      const localUpdated = existingSchoolProfile.lastUpdated || 0;
+
+                      if (remoteUpdated >= localUpdated) {
+                        console.log(`✅ [Firebase Sync] Profile explicitly synced to mapping for school: ${school}`);
+                        updated = { 
+                          ...prev, 
+                          profiles: { 
+                            ...allProfiles, 
+                            [school]: remoteData 
+                          } 
+                        };
+                      } else {
+                        console.warn(`⏳ [Firebase Sync] Ignored stale profile update for ${school}`);
+                        return prev;
+                      }
                     } else {
                       const existingObj = (prev[key] || {}) as any;
                       const mergedObj = { ...existingObj, ...remoteData };
@@ -1011,11 +1033,22 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           else if ((key === 'aboutSliderImages' || key === 'aboutExternalLinks' || key === 'aboutLogoImg') && isAdminOrFull) canSave = true;
 
           if (canSave) {
+            if (key === 'profile') {
+              newData[key] = { ...(newData[key] as any), lastUpdated: Date.now() };
+            }
+
             // Priority: Send to Firestore first for strictly shared data
             schoolsToUpdate.forEach(school => {
               console.log(`📤 Pushing ${key} update to Firebase for school: ${school}`);
               setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
                 .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));
+
+              if (key === 'profile') {
+                pendingChanges.profiles = {
+                  ...(pendingChanges.profiles || data.profiles),
+                  [school]: newData[key]
+                } as any;
+              }
             });
 
             // Update local state immediately for instant feedback

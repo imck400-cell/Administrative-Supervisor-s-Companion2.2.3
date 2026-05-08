@@ -62,14 +62,15 @@ const ProfilePage: React.FC = () => {
             <p className="text-blue-500 font-bold text-sm">إدارة المعلومات التنظيمية والإدارية للمؤسسة</p>
             <button
                onClick={() => {
+                 const currentCounter = (profile as any).testCounter || 0;
                  updateData({ 
-                   profile: { ...profile, lastUpdated: Date.now() } 
+                   profile: { ...profile, testCounter: currentCounter + 1 } 
                  });
-                 toast.success('تم إرسال إشارة مزامنة اختبارية للسيرفر');
+                 toast.success('تم إرسال إشارة التحدي!');
                }}
-               className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-colors"
+               className="bg-red-500 text-white px-6 py-2 rounded-xl text-sm font-black hover:bg-red-600 transition-all shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-pulse"
             >
-              اختبار المزامنة (Test Sync)
+              اختبار المزامنة الآن
             </button>
           </div>
         </div>

@@ -1115,9 +1115,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setCurrentUser(authUser);
     sessionStorage.setItem('rafiquk_auth', 'true');
     sessionStorage.setItem('rafiquk_user', JSON.stringify(authUser));
-    
-    // Update profile with selected school and year
-    updateData({ profile: { ...data.profile, schoolName: school, year: year } });
   };
 
   const logout = () => {

@@ -12,22 +12,20 @@ const ProfilePage: React.FC = () => {
   const isManagerOrAdmin = currentUser?.role === 'admin' || currentUser?.permissions?.all === true || currentUser?.permissions?.userManagement === true;
 
   useEffect(() => {
-    // Auto-fill logic for non-managers (or even apply baseline for everyone if empty)
-    if (currentUser) {
+    // Only auto-fill if the profile is completely empty, to avoid overwriting the secretariat's settings
+    if (currentUser && isManagerOrAdmin) {
       const mainSchool = currentUser.selectedSchool?.split(',')[0]?.trim() || '';
       const branches = currentUser.permissions?.schoolsAndBranches?.[mainSchool] || [];
       const mainBranch = branches[0] || '';
 
-      if (!isManagerOrAdmin) {
-         if ((profile.schoolName !== mainSchool && mainSchool) || (profile.branch !== mainBranch && mainBranch)) {
-            updateData({
-              profile: {
-                ...profile,
-                schoolName: mainSchool || profile.schoolName || '',
-                branch: mainBranch || profile.branch || ''
-              }
-            });
-         }
+      if (!profile.schoolName && mainSchool) {
+          updateData({
+            profile: {
+              ...profile,
+              schoolName: mainSchool,
+              branch: mainBranch
+            }
+          });
       }
     }
   }, [currentUser, profile, isManagerOrAdmin, updateData]);
@@ -81,13 +79,13 @@ const ProfilePage: React.FC = () => {
   };
 
   const formFields = [
-    { key: 'ministry', label: 'وزارة التربية والتعليم والبحث العلمي', icon: <School className="w-5 h-5" /> },
-    { key: 'district', label: 'المنطقة التعليمية', icon: <Building className="w-5 h-5" /> },
+    { key: 'ministry', label: 'وزارة التربية والتعليم والبحث العلمي', icon: <School className="w-5 h-5" />, autoFilled: true },
+    { key: 'district', label: 'المنطقة التعليمية', icon: <Building className="w-5 h-5" />, autoFilled: true },
     { key: 'schoolName', label: 'اسم المدارس', icon: <Briefcase className="w-5 h-5" />, autoFilled: true },
     { key: 'branch', label: 'الفرع', icon: <Sparkles className="w-5 h-5" />, autoFilled: true },
-    { key: 'year', label: 'العام الدراسي', icon: <Calendar className="w-5 h-5" /> },
-    { key: 'branchManager', label: 'مدير الفرع', icon: <Users className="w-5 h-5" /> },
-    { key: 'generalManager', label: 'المدير العام', icon: <Users className="w-5 h-5" /> },
+    { key: 'year', label: 'العام الدراسي', icon: <Calendar className="w-5 h-5" />, autoFilled: true },
+    { key: 'branchManager', label: 'مدير الفرع', icon: <Users className="w-5 h-5" />, autoFilled: true },
+    { key: 'generalManager', label: 'المدير العام', icon: <Users className="w-5 h-5" />, autoFilled: true },
   ];
 
   return (
@@ -110,7 +108,7 @@ const ProfilePage: React.FC = () => {
             ) : (
               <ImageIcon className="w-10 h-10 text-slate-300 group-hover:text-blue-400 transition-colors" />
             )}
-            {!isReadOnly && (
+            {(!isReadOnly && isManagerOrAdmin) && (
               <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer backdrop-blur-sm">
                 <Upload className="w-6 h-6 mb-1" />
                 <span className="text-[10px] font-bold">رفع شعار</span>

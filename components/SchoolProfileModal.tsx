@@ -98,6 +98,7 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
       branchManager,
       generalManager,
       year,
+      schoolName: selectedSchools.join(' - '),
     };
     
     if (selectedBranches.length > 0) {

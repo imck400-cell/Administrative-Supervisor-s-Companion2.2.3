@@ -52,6 +52,18 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   throw new Error(JSON.stringify(errInfo));
 }
 
+const StorageHelper = {
+  setItem: (key: string, value: string) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e: any) {
+      console.warn(`LocalStorage quota exceeded or error for key ${key}:`, e);
+      // If we hit quota, clear non-essential chunks if possible, or just skip caching.
+      // This ensures the React state wrapper does not crash.
+    }
+  }
+};
+
 interface GlobalContextType {
   lang: Language;
   setLang: (lang: Language) => void;
@@ -593,7 +605,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             setData(prev => {
               if (JSON.stringify(prev[key as keyof AppData]) === JSON.stringify(remoteData)) return prev;
               const updated = { ...prev, [key]: remoteData };
-              localStorage.setItem('rafiquk_data', JSON.stringify(updated));
+              StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
               return updated;
             });
           }
@@ -691,7 +703,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (!isMounted) return;
 
       const dataBuffer: Record<string, Record<string, any[]>> = {};
-      const arrayKeys = ['substitutions', 'timetable', 'dailyReports', 'violations', 'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports', 'selfEvaluations', 'studentEvaluations'];
+      const arrayKeys = ['substitutions', 'timetable', 'dailyReports', 'violations', 'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports', 'selfEvaluations', 'studentEvaluations', 'deliveryReceiptRecords'];
       arrayKeys.forEach(k => dataBuffer[k] = {});
 
       // Shared keys for the selected schools
@@ -734,7 +746,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   });
                   if (changed) {
                     updated = { ...prev, users: merged };
-                    localStorage.setItem('rafiquk_data', JSON.stringify(updated));
+                    StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
                     return updated;
                   }
                   return prev;
@@ -746,7 +758,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     return prev;
                   }
                   const updated = { ...prev, [key]: merged };
-                  localStorage.setItem('rafiquk_data', JSON.stringify(updated));
+                  StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
                   return updated;
                 } else {
                   let updated: any;
@@ -760,7 +772,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   } else {
                     updated = { ...prev, [key]: remoteData };
                   }
-                  localStorage.setItem('rafiquk_data', JSON.stringify(updated));
+                  StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
                   return updated;
                 }
               });
@@ -850,7 +862,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   return prev;
                 }
                 const updated = { ...prev, [key]: uniqueMergedArray };
-                localStorage.setItem('rafiquk_data', JSON.stringify(updated));
+                StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
                 return updated;
               });
             }, (error) => {
@@ -978,7 +990,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           
           const canEditTemplate = Array.isArray(currentUser.permissions?.teacherPortal) ? currentUser.permissions.teacherPortal.includes('editEvaluationTemplate') : currentUser.permissions?.teacherPortal === true;
 
-          const isGeneralSupervisor = currentUser.role === 'general_supervisor' || currentUser.permissions?.specialCodes === true || (Array.isArray(currentUser.permissions?.specialCodes) && currentUser.permissions.specialCodes.length > 0);
+          const isGeneralSupervisor = (currentUser.role as string) === 'general_supervisor' || currentUser.permissions?.specialCodes === true || (Array.isArray(currentUser.permissions?.specialCodes) && currentUser.permissions.specialCodes.length > 0);
           const canEditDaily = isGeneralSupervisor || currentUser.permissions?.dailyFollowUp === true || (Array.isArray(currentUser.permissions?.dailyFollowUp) && !currentUser.permissions.dailyFollowUp.includes('view') && !currentUser.permissions.dailyFollowUp.includes('disable'));
           const canEditAdminFollowUp = isGeneralSupervisor || currentUser.permissions?.adminFollowUp === true || (Array.isArray(currentUser.permissions?.adminFollowUp) && !currentUser.permissions.adminFollowUp.includes('view') && !currentUser.permissions.adminFollowUp.includes('disable'));
 
@@ -1055,12 +1067,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
           const userItems = finalArray.filter(item => item.userId === uid);
           
-          // Group by schoolId
+          // Group by school
           const itemsBySchool: Record<string, any[]> = {};
           schoolsToUpdate.forEach(s => itemsBySchool[s] = []); // Initialize all with empty array
           
           userItems.forEach(item => {
-             let sId = item.schoolId || item.schoolName || schoolsToUpdate[0];
+             let sId = item.schoolId || item.schoolName || item.school || schoolsToUpdate[0];
              if (!schoolsToUpdate.includes(sId)) {
                  sId = schoolsToUpdate[0];
              }
@@ -1076,12 +1088,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
 
       setData(updatedData);
-      localStorage.setItem('rafiquk_data', JSON.stringify(updatedData));
+      StorageHelper.setItem('rafiquk_data', JSON.stringify(updatedData));
     } else {
       // Fallback for non-authenticated or initial state
       const updated = { ...data, ...newData };
       setData(updated);
-      localStorage.setItem('rafiquk_data', JSON.stringify(updated));
+      StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
     }
   };
 

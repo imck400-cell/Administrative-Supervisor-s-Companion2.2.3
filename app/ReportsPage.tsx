@@ -5,7 +5,7 @@ import { useGlobal } from '../context/GlobalState';
 import {
   Plus, Search, Trash2, Filter, ChevronDown, ChevronUp, Palette, Check, Calendar, Percent, User, Users, Target, Settings2, AlertCircle, X, ChevronRight, Zap, CheckCircle, FilePlus, FolderOpen, Save, ListOrdered, ArrowUpDown, ArrowUp, ArrowDown, SortAsc, Book, School, Type, Sparkles, FilterIcon, BarChart3, LayoutList, Upload, Download, Phone, UserCircle, Activity, Star, FileText, FileSpreadsheet, Share2, Edit, ChevronLeft, UserCheck, GraduationCap, MessageCircle
 } from 'lucide-react';
-import { TeacherFollowUp, DailyReportContainer, StudentReport } from '../types';
+import { TeacherFollowUp, DailyReportContainer, StudentReport, MetricDefinition } from '../types';
 import DynamicTable from '../components/DynamicTable';
 import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../src/lib/excelExport';

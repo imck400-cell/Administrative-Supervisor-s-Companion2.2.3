@@ -545,13 +545,45 @@ export interface CreativityRecordReport {
 
 export interface AdminActivity {
   text: string;
-  planned: string;
+  planned: string | number;
   evidence: string;
+}
+
+export interface DeliveryReceiptItem {
+  id: string;
+  teacherName: string;
+  school: string;
+  branch: string;
+  grade: string;
+  section: string;
+  formCount: string;
+  receiveDateStr: string;
+  deliveryDateStr: string;
+  status: 'delivered' | 'in_progress' | 'not_delivered';
+  notes: string;
+  actionTaken: string;
+}
+
+export interface DeliveryReceiptReport {
+  id: string;
+  userId?: string;
+  reportName: string;
+  school: string;
+  branch: string;
+  academicYear: string;
+  supervisorName: string;
+  supervisorJob: string;
+  grade: string;
+  section: string;
+  dateStr: string;
+  items: DeliveryReceiptItem[];
+  createdAt: string;
 }
 
 export interface AppData {
   users: User[];
   profile: SchoolProfile;
+  deliveryReceiptRecords?: DeliveryReceiptReport[];
   substitutions: SubstitutionEntry[];
   timetable: TimetableEntry[];
   dailyReports: DailyReportContainer[];

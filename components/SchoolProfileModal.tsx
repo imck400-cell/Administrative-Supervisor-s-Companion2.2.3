@@ -29,12 +29,14 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
         setDistrict(data.profile.district || '');
         setBranchManager(data.profile.branchManager || '');
         setGeneralManager(data.profile.generalManager || '');
+        setYear(data.profile.year || '');
         setLogoImg(data.profile.logoImg || '');
       } else {
         setMinistry(defaultMinistryName);
         setDistrict('');
         setBranchManager('');
         setGeneralManager('');
+        setYear('');
         setLogoImg('');
       }
       setSelectedSchools([]);
@@ -42,8 +44,15 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
     }
   }, [isOpen, data.profile]);
 
-  const availableSchools = currentUser?.selectedSchool.split(',').map(s => s.trim()).filter(s => s !== 'all') || [];
+  const userFullData = data.users?.find(u => u.id === currentUser?.id);
+  const availableYears = userFullData?.academicYears?.length ? userFullData.academicYears : (data.availableYears || []);
+
+  const availableSchools = currentUser?.selectedSchool === 'all' 
+    ? (data.availableSchools || [])
+    : currentUser?.selectedSchool.split(',').map(s => s.trim()).filter(s => s !== 'all') || [];
   
+  const [year, setYear] = useState('');
+
   // Combine all branches for the selected schools from data.schoolBranches
   const availableBranches = selectedSchools.reduce((acc: string[], sch) => {
     const branches = data.schoolBranches?.[sch] || [];
@@ -88,6 +97,7 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
       district,
       branchManager,
       generalManager,
+      year,
     };
     
     if (selectedBranches.length > 0) {
@@ -213,7 +223,42 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
               )}
             </AnimatePresence>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700 block">العام الدراسي</label>
+                <div className="flex gap-2">
+                  <select
+                    value={year}
+                    onChange={e => setYear(e.target.value)}
+                    className="flex-1 px-4 py-3 bg-white/50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-500 outline-none transition-all font-medium"
+                    dir="rtl"
+                  >
+                    <option value="">اختر العام الدراسي</option>
+                    {availableYears.map((y: string) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                  {(currentUser?.role === 'admin' || currentUser?.permissions?.all) && (
+                    <button 
+                      type="button"
+                      title="إضافة عام دراسي جديد للنظام"
+                      onClick={() => {
+                        const newY = window.prompt('أدخل العام الدراسي الجديد (مثال: 1445-1446):');
+                        if (newY && !data.availableYears?.includes(newY)) {
+                          const updatedYears = [...(data.availableYears || []), newY];
+                          updateData({ availableYears: updatedYears });
+                          setYear(newY);
+                          toast.success('تم إضافة العام الدراسي وتعميمه');
+                        }
+                      }}
+                      className="px-4 py-3 bg-violet-100 text-violet-700 rounded-xl hover:bg-violet-200 transition-colors font-bold text-sm flex items-center justify-center whitespace-nowrap"
+                    >
+                      + 
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700 block">مدير الفرع</label>
                 <input

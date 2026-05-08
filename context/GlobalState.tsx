@@ -348,6 +348,36 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   });
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
 
+  // 🔥 GLOBAL REAL-TIME SYNC FOR PROFILES
+  // This listener is not guarded by ifs that prevent it from syncing. It runs globally as soon as user opens the app.
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser || !currentUser.selectedSchool) return;
+
+    const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
+    const schoolsToListen = selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools;
+
+    const activeUnsubs = schoolsToListen.filter(Boolean).map(school => {
+      const q = doc(db, 'schools', school, 'shared', 'profile');
+      return onSnapshot(q, (snapshot) => {
+        const remoteData = snapshot.data()?.data;
+        if (remoteData) {
+          console.log(`استلمت تحديثاً للمدرسة رقم: ${school} والبيانات هي:`, remoteData);
+          setData(prev => ({
+            ...prev,
+            profiles: {
+              ...(prev.profiles || {}),
+              [school]: remoteData
+            }
+          }));
+        }
+      });
+    });
+
+    return () => {
+      activeUnsubs.forEach(unsub => unsub());
+    };
+  }, [isAuthenticated, currentUser?.selectedSchool, data.availableSchools]);
+
   // Compute the effective set of user IDs that should be visible.
   // This is ALWAYS a concrete list — never null — so filtering is always applied.
   const effectiveUserIds = React.useMemo(() => {
@@ -714,7 +744,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       arrayKeys.forEach(k => dataBuffer[k] = {});
 
       // Shared keys for the selected schools
-      const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList', 'branchMetrics', 'adminBranchMetrics', 'adminFollowUpTypes', 'adminActivitiesList', 'adminBranchActivities', 'adminIndividualReportFields'];
+      const strictlySharedKeys = ['users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList', 'branchMetrics', 'adminBranchMetrics', 'adminFollowUpTypes', 'adminActivitiesList', 'adminBranchActivities', 'adminIndividualReportFields'];
       const customizableKeys = ['taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
       const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
       const schoolsToListen = selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools;
@@ -770,32 +800,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 } else {
                   let updated: any;
                   if (typeof remoteData === 'object' && !Array.isArray(remoteData) && remoteData !== null) {
-                    if (key === 'profile') {
-                      const allProfiles = prev.profiles || {};
-                      const existingSchoolProfile = allProfiles[school] || {};
-                      
-                      const remoteUpdated = remoteData.lastUpdated || 0;
-                      const localUpdated = existingSchoolProfile.lastUpdated || 0;
-
-                      if (remoteUpdated >= localUpdated) {
-                        console.log(`✅ [Firebase Sync] Profile explicitly synced to mapping for school: ${school}`);
-                        updated = { 
-                          ...prev, 
-                          profiles: { 
-                            ...allProfiles, 
-                            [school]: remoteData 
-                          } 
-                        };
-                      } else {
-                        console.warn(`⏳ [Firebase Sync] Ignored stale profile update for ${school}`);
-                        return prev;
-                      }
-                    } else {
-                      const existingObj = (prev[key] || {}) as any;
-                      const mergedObj = { ...existingObj, ...remoteData };
-                      if (JSON.stringify(existingObj) === JSON.stringify(mergedObj)) return prev;
-                      updated = { ...prev, [key]: mergedObj };
-                    }
+                    const existingObj = (prev[key] || {}) as any;
+                    const mergedObj = { ...existingObj, ...remoteData };
+                    if (JSON.stringify(existingObj) === JSON.stringify(mergedObj)) return prev;
+                    updated = { ...prev, [key]: mergedObj };
                   } else if (JSON.stringify(prev[key]) === JSON.stringify(remoteData)) {
                     return prev;
                   } else {
@@ -1039,7 +1047,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
             // Priority: Send to Firestore first for strictly shared data
             schoolsToUpdate.forEach(school => {
-              console.log(`📤 Pushing ${key} update to Firebase for school: ${school}`);
+              if (key === 'profile') {
+                console.log(`جاري الإرسال للمدرسة رقم: ${school}`);
+              } else {
+                console.log(`📤 Pushing ${key} update to Firebase for school: ${school}`);
+              }
               setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
                 .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));
 

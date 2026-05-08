@@ -764,30 +764,19 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   let updated: any;
                   if (typeof remoteData === 'object' && !Array.isArray(remoteData) && remoteData !== null) {
                     if (key === 'profile') {
-                      // 🔥 AGGRESSIVE SYNC: Any school with incoming data can update the profile.
-                      // If the admin manages multiple schools, we let the real data populate the missing parts.
-                      // First listener to inject non-empty data wins baseline. Any listener can supplement missing parts.
                       const existingProfile = prev.profile || {};
                       const incomingProfile = remoteData || {};
                       const isEmptyRemote = !remoteData || Object.keys(remoteData).length === 0;
-                      
+
                       let mergedProfile = { ...existingProfile };
 
                       if (!isEmptyRemote) {
-                         // Overwrite explicitly
-                         if (incomingProfile.logoImg) mergedProfile.logoImg = incomingProfile.logoImg;
-                         if (incomingProfile.schoolName) mergedProfile.schoolName = incomingProfile.schoolName;
-                         if (incomingProfile.year) mergedProfile.year = incomingProfile.year;
-                         if (incomingProfile.ministry) mergedProfile.ministry = incomingProfile.ministry;
-                         if (incomingProfile.district) mergedProfile.district = incomingProfile.district;
-                         if (incomingProfile.branch) mergedProfile.branch = incomingProfile.branch;
-                         if (incomingProfile.schoolsAndBranches) mergedProfile.schoolsAndBranches = incomingProfile.schoolsAndBranches;
-                         if (incomingProfile.branchManager) mergedProfile.branchManager = incomingProfile.branchManager;
-                         if (incomingProfile.generalManager) mergedProfile.generalManager = incomingProfile.generalManager;
-                         
-                         // Note: Because data.profile is a single global state object, 
-                         // updates from any branch will become the global profile seen by this user.
+                         // Instant full sync from remote to local
+                         mergedProfile = { ...existingProfile, ...incomingProfile };
                       }
+
+                      // Only update if something changed
+                      if (JSON.stringify(existingProfile) === JSON.stringify(mergedProfile)) return prev;
 
                       console.log(`✅ [Firebase Sync] Profile merged from ${school}`);
                       const deepCopy = JSON.parse(JSON.stringify(mergedProfile));
@@ -1042,11 +1031,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));
             });
 
-            // For School Profile, we DO NOT update local state immediately to force Server-First flow.
-            // This ensures the local user also receives the update through the listener, verifying sync.
-            if (key !== 'profile') {
-              pendingChanges[key] = newData[key] as any;
-            }
+            // Update local state immediately for instant feedback
+            pendingChanges[key] = newData[key] as any;
           }
           continue;
         }

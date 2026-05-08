@@ -359,7 +359,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
-    const schoolsToListen = selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools;
+    const schoolsToListen = (selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools).map(s => s.trim());
 
     if (schoolsToListen.length === 0) {
       console.warn('⚠️ لا يمكن بدء الاستماع، قائمة المدارس فارغة.');
@@ -368,7 +368,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const activeUnsubs = schoolsToListen.filter(Boolean).map(school => {
       const fullPath = `schools/${school}/shared/profile`;
-      console.log(`📡 جاري بدء الاستماع لتحديثات ملف المدرسة رقم (المسار الكامل): ${fullPath}`);
+      console.log(`📡 جاري بدء الاستماع. School ID: "${school}" (Length: ${school.length}), Path: ${fullPath}`);
       const q = doc(db, 'schools', school, 'shared', 'profile');
       return onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
         const isFromCache = snapshot.metadata.fromCache;
@@ -1004,8 +1004,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         toast.error(lang === 'ar' ? 'غير مسموح بتغيير البيانات للرتب الممنوحة لك (للقراءة فقط)' : 'Data change not allowed for your role (Read-Only)');
         return;
       }
-      const selectedSchools = overrideSchools && overrideSchools.length > 0 ? overrideSchools : currentUser.selectedSchool.split(',').map(s => s.trim());
-      const schoolsToUpdate = selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools;
+      const selectedSchools = overrideSchools && overrideSchools.length > 0 ? overrideSchools.map(s => s.trim()) : currentUser.selectedSchool.split(',').map(s => s.trim());
+      const schoolsToUpdate = (selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools).map(s => s.trim());
       const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList', 'branchMetrics', 'adminBranchMetrics', 'adminFollowUpTypes', 'adminActivitiesList', 'adminBranchActivities', 'adminIndividualReportFields'];
       const customizableKeys = ['taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
 
@@ -1073,7 +1073,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const promises = schoolsToUpdate.map(async school => {
               const fullPath = `schools/${school}/shared/${key}`;
               if (key === 'profile') {
-                console.log(`جاري الإرسال للمدرسة رقم: ${school} عبر المسار الكامل: ${fullPath}`);
+                console.log(`جاري الإرسال للمدرسة رقم: "${school}" (Length: ${school.length}) عبر المسار الكامل: ${fullPath}`);
               } else {
                 console.log(`📤 Pushing ${key} update to Firebase via: ${fullPath}`);
               }

@@ -58,7 +58,20 @@ const ProfilePage: React.FC = () => {
       <header className="bg-white p-8 rounded-[2.5rem] border shadow-sm flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-black text-slate-800">بيانات ملف المدرسة</h2>
-          <p className="text-blue-500 font-bold mt-1 text-sm">إدارة المعلومات التنظيمية والإدارية للمؤسسة</p>
+          <div className="flex items-center gap-4 mt-2">
+            <p className="text-blue-500 font-bold text-sm">إدارة المعلومات التنظيمية والإدارية للمؤسسة</p>
+            <button
+               onClick={() => {
+                 updateData({ 
+                   profile: { ...profile, lastUpdated: Date.now() } 
+                 });
+                 toast.success('تم إرسال إشارة مزامنة اختبارية للسيرفر');
+               }}
+               className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-colors"
+            >
+              اختبار المزامنة (Test Sync)
+            </button>
+          </div>
         </div>
         <div className="p-4 bg-blue-600 text-white rounded-3xl shadow-xl">
           <School size={32} />

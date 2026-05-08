@@ -764,23 +764,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   let updated: any;
                   if (typeof remoteData === 'object' && !Array.isArray(remoteData) && remoteData !== null) {
                     if (key === 'profile') {
-                      const existingProfile = prev.profile || {};
-                      const incomingProfile = remoteData || {};
-                      const isEmptyRemote = !remoteData || Object.keys(remoteData).length === 0;
-
-                      let mergedProfile = { ...existingProfile };
-
-                      if (!isEmptyRemote) {
-                         // Instant full sync from remote to local
-                         mergedProfile = { ...existingProfile, ...incomingProfile };
-                      }
-
-                      // Only update if something changed
-                      if (JSON.stringify(existingProfile) === JSON.stringify(mergedProfile)) return prev;
-
-                      console.log(`✅ [Firebase Sync] Profile merged from ${school}`);
-                      const deepCopy = JSON.parse(JSON.stringify(mergedProfile));
-                      updated = { ...prev, [key]: deepCopy };
+                      if (JSON.stringify(prev.profile) === JSON.stringify(remoteData)) return prev;
+                      
+                      console.log(`✅ [Firebase Sync] Profile globally synced from ${school}`);
+                      updated = { ...prev, profile: remoteData };
                     } else {
                       const existingObj = (prev[key] || {}) as any;
                       const mergedObj = { ...existingObj, ...remoteData };

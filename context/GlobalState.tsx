@@ -764,8 +764,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   let updated: any;
                   if (typeof remoteData === 'object' && !Array.isArray(remoteData) && remoteData !== null) {
                     if (key === 'profile') {
-                      // Profile MUST be fully overwritten from Firebase to ensure instant cross-device sync
-                      updated = { ...prev, [key]: remoteData };
+                      // Forced replacement for School Profile to guarantee instant cross-device synchronization
+                      console.log('Profile Sync: Overwriting local profile with Firestore data');
+                      updated = { ...prev, [key]: { ...remoteData } };
                     } else {
                       const existingObj = (prev[key] || {}) as any;
                       const mergedObj = { ...existingObj, ...remoteData };
@@ -1005,9 +1006,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           else if ((key === 'secretariatStudents' || key === 'secretariatStaff') && isSecretariatEnabled) canSave = true;
           else if ((key === 'metricsList' || key === 'branchMetrics') && (isSecretariatEnabled || canEditDaily)) canSave = true;
           else if ((key === 'adminMetricsList' || key === 'adminBranchMetrics' || key === 'adminActivitiesList' || key === 'adminBranchActivities' || key === 'adminIndividualReportFields' || key === 'adminFollowUpTypes') && (isSecretariatEnabled || canEditAdminFollowUp)) canSave = true;
-          else if ((key === 'aboutSliderImages' || key === 'aboutExternalLinks' || key === 'aboutLogoImg') && isAdminOrFull) canSave = true;
           else if (key === 'selfEvaluationTemplates' && canEditTemplate) canSave = true;
-          else if (key === 'profile' || key === 'availableSchools' || key === 'availableYears') canSave = true;
+          else if (key === 'profile' && isSecretariatEnabled) canSave = true;
+          else if ((key === 'availableSchools' || key === 'availableYears') && isAdminOrFull) canSave = true;
+          else if ((key === 'aboutSliderImages' || key === 'aboutExternalLinks' || key === 'aboutLogoImg') && isAdminOrFull) canSave = true;
 
           if (canSave) {
             schoolsToUpdate.forEach(school => {
@@ -1095,13 +1097,18 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       }
 
-      setData(updatedData);
-      StorageHelper.setItem('rafiquk_data', JSON.stringify(updatedData));
+      setData(prev => {
+        const final = { ...prev, ...updatedData };
+        StorageHelper.setItem('rafiquk_data', JSON.stringify(final));
+        return final;
+      });
     } else {
       // Fallback for non-authenticated or initial state
-      const updated = { ...data, ...newData };
-      setData(updated);
-      StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
+      setData(prev => {
+        const final = { ...prev, ...newData };
+        StorageHelper.setItem('rafiquk_data', JSON.stringify(final));
+        return final;
+      });
     }
   };
 

@@ -11,25 +11,6 @@ const ProfilePage: React.FC = () => {
 
   const isManagerOrAdmin = currentUser?.role === 'admin' || currentUser?.permissions?.all === true || currentUser?.permissions?.userManagement === true;
 
-  useEffect(() => {
-    // Only auto-fill if the profile is completely empty, to avoid overwriting the secretariat's settings
-    if (currentUser && isManagerOrAdmin) {
-      const mainSchool = currentUser.selectedSchool?.split(',')[0]?.trim() || '';
-      const branches = currentUser.permissions?.schoolsAndBranches?.[mainSchool] || [];
-      const mainBranch = branches[0] || '';
-
-      if (!profile.schoolName && mainSchool) {
-          updateData({
-            profile: {
-              ...profile,
-              schoolName: mainSchool,
-              branch: mainBranch
-            }
-          });
-      }
-    }
-  }, [currentUser, profile, isManagerOrAdmin, updateData]);
-
   const updateField = (field: string, value: string) => {
     if (isReadOnly) return;
     updateData({
@@ -147,7 +128,8 @@ const ProfilePage: React.FC = () => {
                     <label className="text-[10px] font-black text-slate-400 mr-2">العنوان</label>
                     <input
                       type="text"
-                      className="w-full p-3 bg-white border-2 border-slate-100 rounded-xl focus:border-blue-400 outline-none font-bold text-xs"
+                      disabled={isReadOnly}
+                      className="w-full p-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-xs cursor-not-allowed opacity-70"
                       value={field.label}
                       onChange={(e) => updateCustomField(idx, 'label', e.target.value)}
                       placeholder="مثال: رقم الترخيص"
@@ -158,7 +140,8 @@ const ProfilePage: React.FC = () => {
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        className="flex-1 p-3 bg-white border-2 border-slate-100 rounded-xl focus:border-blue-400 outline-none font-bold text-xs"
+                        disabled={isReadOnly}
+                        className="flex-1 p-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none font-bold text-xs cursor-not-allowed opacity-70"
                         value={field.value}
                         onChange={(e) => updateCustomField(idx, 'value', e.target.value)}
                         placeholder="..."

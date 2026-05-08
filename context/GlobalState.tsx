@@ -764,9 +764,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   let updated: any;
                   if (typeof remoteData === 'object' && !Array.isArray(remoteData) && remoteData !== null) {
                     if (key === 'profile') {
-                      // Forced replacement for School Profile to guarantee instant cross-device synchronization
-                      console.log('Profile Sync: Overwriting local profile with Firestore data');
-                      updated = { ...prev, [key]: { ...remoteData } };
+                      // 🔥 FORCED SYNC: School Profile is strictly server-authoritative.
+                      // We perform a total replacement to ensure all devices are 100% aligned with Firebase.
+                      const forcedProfile = remoteData ? JSON.parse(JSON.stringify(remoteData)) : {};
+                      console.log(`✅ [Firebase Sync] Forced update for ${key}:`, forcedProfile);
+                      updated = { ...prev, [key]: forcedProfile };
                     } else {
                       const existingObj = (prev[key] || {}) as any;
                       const mergedObj = { ...existingObj, ...remoteData };
@@ -986,7 +988,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       for (const key of Object.keys(newData) as Array<keyof AppData>) {
         if (strictlySharedKeys.includes(key)) {
-          updatedData[key] = newData[key] as any;
           const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
           const isManager = currentUser.permissions?.userManagement === true || (Array.isArray(currentUser.permissions?.userManagement) && currentUser.permissions.userManagement.length > 0);
           
@@ -1012,13 +1013,18 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           else if ((key === 'aboutSliderImages' || key === 'aboutExternalLinks' || key === 'aboutLogoImg') && isAdminOrFull) canSave = true;
 
           if (canSave) {
+            // Priority: Send to Firestore first for strictly shared data
             schoolsToUpdate.forEach(school => {
+              console.log(`📤 Pushing ${key} update to Firebase for school: ${school}`);
               setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
-                .then(() => {
-                  if (key === 'profile') console.log(`Successfully synced profile to Firebase for school: ${school}`);
-                })
                 .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));
             });
+
+            // For School Profile, we DO NOT update local state immediately to force Server-First flow.
+            // This ensures the local user also receives the update through the listener, verifying sync.
+            if (key !== 'profile') {
+              updatedData[key] = newData[key] as any;
+            }
           }
           continue;
         }

@@ -351,22 +351,33 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // 🔥 GLOBAL REAL-TIME SYNC FOR PROFILES
   // This listener is not guarded by ifs that prevent it from syncing. It runs globally as soon as user opens the app.
   useEffect(() => {
-    if (!isAuthenticated || !currentUser || !currentUser.selectedSchool) return;
+    if (!isAuthenticated || !currentUser) return;
+    
+    if (!currentUser.selectedSchool) {
+      console.warn('⚠️ لا يمكن بدء الاستماع، الـ ID مفقود (selectedSchool غير محدد للمستخدم).');
+      return;
+    }
 
     const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
     const schoolsToListen = selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools;
 
+    if (schoolsToListen.length === 0) {
+      console.warn('⚠️ لا يمكن بدء الاستماع، قائمة المدارس فارغة.');
+      return;
+    }
+
     const activeUnsubs = schoolsToListen.filter(Boolean).map(school => {
-      console.log(`📡 جاري بدء الاستماع لتحديثات ملف المدرسة رقم (المسار): schools/${school}/shared/profile`);
+      const fullPath = `schools/${school}/shared/profile`;
+      console.log(`📡 جاري بدء الاستماع لتحديثات ملف المدرسة رقم (المسار الكامل): ${fullPath}`);
       const q = doc(db, 'schools', school, 'shared', 'profile');
-      return onSnapshot(q, (snapshot) => {
+      return onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
         if (!snapshot.exists()) {
-          console.warn(`⚠️ مستند ملف المدرسة ${school} غير موجود بعد.`);
+          console.warn(`⚠️ مستند ملف المدرسة ${school} غير موجود بعد في المسار: ${fullPath}`);
           return;
         }
         const remoteData = snapshot.data()?.data;
         if (remoteData) {
-          console.log(`✨ استلمت تحديثاً للمدرسة رقم: ${school} والبيانات هي:`, remoteData);
+          console.log(`✨ استلمت تحديثاً للمدرسة رقم: ${school} من المسار المباشر (${fullPath}) والبيانات هي:`, remoteData);
           setData(prev => ({
             ...prev,
             profiles: {
@@ -376,7 +387,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           }));
         }
       }, (error) => {
-        console.error(`❌ خطأ في الاستماع للمدرسة ${school}:`, error);
+        console.error(`❌ خطأ في الاستماع للمدرسة ${school} على المسار ${fullPath}:`, error);
       });
     });
 
@@ -1054,13 +1065,14 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
             // Priority: Send to Firestore first for strictly shared data
             schoolsToUpdate.forEach(school => {
+              const fullPath = `schools/${school}/shared/${key}`;
               if (key === 'profile') {
-                console.log(`جاري الإرسال للمدرسة رقم: ${school}`);
+                console.log(`جاري الإرسال للمدرسة رقم: ${school} عبر المسار الكامل: ${fullPath}`);
               } else {
-                console.log(`📤 Pushing ${key} update to Firebase for school: ${school}`);
+                console.log(`📤 Pushing ${key} update to Firebase via: ${fullPath}`);
               }
               setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
-                .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));
+                .catch(err => handleFirestoreError(err, OperationType.WRITE, fullPath));
 
               if (key === 'profile') {
                 pendingChanges.profiles = {

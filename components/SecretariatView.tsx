@@ -563,7 +563,9 @@ const StudentsManager = () => {
                 <td className="p-2">
                   <select className="w-full bg-white border border-orange-300 rounded-lg p-2 outline-none focus:border-orange-500 text-sm" onChange={e => { bulkUpdateField('branch', e.target.value); e.target.value = ''; }}>
                     <option value="">تطبيق فرع...</option>
-                    {data.profile.schoolsAndBranches && Object.values(data.profile.schoolsAndBranches).flat().filter((v, i, a) => a.indexOf(v) === i).map((b: any) => <option key={b} value={b}>{b}</option>)}
+                    {Array.from(new Set(userSchools.flatMap(s => getAvailableBranches(s)))).map(b => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
                   </select>
                 </td>
                 <td className="p-2 text-center text-orange-700 text-xs font-bold">لا يمكن تعميم الاسم</td>

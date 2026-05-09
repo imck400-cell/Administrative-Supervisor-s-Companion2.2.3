@@ -623,23 +623,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               const remoteData = snapshot.data().data;
               setData(prev => {
                 if (key === 'users') {
-                  const existingUsers = prev.users || [];
                   const newUsers = Array.isArray(remoteData) ? remoteData : [];
-                  const merged = [...existingUsers];
-                  let changed = false;
-                  newUsers.forEach(nu => {
-                    const idx = merged.findIndex(u => u.id === nu.id);
-                    if (idx >= 0) {
-                      if (JSON.stringify(merged[idx]) !== JSON.stringify(nu)) {
-                        merged[idx] = nu;
-                        changed = true;
-                      }
-                    } else {
-                      merged.push(nu);
-                      changed = true;
-                    }
-                  });
-                  return changed ? { ...prev, users: merged } : prev;
+                  if (JSON.stringify(prev.users) !== JSON.stringify(newUsers)) {
+                    return { ...prev, users: newUsers };
+                  }
+                  return prev;
                 } else {
                    const existing = prev[key] as any[] || [];
                    const incoming = Array.isArray(remoteData) ? remoteData : [];
@@ -698,40 +686,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Memoize the set of user IDs we need to listen to
   const targetUserIds = React.useMemo(() => {
     if (!isAuthenticated || !currentUser) return "";
-    const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
-    const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
-    const isManager = currentUser.permissions?.userManagement === true;
     
-    let ids: string[] = [];
-
-    if (isAdminOrFull) {
-      ids = data.users.filter(u => 
-        selectedSchools.includes('all') || 
-        u.schools.some(s => selectedSchools.includes(s))
-      ).map(u => u.id);
-    } else {
-      if (userFilter === 'all') {
-        if (isManager) {
-          const explicitlyManaged = currentUser.permissions?.managedUserIds || [];
-          ids = data.users.filter(u => {
-            if (u.id === currentUser.id) return true;
-            const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
-            if (isTargetAdmin) return false;
-
-            return explicitlyManaged.includes(u.id);
-          }).map(u => u.id);
-        } else {
-          // Regular users ONLY see themselves
-          ids = [currentUser.id];
-        }
-      } else {
-        ids = userFilter.split(',');
-      }
-    }
-
-    // CRITICAL: Also include any users selected in the userFilter
+    const ids = [...effectiveUserIds];
+    
+    // CRITICAL: Also include any users selected in the userFilter just in case
     if (userFilter && userFilter !== 'all') {
-      const filterIds = userFilter.split(',');
+      const filterIds = userFilter.split(',').filter(id => id.length > 0);
       filterIds.forEach(id => {
         if (!ids.includes(id)) ids.push(id);
       });
@@ -739,7 +699,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     
     if (!ids.includes(currentUser.id)) ids.push(currentUser.id);
     return ids.sort().join(',');
-  }, [isAuthenticated, currentUser?.id, currentUser?.selectedSchool, currentUser?.role, currentUser?.permissions, data.users, userFilter]);
+  }, [isAuthenticated, currentUser?.id, effectiveUserIds, userFilter]);
 
   useEffect(() => {
     if (!isAuthenticated || !currentUser) return;
@@ -810,25 +770,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               const remoteData = snapshot.data().data;
               setData(prev => {
                 if (key === 'users') {
-                  const existingUsers = prev.users || [];
                   const newUsers = Array.isArray(remoteData) ? remoteData : [];
-                  const merged = [...existingUsers];
-                  let changed = false;
-                  let updated: any;
-                  newUsers.forEach(nu => {
-                    const idx = merged.findIndex(u => u.id === nu.id);
-                    if (idx >= 0) {
-                      if (JSON.stringify(merged[idx]) !== JSON.stringify(nu)) {
-                        merged[idx] = nu;
-                        changed = true;
-                      }
-                    } else {
-                      merged.push(nu);
-                      changed = true;
-                    }
-                  });
-                  if (changed) {
-                    updated = { ...prev, users: merged };
+                  if (JSON.stringify(prev.users) !== JSON.stringify(newUsers)) {
+                    const updated = { ...prev, users: newUsers };
                     StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
                     return updated;
                   }

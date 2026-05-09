@@ -966,7 +966,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return;
       }
       const selectedSchools = overrideSchools && overrideSchools.length > 0 ? overrideSchools.map(s => s.trim()) : currentUser.selectedSchool.split(',').map(s => s.trim());
-      const schoolsToUpdate = (selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools).map(s => s.trim());
+      let targetAvailableSchools = data.availableSchools || [];
+      if (newData.availableSchools) {
+        targetAvailableSchools = newData.availableSchools;
+      }
+      const schoolsToUpdate = (selectedSchools.includes('all') ? targetAvailableSchools : selectedSchools).map(s => s.trim());
       // const schoolsToUpdate = ['TEST_SCHOOL']; // 🔥 HARDCODED FOR TEST
       const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList', 'branchMetrics', 'adminBranchMetrics', 'adminFollowUpTypes', 'adminActivitiesList', 'adminBranchActivities', 'adminIndividualReportFields'];
       const customizableKeys = ['taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];

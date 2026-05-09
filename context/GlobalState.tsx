@@ -666,6 +666,29 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       if (!isMounted) return;
 
+      // Global system config listeners
+      ['aboutSliderImages', 'aboutExternalLinks'].forEach(key => {
+        const listenerId = `system-introConfig-${key}`;
+        if (dataListeners.current.has(listenerId)) return;
+        dataListeners.current.add(listenerId);
+        
+        const q = doc(db, 'system', 'introConfig', 'data', key);
+        const unsub = onSnapshot(q, (snapshot) => {
+          if (snapshot.exists()) {
+            const remoteData = snapshot.data().data;
+            setData(prev => {
+              if (JSON.stringify(prev[key as keyof AppData]) === JSON.stringify(remoteData)) return prev;
+              const updated = { ...prev, [key]: remoteData };
+              localStorage.setItem('rafiquk_data', JSON.stringify(updated));
+              return updated;
+            });
+          }
+        }, (error) => {
+          console.error(`System introConfig sync error [${key}]:`, error);
+        });
+        unsubscribes.push(unsub);
+      });
+
       const dataBuffer: Record<string, Record<string, any[]>> = {};
       const arrayKeys = ['substitutions', 'timetable', 'dailyReports', 'violations', 'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports', 'selfEvaluations', 'studentEvaluations'];
       arrayKeys.forEach(k => dataBuffer[k] = {});
@@ -972,6 +995,15 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
                 .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));
             });
+          }
+          continue;
+        }
+
+        if (key === 'aboutSliderImages' || key === 'aboutExternalLinks') {
+          updatedData[key] = newData[key] as any;
+          if (isAdminOrFull) {
+            setDoc(doc(db, 'system', 'introConfig', 'data', key), { data: newData[key] })
+              .catch(err => handleFirestoreError(err, OperationType.WRITE, `system/introConfig/data/${key}`));
           }
           continue;
         }

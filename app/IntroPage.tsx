@@ -3,12 +3,13 @@ import { motion } from 'framer-motion';
 import { useGlobal } from '../context/GlobalState';
 import { 
   PlayCircle, Info, Bot, PenTool, BarChart3, FileSignature, 
-  Settings, Lightbulb, CheckCircle2, Gauge, Network, Box 
+  Settings, Lightbulb, CheckCircle2, Gauge, Network, Box, Link as LinkIcon 
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface IntroPageProps {
   onEnter: () => void;
+  onAbout: () => void;
 }
 
 const FloatingIcon = ({ icon, color, bg, pos, size, delay }: any) => (
@@ -21,8 +22,8 @@ const FloatingIcon = ({ icon, color, bg, pos, size, delay }: any) => (
   </motion.div>
 );
 
-const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
-  const { currentUser } = useGlobal();
+const IntroPage: React.FC<IntroPageProps> = ({ onEnter, onAbout }) => {
+  const { currentUser, data } = useGlobal();
 
   const isTeacher = !!currentUser?.jobTitle && currentUser.jobTitle.includes('معلم');
 
@@ -119,17 +120,40 @@ const IntroPage: React.FC<IntroPageProps> = ({ onEnter }) => {
         className="w-full max-w-2xl flex flex-col sm:flex-row items-center justify-center gap-6 pb-12 px-4 z-20"
       >
         <button
-          onClick={() => {
-            toast.info('التعريف بالبرنامج', {
-              description: 'هذه الخاصية قيد التنفيذ حالياً'
-            });
-          }}
+          onClick={onAbout}
           className="w-full sm:w-auto px-8 py-5 bg-white/80 backdrop-blur-sm border-2 border-slate-200 text-slate-700 rounded-[2rem] font-black text-xl hover:border-slate-300 hover:bg-white shadow-lg shadow-slate-200/50 transition-all flex items-center justify-center gap-3 active:scale-95"
         >
           <Info size={28} className="text-slate-500" />
-          التعريف بالبرنامج
+          التعريف بالنظام
         </button>
       </motion.div>
+
+      {data.aboutExternalLinks && data.aboutExternalLinks.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="w-full max-w-4xl px-4 z-20 pb-12"
+        >
+          <div className="w-full bg-white/80 backdrop-blur-sm p-8 rounded-[2.5rem] border-2 border-slate-200 shadow-xl">
+            <h3 className="text-center font-black text-slate-800 text-2xl mb-6">روابط تهمك</h3>
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              {data.aboutExternalLinks.map((link) => (
+                <a
+                  key={link.id}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-6 py-4 bg-slate-50 hover:bg-slate-100 border-2 border-slate-200 text-slate-800 rounded-2xl font-bold flex items-center gap-3 transition-all hover:-translate-y-1"
+                >
+                  <LinkIcon size={20} className="text-blue-500" />
+                  {link.name}
+                </a>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 };

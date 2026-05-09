@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useGlobal } from '../context/GlobalState';
-import { Save, Plus, Trash2, School, Building, Calendar, Users, Briefcase, Sparkles } from 'lucide-react';
+import { Save, Plus, Trash2, School, Building, Calendar, Users, Briefcase, Sparkles, Image as ImageIcon, Upload } from 'lucide-react';
 
 const ProfilePage: React.FC = () => {
   const { data, updateData, lang, currentUser } = useGlobal();
@@ -58,6 +58,22 @@ const ProfilePage: React.FC = () => {
     updateData({ profile: { ...profile, customFields } });
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isReadOnly) return;
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        toast.error('حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 2 ميجابايت.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateField('logoImg', reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const deleteCustomField = (index: number) => {
     if (isReadOnly) return;
     const customFields = (profile.customFields || []).filter((_, i) => i !== index);
@@ -70,7 +86,6 @@ const ProfilePage: React.FC = () => {
     { key: 'schoolName', label: 'اسم المدارس', icon: <Briefcase className="w-5 h-5" />, autoFilled: true },
     { key: 'branch', label: 'الفرع', icon: <Sparkles className="w-5 h-5" />, autoFilled: true },
     { key: 'year', label: 'العام الدراسي', icon: <Calendar className="w-5 h-5" /> },
-    { key: 'semester', label: 'الفصل الدراسي', icon: <Calendar className="w-5 h-5" /> },
     { key: 'branchManager', label: 'مدير الفرع', icon: <Users className="w-5 h-5" /> },
     { key: 'generalManager', label: 'المدير العام', icon: <Users className="w-5 h-5" /> },
   ];
@@ -88,6 +103,27 @@ const ProfilePage: React.FC = () => {
       </header>
 
       <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm space-y-8">
+        <div className="flex flex-col items-center justify-center space-y-4 mb-8">
+          <div className="relative group w-32 h-32 rounded-[2rem] border-4 border-slate-100 overflow-hidden bg-slate-50 flex items-center justify-center shadow-inner transition-all hover:border-blue-200 cursor-pointer">
+            {profile.logoImg ? (
+              <img src={profile.logoImg} alt="Logo" className="w-full h-full object-cover" />
+            ) : (
+              <ImageIcon className="w-10 h-10 text-slate-300 group-hover:text-blue-400 transition-colors" />
+            )}
+            {!isReadOnly && (
+              <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer backdrop-blur-sm">
+                <Upload className="w-6 h-6 mb-1" />
+                <span className="text-[10px] font-bold">رفع شعار</span>
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              </label>
+            )}
+          </div>
+          <div className="text-center">
+            <h3 className="font-black text-slate-700">شعار المدرسة والفرع</h3>
+            <p className="text-[10px] text-slate-400 font-bold mt-1">يُفضل استخدام صورة بخلفية شفافة (png)</p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {formFields.map((field) => {
             const isReadOnly = field.autoFilled && !isManagerOrAdmin;

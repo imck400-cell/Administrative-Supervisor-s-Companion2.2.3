@@ -692,6 +692,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []); // Run once on mount
 
   const dataListeners = React.useRef<Set<string>>(new Set());
+  const isAuthDocSetup = React.useRef(false);
+  const dataBufferRef = React.useRef<Record<string, Record<string, any[]>>>({});
 
   // Memoize the set of user IDs we need to listen to
   const targetUserIds = React.useMemo(() => {
@@ -751,34 +753,41 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const startListeners = async () => {
       let uid = '';
-      try {
+      if (!isAuthDocSetup.current) {
+        try {
+          const { user } = await signInAnonymously(auth);
+          uid = user.uid;
+          
+          try {
+            await setDoc(doc(db, 'users', uid), {
+              customUserId: currentUser.id,
+              role: currentUser.role,
+              schools: currentUser.selectedSchool.split(',').map(s => s.trim()),
+              permissions: currentUser.permissions || {}
+            });
+            
+            await new Promise(resolve => setTimeout(resolve, 800));
+            isAuthDocSetup.current = true;
+          } catch (err: any) {
+            console.error("Error setting user doc:", err);
+          }
+        } catch (authErr: any) {
+          console.error("Authentication Error. Ensure Anonymous Auth is enabled in Firebase:", authErr);
+          toast.error('أخفق الاتصال المباشر. يرجى تفعيل مصادقة الزوار (Anonymous Authentication) في فايربيس.');
+          // We do not return here, we can try to proceed but rules might block.
+          // Returning here would completely disable all syncing.
+        }
+      } else {
         const { user } = await signInAnonymously(auth);
         uid = user.uid;
-        
-        try {
-          await setDoc(doc(db, 'users', uid), {
-            customUserId: currentUser.id,
-            role: currentUser.role,
-            schools: currentUser.selectedSchool.split(',').map(s => s.trim()),
-            permissions: currentUser.permissions || {}
-          });
-          
-          await new Promise(resolve => setTimeout(resolve, 800));
-        } catch (err: any) {
-          console.error("Error setting user doc:", err);
-        }
-      } catch (authErr: any) {
-        console.error("Authentication Error. Ensure Anonymous Auth is enabled in Firebase:", authErr);
-        toast.error('أخفق الاتصال المباشر. يرجى تفعيل مصادقة الزوار (Anonymous Authentication) في فايربيس.');
-        // We do not return here, we can try to proceed but rules might block.
-        // Returning here would completely disable all syncing.
       }
       
       if (!isMounted) return;
 
-      const dataBuffer: Record<string, Record<string, any[]>> = {};
       const arrayKeys = ['substitutions', 'timetable', 'dailyReports', 'violations', 'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports', 'selfEvaluations', 'studentEvaluations', 'deliveryReceiptRecords'];
-      arrayKeys.forEach(k => dataBuffer[k] = {});
+      if (Object.keys(dataBufferRef.current).length === 0) {
+        arrayKeys.forEach(k => dataBufferRef.current[k] = {});
+      }
 
       // Shared keys for the selected schools
       const strictlySharedKeys = ['users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList', 'branchMetrics', 'adminBranchMetrics', 'adminFollowUpTypes', 'adminActivitiesList', 'adminBranchActivities', 'adminIndividualReportFields'];
@@ -924,9 +933,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const q = doc(db, 'schools', school, 'users', uid, 'data', key);
             const unsub = onSnapshot(q, (snapshot) => {
               const items = (snapshot.exists() && Array.isArray(snapshot.data().items)) ? snapshot.data().items : [];
-              dataBuffer[key][school + '_' + uid] = items;
+              dataBufferRef.current[key][school + '_' + uid] = items;
               
-              const mergedArray = Object.values(dataBuffer[key]).flat();
+              const mergedArray = Object.values(dataBufferRef.current[key]).flat();
               const uniqueMergedArray = Array.from(new Map(mergedArray.filter(item => item && item.id).map(item => [item.id, item])).values());
               
               setData(prev => {

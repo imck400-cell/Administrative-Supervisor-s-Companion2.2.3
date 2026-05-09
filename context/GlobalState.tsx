@@ -1170,10 +1170,17 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         for (const uid of userIds) {
-          if (currentUser.role !== 'admin' && uid !== currentUser.id) continue;
-
+          // Check if the items changed, independent of array ordering
           const userItems = finalArray.filter(item => item.userId === uid);
+          const oldUserItems = oldArray.filter(item => item.userId === uid);
           
+           const sortedUserItems = [...userItems].sort((a,b) => (a.id || '').localeCompare(b.id || ''));
+           const sortedOldUserItems = [...oldUserItems].sort((a,b) => (a.id || '').localeCompare(b.id || ''));
+
+          if (JSON.stringify(sortedUserItems) === JSON.stringify(sortedOldUserItems)) {
+             continue; // No changes for this user, skip Firebase write
+          }
+
           // Group by school
           const itemsBySchool: Record<string, any[]> = {};
           schoolsToUpdate.forEach(s => itemsBySchool[s] = []); // Initialize all with empty array

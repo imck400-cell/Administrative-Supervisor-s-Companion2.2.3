@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { X, Save, AlertCircle, List, PlusCircle, Trash2, Calendar, User, Clock } from 'lucide-react';
-import { collection, addDoc, getDocs, query, where, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, orderBy, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useGlobal } from '../context/GlobalState';
 

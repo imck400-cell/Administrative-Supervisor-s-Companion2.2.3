@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useGlobal } from '../context/GlobalState';
 import { X, Save, Share2, FileSpreadsheet, User, ClipboardList, Search, Calendar, ChevronDown, ChevronUp, Trash2, CheckCircle2, ChevronLeft, ChevronRight, TrendingUp, Briefcase } from 'lucide-react';
-import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import * as XLSX from 'xlsx';
 import { StudentReport } from '../types';

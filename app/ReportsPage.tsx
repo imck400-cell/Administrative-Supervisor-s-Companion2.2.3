@@ -125,9 +125,11 @@ export const DailyReportsPage: React.FC = () => {
         if (updateMap[r.id]) {
           // Verify we aren't editing someone else's row as a regular user
           const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
-          const isManager = currentUser?.permissions?.userManagement === true;
+          const isManager = currentUser?.permissions?.userManagement === true || (Array.isArray(currentUser?.permissions?.userManagement) && currentUser?.permissions?.userManagement.length > 0);
+          const isGeneralSupervisor = (currentUser?.role as any) === 'general_supervisor' || currentUser?.permissions?.specialCodes === true || (Array.isArray(currentUser?.permissions?.specialCodes) && currentUser?.permissions?.specialCodes.length > 0);
+          const canEditDaily = isGeneralSupervisor || currentUser?.permissions?.dailyFollowUp === true || (Array.isArray(currentUser?.permissions?.dailyFollowUp) && !currentUser.permissions.dailyFollowUp.includes('view') && !currentUser.permissions.dailyFollowUp.includes('disable'));
           
-          if (!isAdminOrFull && !isManager && r.userId !== currentUser?.id) {
+          if (!isAdminOrFull && !isManager && !canEditDaily && r.userId !== currentUser?.id) {
              return r;
           }
           

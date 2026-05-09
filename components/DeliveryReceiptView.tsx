@@ -169,7 +169,7 @@ export const DeliveryReceiptView: React.FC<Props> = ({ onClose }) => {
     });
 
     results.sort((a,b) => {
-      if(a.dateStr !== b.dateStr) return b.dateStr.localeCompare(a.dateStr);
+      if(a._parent.dateStr !== b._parent.dateStr) return b._parent.dateStr.localeCompare(a._parent.dateStr);
       return 0;
     });
 

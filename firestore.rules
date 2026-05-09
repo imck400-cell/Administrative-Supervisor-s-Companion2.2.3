@@ -25,6 +25,12 @@ service cloud.firestore {
     //
     // ===============================================================
 
+    // System configuration (e.g. intro page settings)
+    match /system/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && userExists() && (getUserData().role == 'admin' || getUserData().get('permissions', {}).get('all', false) == true);
+    }
+
     // Helper functions
     function isAuthenticated() {
       return request.auth != null;
@@ -61,8 +67,7 @@ service cloud.firestore {
       // User-specific data
       match /users/{userId}/data/{key} {
         allow read: if isAuthenticated() && userExists() && hasSchool(school);
-        allow write: if isAuthenticated() && userExists() && hasSchool(school) && 
-          (getUserData().role == 'admin' || getUserData().customUserId == userId);
+        allow write: if isAuthenticated() && userExists() && hasSchool(school);
       }
     }
 

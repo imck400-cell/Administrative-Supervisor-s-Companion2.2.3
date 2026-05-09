@@ -15,7 +15,7 @@ interface AboutProgramPageProps {
 
 const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
   const { data, updateData, currentUser } = useGlobal();
-  const profile = data?.profile || {};
+  const profile = (data?.profile || {}) as any;
   
   const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
 
@@ -80,8 +80,8 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 2 ميجابايت.');
+      if (file.size > 500 * 1024) {
+        toast.error('حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 500 كيلوبايت.');
         return;
       }
       const reader = new FileReader();
@@ -284,6 +284,46 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
             </div>
           </div>
 
+          <div className="space-y-6 pt-6 border-t">
+            <h4 className="font-extrabold text-lg text-slate-700 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center">3</div>
+              شعار البرنامج
+            </h4>
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+               <div className="w-full flex-col gap-2">
+                 <label className="text-sm font-bold text-slate-500 mb-2 block">اختر صورة الشعار</label>
+                 <div className="relative w-full max-w-sm h-40 bg-white rounded-2xl border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden group cursor-pointer hover:border-violet-400 transition-all">
+                   {data.aboutLogoImg ? (
+                     <img src={data.aboutLogoImg} className="w-full h-full object-contain p-2" alt="" />
+                   ) : (
+                     <div className="text-slate-400 flex flex-col items-center">
+                       <Upload size={32} className="mb-2" />
+                       <span className="text-sm font-bold">رفع الشعار</span>
+                       <span className="text-xs text-slate-500 mt-1">يُفضل بخلفية شفافة</span>
+                     </div>
+                   )}
+                   <input 
+                     type="file" 
+                     accept="image/*" 
+                     className="absolute inset-0 opacity-0 cursor-pointer" 
+                     onChange={(e) => {
+                       const file = e.target.files?.[0];
+                       if (file) {
+                         if (file.size > 500 * 1024) {
+                           toast.error('حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 500 كيلوبايت.');
+                           return;
+                         }
+                         const reader = new FileReader();
+                         reader.onloadend = () => updateData({ aboutLogoImg: reader.result as string });
+                         reader.readAsDataURL(file);
+                       }
+                     }} 
+                   />
+                 </div>
+               </div>
+            </div>
+          </div>
+
         </div>
       ) : null}
 
@@ -292,8 +332,10 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-100/50 rounded-full blur-3xl pointer-events-none -z-10" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-100/50 rounded-full blur-3xl pointer-events-none -z-10" />
         
-        {profile.logoImg ? (
-          <img src={profile.logoImg} alt="شعار البرنامج" className="w-32 h-32 object-contain mb-8 animate-in zoom-in" />
+        {data.aboutLogoImg ? (
+          <img src={data.aboutLogoImg} alt="شعار البرنامج" className="w-32 h-32 object-contain mb-8 animate-in zoom-in" />
+        ) : profile.logoImg ? (
+          <img src={profile.logoImg} alt="شعار المدارس" className="w-32 h-32 object-contain mb-8 animate-in zoom-in" />
         ) : (
           <div className="w-32 h-32 bg-blue-50 rounded-[2.5rem] flex items-center justify-center border-4 border-white shadow-lg mb-8">
             <Bot size={64} className="text-blue-600" />

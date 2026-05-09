@@ -964,7 +964,7 @@ const StaffFollowUpPage: React.FC = () => {
             activitesList.forEach((a, i) => {
                 const k = `${individualForm.reportField}_${i}`;
                 const score = individualScores[k] ?? 0;
-                const executed = executedCounts[k] !== undefined ? executedCounts[k] : (parseInt(a.planned) || 0);
+                const executed = executedCounts[k] !== undefined ? executedCounts[k] : (parseInt(String(a.planned)) || 0);
                 const stat = evidenceStatus[k] || 'توفر الشاهد';
                 const reason = failureReasons[k] || '';
                 const isUnacc = unaccreditedItems[k];
@@ -1046,7 +1046,7 @@ const StaffFollowUpPage: React.FC = () => {
             (getActivitiesForField(individualForm.reportField) || []).forEach((a, i) => {
                 const k = `${individualForm.reportField}_${i}`;
                 const score = individualScores[k] ?? 0;
-                const executed = executedCounts[k] !== undefined ? executedCounts[k] : (parseInt(a.planned) || 0);
+                const executed = executedCounts[k] !== undefined ? executedCounts[k] : (parseInt(String(a.planned)) || 0);
                 const stat = evidenceStatus[k] || 'توفر الشاهد';
                 const reason = failureReasons[k] || '';
                 const isUnacc = unaccreditedItems[k];
@@ -1372,7 +1372,7 @@ const StaffFollowUpPage: React.FC = () => {
                                     (getActivitiesForField(individualForm.reportField) || []).map((activity, idx) => {
                                         const key = `${individualForm.reportField}_${idx}`;
                                         const score = individualScores[key] ?? -1;
-                                        const executed = executedCounts[key] !== undefined ? executedCounts[key] : (parseInt(activity.planned) || 0);
+                                        const executed = executedCounts[key] !== undefined ? executedCounts[key] : (parseInt(String(activity.planned)) || 0);
                                         const status = evidenceStatus[key] || 'لم يتم التحديد';
                                         const isUnaccredited = unaccreditedItems[key] || false;
 
@@ -1420,7 +1420,7 @@ const StaffFollowUpPage: React.FC = () => {
                                                                 </button>
                                                                 <button
                                                                     onClick={() => {
-                                                                        const max = parseInt(activity.planned) || 0;
+                                                                        const max = parseInt(String(activity.planned)) || 0;
                                                                         if (executed < max) {
                                                                             setExecutedCounts({ ...executedCounts, [key]: executed + 1 });
                                                                         }
@@ -1817,7 +1817,7 @@ const StaffFollowUpPage: React.FC = () => {
                                         const k = `${individualForm.reportField}_${i}`;
                                         if (unaccreditedItems[k]) return;
                                         const s = individualScores[k] || 0;
-                                        const executed = executedCounts[k] !== undefined ? executedCounts[k] : (parseInt(a.planned) || 0);
+                                        const executed = executedCounts[k] !== undefined ? executedCounts[k] : (parseInt(String(a.planned)) || 0);
                                         const icon = s >= 3 ? '🟢' : (s >= 2 ? '🟡' : '🔴');
                                         msg += `${icon} ${a.text}\n`;
                                         msg += `   └ المخطط: ${a.planned} | المنفذ: ${executed} | الدرجة: ${s}/4\n`;

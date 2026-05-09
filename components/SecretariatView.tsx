@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Briefcase, Users, FileSpreadsheet, Plus, Trash2, Search, AlertTriangle } from 'lucide-react';
+import { Briefcase, Users, FileSpreadsheet, Plus, Trash2, Search, AlertTriangle, School } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGlobal } from '../context/GlobalState';
 import * as XLSX from 'xlsx';
@@ -36,11 +36,13 @@ interface StaffData {
 import ConfirmDialog from './ConfirmDialog';
 import { TeacherCriteriaModal } from './TeacherCriteriaModal';
 import { AdminCriteriaModal } from './AdminCriteriaModal';
+import { SchoolProfileModal } from './SchoolProfileModal';
 
 export const SecretariatView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(null);
   const [isTeacherCriteriaOpen, setIsTeacherCriteriaOpen] = useState(false);
   const [isAdminCriteriaOpen, setIsAdminCriteriaOpen] = useState(false);
+  const [isSchoolProfileOpen, setIsSchoolProfileOpen] = useState(false);
   
   return (
     <div className="space-y-6" dir="rtl">
@@ -81,20 +83,19 @@ export const SecretariatView: React.FC = () => {
             </motion.button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsTeacherCriteriaOpen(true)}
-              className="p-6 bg-gradient-to-l from-blue-600 to-indigo-600 rounded-3xl text-white shadow-lg hover:shadow-blue-500/30 transition-all text-center group relative overflow-hidden"
+              className="p-6 bg-white/70 backdrop-blur-md border border-white/80 rounded-3xl text-slate-800 shadow-xl shadow-blue-500/10 hover:bg-white/90 transition-all text-center group relative overflow-hidden"
             >
-              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="relative z-10 flex flex-col items-center">
-                <div className="bg-white/20 backdrop-blur-sm p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
-                  <FileSpreadsheet size={32} className="text-white" />
+                <div className="bg-gradient-to-br from-blue-500 to-indigo-500 p-4 rounded-2xl mb-4 shadow-lg text-white group-hover:scale-110 transition-transform">
+                  <FileSpreadsheet size={32} />
                 </div>
-                <h3 className="text-lg font-black">التحكم بمعايير متابعة المعلمين</h3>
-                <p className="text-sm text-blue-100 mt-2">إضافة، تعديل، وحذف المعايير الافتراضية</p>
+                <h3 className="text-lg font-black">معايير المعلمين</h3>
+                <p className="text-xs text-slate-500 mt-2">إضافة، تعديل، وحذف المعايير الافتراضية</p>
               </div>
             </motion.button>
             
@@ -102,15 +103,29 @@ export const SecretariatView: React.FC = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setIsAdminCriteriaOpen(true)}
-              className="p-6 bg-gradient-to-l from-emerald-600 to-teal-600 rounded-3xl text-white shadow-lg hover:shadow-emerald-500/30 transition-all text-center group relative overflow-hidden"
+              className="p-6 bg-white/70 backdrop-blur-md border border-white/80 rounded-3xl text-slate-800 shadow-xl shadow-emerald-500/10 hover:bg-white/90 transition-all text-center group relative overflow-hidden"
             >
-              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="relative z-10 flex flex-col items-center">
-                <div className="bg-white/20 backdrop-blur-sm p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
-                  <Briefcase size={32} className="text-white" />
+                <div className="bg-gradient-to-br from-emerald-500 to-teal-500 p-4 rounded-2xl mb-4 shadow-lg text-white group-hover:scale-110 transition-transform">
+                  <Briefcase size={32} />
                 </div>
-                <h3 className="text-lg font-black">التحكم بمعايير متابعة الموظفين والعاملين</h3>
-                <p className="text-sm text-emerald-100 mt-2">تخصيص مجالات التقارير ومعايير التقييم</p>
+                <h3 className="text-lg font-black">معايير الموظفين</h3>
+                <p className="text-xs text-slate-500 mt-2">تخصيص مجالات التقارير ومعايير التقييم</p>
+              </div>
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsSchoolProfileOpen(true)}
+              className="p-6 bg-white/70 backdrop-blur-md border border-white/80 rounded-3xl text-slate-800 shadow-xl shadow-violet-500/10 hover:bg-white/90 transition-all text-center group relative overflow-hidden"
+            >
+              <div className="relative z-10 flex flex-col items-center">
+                <div className="bg-gradient-to-br from-violet-500 to-purple-500 p-4 rounded-2xl mb-4 shadow-lg text-white group-hover:scale-110 transition-transform">
+                  <School size={32} />
+                </div>
+                <h3 className="text-lg font-black">ملف المدرسة</h3>
+                <p className="text-xs text-slate-500 mt-2">تعديل وتعميم البيانات والشعار</p>
               </div>
             </motion.button>
           </div>
@@ -141,6 +156,11 @@ export const SecretariatView: React.FC = () => {
       <AdminCriteriaModal 
         isOpen={isAdminCriteriaOpen} 
         onClose={() => setIsAdminCriteriaOpen(false)} 
+      />
+
+      <SchoolProfileModal
+        isOpen={isSchoolProfileOpen}
+        onClose={() => setIsSchoolProfileOpen(false)}
       />
     </div>
   );

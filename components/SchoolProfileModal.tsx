@@ -15,7 +15,7 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
   const [ministry, setMinistry] = useState('');
   const [district, setDistrict] = useState('');
   const [selectedSchool, setSelectedSchool] = useState<string>('');
-  const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [logoImg, setLogoImg] = useState('');
   const [branchManager, setBranchManager] = useState('');
   const [generalManager, setGeneralManager] = useState('');
@@ -41,7 +41,7 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
         setGeneralManager('');
         setYear('');
         setLogoImg('');
-        setSelectedBranches([]);
+        setSelectedBranch('');
       }
     }
   }, [isOpen, data.availableSchools, currentUser]);
@@ -51,8 +51,12 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
       const schoolProfiles = (data.profiles?.[selectedSchool] || {}) as any;
       let profileToEdit = schoolProfiles;
       
-      // If it's the new branch-based map format but no legacy properties, pick the first branch to prepopulate
-      if (schoolProfiles.ministry === undefined) {
+      // If a branch is selected, edit that specific branch
+      if (selectedBranch && schoolProfiles[selectedBranch]) {
+        profileToEdit = schoolProfiles[selectedBranch];
+      } 
+      // Else if it's the new branch-based map format but no legacy properties, pick the first branch to prepopulate
+      else if (schoolProfiles.ministry === undefined) {
         const firstBranchKey = Object.keys(schoolProfiles)[0];
         if (firstBranchKey && typeof schoolProfiles[firstBranchKey] === 'object') {
           profileToEdit = schoolProfiles[firstBranchKey];
@@ -65,10 +69,8 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
       setGeneralManager(profileToEdit.generalManager || '');
       setYear(profileToEdit.year || '');
       setLogoImg(profileToEdit.logoImg || '');
-      
-      // If not populated from a specific branch in the map, use the legacy string fallback, else leave based on selectedBranches
     }
-  }, [selectedSchool, data.profiles]);
+  }, [selectedSchool, selectedBranch, data.profiles]);
 
   const userFullData = data.users?.find(u => u.id === currentUser?.id);
   const availableYears = userFullData?.academicYears?.length ? userFullData.academicYears : (data.availableYears || []);
@@ -90,12 +92,11 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
 
   const handleSchoolToggle = (school: string) => {
     setSelectedSchool(school);
+    setSelectedBranch(''); // Reset branch when school changes
   };
 
   const handleBranchToggle = (branch: string) => {
-    setSelectedBranches(prev => 
-      prev.includes(branch) ? prev.filter(b => b !== branch) : [...prev, branch]
-    );
+    setSelectedBranch(branch);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,8 +129,8 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
       schoolName: selectedSchool,
     };
     
-    if (selectedBranches.length > 0) {
-      (updatedProfile as any).branch = selectedBranches.join(' - ');
+    if (selectedBranch) {
+      (updatedProfile as any).branch = selectedBranch;
     } else {
       (updatedProfile as any).branch = '';
     }
@@ -158,13 +159,11 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
        delete payloadMap.lastUpdated;
     }
 
-    if (selectedBranches.length > 0) {
-      selectedBranches.forEach(branchName => {
-        payloadMap[branchName] = {
-           ...updatedProfile,
-           branch: branchName
-        };
-      });
+    if (selectedBranch) {
+      payloadMap[selectedBranch] = {
+         ...updatedProfile,
+         branch: selectedBranch
+      };
     } else {
       payloadMap['الاعدادات العامة'] = {
         ...updatedProfile,
@@ -266,14 +265,14 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
                   exit={{ opacity: 0, height: 0 }}
                   className="space-y-4 p-5 bg-white/50 rounded-2xl border border-slate-200/50 shadow-sm overflow-hidden"
                 >
-                  <label className="text-sm font-bold text-slate-700 block">الفروع المشمولة (اختياري)</label>
+                  <label className="text-sm font-bold text-slate-700 block">تحديد الفرع المراد تعديله</label>
                   <div className="flex flex-wrap gap-2">
                     {availableBranches.map(branch => (
                       <button
                         key={branch}
                         onClick={() => handleBranchToggle(branch)}
                         className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                          selectedBranches.includes(branch)
+                          selectedBranch === branch
                             ? 'bg-gradient-to-l from-blue-600 to-cyan-600 text-white shadow-md'
                             : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                         }`}

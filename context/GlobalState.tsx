@@ -658,6 +658,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   defaultData.users.forEach(u => mergedUsersMap.set(u.id, u));
                   newUsers.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
                   const mergedUsers = Array.from(mergedUsersMap.values());
+
+                  // Restore to Firebase if missing
+                  if (newUsers.length < mergedUsers.length) {
+                    setDoc(doc(db, 'schools', school, 'shared', 'users'), { data: mergedUsers }).catch(console.error);
+                  }
                   
                   if (JSON.stringify(prev.users) !== JSON.stringify(mergedUsers)) {
                     return { ...prev, users: mergedUsers };
@@ -811,6 +816,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   newUsers.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
                   const mergedUsers = Array.from(mergedUsersMap.values());
                   
+                  // Restore to Firebase if missing from cloud data, only admins do this to avoid spam
+                  if (newUsers.length < mergedUsers.length && isAdminOrFull) {
+                    console.log('Restoring missing default users to Firebase...');
+                    setDoc(doc(db, 'schools', school, 'shared', 'users'), { data: mergedUsers }).catch(console.error);
+                  }
+
                   if (JSON.stringify(prev.users) !== JSON.stringify(mergedUsers)) {
                     const updated = { ...prev, users: mergedUsers };
                     StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
@@ -820,11 +831,20 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 } else if (key === 'availableSchools' || key === 'availableYears') {
                   const existing = prev[key] as any[] || [];
                   const incoming = Array.isArray(remoteData) ? remoteData : [];
-                  const merged = [...new Set([...existing, ...incoming])];
-                  if (merged.length === existing.length && merged.every((v, i) => v === existing[i])) {
+                  
+                  const defaultSchools = key === 'availableSchools' ? (defaultData.availableSchools || []) : [];
+                  const rawMerged = [...new Set([...existing, ...incoming])];
+                  // Ensure availableSchools always has defaults
+                  const finalMerged = key === 'availableSchools' ? [...new Set([...defaultSchools, ...rawMerged])] : rawMerged;
+                  
+                  if (key === 'availableSchools' && incoming.length < finalMerged.length && isAdminOrFull) {
+                     setDoc(doc(db, 'schools', school, 'shared', key), { data: finalMerged }).catch(console.error);
+                  }
+
+                  if (finalMerged.length === existing.length && finalMerged.every((v, i) => v === existing[i])) {
                     return prev;
                   }
-                  const updated = { ...prev, [key]: merged };
+                  const updated = { ...prev, [key]: finalMerged };
                   StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
                   return updated;
                 } else {
@@ -1073,6 +1093,15 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           if (canSave) {
             if (key === 'profile') {
               newData[key] = { ...(newData[key] as any), lastUpdated: Date.now() };
+            }
+            if (key === 'users' && Array.isArray(newData[key])) {
+              const mergedUsersMap = new Map();
+              defaultData.users.forEach(u => mergedUsersMap.set(u.id, u));
+              (newData[key] as AuthUser[]).forEach(u => mergedUsersMap.set(u.id, u));
+              newData[key] = Array.from(mergedUsersMap.values()) as any;
+            }
+            if (key === 'availableSchools' && Array.isArray(newData[key])) {
+              newData[key] = [...new Set([...(defaultData.availableSchools || []), ...newData[key]])] as any;
             }
 
             // Priority: Send to Firestore first for strictly shared data

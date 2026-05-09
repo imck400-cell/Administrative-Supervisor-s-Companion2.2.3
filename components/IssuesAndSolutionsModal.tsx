@@ -84,9 +84,10 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
      setSearchQuery('');
   };
 
-  const fetchIssues = async () => {
-    setIsLoading(true);
-    try {
+  useEffect(() => {
+    let unsub: (() => void) | undefined;
+    
+    if (isOpen && activeTab === 'view') {
       if (!navigator.onLine) {
          const offlineData = JSON.parse(localStorage.getItem('offlineIssues') || '[]');
          setIssuesRecord(offlineData);
@@ -94,42 +95,41 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
          return;
       }
 
-      // For simplicity, just get all from this school, then filter in JS
-      // Because we may need complex filtering for managed users
+      setIsLoading(true);
       const q = query(
         collection(db, 'issuesAndSolutions_log'), 
         orderBy('timestamp', 'desc')
       );
-      const querySnapshot = await getDocs(q);
-      const docs = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-
-      // Filter by school in JS to avoid index errors
-      const schoolDocs = docs.filter((d: any) => d.school === currentUser?.selectedSchool);
       
-      const isAdmin = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
-      const issuesPermRaw = currentUser?.permissions?.issuesModal;
-      const canViewAll = Array.isArray(issuesPermRaw) && issuesPermRaw.includes('viewAllIssues');
-      const managedIds = currentUser?.permissions?.managedUserIds || [];
+      unsub = onSnapshot(q, (querySnapshot) => {
+        const docs = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      let filteredDocs = schoolDocs;
-      if (!isAdmin && !canViewAll) {
-        filteredDocs = schoolDocs.filter((d: any) => 
-          d.userId === currentUser?.id || managedIds.includes(d.userId)
-        );
-      }
-      
-      const offlineData = JSON.parse(localStorage.getItem('offlineIssues') || '[]');
-      setIssuesRecord([...offlineData, ...filteredDocs]);
-    } catch (err) {
-      console.error('Error fetching issues: ', err);
-    } finally {
-      setIsLoading(false);
+        // Filter by school in JS to avoid index errors
+        const schoolDocs = docs.filter((d: any) => d.school === currentUser?.selectedSchool);
+        
+        const isAdmin = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+        const issuesPermRaw = currentUser?.permissions?.issuesModal;
+        const canViewAll = Array.isArray(issuesPermRaw) && issuesPermRaw.includes('viewAllIssues');
+        const managedIds = currentUser?.permissions?.managedUserIds || [];
+
+        let filteredDocs = schoolDocs;
+        if (!isAdmin && !canViewAll) {
+          filteredDocs = schoolDocs.filter((d: any) => 
+            d.userId === currentUser?.id || managedIds.includes(d.userId)
+          );
+        }
+        
+        const offlineData = JSON.parse(localStorage.getItem('offlineIssues') || '[]');
+        setIssuesRecord([...offlineData, ...filteredDocs]);
+        setIsLoading(false);
+      }, (err) => {
+        console.error('Error fetching issues: ', err);
+        setIsLoading(false);
+      });
     }
-  };
-
-  useEffect(() => {
-    if (isOpen && activeTab === 'view') {
-      fetchIssues();
+    
+    return () => {
+      if (unsub) unsub();
     }
   }, [isOpen, activeTab, currentUser]);
 

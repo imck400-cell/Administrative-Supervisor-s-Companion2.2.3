@@ -761,7 +761,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           try {
             await setDoc(doc(db, 'users', uid), {
               customUserId: currentUser.id,
-              role: currentUser.role,
+              role: currentUser.role || 'user',
               schools: currentUser.selectedSchool.split(',').map(s => s.trim()),
               permissions: currentUser.permissions || {}
             });

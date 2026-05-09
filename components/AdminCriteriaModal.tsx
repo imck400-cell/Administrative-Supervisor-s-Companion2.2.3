@@ -116,13 +116,13 @@ export const AdminCriteriaModal: React.FC<AdminCriteriaModalProps> = ({ isOpen, 
           };
         });
       });
-      updateData({ adminBranchActivities: updatedAdminBranchActivities }, selectedSchools);
+      updateData({ adminBranchActivities: updatedAdminBranchActivities });
     } else {
       const updatedAdminActivitiesList = {
         ...(data.adminActivitiesList || {}),
         [selectedCategory]: validActivities
       };
-      updateData({ adminActivitiesList: updatedAdminActivitiesList }, selectedSchools);
+      updateData({ adminActivitiesList: updatedAdminActivitiesList });
     }
 
     toast.success('تم الحفظ وتعميم المعايير بنجاح');

@@ -88,9 +88,9 @@ export const TeacherCriteriaModal: React.FC<TeacherCriteriaModalProps> = ({ isOp
           updatedBranchMetrics[`${school}_${branch}`] = metrics;
         });
       });
-      updateData({ branchMetrics: updatedBranchMetrics }, selectedSchools);
+      updateData({ branchMetrics: updatedBranchMetrics });
     } else {
-      updateData({ metricsList: metrics }, selectedSchools);
+      updateData({ metricsList: metrics });
     }
     
     toast.success('تم الحفظ وتعميم المعايير بنجاح');

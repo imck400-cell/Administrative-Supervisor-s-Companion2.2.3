@@ -110,7 +110,7 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
       (updatedProfile as any).logoImg = logoImg;
     }
 
-    updateData({ profile: updatedProfile as any }, selectedSchools);
+    updateData({ profile: updatedProfile as any });
     toast.success('تم الحفظ والتعميم بنجاح');
     onClose();
   };

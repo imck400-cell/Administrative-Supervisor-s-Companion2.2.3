@@ -38,7 +38,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
       emailVerified: auth.currentUser?.emailVerified,
       isAnonymous: auth.currentUser?.isAnonymous,
       tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData.map(provider => ({
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
         providerId: provider.providerId,
         displayName: provider.displayName,
         email: provider.email,
@@ -750,23 +750,30 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     dataListeners.current.clear();
 
     const startListeners = async () => {
-      const { user } = await signInAnonymously(auth);
-      if (!isMounted) return;
-
+      let uid = '';
       try {
-        await setDoc(doc(db, 'users', user.uid), {
-          customUserId: currentUser.id,
-          role: currentUser.role,
-          schools: currentUser.selectedSchool.split(',').map(s => s.trim()),
-          permissions: currentUser.permissions || {}
-        });
+        const { user } = await signInAnonymously(auth);
+        uid = user.uid;
         
-        // Small delay to ensure rules engine sees the new document
-        await new Promise(resolve => setTimeout(resolve, 800));
-      } catch (err) {
-        console.error("Error setting user doc:", err);
+        try {
+          await setDoc(doc(db, 'users', uid), {
+            customUserId: currentUser.id,
+            role: currentUser.role,
+            schools: currentUser.selectedSchool.split(',').map(s => s.trim()),
+            permissions: currentUser.permissions || {}
+          });
+          
+          await new Promise(resolve => setTimeout(resolve, 800));
+        } catch (err: any) {
+          console.error("Error setting user doc:", err);
+        }
+      } catch (authErr: any) {
+        console.error("Authentication Error. Ensure Anonymous Auth is enabled in Firebase:", authErr);
+        toast.error('أخفق الاتصال المباشر. يرجى تفعيل مصادقة الزوار (Anonymous Authentication) في فايربيس.');
+        // We do not return here, we can try to proceed but rules might block.
+        // Returning here would completely disable all syncing.
       }
-
+      
       if (!isMounted) return;
 
       const dataBuffer: Record<string, Record<string, any[]>> = {};
@@ -916,11 +923,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
             const q = doc(db, 'schools', school, 'users', uid, 'data', key);
             const unsub = onSnapshot(q, (snapshot) => {
-              const items = snapshot.exists() ? snapshot.data().items : [];
+              const items = (snapshot.exists() && Array.isArray(snapshot.data().items)) ? snapshot.data().items : [];
               dataBuffer[key][school + '_' + uid] = items;
               
               const mergedArray = Object.values(dataBuffer[key]).flat();
-              const uniqueMergedArray = Array.from(new Map(mergedArray.map(item => [item.id, item])).values());
+              const uniqueMergedArray = Array.from(new Map(mergedArray.filter(item => item && item.id).map(item => [item.id, item])).values());
               
               setData(prev => {
                 const currentArray = prev[key] as any[];

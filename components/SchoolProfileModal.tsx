@@ -118,9 +118,21 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
       return;
     }
 
-    const currentProfile = data.profiles?.[selectedSchool] || {};
+    const existingSchoolProfiles = (data.profiles?.[selectedSchool] || {}) as any;
+    
+    // Get the profile specifically for the branch we are editing, or default to an empty object if not found.
+    // If it's a legacy flat structure, we extract that.
+    let currentBranchProfile = {};
+    if (selectedBranch && existingSchoolProfiles[selectedBranch]) {
+       currentBranchProfile = existingSchoolProfiles[selectedBranch];
+    } else if (existingSchoolProfiles.ministry !== undefined) {
+       currentBranchProfile = { ...existingSchoolProfiles };
+       // clean up legacy map artifacts
+       delete (currentBranchProfile as any).lastUpdated;
+    }
+
     const updatedProfile = {
-      ...currentProfile,
+      ...currentBranchProfile,
       ministry,
       district,
       branchManager,
@@ -141,7 +153,6 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
     }
 
     // Update the profile in the new branch-based map format
-    const existingSchoolProfiles = data.profiles?.[selectedSchool] || {};
     const payloadMap: any = { ...existingSchoolProfiles };
     
     // For legacy documents: if it's currently a flat Document, just migrate it.

@@ -384,13 +384,33 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           console.log(`✨ استلمت تحديثاً للمدرسة رقم: ${school} من المسار المباشر (${fullPath}) والبيانات هي:`, remoteData);
           setData(prev => {
             const isCurrentlyActive = currentUser?.selectedSchool?.split(',')[0]?.trim() === school || (currentUser?.selectedSchool?.split(',')[0]?.trim() === 'all' && prev.availableSchools?.[0] === school);
+            
+            let updatedCurrentProfile = prev.profile;
+            if (isCurrentlyActive) {
+              const schoolProfiles = remoteData || {};
+              const currentBranch = currentUser?.selectedBranch?.trim();
+              
+              let newProfileProps = {};
+              if (currentBranch && schoolProfiles[currentBranch]) {
+                newProfileProps = schoolProfiles[currentBranch];
+              } else if (schoolProfiles.ministry !== undefined) {
+                newProfileProps = schoolProfiles;
+              } else {
+                const firstBranchKey = Object.keys(schoolProfiles)[0];
+                if (firstBranchKey && typeof schoolProfiles[firstBranchKey] === 'object') {
+                  newProfileProps = schoolProfiles[firstBranchKey];
+                }
+              }
+              updatedCurrentProfile = { ...prev.profile, ...newProfileProps };
+            }
+
             return {
               ...prev,
               profiles: {
                 ...(prev.profiles || {}),
                 [school]: remoteData
               },
-              ...(isCurrentlyActive ? { profile: { ...prev.profile, ...remoteData } } : {})
+              ...(isCurrentlyActive ? { profile: updatedCurrentProfile } : {})
             };
           });
         }
@@ -1097,7 +1117,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             if (key === 'users' && Array.isArray(newData[key])) {
               const mergedUsersMap = new Map();
               defaultData.users.forEach(u => mergedUsersMap.set(u.id, u));
-              (newData[key] as AuthUser[]).forEach(u => mergedUsersMap.set(u.id, u));
+              (newData[key] as any[]).forEach(u => mergedUsersMap.set(u.id, u));
               newData[key] = Array.from(mergedUsersMap.values()) as any;
             }
             if (key === 'availableSchools' && Array.isArray(newData[key])) {
@@ -1132,7 +1152,24 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             await Promise.all(promises);
 
             // Update local state immediately for instant feedback
-            pendingChanges[key] = newData[key] as any;
+            if (key !== 'profile') {
+              pendingChanges[key] = newData[key] as any;
+            } else {
+               const schoolProfiles = newData[key] as any;
+               const currentBranch = currentUser?.selectedBranch?.trim();
+               let newProfileProps = {};
+               if (currentBranch && schoolProfiles[currentBranch]) {
+                 newProfileProps = schoolProfiles[currentBranch];
+               } else if (schoolProfiles.ministry !== undefined) {
+                 newProfileProps = schoolProfiles;
+               } else {
+                 const firstBranchKey = Object.keys(schoolProfiles)[0];
+                 if (firstBranchKey && typeof schoolProfiles[firstBranchKey] === 'object') {
+                   newProfileProps = schoolProfiles[firstBranchKey];
+                 }
+               }
+               pendingChanges.profile = { ...(rawData.profile || {}), ...newProfileProps } as any;
+            }
           }
           continue;
         }

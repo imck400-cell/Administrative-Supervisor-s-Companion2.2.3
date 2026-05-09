@@ -55,7 +55,14 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
 
   // Combine all branches for the selected schools from data.schoolBranches
   const availableBranches = selectedSchools.reduce((acc: string[], sch) => {
-    const branches = data.schoolBranches?.[sch] || [];
+    let branches = data.schoolBranches?.[sch] || [];
+    const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+    if (!isAdminOrFull) {
+      const allowed = currentUser?.permissions?.schoolsAndBranches?.[sch] || [];
+      if (allowed.length > 0) {
+        branches = branches.filter(b => allowed.includes(b));
+      }
+    }
     return [...acc, ...branches];
   }, []);
 

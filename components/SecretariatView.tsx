@@ -385,14 +385,15 @@ const StudentsManager = () => {
   const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
   const isReadOnly = !isGeneralSupervisor && ((isReadOnlyFlag && !isAllowEdits) || isExplicitlyDisabled);
 
-  const availableSchoolsKeys = Object.keys(data.profile.schoolsAndBranches || {});
+  const availableSchoolsKeys = data.availableSchools || [];
   const userSchools = isGeneralSupervisor ? availableSchoolsKeys : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
 
   const getAvailableBranches = (school: string) => {
-    if (isGeneralSupervisor) return data.profile.schoolsAndBranches?.[school] || [];
-    const userBranches = currentUser?.permissions?.schoolsAndBranches?.[school];
-    if (userBranches && userBranches.length > 0) return userBranches;
-    return userBranches || [];
+    const allBranches = data.schoolBranches?.[school] || [];
+    if (isGeneralSupervisor) return allBranches;
+    const userBranches = currentUser?.permissions?.schoolsAndBranches?.[school] || [];
+    if (userBranches.length > 0) return userBranches;
+    return allBranches;
   };
 
   const filteredStudents = useMemo(() => {
@@ -907,14 +908,15 @@ const StaffManager = () => {
   const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
   const isReadOnly = !isGeneralSupervisor && ((isReadOnlyFlag && !isAllowEdits) || isExplicitlyDisabled);
 
-  const availableSchoolsKeys = Object.keys(data.profile.schoolsAndBranches || {});
+  const availableSchoolsKeys = data.availableSchools || [];
   const userSchools = isGeneralSupervisor ? availableSchoolsKeys : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
 
   const getAvailableBranches = (school: string) => {
-    if (isGeneralSupervisor) return data.profile.schoolsAndBranches?.[school] || [];
-    const userBranches = currentUser?.permissions?.schoolsAndBranches?.[school];
-    if (userBranches && userBranches.length > 0) return userBranches;
-    return userBranches || [];
+    const allBranches = data.schoolBranches?.[school] || [];
+    if (isGeneralSupervisor) return allBranches;
+    const userBranches = currentUser?.permissions?.schoolsAndBranches?.[school] || [];
+    if (userBranches.length > 0) return userBranches;
+    return allBranches;
   };
 
   const filteredStaff = useMemo(() => {

@@ -515,7 +515,22 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     
     if (activeSchool && newData.profiles && newData.profiles[activeSchool]) {
-      newData.profile = { ...newData.profile, ...newData.profiles[activeSchool] };
+      const schoolProfiles = newData.profiles[activeSchool];
+      const currentBranch = currentUser?.selectedBranch?.trim();
+      
+      // Support new branch-based format and legacy fallback
+      if (currentBranch && schoolProfiles[currentBranch]) {
+        newData.profile = { ...newData.profile, ...schoolProfiles[currentBranch] };
+      } else if (schoolProfiles.ministry !== undefined) {
+        // Legacy: previously stored directly in profiles[school]
+        newData.profile = { ...newData.profile, ...schoolProfiles };
+      } else {
+        // Default to first available branch if we have branch-based format but current branch not found
+        const firstBranchKey = Object.keys(schoolProfiles)[0];
+        if (firstBranchKey && typeof schoolProfiles[firstBranchKey] === 'object') {
+          newData.profile = { ...newData.profile, ...schoolProfiles[firstBranchKey] };
+        }
+      }
     }
 
     // Activity arrays — filter by both user and date
@@ -594,6 +609,19 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const savedData = localStorage.getItem('rafiquk_data');
     if (savedData) {
       const parsed = JSON.parse(savedData);
+      
+      // Ensure default users and schools are retained if accidentally deleted
+      if (parsed.users) {
+        const mergedUsersMap = new Map();
+        defaultData.users.forEach(u => mergedUsersMap.set(u.id, u));
+        parsed.users.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
+        parsed.users = Array.from(mergedUsersMap.values());
+      }
+      
+      if (parsed.availableSchools) {
+        parsed.availableSchools = [...new Set([...(defaultData.availableSchools || []), ...parsed.availableSchools])];
+      }
+
       setData(prev => ({ ...prev, ...parsed }));
     }
     const authFlag = sessionStorage.getItem('rafiquk_auth');
@@ -624,8 +652,15 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               setData(prev => {
                 if (key === 'users') {
                   const newUsers = Array.isArray(remoteData) ? remoteData : [];
-                  if (JSON.stringify(prev.users) !== JSON.stringify(newUsers)) {
-                    return { ...prev, users: newUsers };
+                  
+                  // Retain default users
+                  const mergedUsersMap = new Map();
+                  defaultData.users.forEach(u => mergedUsersMap.set(u.id, u));
+                  newUsers.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
+                  const mergedUsers = Array.from(mergedUsersMap.values());
+                  
+                  if (JSON.stringify(prev.users) !== JSON.stringify(mergedUsers)) {
+                    return { ...prev, users: mergedUsers };
                   }
                   return prev;
                 } else {
@@ -771,8 +806,13 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               setData(prev => {
                 if (key === 'users') {
                   const newUsers = Array.isArray(remoteData) ? remoteData : [];
-                  if (JSON.stringify(prev.users) !== JSON.stringify(newUsers)) {
-                    const updated = { ...prev, users: newUsers };
+                  const mergedUsersMap = new Map();
+                  defaultData.users.forEach(u => mergedUsersMap.set(u.id, u));
+                  newUsers.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
+                  const mergedUsers = Array.from(mergedUsersMap.values());
+                  
+                  if (JSON.stringify(prev.users) !== JSON.stringify(mergedUsers)) {
+                    const updated = { ...prev, users: mergedUsers };
                     StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
                     return updated;
                   }

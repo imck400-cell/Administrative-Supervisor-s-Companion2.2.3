@@ -48,15 +48,25 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
 
   useEffect(() => {
     if (selectedSchool) {
-      const profileToEdit = (data.profiles?.[selectedSchool] || {}) as any;
+      const schoolProfiles = (data.profiles?.[selectedSchool] || {}) as any;
+      let profileToEdit = schoolProfiles;
+      
+      // If it's the new branch-based map format but no legacy properties, pick the first branch to prepopulate
+      if (schoolProfiles.ministry === undefined) {
+        const firstBranchKey = Object.keys(schoolProfiles)[0];
+        if (firstBranchKey && typeof schoolProfiles[firstBranchKey] === 'object') {
+          profileToEdit = schoolProfiles[firstBranchKey];
+        }
+      }
+
       setMinistry(profileToEdit.ministry || '');
       setDistrict(profileToEdit.district || '');
       setBranchManager(profileToEdit.branchManager || '');
       setGeneralManager(profileToEdit.generalManager || '');
       setYear(profileToEdit.year || '');
       setLogoImg(profileToEdit.logoImg || '');
-      const currentBranches = profileToEdit.branch ? profileToEdit.branch.split(' - ') : [];
-      setSelectedBranches(currentBranches);
+      
+      // If not populated from a specific branch in the map, use the legacy string fallback, else leave based on selectedBranches
     }
   }, [selectedSchool, data.profiles]);
 
@@ -129,7 +139,40 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
       (updatedProfile as any).logoImg = logoImg;
     }
 
-    updateData({ profile: updatedProfile as any }, [selectedSchool]);
+    // Update the profile in the new branch-based map format
+    const existingSchoolProfiles = data.profiles?.[selectedSchool] || {};
+    const payloadMap: any = { ...existingSchoolProfiles };
+    
+    // For legacy documents: if it's currently a flat Document, just migrate it.
+    if (payloadMap.ministry !== undefined) {
+       const legacyBranch = payloadMap.branch || 'الفرع الرئيسي';
+       payloadMap[legacyBranch] = { ...existingSchoolProfiles };
+       delete payloadMap.ministry;
+       delete payloadMap.district;
+       delete payloadMap.schoolName;
+       delete payloadMap.logoImg;
+       delete payloadMap.branchManager;
+       delete payloadMap.generalManager;
+       delete payloadMap.year;
+       delete payloadMap.branch;
+       delete payloadMap.lastUpdated;
+    }
+
+    if (selectedBranches.length > 0) {
+      selectedBranches.forEach(branchName => {
+        payloadMap[branchName] = {
+           ...updatedProfile,
+           branch: branchName
+        };
+      });
+    } else {
+      payloadMap['الاعدادات العامة'] = {
+        ...updatedProfile,
+        branch: ''
+      };
+    }
+
+    updateData({ profile: payloadMap as any }, [selectedSchool]);
     toast.success('تم الحفظ بنجاح');
     onClose();
   };

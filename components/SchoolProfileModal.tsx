@@ -12,65 +12,74 @@ interface SchoolProfileModalProps {
 export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, onClose }) => {
   const { data, updateData, currentUser } = useGlobal();
   
-  const defaultMinistryName = "وزارة التربية والتعليم والبحث العلمي";
-  const [ministry, setMinistry] = useState(defaultMinistryName);
+  const [ministry, setMinistry] = useState('');
   const [district, setDistrict] = useState('');
-  const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
+  const [selectedSchool, setSelectedSchool] = useState<string>('');
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
   const [logoImg, setLogoImg] = useState('');
   const [branchManager, setBranchManager] = useState('');
   const [generalManager, setGeneralManager] = useState('');
 
+  const availableSchools = currentUser?.selectedSchool === 'all' 
+    ? (data.availableSchools || [])
+    : currentUser?.selectedSchool.split(',').map(s => s.trim()).filter(s => s !== 'all') || [];
+
   // Load defaults from first available selected school if exists
   useEffect(() => {
     if (isOpen) {
-      if (data.profile) {
-        setMinistry(data.profile.ministry || defaultMinistryName);
-        setDistrict(data.profile.district || '');
-        setBranchManager(data.profile.branchManager || '');
-        setGeneralManager(data.profile.generalManager || '');
-        setYear(data.profile.year || '');
-        setLogoImg(data.profile.logoImg || '');
+      const initialSchool = currentUser?.selectedSchool === 'all' 
+        ? (data.availableSchools?.[0] || '') 
+        : (currentUser?.selectedSchool.split(',')[0].trim() || '');
+      
+      if (initialSchool) {
+        setSelectedSchool(initialSchool);
       } else {
-        setMinistry(defaultMinistryName);
+        setSelectedSchool('');
+        setMinistry('');
         setDistrict('');
         setBranchManager('');
         setGeneralManager('');
         setYear('');
         setLogoImg('');
+        setSelectedBranches([]);
       }
-      setSelectedSchools([]);
-      setSelectedBranches([]);
     }
-  }, [isOpen, data.profile]);
+  }, [isOpen, data.availableSchools, currentUser]);
+
+  useEffect(() => {
+    if (selectedSchool) {
+      const profileToEdit = (data.profiles?.[selectedSchool] || {}) as any;
+      setMinistry(profileToEdit.ministry || '');
+      setDistrict(profileToEdit.district || '');
+      setBranchManager(profileToEdit.branchManager || '');
+      setGeneralManager(profileToEdit.generalManager || '');
+      setYear(profileToEdit.year || '');
+      setLogoImg(profileToEdit.logoImg || '');
+      const currentBranches = profileToEdit.branch ? profileToEdit.branch.split(' - ') : [];
+      setSelectedBranches(currentBranches);
+    }
+  }, [selectedSchool, data.profiles]);
 
   const userFullData = data.users?.find(u => u.id === currentUser?.id);
   const availableYears = userFullData?.academicYears?.length ? userFullData.academicYears : (data.availableYears || []);
 
-  const availableSchools = currentUser?.selectedSchool === 'all' 
-    ? (data.availableSchools || [])
-    : currentUser?.selectedSchool.split(',').map(s => s.trim()).filter(s => s !== 'all') || [];
-  
   const [year, setYear] = useState('');
 
-  // Combine all branches for the selected schools from data.schoolBranches
-  const availableBranches = selectedSchools.reduce((acc: string[], sch) => {
-    let branches = data.schoolBranches?.[sch] || [];
+  // Combine all branches for the selected school from data.schoolBranches
+  const availableBranches = selectedSchool ? (() => {
+    let branches = data.schoolBranches?.[selectedSchool] || [];
     const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
     if (!isAdminOrFull) {
-      const allowed = currentUser?.permissions?.schoolsAndBranches?.[sch] || [];
+      const allowed = currentUser?.permissions?.schoolsAndBranches?.[selectedSchool] || [];
       if (allowed.length > 0) {
         branches = branches.filter(b => allowed.includes(b));
       }
     }
-    return [...acc, ...branches];
-  }, []);
+    return branches;
+  })() : [];
 
   const handleSchoolToggle = (school: string) => {
-    setSelectedSchools(prev => {
-      const next = prev.includes(school) ? prev.filter(s => s !== school) : [...prev, school];
-      return next;
-    });
+    setSelectedSchool(school);
   };
 
   const handleBranchToggle = (branch: string) => {
@@ -93,23 +102,26 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
   };
 
   const handleSaveAndBroadcast = () => {
-    if (selectedSchools.length === 0) {
-      toast.error('يرجى اختيار مدرسة واحدة على الأقل');
+    if (!selectedSchool) {
+      toast.error('يرجى اختيار مدرسة لتعديل ملفها');
       return;
     }
 
+    const currentProfile = data.profiles?.[selectedSchool] || {};
     const updatedProfile = {
-      ...data.profile,
+      ...currentProfile,
       ministry,
       district,
       branchManager,
       generalManager,
       year,
-      schoolName: selectedSchools.join(' - '),
+      schoolName: selectedSchool,
     };
     
     if (selectedBranches.length > 0) {
       (updatedProfile as any).branch = selectedBranches.join(' - ');
+    } else {
+      (updatedProfile as any).branch = '';
     }
 
     // We only set logoImg if a new one is uploaded, otherwise keep existing
@@ -117,8 +129,8 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
       (updatedProfile as any).logoImg = logoImg;
     }
 
-    updateData({ profile: updatedProfile as any }, selectedSchools);
-    toast.success('تم الحفظ والتعميم بنجاح');
+    updateData({ profile: updatedProfile as any }, [selectedSchool]);
+    toast.success('تم الحفظ بنجاح');
     onClose();
   };
 
@@ -140,7 +152,7 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
               </div>
               <div>
                 <h2 className="text-xl font-black text-slate-800">ملف المدرسة</h2>
-                <p className="text-sm text-slate-500 font-bold">البيانات الأساسية وتعميم التغييرات</p>
+                <p className="text-sm text-slate-500 font-bold">البيانات الأساسية المستقلة لكل مدرسة</p>
               </div>
             </div>
             <button
@@ -182,14 +194,14 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
             </div>
 
             <div className="space-y-4 p-5 bg-white/50 rounded-2xl border border-slate-200/50 shadow-sm">
-              <label className="text-sm font-bold text-slate-700">المدارس التي سيشملها التعميم</label>
+              <label className="text-sm font-bold text-slate-700">تحديد المدرسة المراد تعديلها</label>
               <div className="flex flex-wrap gap-2">
                 {availableSchools.map(sch => (
                   <button
                     key={sch}
                     onClick={() => handleSchoolToggle(sch)}
                     className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                      selectedSchools.includes(sch)
+                      selectedSchool === sch
                         ? 'bg-gradient-to-l from-violet-600 to-indigo-600 text-white shadow-md'
                         : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                     }`}
@@ -204,7 +216,7 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
             </div>
 
             <AnimatePresence>
-              {selectedSchools.length > 0 && availableBranches.length > 0 && (
+              {selectedSchool && availableBranches.length > 0 && (
                 <motion.div 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -322,7 +334,7 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({ isOpen, 
               className="px-6 py-3 bg-gradient-to-l from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-violet-500/20 active:scale-95 transition-all flex items-center gap-2"
             >
               <Save size={20} />
-              تغيير وتعميم
+              حفظ التغييرات
             </button>
           </div>
         </motion.div>

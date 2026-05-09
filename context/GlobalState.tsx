@@ -56,7 +56,7 @@ interface GlobalContextType {
   lang: Language;
   setLang: (lang: Language) => void;
   data: AppData;
-  updateData: (newData: Partial<AppData>) => void;
+  updateData: (newData: Partial<AppData>, overrideSchools?: string[]) => void;
   isAuthenticated: boolean;
   currentUser: AuthUser | null;
   userFilter: string;
@@ -167,13 +167,17 @@ const adminFollowUpTypes = [
   'متابعة المدير العام',
   'متابعة مدير الفرع',
   'متابعة إدارة الجودة',
+  'متابعة المالية',
   'متابعة وكيل المدرسة',
   'متابعة الإشراف التربوي',
   'متابعة الإشراف الإداري',
   'متابعة المشرف الأكاديمي',
   'متابعة المختص الاجتماعي',
   'متابعة مسؤول المعمل',
+  'متابعة مسؤول معمل العلوم',
+  'متابعة السكرتارية',
   'متابعة مسؤول الأنشطة',
+  'متابعة مسؤول المخازن',
   'متابعة مسؤول الرياضة',
   'متابعة الفنية',
   'متابعة مهندس البيئة',
@@ -663,7 +667,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (!isMounted) return;
 
       const dataBuffer: Record<string, Record<string, any[]>> = {};
-      const arrayKeys = ['substitutions', 'timetable', 'dailyReports', 'violations', 'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports', 'selfEvaluations', 'studentEvaluations', 'deliveryReceiptRecords'];
+      const arrayKeys = ['substitutions', 'timetable', 'dailyReports', 'violations', 'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports', 'selfEvaluations', 'studentEvaluations'];
       arrayKeys.forEach(k => dataBuffer[k] = {});
 
       // Shared keys for the selected schools
@@ -691,6 +695,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   const newUsers = Array.isArray(remoteData) ? remoteData : [];
                   const merged = [...existingUsers];
                   let changed = false;
+                  let updated: any;
                   newUsers.forEach(nu => {
                     const idx = merged.findIndex(u => u.id === nu.id);
                     if (idx >= 0) {
@@ -703,7 +708,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                       changed = true;
                     }
                   });
-                  return changed ? { ...prev, users: merged } : prev;
+                  if (changed) {
+                    updated = { ...prev, users: merged };
+                    localStorage.setItem('rafiquk_data', JSON.stringify(updated));
+                    return updated;
+                  }
+                  return prev;
                 } else if (key === 'availableSchools' || key === 'availableYears') {
                   const existing = prev[key] as any[] || [];
                   const incoming = Array.isArray(remoteData) ? remoteData : [];
@@ -711,10 +721,23 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   if (merged.length === existing.length && merged.every((v, i) => v === existing[i])) {
                     return prev;
                   }
-                  return { ...prev, [key]: merged };
+                  const updated = { ...prev, [key]: merged };
+                  localStorage.setItem('rafiquk_data', JSON.stringify(updated));
+                  return updated;
                 } else {
-                  if (JSON.stringify(prev[key]) === JSON.stringify(remoteData)) return prev;
-                  return { ...prev, [key]: remoteData };
+                  let updated: any;
+                  if (typeof remoteData === 'object' && !Array.isArray(remoteData) && remoteData !== null) {
+                    const existingObj = (prev[key] || {}) as any;
+                    const mergedObj = { ...existingObj, ...remoteData };
+                    if (JSON.stringify(existingObj) === JSON.stringify(mergedObj)) return prev;
+                    updated = { ...prev, [key]: mergedObj };
+                  } else if (JSON.stringify(prev[key]) === JSON.stringify(remoteData)) {
+                    return prev;
+                  } else {
+                    updated = { ...prev, [key]: remoteData };
+                  }
+                  localStorage.setItem('rafiquk_data', JSON.stringify(updated));
+                  return updated;
                 }
               });
             }
@@ -738,8 +761,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               // For simplicity, we just use the shared snap if no personal data is set. (See personal listener logic)
               if (sharedSnap.exists() && isAdminOrFull) {
                  setData(prev => {
-                   if (JSON.stringify(prev[key]) === JSON.stringify(sharedSnap.data().data)) return prev;
-                   return { ...prev, [key]: sharedSnap.data().data };
+                   let fetchedData = sharedSnap.data().data;
+                   if (key === 'adminFollowUpTypes') {
+                     fetchedData = Array.from(new Set([...adminFollowUpTypes, ...(fetchedData || [])]));
+                   }
+                   if (JSON.stringify(prev[key]) === JSON.stringify(fetchedData)) return prev;
+                   return { ...prev, [key]: fetchedData };
                  });
               }
             });
@@ -753,7 +780,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const punsub = onSnapshot(pq, async (personalSnap) => {
                if (personalSnap.exists() && personalSnap.data().data !== undefined) {
                  // Personal override exists
-                 setData(prev => ({ ...prev, [key]: personalSnap.data().data }));
+                 let fetchedData = personalSnap.data().data;
+                 if (key === 'adminFollowUpTypes') {
+                   fetchedData = Array.from(new Set([...adminFollowUpTypes, ...(fetchedData || [])]));
+                 }
+                 setData(prev => ({ ...prev, [key]: fetchedData }));
                } else {
                  // Personal override does not exist => fetch once from shared baseline as initial value
                  try {
@@ -761,7 +792,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                    const sq = doc(db, 'schools', school, 'shared', key);
                    const sharedDoc = await getDoc(sq);
                    if (sharedDoc.exists()) {
-                     setData(prev => ({ ...prev, [key]: sharedDoc.data().data }));
+                     let x = sharedDoc.data().data;
+                     if (key === 'adminFollowUpTypes') x = Array.from(new Set([...adminFollowUpTypes, ...(x||[])]));
+                     setData(prev => ({ ...prev, [key]: x }));
                    }
                  } catch(e){}
                }
@@ -817,7 +850,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [isAuthenticated, currentUser?.id, currentUser?.selectedSchool, targetUserIds]);
 
 
-  const updateData = (newData: Partial<AppData>) => {
+  const updateData = (newData: Partial<AppData>, overrideSchools?: string[]) => {
     if (isAuthenticated && currentUser) {
       let isBlockedByReadOnly = currentUser.permissions?.readOnly;
 
@@ -874,7 +907,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         toast.error(lang === 'ar' ? 'غير مسموح بتغيير البيانات للرتب الممنوحة لك (للقراءة فقط)' : 'Data change not allowed for your role (Read-Only)');
         return;
       }
-      const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
+      const selectedSchools = overrideSchools && overrideSchools.length > 0 ? overrideSchools : currentUser.selectedSchool.split(',').map(s => s.trim());
       const schoolsToUpdate = selectedSchools.includes('all') ? data.availableSchools : selectedSchools;
       const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList', 'branchMetrics', 'adminBranchMetrics', 'adminFollowUpTypes', 'adminActivitiesList', 'adminBranchActivities', 'adminIndividualReportFields'];
       const customizableKeys = ['taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
@@ -916,12 +949,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           const isManager = currentUser.permissions?.userManagement === true || (Array.isArray(currentUser.permissions?.userManagement) && currentUser.permissions.userManagement.length > 0);
           
           const isSecretariatRole = ['مدير عام المدارس', 'مدير الفرع', 'السكرتارية'].includes(currentUser.jobTitle || '');
-          const isSecretariatDisabled = Array.isArray(currentUser.permissions?.secretariat) && currentUser.permissions?.secretariat.includes('disable');
-          const isSecretariatEnabled = !isSecretariatDisabled && (isSecretariatRole || (Array.isArray(currentUser.permissions?.secretariat) ? currentUser.permissions.secretariat.includes('allowEdits') : currentUser.permissions?.secretariat === true));
+          const isSecretariatDisabled = Array.isArray(currentUser.permissions?.secretariat) && currentUser.permissions.secretariat.includes('disable');
+          const isSecretariatEnabled = !isSecretariatDisabled && (isSecretariatRole || (Array.isArray(currentUser.permissions?.secretariat) ? currentUser.permissions?.secretariat.includes('allowEdits') : currentUser.permissions?.secretariat === true));
           
           const canEditTemplate = Array.isArray(currentUser.permissions?.teacherPortal) ? currentUser.permissions.teacherPortal.includes('editEvaluationTemplate') : currentUser.permissions?.teacherPortal === true;
 
-          const isGeneralSupervisor = (currentUser.role as string) === 'general_supervisor' || currentUser.permissions?.specialCodes === true || (Array.isArray(currentUser.permissions?.specialCodes) && currentUser.permissions.specialCodes.length > 0);
+          const isGeneralSupervisor = currentUser.role === 'general_supervisor' || currentUser.permissions?.specialCodes === true || (Array.isArray(currentUser.permissions?.specialCodes) && currentUser.permissions.specialCodes.length > 0);
           const canEditDaily = isGeneralSupervisor || currentUser.permissions?.dailyFollowUp === true || (Array.isArray(currentUser.permissions?.dailyFollowUp) && !currentUser.permissions.dailyFollowUp.includes('view') && !currentUser.permissions.dailyFollowUp.includes('disable'));
           const canEditAdminFollowUp = isGeneralSupervisor || currentUser.permissions?.adminFollowUp === true || (Array.isArray(currentUser.permissions?.adminFollowUp) && !currentUser.permissions.adminFollowUp.includes('view') && !currentUser.permissions.adminFollowUp.includes('disable'));
 
@@ -932,8 +965,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           else if ((key === 'metricsList' || key === 'branchMetrics') && (isSecretariatEnabled || canEditDaily)) canSave = true;
           else if ((key === 'adminMetricsList' || key === 'adminBranchMetrics' || key === 'adminActivitiesList' || key === 'adminBranchActivities' || key === 'adminIndividualReportFields' || key === 'adminFollowUpTypes') && (isSecretariatEnabled || canEditAdminFollowUp)) canSave = true;
           else if (key === 'selfEvaluationTemplates' && canEditTemplate) canSave = true;
-          else if (key === 'profile' && isSecretariatEnabled) canSave = true;
-          else if ((key === 'availableSchools' || key === 'availableYears') && isAdminOrFull) canSave = true;
+          else if (key === 'profile' || key === 'availableSchools' || key === 'availableYears') canSave = true;
 
           if (canSave) {
             schoolsToUpdate.forEach(school => {

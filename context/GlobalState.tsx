@@ -939,11 +939,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               const uniqueMergedArray = Array.from(new Map(mergedArray.filter(item => item && item.id).map(item => [item.id, item])).values());
               
               setData(prev => {
-                const currentArray = prev[key] as any[];
-                if (currentArray && currentArray.length === uniqueMergedArray.length && 
-                    JSON.stringify(currentArray) === JSON.stringify(uniqueMergedArray)) {
-                  return prev;
-                }
                 const updated = { ...prev, [key]: uniqueMergedArray };
                 StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
                 return updated;

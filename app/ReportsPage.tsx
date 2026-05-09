@@ -128,12 +128,10 @@ export const DailyReportsPage: React.FC = () => {
           const isManager = currentUser?.permissions?.userManagement === true;
           
           if (!isAdminOrFull && !isManager && r.userId !== currentUser?.id) {
-             // In regular unified view, sub-users only see their own rows.
-             // If we reached here, something is wrong, but safety first:
              return r;
           }
           
-          return { ...r, teachersData: updateMap[r.id] };
+          return { ...r, teachersData: [...updateMap[r.id]] };
         }
         return r;
       });

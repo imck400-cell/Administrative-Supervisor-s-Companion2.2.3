@@ -45,7 +45,7 @@ service cloud.firestore {
     }
 
     function hasSchool(school) {
-      return school in getUserData().schools || 'all' in getUserData().schools;
+      return getUserData().role == 'admin' || school in getUserData().schools || 'all' in getUserData().schools;
     }
 
     // User mapping document

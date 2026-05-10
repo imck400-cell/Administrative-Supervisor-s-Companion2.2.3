@@ -1064,41 +1064,43 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const perms: any = currentUser.permissions || {};
         
         // Define mapping of data keys to their parent permission key
-        const keyToModuleMap: Record<string, string> = {
-          secretariatStudents: 'secretariat',
-          secretariatStaff: 'secretariat',
-          timetable: 'secretariat',
-          dailyReports: 'dailyFollowUp',
-          adminReports: 'adminFollowUp',
-          studentReports: 'studentAffairs',
-          violations: 'studentAffairs',
-          parentVisits: 'studentAffairs',
-          teacherFollowUps: 'teacherPortal',
-          selfEvaluations: 'teacherPortal',
-          studentEvaluations: 'teacherPortal',
-          substitutions: 'substitutions',
-          schoolProfile: 'schoolProfile',
-          users: 'userManagement',
-          taskReports: 'specialReports',
-          absenceLogs: 'specialReports',
-          studentLatenessLogs: 'specialReports',
-          studentViolationLogs: 'specialReports',
-          exitLogs: 'specialReports',
-          damageLogs: 'specialReports',
-          parentVisitLogs: 'specialReports',
-          examLogs: 'specialReports',
-          issues: 'issuesModal',
-          trainingCourses: 'trainingCourses',
-          caseStudies: 'caseStudyModal',
-          comprehensiveIndicators: 'comprehensiveIndicators',
-          taskTemplates: 'dashboard',
+        const keyToModuleMap: Record<string, string[]> = {
+          secretariatStudents: ['secretariat'],
+          secretariatStaff: ['secretariat'],
+          timetable: ['secretariat'],
+          dailyReports: ['dailyFollowUp'],
+          adminReports: ['adminFollowUp'],
+          studentReports: ['studentAffairs', 'secretariat'], // Secretariat might update this implicitly
+          violations: ['studentAffairs'],
+          parentVisits: ['studentAffairs'],
+          teacherFollowUps: ['teacherPortal'],
+          selfEvaluations: ['teacherPortal'],
+          studentEvaluations: ['teacherPortal'],
+          substitutions: ['substitutions'],
+          schoolProfile: ['schoolProfile'],
+          users: ['userManagement'],
+          taskReports: ['specialReports'],
+          absenceLogs: ['specialReports'],
+          studentLatenessLogs: ['specialReports'],
+          studentViolationLogs: ['specialReports'],
+          exitLogs: ['specialReports'],
+          damageLogs: ['specialReports'],
+          parentVisitLogs: ['specialReports'],
+          examLogs: ['specialReports'],
+          issues: ['issuesModal'],
+          trainingCourses: ['trainingCourses'],
+          caseStudies: ['caseStudyModal'],
+          comprehensiveIndicators: ['comprehensiveIndicators'],
+          taskTemplates: ['dashboard'],
         };
 
         const tryingToUpdateKeys = Object.keys(newData);
         canBypass = tryingToUpdateKeys.every(key => {
-          const modName = keyToModuleMap[key] || key;
-          const modPerms = perms[modName];
-          return Array.isArray(modPerms) && modPerms.includes('allowEdits');
+          const modNames = keyToModuleMap[key] || [key];
+          return modNames.some(modName => {
+            const modPerms = perms[modName];
+            return Array.isArray(modPerms) && modPerms.includes('allowEdits');
+          });
         });
 
         if (canBypass) {
@@ -1193,13 +1195,32 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             // Priority: Send to Firestore first for strictly shared data
             const promises = schoolsToUpdate.map(async school => {
               const fullPath = `schools/${school}/shared/${key}`;
+              
+              let payloadToSave = newData[key];
+              
+              // Prevent Multi-Tenant Data Leak: Filter arrays before writing to a specific school's Firebase doc
+              if (Array.isArray(payloadToSave)) {
+                if (key === 'users') {
+                  payloadToSave = (payloadToSave as any[]).filter(u => 
+                    (u.schools && u.schools.includes(school)) || 
+                    u.role === 'admin' || 
+                    u.permissions?.all === true
+                  ) as any;
+                } else if (key === 'secretariatStudents' || key === 'secretariatStaff') {
+                  payloadToSave = (payloadToSave as any[]).filter(s => 
+                    s.school === school || 
+                    (s.schoolBranch && s.schoolBranch.startsWith(school))
+                  ) as any;
+                }
+              }
+
               if (key === 'profile') {
                 console.log(`جاري الإرسال للمدرسة رقم: "${school}" (Length: ${school.length}) عبر المسار الكامل: ${fullPath}`);
               } else {
-                console.log(`📤 Pushing ${key} update to Firebase via: ${fullPath}`);
+                console.log(`📤 Pushing ${key} update to Firebase via: ${fullPath} (Items: ${Array.isArray(payloadToSave) ? payloadToSave.length : 'N/A'})`);
               }
               
-              const setPromise = setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
+              const setPromise = setDoc(doc(db, 'schools', school, 'shared', key), { data: payloadToSave })
                 .catch(err => handleFirestoreError(err, OperationType.WRITE, fullPath));
 
               if (key === 'profile') {

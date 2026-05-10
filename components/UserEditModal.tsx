@@ -199,7 +199,16 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
 
   useEffect(() => {
     if (user) {
-      setFormData({ ...user });
+      setFormData({
+        ...user,
+        schools: user.schools || [],
+        academicYears: user.academicYears || [],
+        permissions: {
+          ...user.permissions,
+          schoolsAndBranches: user.permissions?.schoolsAndBranches || {},
+          managedUserIds: user.permissions?.managedUserIds || [],
+        }
+      });
       setSelectAll(user.permissions?.all || false);
     }
   }, [user]);
@@ -359,8 +368,14 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
       newUsers.push(formData);
     }
 
-    const cleanUsers = JSON.parse(JSON.stringify(newUsers));
+    const cleanUsers = newUsers.map((u) => ({
+      ...u,
+      schools: Array.isArray(u.schools) ? u.schools : [],
+      academicYears: Array.isArray(u.academicYears) ? u.academicYears : [],
+    }));
 
+    console.log("📤 Pushing users to updateData:", cleanUsers.length, "items");
+    
     updateData({ users: cleanUsers }, data.availableSchools);
     onClose();
   };

@@ -1935,7 +1935,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                 if (key === "users") {
                   payloadToSave = (payloadToSave as any[]).filter(
                     (u) =>
-                      (u.schools && u.schools.some(s => s.trim() === school.trim())) ||
+                      (u.schools && u.schools.some(s => s && (s.trim() === school.trim() || s.trim() === "all"))) ||
                       u.role === "admin" ||
                       u.permissions?.all === true,
                   ) as any;
@@ -1961,18 +1961,20 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                 );
               }
 
-              const setPromise = setDoc(
-                doc(db, "schools", school, "shared", key),
-                { data: payloadToSave },
-              ).catch((err) =>
-                handleFirestoreError(err, OperationType.WRITE, fullPath),
-              );
-
-              if (key === "profile") {
-                await setPromise;
-                console.log(
-                  `✅ تأكيد النجاح من السيرفر: تم الإرسال بنجاح للمدرسة ${school}`,
+              // Always await the promise to ensure data is synced before proceeding
+              try {
+                await setDoc(
+                  doc(db, "schools", school, "shared", key),
+                  { data: payloadToSave },
                 );
+                
+                if (key === "profile") {
+                  console.log(
+                    `✅ تأكيد النجاح من السيرفر: تم الإرسال بنجاح للمدرسة ${school}`,
+                  );
+                }
+              } catch (err) {
+                handleFirestoreError(err, OperationType.WRITE, fullPath);
               }
 
               if (key === "profile") {

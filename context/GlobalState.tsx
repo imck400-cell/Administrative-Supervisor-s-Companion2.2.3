@@ -1299,6 +1299,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         "genericSpecialReports",
         "taskReports",
         "adminReports",
+        "adminIndividualReports",
         "selfEvaluations",
         "studentEvaluations",
         "deliveryReceiptRecords",
@@ -1315,6 +1316,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         "secretariatStudents",
         "secretariatStaff",
         "selfEvaluationTemplates",
+        "courseEvaluationSchema_v2",
         "metricsList",
         "adminMetricsList",
         "branchMetrics",
@@ -1519,7 +1521,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                     new Set([...adminFollowUpTypes, ...(fetchedData || [])]),
                   );
                 }
-                setData((prev) => ({ ...prev, [key]: fetchedData }));
+                setData((prev) => {
+                  if (JSON.stringify(prev[key]) === JSON.stringify(fetchedData)) return prev;
+                  return { ...prev, [key]: fetchedData };
+                });
               } else {
                 // Personal override does not exist => fetch once from shared baseline as initial value
                 try {
@@ -1532,7 +1537,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                       x = Array.from(
                         new Set([...adminFollowUpTypes, ...(x || [])]),
                       );
-                    setData((prev) => ({ ...prev, [key]: x }));
+                    setData((prev) => {
+                      if (JSON.stringify(prev[key]) === JSON.stringify(x)) return prev;
+                      return { ...prev, [key]: x };
+                    });
                   }
                 } catch (e) {}
               }
@@ -1571,6 +1579,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                 );
 
                 setData((prev) => {
+                  if (JSON.stringify(prev[key]) === JSON.stringify(uniqueMergedArray)) {
+                    return prev;
+                  }
                   const updated = { ...prev, [key]: uniqueMergedArray };
                   
                   return updated;

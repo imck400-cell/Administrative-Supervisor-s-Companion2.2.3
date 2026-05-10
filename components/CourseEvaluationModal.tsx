@@ -198,19 +198,12 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({
   const { currentUser, updateData, data } = useGlobal();
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [schema, setSchema] = useState(() => {
-    try {
-      const saved = null;
-      return saved ? JSON.parse(saved) : defaultSchema_v2;
-    } catch {
-      return defaultSchema_v2;
-    }
-  });
-  const [isEditMode, setIsEditMode] = useState(false);
+  
+  const schema = data.courseEvaluationSchema_v2 && data.courseEvaluationSchema_v2.length > 0 
+    ? data.courseEvaluationSchema_v2 
+    : defaultSchema_v2;
 
-  useEffect(() => {
-    
-  }, [schema]);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Check if user has permission to edit schema
   const trainingPerm = currentUser?.permissions?.trainingCourses;
@@ -261,7 +254,7 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({
   const handleUpdateSectionTitle = (sIdx: number, newTitle: string) => {
     const newSchema = [...schema];
     newSchema[sIdx].title = newTitle;
-    setSchema(newSchema);
+    updateData({ courseEvaluationSchema_v2: newSchema });
   };
 
   const handleUpdateFieldLabel = (
@@ -271,14 +264,14 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({
   ) => {
     const newSchema = [...schema];
     newSchema[sIdx].fields[fIdx].label = newLabel;
-    setSchema(newSchema);
+    updateData({ courseEvaluationSchema_v2: newSchema });
   };
 
   const handleRemoveField = (sIdx: number, fIdx: number) => {
     if (!window.confirm("هل أنت متأكد من حذف هذا المعيار/السؤال؟")) return;
     const newSchema = [...schema];
     newSchema[sIdx].fields.splice(fIdx, 1);
-    setSchema(newSchema);
+    updateData({ courseEvaluationSchema_v2: newSchema });
   };
 
   const handleAddField = (sIdx: number) => {
@@ -300,14 +293,14 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({
       newField.options = ["نعم", "إلى حد ما", "لا"];
     }
     newSchema[sIdx].fields.push(newField);
-    setSchema(newSchema);
+    updateData({ courseEvaluationSchema_v2: newSchema });
   };
 
   const handleRemoveSection = (sIdx: number) => {
     if (!window.confirm("هل أنت متأكد من حذف هذه البطاقة بالكامل؟")) return;
     const newSchema = [...schema];
     newSchema.splice(sIdx, 1);
-    setSchema(newSchema);
+    updateData({ courseEvaluationSchema_v2: newSchema });
   };
 
   const handleAddSection = () => {
@@ -321,7 +314,7 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({
       theme: "blue",
       fields: [],
     });
-    setSchema(newSchema);
+    updateData({ courseEvaluationSchema_v2: newSchema });
   };
 
   if (!isOpen) return null;

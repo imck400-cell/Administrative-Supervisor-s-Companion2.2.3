@@ -117,36 +117,45 @@ const ALL_ACTIONS = [
   },
 ];
 
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "../firebase";
+
 export const useQuickAccess = (userId?: string) => {
+  const { currentUser } = useGlobal();
   const [pinned, setPinned] = useState<string[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
   const [usage, setUsage] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    if (!userId) return;
-    try {
-      const p = JSON.parse(
-        null || "[]",
-      );
-      const r = JSON.parse(
-        null || "[]",
-      );
-      const u = JSON.parse(
-        null || "{}",
-      );
-      setPinned(Array.isArray(p) ? p : []);
-      setRecent(Array.isArray(r) ? r : []);
-      setUsage(typeof u === "object" ? u : {});
-    } catch (e) {
-      // ignore
-    }
-  }, [userId]);
+    if (!userId || !currentUser?.selectedSchool) return;
+    const fetchPrefs = async () => {
+      try {
+        const school = currentUser.selectedSchool.split(",")[0].trim();
+        const docRef = doc(db, "schools", school, "users", userId, "data", "quickAccess");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const fetchedData = docSnap.data();
+          setPinned(Array.isArray(fetchedData.pinned) ? fetchedData.pinned : []);
+          setRecent(Array.isArray(fetchedData.recent) ? fetchedData.recent : []);
+          setUsage(typeof fetchedData.usage === "object" ? fetchedData.usage : {});
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchPrefs();
+  }, [userId, currentUser?.selectedSchool]);
 
-  const save = (p: string[], r: string[], u: Record<string, number>) => {
-    if (!userId) return;
+  const save = async (p: string[], r: string[], u: Record<string, number>) => {
+    if (!userId || !currentUser?.selectedSchool) return;
     
-    
-    
+    try {
+      const school = currentUser.selectedSchool.split(",")[0].trim();
+      const docRef = doc(db, "schools", school, "users", userId, "data", "quickAccess");
+      await setDoc(docRef, { pinned: p, recent: r, usage: u }, { merge: true });
+    } catch (e) {
+      console.error("Failed to save quick access prefs", e);
+    }
   };
 
   const recordUsage = (actionId: string) => {

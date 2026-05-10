@@ -387,10 +387,7 @@ const StaffFollowUpPage: React.FC = () => {
   }, []);
 
   // Archive Logic
-  const [individualArchive, setIndividualArchive] = useState<any[]>(() => {
-    const saved = null;
-    return saved ? JSON.parse(saved) : [];
-  });
+  const individualArchive = data.adminIndividualReports || [];
 
   const saveToArchive = () => {
     const newReport = {
@@ -405,8 +402,7 @@ const StaffFollowUpPage: React.FC = () => {
       activities: getActivitiesForField(individualForm.reportField),
     };
     const updatedArchive = [newReport, ...individualArchive];
-    setIndividualArchive(updatedArchive);
-    
+    updateData({ adminIndividualReports: updatedArchive });
     toast.success("تم حفظ التقرير في الأرشيف بنجاح");
   };
 
@@ -418,8 +414,7 @@ const StaffFollowUpPage: React.FC = () => {
       type: "danger",
       onConfirm: () => {
         const updated = individualArchive.filter((r) => r.id !== id);
-        setIndividualArchive(updated);
-        
+        updateData({ adminIndividualReports: updated });
         toast.success("تم حذف التقرير من الأرشيف");
       },
     });

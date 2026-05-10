@@ -673,8 +673,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 if (key === 'users') {
                   const newUsers = Array.isArray(remoteData) ? remoteData : [];
                   
-                  // Retain default users
+                  // Retain default users and previous users
                   const mergedUsersMap = new Map();
+                  (prev.users || []).forEach(u => mergedUsersMap.set(u.id, u));
                   defaultData.users.forEach(u => mergedUsersMap.set(u.id, u));
                   newUsers.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
                   const mergedUsers = Array.from(mergedUsersMap.values());
@@ -832,6 +833,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 if (key === 'users') {
                   const newUsers = Array.isArray(remoteData) ? remoteData : [];
                   const mergedUsersMap = new Map();
+                  (prev.users || []).forEach(u => mergedUsersMap.set(u.id, u));
                   defaultData.users.forEach(u => mergedUsersMap.set(u.id, u));
                   newUsers.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
                   const mergedUsers = Array.from(mergedUsersMap.values());
@@ -988,8 +990,39 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [isAuthenticated, currentUser?.id, currentUser?.selectedSchool, targetUserIds, data.availableSchools]);
 
 
-  const updateData = async (newData: Partial<AppData>, overrideSchools?: string[]) => {
+  const updateData = async (newDataPayload: Partial<AppData>, overrideSchools?: string[]) => {
     if (isAuthenticated && currentUser) {
+      const processedNewData = { ...newDataPayload };
+      
+      // Ensure profile updates always target the branch-specific map format in the cloud
+      if (processedNewData.profile) {
+        const isFlatProfile = (processedNewData.profile as any).ministry !== undefined || (processedNewData.profile as any).district !== undefined;
+        if (isFlatProfile) {
+          const currentSchool = currentUser.selectedSchool?.split(',')[0]?.trim();
+          const currentBranch = currentUser.selectedBranch?.trim();
+          if (currentSchool && currentBranch) {
+            const existingSchoolProfiles = data.profiles?.[currentSchool] || {};
+            const activeProfileObj = { ...existingSchoolProfiles[currentBranch], ...(processedNewData.profile as any), branch: currentBranch };
+            delete activeProfileObj.lastUpdated;
+            processedNewData.profile = {
+              ...existingSchoolProfiles,
+              [currentBranch]: activeProfileObj,
+            } as any;
+          } else if (currentSchool) {
+             const fallbackBranch = 'الاعدادات العامة';
+             const existingSchoolProfiles = data.profiles?.[currentSchool] || {};
+             const activeProfileObj = { ...existingSchoolProfiles[fallbackBranch], ...(processedNewData.profile as any), branch: fallbackBranch };
+             delete activeProfileObj.lastUpdated;
+             processedNewData.profile = {
+               ...existingSchoolProfiles,
+               [fallbackBranch]: activeProfileObj,
+             } as any;
+          }
+        }
+      }
+      
+      const newData = processedNewData;
+
       let isBlockedByReadOnly = currentUser.permissions?.readOnly;
 
       if (isBlockedByReadOnly) {

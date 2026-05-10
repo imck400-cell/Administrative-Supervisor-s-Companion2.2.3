@@ -380,10 +380,13 @@ const StudentsManager = () => {
   };
 
   const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
-  const isExplicitlyDisabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('disable');
-  const isAllowEdits = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('allowEdits');
+  const isSecretariatRole = ['مدير عام المدارس', 'مدير الفرع', 'السكرتارية'].includes(currentUser?.jobTitle || '');
+  const isExplicitlyDisabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser!.permissions!.secretariat.includes('disable');
+  const isAllowEdits = Array.isArray(currentUser?.permissions?.secretariat) && currentUser!.permissions!.secretariat.includes('allowEdits');
   const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
-  const isReadOnly = !isGeneralSupervisor && ((isReadOnlyFlag && !isAllowEdits) || isExplicitlyDisabled);
+  
+  const hasEditAccess = isGeneralSupervisor || isAllowEdits || isSecretariatRole || currentUser?.permissions?.secretariat === true;
+  const isReadOnly = !hasEditAccess || ((isReadOnlyFlag && !isAllowEdits) || isExplicitlyDisabled);
 
   const availableSchoolsKeys = data.availableSchools || [];
   const userSchools = isGeneralSupervisor ? availableSchoolsKeys : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
@@ -905,10 +908,13 @@ const StaffManager = () => {
   };
 
   const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
-  const isExplicitlyDisabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('disable');
-  const isAllowEdits = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('allowEdits');
+  const isSecretariatRole = ['مدير عام المدارس', 'مدير الفرع', 'السكرتارية'].includes(currentUser?.jobTitle || '');
+  const isExplicitlyDisabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser!.permissions!.secretariat.includes('disable');
+  const isAllowEdits = Array.isArray(currentUser?.permissions?.secretariat) && currentUser!.permissions!.secretariat.includes('allowEdits');
   const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
-  const isReadOnly = !isGeneralSupervisor && ((isReadOnlyFlag && !isAllowEdits) || isExplicitlyDisabled);
+  
+  const hasEditAccess = isGeneralSupervisor || isAllowEdits || isSecretariatRole || currentUser?.permissions?.secretariat === true;
+  const isReadOnly = !hasEditAccess || ((isReadOnlyFlag && !isAllowEdits) || isExplicitlyDisabled);
 
   const availableSchoolsKeys = data.availableSchools || [];
   const userSchools = isGeneralSupervisor ? availableSchoolsKeys : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];

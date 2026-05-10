@@ -374,6 +374,7 @@ export interface AuthUser {
   id: string;
   name: string;
   jobTitle?: string;
+  schools?: string[];
   grades?: string[];
   sections?: string[];
   selectedSchool: string;
@@ -630,6 +631,8 @@ export interface AppData {
   metricsList?: MetricDefinition[];
   branchMetrics?: Record<string, MetricDefinition[]>;
   adminReports?: AdminReportContainer[];
+  adminIndividualReports?: any[];
+  courseEvaluationSchema_v2?: any[];
   adminMetricsList?: Record<string, MetricDefinition[]>; // key is followUpType
   adminBranchMetrics?: Record<string, Record<string, MetricDefinition[]>>; // branch -> followUpType -> metrics
   adminFollowUpTypes?: string[];

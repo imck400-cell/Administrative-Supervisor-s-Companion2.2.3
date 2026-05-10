@@ -1327,9 +1327,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Shared keys for the selected schools
       const strictlySharedKeys = [
+        "profile",
         "users",
         "availableSchools",
         "availableYears",
+        "schoolBranches",
         "secretariatStudents",
         "secretariatStaff",
         "selfEvaluationTemplates",
@@ -1342,6 +1344,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         "adminActivitiesList",
         "adminBranchActivities",
         "adminIndividualReportFields",
+        "adminIndividualReports",
+        "addedTasks",
+        "postponedTasks",
+        "issueRecommendations",
+        "creativityRecords",
+        "trainingEvaluations",
       ];
       const customizableKeys = [
         "taskTemplates",
@@ -1779,9 +1787,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         "users",
         "availableSchools",
         "availableYears",
+        "schoolBranches",
         "secretariatStudents",
         "secretariatStaff",
         "selfEvaluationTemplates",
+        "courseEvaluationSchema_v2",
         "metricsList",
         "adminMetricsList",
         "branchMetrics",
@@ -1790,6 +1800,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         "adminActivitiesList",
         "adminBranchActivities",
         "adminIndividualReportFields",
+        "adminIndividualReports",
+        "addedTasks",
+        "postponedTasks",
+        "issueRecommendations",
+        "creativityRecords",
+        "trainingEvaluations",
       ];
       const customizableKeys = [
         "taskTemplates",
@@ -1907,7 +1923,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
             canSave = true;
           else if (key === "selfEvaluationTemplates" && canEditTemplate)
             canSave = true;
-          else if (key === "profile" && isSecretariatEnabled) canSave = true;
+          else if ((key === "profile" || key === "schoolBranches") && isSecretariatEnabled) canSave = true;
           else if (
             (key === "availableSchools" || key === "availableYears") &&
             isAdminOrFull

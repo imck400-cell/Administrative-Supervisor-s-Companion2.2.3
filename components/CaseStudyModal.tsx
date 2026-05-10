@@ -205,9 +205,7 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
           },
         );
       } else {
-        const offlineData = JSON.parse(
-          null || "[]",
-        );
+        const offlineData: any[] = [];
         setLogs(offlineData);
         setIsLoadingLogs(false);
       }
@@ -579,9 +577,7 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
         await addDoc(collection(db, "CaseStudies"), payload);
         setSaveStatus({ type: "success", message: "تم حفظ التقرير بنجاح" });
       } else {
-        const offlineData = JSON.parse(
-          null || "[]",
-        );
+        const offlineData: any[] = [];
         offlineData.push({ ...payload, id: "local_" + Date.now() });
         
         setSaveStatus({
@@ -615,9 +611,7 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
 
   const handleDelete = async (docId: string) => {
     if (docId.startsWith("local_")) {
-      const offlineData = JSON.parse(
-        null || "[]",
-      );
+      const offlineData: any[] = [];
       const newData = offlineData.filter((i: any) => i.id !== docId);
       
       setLogs(newData);

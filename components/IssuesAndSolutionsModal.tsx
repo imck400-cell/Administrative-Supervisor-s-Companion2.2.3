@@ -111,9 +111,7 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
 
     if (isOpen && activeTab === "view") {
       if (!navigator.onLine) {
-        const offlineData = JSON.parse(
-          null || "[]",
-        );
+        const offlineData: any[] = [];
         setIssuesRecord(offlineData);
         setIsLoading(false);
         return;
@@ -155,9 +153,7 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
             );
           }
 
-          const offlineData = JSON.parse(
-            null || "[]",
-          );
+          const offlineData: any[] = [];
           setIssuesRecord([...offlineData, ...filteredDocs]);
           setIsLoading(false);
         },
@@ -177,9 +173,7 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     if (!window.confirm("هل أنت متأكد من حذف هذا التقرير؟")) return;
 
     if (id.startsWith("local_")) {
-      const offlineData = JSON.parse(
-        null || "[]",
-      );
+      const offlineData: any[] = [];
       const newData = offlineData.filter((i: any) => i.id !== id);
       
       setIssuesRecord((prev) => prev.filter((r) => r.id !== id));
@@ -225,9 +219,7 @@ const IssuesAndSolutionsModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
         await addDoc(collection(db, "issuesAndSolutions_log"), payload);
         setSuccessMessage("تم حفظ التقرير بنجاح، ومزامنته سحابياً!");
       } else {
-        const offlineData = JSON.parse(
-          null || "[]",
-        );
+        const offlineData: any[] = [];
         offlineData.push({ ...payload, id: "local_" + Date.now() });
         
         setSuccessMessage(

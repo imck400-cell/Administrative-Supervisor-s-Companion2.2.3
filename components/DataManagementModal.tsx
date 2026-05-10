@@ -1,13 +1,26 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useGlobal } from '../context/GlobalState';
-import { 
-  Download, Upload, Save, History, Trash2, 
-  AlertTriangle, CheckCircle2, Loader2, X, 
-  FileJson, User, School, Database, FileText,
-  Calendar, Layers, RefreshCcw
-} from 'lucide-react';
-import { AppData } from '../types';
-import ConfirmDialog from './ConfirmDialog';
+import React, { useState, useEffect, useRef } from "react";
+import { useGlobal } from "../context/GlobalState";
+import {
+  Download,
+  Upload,
+  Save,
+  History,
+  Trash2,
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  X,
+  FileJson,
+  User,
+  School,
+  Database,
+  FileText,
+  Calendar,
+  Layers,
+  RefreshCcw,
+} from "lucide-react";
+import { AppData } from "../types";
+import ConfirmDialog from "./ConfirmDialog";
 
 interface BackupVersion {
   id: string;
@@ -16,29 +29,39 @@ interface BackupVersion {
   label: string;
 }
 
-const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+const DataManagementModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+}> = ({ isOpen, onClose }) => {
   const { lang, data, currentUser } = useGlobal();
   const isReadOnly = currentUser?.permissions?.readOnly === true;
-  const [exportMode, setExportMode] = useState<'full' | 'teacher' | 'school' | 'type'>('full');
-  const [selectedTeacher, setSelectedTeacher] = useState('');
-  const [selectedType, setSelectedType] = useState<'students' | 'teachers' | 'violations' | 'substitutions'>('students');
+  const [exportMode, setExportMode] = useState<
+    "full" | "teacher" | "school" | "type"
+  >("full");
+  const [selectedTeacher, setSelectedTeacher] = useState("");
+  const [selectedType, setSelectedType] = useState<
+    "students" | "teachers" | "violations" | "substitutions"
+  >("students");
   const [backups, setBackups] = useState<BackupVersion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-  const [statusMsg, setStatusMsg] = useState<{ type: 'error' | 'success', text: string } | null>(null);
+  const [statusMsg, setStatusMsg] = useState<{
+    type: "error" | "success";
+    text: string;
+  } | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
     message: string;
     onConfirm: () => void;
-    type?: 'danger' | 'warning' | 'info';
+    type?: "danger" | "warning" | "info";
   }>({
     isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: () => { },
+    title: "",
+    message: "",
+    onConfirm: () => {},
   });
-  
+
   // START OF CHANGE
   const [pendingData, setPendingData] = useState<any>(null);
   const [showImportChoice, setShowImportChoice] = useState(false);
@@ -47,7 +70,7 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const savedBackups = localStorage.getItem('app_history_backups');
+    const savedBackups = localStorage.getItem("app_history_backups");
     if (savedBackups) {
       setBackups(JSON.parse(savedBackups));
     }
@@ -55,7 +78,7 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
 
   if (!isOpen) return null;
 
-  const showStatus = (type: 'error' | 'success', text: string) => {
+  const showStatus = (type: "error" | "success", text: string) => {
     setStatusMsg({ type, text });
     setTimeout(() => setStatusMsg(null), 3000);
   };
@@ -66,33 +89,41 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
       let dataToExport = { ...data };
 
       // Selective Export Logic
-      if (exportMode === 'teacher') {
+      if (exportMode === "teacher") {
         dataToExport = {
           ...data,
-          dailyReports: data.dailyReports.map(report => ({
-            ...report,
-            teachersData: report.teachersData.filter(t => t.teacherName === selectedTeacher)
-          })).filter(r => r.teachersData.length > 0)
+          dailyReports: data.dailyReports
+            .map((report) => ({
+              ...report,
+              teachersData: report.teachersData.filter(
+                (t) => t.teacherName === selectedTeacher,
+              ),
+            }))
+            .filter((r) => r.teachersData.length > 0),
         };
-      } else if (exportMode === 'type') {
+      } else if (exportMode === "type") {
         const reset: any = { profile: data.profile };
-        if (selectedType === 'students') reset.studentReports = data.studentReports;
-        if (selectedType === 'teachers') reset.dailyReports = data.dailyReports;
-        if (selectedType === 'violations') reset.violations = data.violations;
-        if (selectedType === 'substitutions') reset.substitutions = data.substitutions;
+        if (selectedType === "students")
+          reset.studentReports = data.studentReports;
+        if (selectedType === "teachers") reset.dailyReports = data.dailyReports;
+        if (selectedType === "violations") reset.violations = data.violations;
+        if (selectedType === "substitutions")
+          reset.substitutions = data.substitutions;
         dataToExport = reset;
       }
 
-      const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
+        type: "application/json",
+      });
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.download = `rafiquk_backup_${exportMode}_${new Date().toISOString().split('T')[0]}.json`;
+      link.download = `rafiquk_backup_${exportMode}_${new Date().toISOString().split("T")[0]}.json`;
       link.click();
       URL.revokeObjectURL(url);
-      showStatus('success', 'تم التصدير بنجاح');
+      showStatus("success", "تم التصدير بنجاح");
     } catch (e) {
-      showStatus('error', 'فشل التصدير');
+      showStatus("error", "فشل التصدير");
     } finally {
       setIsLoading(false);
     }
@@ -100,18 +131,18 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
 
   const archiveCurrentData = () => {
     if (isReadOnly) return;
-    const currentRaw = localStorage.getItem('rafiquk_data');
+    const currentRaw = localStorage.getItem("rafiquk_data");
     if (!currentRaw) return;
 
     const newBackup: BackupVersion = {
       id: Date.now().toString(),
-      timestamp: new Date().toLocaleString('ar-EG'),
+      timestamp: new Date().toLocaleString("ar-EG"),
       data: currentRaw,
-      label: `نسخة تلقائية قبل الاستيراد - ${new Date().toLocaleString('ar-EG')}`
+      label: `نسخة تلقائية قبل الاستيراد - ${new Date().toLocaleString("ar-EG")}`,
     };
 
     const updatedBackups = [newBackup, ...backups].slice(0, 5);
-    localStorage.setItem('app_history_backups', JSON.stringify(updatedBackups));
+    localStorage.setItem("app_history_backups", JSON.stringify(updatedBackups));
     setBackups(updatedBackups);
   };
 
@@ -124,14 +155,15 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
       try {
         const content = e.target?.result as string;
         const parsed = JSON.parse(content);
-        
+
         // Basic validation
-        if (!parsed || (typeof parsed !== 'object')) throw new Error('Invalid JSON');
+        if (!parsed || typeof parsed !== "object")
+          throw new Error("Invalid JSON");
 
         setPendingData(parsed);
         setShowImportChoice(true);
       } catch (err) {
-        showStatus('error', 'ملف غير صالح أو تالف');
+        showStatus("error", "ملف غير صالح أو تالف");
       } finally {
         setIsLoading(false);
       }
@@ -143,7 +175,7 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
     if (isReadOnly) return;
     if (!pendingData) return;
     setIsLoading(true);
-    
+
     // 1. Always archive current data as requested
     archiveCurrentData();
 
@@ -152,22 +184,32 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
         // MERGE LOGIC
         const merged = { ...data };
         const incoming = pendingData;
-        
+
         const arrayKeys = [
-          'substitutions', 'dailyReports', 'violations', 'parentVisits', 
-          'teacherFollowUps', 'studentReports', 'absenceLogs', 'latenessLogs', 
-          'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 
-          'examLogs', 'genericSpecialReports'
+          "substitutions",
+          "dailyReports",
+          "violations",
+          "parentVisits",
+          "teacherFollowUps",
+          "studentReports",
+          "absenceLogs",
+          "latenessLogs",
+          "studentViolationLogs",
+          "exitLogs",
+          "damageLogs",
+          "parentVisitLogs",
+          "examLogs",
+          "genericSpecialReports",
         ];
 
-        arrayKeys.forEach(key => {
+        arrayKeys.forEach((key) => {
           if (incoming[key] && Array.isArray(incoming[key])) {
             const currentArray = (merged as any)[key] || [];
             const combined = [...currentArray, ...incoming[key]];
-            
+
             // Filter unique by ID to prevent duplicates if merging identical files
             const seen = new Set();
-            (merged as any)[key] = combined.filter(item => {
+            (merged as any)[key] = combined.filter((item) => {
               const id = item.id || JSON.stringify(item);
               if (seen.has(id)) return false;
               seen.add(id);
@@ -179,29 +221,45 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
         // Merge custom violation elements if exist
         if (incoming.customViolationElements) {
           merged.customViolationElements = {
-            behavior: Array.from(new Set([...(merged.customViolationElements?.behavior || []), ...(incoming.customViolationElements.behavior || [])])),
-            duties: Array.from(new Set([...(merged.customViolationElements?.duties || []), ...(incoming.customViolationElements.duties || [])])),
-            achievement: Array.from(new Set([...(merged.customViolationElements?.achievement || []), ...(incoming.customViolationElements.achievement || [])])),
+            behavior: Array.from(
+              new Set([
+                ...(merged.customViolationElements?.behavior || []),
+                ...(incoming.customViolationElements.behavior || []),
+              ]),
+            ),
+            duties: Array.from(
+              new Set([
+                ...(merged.customViolationElements?.duties || []),
+                ...(incoming.customViolationElements.duties || []),
+              ]),
+            ),
+            achievement: Array.from(
+              new Set([
+                ...(merged.customViolationElements?.achievement || []),
+                ...(incoming.customViolationElements.achievement || []),
+              ]),
+            ),
           };
         }
 
-        localStorage.setItem('rafiquk_data', JSON.stringify(merged));
-        showStatus('success', 'تم دمج البيانات بنجاح! جاري التحديث...');
+        localStorage.setItem("rafiquk_data", JSON.stringify(merged));
+        showStatus("success", "تم دمج البيانات بنجاح! جاري التحديث...");
       } else {
         // OVERRIDE LOGIC
         // Clear current but preserve backups
-        const currentBackups = localStorage.getItem('app_history_backups');
+        const currentBackups = localStorage.getItem("app_history_backups");
         localStorage.clear();
-        if (currentBackups) localStorage.setItem('app_history_backups', currentBackups);
+        if (currentBackups)
+          localStorage.setItem("app_history_backups", currentBackups);
 
         // Set new data
-        localStorage.setItem('rafiquk_data', JSON.stringify(pendingData));
-        showStatus('success', 'تم استبدال البيانات بنجاح! جاري التحديث...');
+        localStorage.setItem("rafiquk_data", JSON.stringify(pendingData));
+        showStatus("success", "تم استبدال البيانات بنجاح! جاري التحديث...");
       }
 
       setTimeout(() => window.location.reload(), 1500);
     } catch (e) {
-      showStatus('error', 'حدث خطأ أثناء معالجة البيانات');
+      showStatus("error", "حدث خطأ أثناء معالجة البيانات");
     } finally {
       setIsLoading(false);
     }
@@ -212,16 +270,17 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
     if (isReadOnly) return;
     setConfirmDialog({
       isOpen: true,
-      title: 'استعادة النسخة الاحتياطية',
-      message: 'هل أنت متأكد من استعادة هذه النسخة؟ سيتم فقدان البيانات الحالية غير المحفوظة.',
-      type: 'warning',
+      title: "استعادة النسخة الاحتياطية",
+      message:
+        "هل أنت متأكد من استعادة هذه النسخة؟ سيتم فقدان البيانات الحالية غير المحفوظة.",
+      type: "warning",
       onConfirm: () => {
         // Archive current before restoring
         archiveCurrentData();
-        
-        localStorage.setItem('rafiquk_data', backup.data);
+
+        localStorage.setItem("rafiquk_data", backup.data);
         window.location.reload();
-      }
+      },
     });
   };
 
@@ -242,12 +301,17 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
     }
   };
 
-  const teachersList = Array.from(new Set(data.dailyReports.flatMap(r => r.teachersData.map(t => t.teacherName)))).filter(Boolean);
+  const teachersList = Array.from(
+    new Set(
+      data.dailyReports.flatMap((r) =>
+        r.teachersData.map((t) => t.teacherName),
+      ),
+    ),
+  ).filter(Boolean);
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-arabic">
       <div className="bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border-4 border-blue-50">
-        
         {/* Header */}
         <div className="bg-slate-50 p-6 border-b flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -255,27 +319,38 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
               <Database className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-slate-800">إدارة ونقل البيانات</h2>
-              <p className="text-blue-500 text-xs font-bold">نظام الأرشفة الذكي والنسخ الاحتياطي</p>
+              <h2 className="text-2xl font-black text-slate-800">
+                إدارة ونقل البيانات
+              </h2>
+              <p className="text-blue-500 text-xs font-bold">
+                نظام الأرشفة الذكي والنسخ الاحتياطي
+              </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-200 rounded-full transition-colors"
+          >
             <X className="w-6 h-6 text-slate-400" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 space-y-8">
-          
           {/* Status Messages */}
           {statusMsg && (
-            <div className={`p-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 ${statusMsg.type === 'success' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
-              {statusMsg.type === 'success' ? <CheckCircle2 size={20} /> : <AlertTriangle size={20} />}
+            <div
+              className={`p-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 ${statusMsg.type === "success" ? "bg-green-50 text-green-700 border border-green-100" : "bg-red-50 text-red-700 border border-red-100"}`}
+            >
+              {statusMsg.type === "success" ? (
+                <CheckCircle2 size={20} />
+              ) : (
+                <AlertTriangle size={20} />
+              )}
               <span className="font-bold">{statusMsg.text}</span>
             </div>
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
             {/* Export Section */}
             <div className="space-y-4">
               <h3 className="text-lg font-black text-black flex items-center gap-2">
@@ -283,44 +358,71 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
               </h3>
               <div className="grid grid-cols-1 gap-3">
                 {[
-                  { id: 'full', label: 'تصدير شامل', sub: 'جميع بيانات البرنامج والإعدادات', icon: <Database /> },
-                  { id: 'teacher', label: 'تصدير لمعلم', sub: 'بيانات وتقارير معلم محدد فقط', icon: <User /> },
-                  { id: 'type', label: 'تصدير حسب النوع', sub: 'تصفية حسب نوع التقارير', icon: <FileText /> }
-                ].map(mode => (
-                  <button 
+                  {
+                    id: "full",
+                    label: "تصدير شامل",
+                    sub: "جميع بيانات البرنامج والإعدادات",
+                    icon: <Database />,
+                  },
+                  {
+                    id: "teacher",
+                    label: "تصدير لمعلم",
+                    sub: "بيانات وتقارير معلم محدد فقط",
+                    icon: <User />,
+                  },
+                  {
+                    id: "type",
+                    label: "تصدير حسب النوع",
+                    sub: "تصفية حسب نوع التقارير",
+                    icon: <FileText />,
+                  },
+                ].map((mode) => (
+                  <button
                     key={mode.id}
                     onClick={() => setExportMode(mode.id as any)}
-                    className={`p-4 rounded-2xl border-2 text-right transition-all flex items-center gap-4 ${exportMode === mode.id ? 'border-blue-500 bg-blue-50' : 'border-slate-100 hover:border-blue-200'}`}
+                    className={`p-4 rounded-2xl border-2 text-right transition-all flex items-center gap-4 ${exportMode === mode.id ? "border-blue-500 bg-blue-50" : "border-slate-100 hover:border-blue-200"}`}
                   >
-                    <div className={`p-2 rounded-xl ${exportMode === mode.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                    <div
+                      className={`p-2 rounded-xl ${exportMode === mode.id ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-400"}`}
+                    >
                       {mode.icon}
                     </div>
                     <div className="flex-1">
                       <div className="font-black text-black">{mode.label}</div>
-                      <div className="text-[10px] text-slate-500 font-bold">{mode.sub}</div>
+                      <div className="text-[10px] text-slate-500 font-bold">
+                        {mode.sub}
+                      </div>
                     </div>
                   </button>
                 ))}
               </div>
 
-              {exportMode === 'teacher' && (
+              {exportMode === "teacher" && (
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2 animate-in zoom-in-95">
-                  <label className="text-xs font-bold text-black block">اختر المعلم:</label>
-                  <select 
+                  <label className="text-xs font-bold text-black block">
+                    اختر المعلم:
+                  </label>
+                  <select
                     className="w-full p-3 rounded-xl border-2 border-slate-200 text-black font-bold outline-none focus:border-blue-500"
                     value={selectedTeacher}
                     onChange={(e) => setSelectedTeacher(e.target.value)}
                   >
                     <option value="">-- اختر من القائمة --</option>
-                    {teachersList.map(t => <option key={t} value={t}>{t}</option>)}
+                    {teachersList.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
                   </select>
                 </div>
               )}
 
-              {exportMode === 'type' && (
+              {exportMode === "type" && (
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2 animate-in zoom-in-95">
-                  <label className="text-xs font-bold text-black block">نوع البيانات:</label>
-                  <select 
+                  <label className="text-xs font-bold text-black block">
+                    نوع البيانات:
+                  </label>
+                  <select
                     className="w-full p-3 rounded-xl border-2 border-slate-200 text-black font-bold outline-none focus:border-blue-500"
                     value={selectedType}
                     onChange={(e) => setSelectedType(e.target.value as any)}
@@ -333,12 +435,16 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
                 </div>
               )}
 
-              <button 
+              <button
                 onClick={handleExport}
                 disabled={isLoading}
                 className="w-full p-4 bg-blue-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
               >
-                {isLoading ? <Loader2 className="animate-spin" /> : <Save size={20} />}
+                {isLoading ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Save size={20} />
+                )}
                 بدء التصدير
               </button>
             </div>
@@ -348,35 +454,41 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
               <h3 className="text-lg font-black text-black flex items-center gap-2">
                 <Upload className="text-red-600" size={20} /> استيراد البيانات
               </h3>
-              
+
               {/* START OF CHANGE - Contextual Choice UI */}
               {!showImportChoice ? (
-                <div 
+                <div
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
                   onDragOver={handleDrag}
                   onDrop={handleDrop}
-                  className={`relative border-4 border-dashed rounded-[2rem] p-8 flex flex-col items-center justify-center gap-4 transition-all ${dragActive ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-slate-50'}`}
+                  className={`relative border-4 border-dashed rounded-[2rem] p-8 flex flex-col items-center justify-center gap-4 transition-all ${dragActive ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-slate-50"}`}
                 >
                   <div className="p-5 bg-white rounded-full shadow-inner text-slate-400">
                     <FileJson size={48} />
                   </div>
                   <div className="text-center space-y-1">
-                    <p className="font-black text-black">اسحب ملف النسخة الاحتياطية هنا</p>
-                    <p className="text-xs text-slate-500 font-bold">أو اضغط لاختيار ملف من جهازك</p>
+                    <p className="font-black text-black">
+                      اسحب ملف النسخة الاحتياطية هنا
+                    </p>
+                    <p className="text-xs text-slate-500 font-bold">
+                      أو اضغط لاختيار ملف من جهازك
+                    </p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => fileInputRef.current?.click()}
                     className="px-6 py-2 bg-white border-2 border-slate-200 rounded-xl font-bold text-sm hover:border-blue-400 transition-all"
                   >
                     اختيار ملف
                   </button>
-                  <input 
-                    type="file" 
+                  <input
+                    type="file"
                     ref={fileInputRef}
-                    className="hidden" 
+                    className="hidden"
                     accept=".json"
-                    onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])}
+                    onChange={(e) =>
+                      e.target.files?.[0] && handleImport(e.target.files[0])
+                    }
                   />
                 </div>
               ) : (
@@ -385,12 +497,16 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
                     <div className="inline-block p-3 bg-blue-600 text-white rounded-2xl mb-3 shadow-lg">
                       <RefreshCcw size={24} />
                     </div>
-                    <h4 className="font-black text-slate-800 text-lg">تم تحميل ملف البيانات</h4>
-                    <p className="text-xs text-slate-500 font-bold">يرجى اختيار طريقة معالجة البيانات المستوردة:</p>
+                    <h4 className="font-black text-slate-800 text-lg">
+                      تم تحميل ملف البيانات
+                    </h4>
+                    <p className="text-xs text-slate-500 font-bold">
+                      يرجى اختيار طريقة معالجة البيانات المستوردة:
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-1 gap-3">
-                    <button 
+                    <button
                       onClick={() => executeImport(false)}
                       className="p-5 bg-white border-2 border-slate-100 rounded-2xl hover:border-red-500 transition-all text-right group"
                     >
@@ -399,13 +515,17 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
                           <Trash2 size={18} />
                         </div>
                         <div>
-                          <div className="font-black text-slate-800 text-sm">استيراد مع إلغاء السابق</div>
-                          <div className="text-[10px] text-slate-400 font-bold">حذف البيانات الحالية واستبدالها كلياً بالجديدة</div>
+                          <div className="font-black text-slate-800 text-sm">
+                            استيراد مع إلغاء السابق
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-bold">
+                            حذف البيانات الحالية واستبدالها كلياً بالجديدة
+                          </div>
                         </div>
                       </div>
                     </button>
 
-                    <button 
+                    <button
                       onClick={() => executeImport(true)}
                       className="p-5 bg-white border-2 border-slate-100 rounded-2xl hover:border-green-500 transition-all text-right group"
                     >
@@ -414,13 +534,17 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
                           <Layers size={18} />
                         </div>
                         <div>
-                          <div className="font-black text-slate-800 text-sm">استيراد مع إضافة البيانات لما هو موجود</div>
-                          <div className="text-[10px] text-slate-400 font-bold">دمج الملف المستورد مع السجلات الحالية للمدرسة</div>
+                          <div className="font-black text-slate-800 text-sm">
+                            استيراد مع إضافة البيانات لما هو موجود
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-bold">
+                            دمج الملف المستورد مع السجلات الحالية للمدرسة
+                          </div>
                         </div>
                       </div>
                     </button>
 
-                    <button 
+                    <button
                       onClick={() => setShowImportChoice(false)}
                       className="w-full py-3 text-slate-400 font-black text-xs hover:text-slate-600"
                     >
@@ -433,22 +557,26 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
 
               <div className="p-4 bg-red-50 rounded-2xl border border-red-100">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="text-red-600 flex-shrink-0" size={18} />
+                  <AlertTriangle
+                    className="text-red-600 flex-shrink-0"
+                    size={18}
+                  />
                   <p className="text-[10px] text-red-700 font-black leading-relaxed">
-                    تحذير: سيتم أرشفة نسخة مؤرخة من بياناتك الحالية تلقائياً في السجل أدناه قبل تنفيذ أي عملية استيراد لضمان سلامة بياناتك.
+                    تحذير: سيتم أرشفة نسخة مؤرخة من بياناتك الحالية تلقائياً في
+                    السجل أدناه قبل تنفيذ أي عملية استيراد لضمان سلامة بياناتك.
                   </p>
                 </div>
               </div>
             </div>
-
           </div>
 
           {/* History / Backups Section */}
           <div className="pt-8 border-t">
             <h3 className="text-lg font-black text-black flex items-center gap-2 mb-4">
-              <History className="text-purple-600" size={20} /> سجل الأرشفة التلقائية (آخر 5 نسخ)
+              <History className="text-purple-600" size={20} /> سجل الأرشفة
+              التلقائية (آخر 5 نسخ)
             </h3>
-            
+
             <div className="space-y-3">
               {backups.length === 0 ? (
                 <div className="p-10 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-100 text-slate-400 italic">
@@ -456,19 +584,24 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
                 </div>
               ) : (
                 backups.map((backup, idx) => (
-                  <div key={backup.id} className="bg-white border-2 border-slate-100 p-4 rounded-2xl flex items-center justify-between hover:border-purple-200 transition-all">
+                  <div
+                    key={backup.id}
+                    className="bg-white border-2 border-slate-100 p-4 rounded-2xl flex items-center justify-between hover:border-purple-200 transition-all"
+                  >
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center font-black">
                         {idx + 1}
                       </div>
                       <div>
-                        <div className="font-black text-black text-sm">{backup.label}</div>
+                        <div className="font-black text-black text-sm">
+                          {backup.label}
+                        </div>
                         <div className="text-[10px] text-slate-500 font-bold flex items-center gap-1">
                           <Calendar size={10} /> {backup.timestamp}
                         </div>
                       </div>
                     </div>
-                    <button 
+                    <button
                       onClick={() => handleRestore(backup)}
                       className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-xl font-bold text-xs hover:bg-purple-600 hover:text-white transition-all"
                     >
@@ -479,12 +612,13 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
               )}
             </div>
           </div>
-
         </div>
 
         {/* Footer info */}
         <div className="bg-slate-50 p-4 text-center border-t">
-          <p className="text-[10px] text-slate-400 font-bold">بإشراف المستشار الإداري والتربوي إبراهيم دخان</p>
+          <p className="text-[10px] text-slate-400 font-bold">
+            بإشراف المستشار الإداري والتربوي إبراهيم دخان
+          </p>
         </div>
       </div>
 
@@ -495,9 +629,11 @@ const DataManagementModal: React.FC<{ isOpen: boolean; onClose: () => void }> = 
         type={confirmDialog.type}
         onConfirm={() => {
           confirmDialog.onConfirm();
-          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
         }}
-        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        onCancel={() =>
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
+        }
       />
     </div>
   );

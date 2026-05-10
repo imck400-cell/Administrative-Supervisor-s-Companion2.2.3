@@ -1,6 +1,6 @@
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, X, Check, Info } from 'lucide-react';
+import React from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { AlertTriangle, X, Check, Info } from "lucide-react";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -10,7 +10,7 @@ interface ConfirmDialogProps {
   onCancel: () => void;
   confirmText?: string;
   cancelText?: string;
-  type?: 'danger' | 'warning' | 'info';
+  type?: "danger" | "warning" | "info";
 }
 
 const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -19,31 +19,31 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   message,
   onConfirm,
   onCancel,
-  confirmText = 'تأكيد',
-  cancelText = 'إلغاء',
-  type = 'warning'
+  confirmText = "تأكيد",
+  cancelText = "إلغاء",
+  type = "warning",
 }) => {
   if (!isOpen) return null;
 
   const colors = {
     danger: {
-      bg: 'bg-red-50',
-      icon: 'bg-red-100 text-red-600',
-      button: 'bg-red-600 hover:bg-red-700 shadow-red-100',
-      border: 'border-red-100'
+      bg: "bg-red-50",
+      icon: "bg-red-100 text-red-600",
+      button: "bg-red-600 hover:bg-red-700 shadow-red-100",
+      border: "border-red-100",
     },
     warning: {
-      bg: 'bg-amber-50',
-      icon: 'bg-amber-100 text-amber-600',
-      button: 'bg-amber-600 hover:bg-amber-700 shadow-amber-100',
-      border: 'border-amber-100'
+      bg: "bg-amber-50",
+      icon: "bg-amber-100 text-amber-600",
+      button: "bg-amber-600 hover:bg-amber-700 shadow-amber-100",
+      border: "border-amber-100",
     },
     info: {
-      bg: 'bg-blue-50',
-      icon: 'bg-blue-100 text-blue-600',
-      button: 'bg-blue-600 hover:bg-blue-700 shadow-blue-100',
-      border: 'border-blue-100'
-    }
+      bg: "bg-blue-50",
+      icon: "bg-blue-100 text-blue-600",
+      button: "bg-blue-600 hover:bg-blue-700 shadow-blue-100",
+      border: "border-blue-100",
+    },
   };
 
   const style = colors[type];
@@ -67,16 +67,26 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           >
             <div className={`p-8 ${style.bg} border-b-2 ${style.border}`}>
               <div className="flex items-center gap-5">
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner ${style.icon}`}>
-                  {type === 'info' ? <Info size={32} /> : <AlertTriangle size={32} />}
+                <div
+                  className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner ${style.icon}`}
+                >
+                  {type === "info" ? (
+                    <Info size={32} />
+                  ) : (
+                    <AlertTriangle size={32} />
+                  )}
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">{title}</h3>
-                  <p className="text-slate-500 font-bold mt-1 text-sm">{message}</p>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                    {title}
+                  </h3>
+                  <p className="text-slate-500 font-bold mt-1 text-sm">
+                    {message}
+                  </p>
                 </div>
               </div>
             </div>
-            
+
             <div className="p-8 flex gap-4">
               <button
                 onClick={onCancel}

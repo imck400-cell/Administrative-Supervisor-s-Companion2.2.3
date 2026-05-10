@@ -1,10 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, Save, Printer, Star, Edit, ChevronLeft, User, BookOpen, Coffee, Activity, MessageSquare, Puzzle } from 'lucide-react';
-import { useGlobal } from '../context/GlobalState';
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  X,
+  Check,
+  Save,
+  Printer,
+  Star,
+  Edit,
+  ChevronLeft,
+  User,
+  BookOpen,
+  Coffee,
+  Activity,
+  MessageSquare,
+  Puzzle,
+} from "lucide-react";
+import { useGlobal } from "../context/GlobalState";
 
 const iconMap: Record<string, any> = {
-  User, BookOpen, Star, Coffee, Activity, MessageSquare, Puzzle
+  User,
+  BookOpen,
+  Star,
+  Coffee,
+  Activity,
+  MessageSquare,
+  Puzzle,
 };
 
 interface CourseEvaluationModalProps {
@@ -14,80 +34,173 @@ interface CourseEvaluationModalProps {
 
 const defaultSchema_v2 = [
   {
-    id: 'general_info',
-    title: 'أولاً: المعلومات العامة',
-    icon: 'User',
-    theme: 'blue',
+    id: "general_info",
+    title: "أولاً: المعلومات العامة",
+    icon: "User",
+    theme: "blue",
     fields: [
-      { id: 'trainee_name', type: 'text', label: 'اسم المتدرب' },
-      { id: 'job_title', type: 'text', label: 'المسمى الوظيفي' },
-      { id: 'course_name', type: 'text', label: 'اسم البرنامج التدريبي' },
-      { id: 'trainer_name', type: 'text', label: 'اسم المدرب' },
-      { id: 'course_date', type: 'date', label: 'تاريخ الدورة' }
-    ]
+      { id: "trainee_name", type: "text", label: "اسم المتدرب" },
+      { id: "job_title", type: "text", label: "المسمى الوظيفي" },
+      { id: "course_name", type: "text", label: "اسم البرنامج التدريبي" },
+      { id: "trainer_name", type: "text", label: "اسم المدرب" },
+      { id: "course_date", type: "date", label: "تاريخ الدورة" },
+    ],
   },
   {
-    id: 'scientific_content',
-    title: 'ثانياً: المحتوى التدريبي والمنهجية',
-    description: '(مقياس من 1 إلى 5)',
-    icon: 'BookOpen',
-    theme: 'emerald',
+    id: "scientific_content",
+    title: "ثانياً: المحتوى التدريبي والمنهجية",
+    description: "(مقياس من 1 إلى 5)",
+    icon: "BookOpen",
+    theme: "emerald",
     fields: [
-      { id: 'goals_clarity', type: 'rating', label: 'أهداف الدورة كانت واضحة ومحددة منذ البداية.' },
-      { id: 'content_modernity', type: 'rating', label: 'المحتوى التدريبي غطى الأساليب العلمية الحديثة في تشخيص المشكلة.' },
-      { id: 'materials_quality', type: 'rating', label: 'الوسائل الإيضاحية والمادة العلمية الموزعة كانت ذات جودة عالية.' },
-      { id: 'knowledge_gain', type: 'rating', label: 'مستوى المعرفة المكتسبة بعد الدورة مقارنة بما قبلها.' }
-    ]
+      {
+        id: "goals_clarity",
+        type: "rating",
+        label: "أهداف الدورة كانت واضحة ومحددة منذ البداية.",
+      },
+      {
+        id: "content_modernity",
+        type: "rating",
+        label:
+          "المحتوى التدريبي غطى الأساليب العلمية الحديثة في تشخيص المشكلة.",
+      },
+      {
+        id: "materials_quality",
+        type: "rating",
+        label: "الوسائل الإيضاحية والمادة العلمية الموزعة كانت ذات جودة عالية.",
+      },
+      {
+        id: "knowledge_gain",
+        type: "rating",
+        label: "مستوى المعرفة المكتسبة بعد الدورة مقارنة بما قبلها.",
+      },
+    ],
   },
   {
-    id: 'trainers_performance',
-    title: 'ثالثاً: أداء المدرب والبيئة التدريبية',
-    icon: 'Star',
-    theme: 'amber',
+    id: "trainers_performance",
+    title: "ثالثاً: أداء المدرب والبيئة التدريبية",
+    icon: "Star",
+    theme: "amber",
     fields: [
-      { id: 'concept_delivery', type: 'rating', label: 'تمكن المدرب من إيصال المفاهيم المعقدة بأسلوب سلس وواضح.' },
-      { id: 'theory_practice_balance', type: 'rating', label: 'كان هناك توزان جيد بين الجانب النظري والتمارين العملية.' },
-      { id: 'discussion_management', type: 'rating', label: 'أدار المدرب النقاشات بفاعلية وأجاب على استفسارات المشاركين بوضوح.' },
-      { id: 'environment_suitability', type: 'rating', label: 'ملاءمة القاعة التدريبية وتجهيزاتها اللوجستية والفنية.' },
-      { id: 'time_management', type: 'rating', label: 'إدارة الوقت وتوزيعه بين الجلسات وفترات الاستراحة.' },
-      { id: 'activity_contribution', type: 'rating', label: 'مدى إسهام الأنشطة في تعزيز تبادل الخبرات والتفاعل بين المتدربين.' }
-    ]
+      {
+        id: "concept_delivery",
+        type: "rating",
+        label: "تمكن المدرب من إيصال المفاهيم المعقدة بأسلوب سلس وواضح.",
+      },
+      {
+        id: "theory_practice_balance",
+        type: "rating",
+        label: "كان هناك توزان جيد بين الجانب النظري والتمارين العملية.",
+      },
+      {
+        id: "discussion_management",
+        type: "rating",
+        label:
+          "أدار المدرب النقاشات بفاعلية وأجاب على استفسارات المشاركين بوضوح.",
+      },
+      {
+        id: "environment_suitability",
+        type: "rating",
+        label: "ملاءمة القاعة التدريبية وتجهيزاتها اللوجستية والفنية.",
+      },
+      {
+        id: "time_management",
+        type: "rating",
+        label: "إدارة الوقت وتوزيعه بين الجلسات وفترات الاستراحة.",
+      },
+      {
+        id: "activity_contribution",
+        type: "rating",
+        label:
+          "مدى إسهام الأنشطة في تعزيز تبادل الخبرات والتفاعل بين المتدربين.",
+      },
+    ],
   },
   {
-    id: 'problem_solving_skills',
-    title: 'رابعاً: مهارة الحل واتخاذ القرار',
-    icon: 'Puzzle',
-    theme: 'purple',
+    id: "problem_solving_skills",
+    title: "رابعاً: مهارة الحل واتخاذ القرار",
+    icon: "Puzzle",
+    theme: "purple",
     fields: [
-      { id: 'creative_solutions', type: 'rating', label: 'قدمت الدورة استراتيجيات فعالة لتوليد حلول إبداعية وغير تقليدية.' },
-      { id: 'solution_evaluation', type: 'rating', label: 'تعلمت كيفية تقييم الحلول المتاحة واختيار الحل الأمثل بناءً على معايير واضحة.' },
-      { id: 'action_plan', type: 'rating', label: 'أدركت كيفية وضع خطة عمل تنفيذية لمتابعة الحل بعد اتخاذ القرار.' },
-      { id: 'pressure_management', type: 'rating', label: 'ساهمت الدورة في تعزيز قدرتي على إدارة المشكلات تحت الضغط.' }
-    ]
+      {
+        id: "creative_solutions",
+        type: "rating",
+        label:
+          "قدمت الدورة استراتيجيات فعالة لتوليد حلول إبداعية وغير تقليدية.",
+      },
+      {
+        id: "solution_evaluation",
+        type: "rating",
+        label:
+          "تعلمت كيفية تقييم الحلول المتاحة واختيار الحل الأمثل بناءً على معايير واضحة.",
+      },
+      {
+        id: "action_plan",
+        type: "rating",
+        label: "أدركت كيفية وضع خطة عمل تنفيذية لمتابعة الحل بعد اتخاذ القرار.",
+      },
+      {
+        id: "pressure_management",
+        type: "rating",
+        label: "ساهمت الدورة في تعزيز قدرتي على إدارة المشكلات تحت الضغط.",
+      },
+    ],
   },
   {
-    id: 'impact_results',
-    title: 'خامساً: الأثر العام والتطوير',
-    icon: 'Activity',
-    theme: 'rose',
+    id: "impact_results",
+    title: "خامساً: الأثر العام والتطوير",
+    icon: "Activity",
+    theme: "rose",
     fields: [
-      { id: 'acquired_skills', type: 'textarea', label: 'ما هي أهم المهارات التي اكتسبتها وترى أنها ستغير طريقة تعاملك مع المشكلات؟' },
-      { id: 'confidence_increase', type: 'select', label: 'هل تشعر بثقة أكبر الآن في مواجهة المشكلات الإدارية أو الشخصية؟', options: ['نعم', 'إلى حد ما', 'لا'] },
-      { id: 'skills_transfer', type: 'select', label: 'هل ستقوم بنقل ما تعلمته من مهارات إلى بيئة عملك لتطوير الأداء؟', options: ['نعم', 'إلى حد ما', 'لا'] },
-      { id: 'challenges_notes', type: 'textarea', label: 'ما هي أبرز التحديات أو الملاحظات النقدية التي واجهتك أثناء الدورة؟' },
-      { id: 'improvement_suggestions', type: 'textarea', label: 'ما هي مقترحاتك لتطوير هذه الدورة في المرات القادمة أو مواضيع تقترح إضافتها؟' },
-      { id: 'overall_rating', type: 'star_rating', label: 'التقييم العام للدورة كحزمة متكاملة' }
-    ]
-  }
+      {
+        id: "acquired_skills",
+        type: "textarea",
+        label:
+          "ما هي أهم المهارات التي اكتسبتها وترى أنها ستغير طريقة تعاملك مع المشكلات؟",
+      },
+      {
+        id: "confidence_increase",
+        type: "select",
+        label: "هل تشعر بثقة أكبر الآن في مواجهة المشكلات الإدارية أو الشخصية؟",
+        options: ["نعم", "إلى حد ما", "لا"],
+      },
+      {
+        id: "skills_transfer",
+        type: "select",
+        label: "هل ستقوم بنقل ما تعلمته من مهارات إلى بيئة عملك لتطوير الأداء؟",
+        options: ["نعم", "إلى حد ما", "لا"],
+      },
+      {
+        id: "challenges_notes",
+        type: "textarea",
+        label:
+          "ما هي أبرز التحديات أو الملاحظات النقدية التي واجهتك أثناء الدورة؟",
+      },
+      {
+        id: "improvement_suggestions",
+        type: "textarea",
+        label:
+          "ما هي مقترحاتك لتطوير هذه الدورة في المرات القادمة أو مواضيع تقترح إضافتها؟",
+      },
+      {
+        id: "overall_rating",
+        type: "star_rating",
+        label: "التقييم العام للدورة كحزمة متكاملة",
+      },
+    ],
+  },
 ];
 
-export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ isOpen, onClose }) => {
+export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({
+  isOpen,
+  onClose,
+}) => {
   const { currentUser, updateData, data } = useGlobal();
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [schema, setSchema] = useState(() => {
     try {
-      const saved = localStorage.getItem('courseEvaluationSchema_v2');
+      const saved = localStorage.getItem("courseEvaluationSchema_v2");
       return saved ? JSON.parse(saved) : defaultSchema_v2;
     } catch {
       return defaultSchema_v2;
@@ -96,13 +209,16 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ is
   const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('courseEvaluationSchema_v2', JSON.stringify(schema));
+    localStorage.setItem("courseEvaluationSchema_v2", JSON.stringify(schema));
   }, [schema]);
 
   // Check if user has permission to edit schema
   const trainingPerm = currentUser?.permissions?.trainingCourses;
-  const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
-  const canEditSchema = isGeneralSupervisor || (Array.isArray(trainingPerm) && trainingPerm.includes('editSchema'));
+  const isGeneralSupervisor =
+    currentUser?.role === "admin" || currentUser?.permissions?.all === true;
+  const canEditSchema =
+    isGeneralSupervisor ||
+    (Array.isArray(trainingPerm) && trainingPerm.includes("editSchema"));
 
   useEffect(() => {
     if (isOpen) {
@@ -120,24 +236,25 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ is
     const newEvaluation = {
       id: `eval_${Date.now()}`,
       userId: currentUser?.id,
-      traineeName: formData['trainee_name'] || 'غير مسجل',
-      jobTitle: formData['job_title'] || 'غير مسجل',
-      courseName: formData['course_name'] || 'غير مسجل',
-      trainerName: formData['trainer_name'] || 'غير مسجل',
-      courseDate: formData['course_date'] || new Date().toISOString().split('T')[0],
-      evaluationDate: new Date().toISOString().split('T')[0],
+      traineeName: formData["trainee_name"] || "غير مسجل",
+      jobTitle: formData["job_title"] || "غير مسجل",
+      courseName: formData["course_name"] || "غير مسجل",
+      trainerName: formData["trainer_name"] || "غير مسجل",
+      courseDate:
+        formData["course_date"] || new Date().toISOString().split("T")[0],
+      evaluationDate: new Date().toISOString().split("T")[0],
       answers: formData,
-      overallRating: formData['overall_rating'] || 0
+      overallRating: formData["overall_rating"] || 0,
     };
 
     const currentEvaluations = data.trainingEvaluations || [];
     updateData({ trainingEvaluations: [...currentEvaluations, newEvaluation] });
-    
+
     setIsSubmitted(true);
   };
 
   const handleFieldChange = (id: string, value: any) => {
-    setFormData(prev => ({ ...prev, [id]: value }));
+    setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
   // Schema Editing Handlers
@@ -147,14 +264,18 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ is
     setSchema(newSchema);
   };
 
-  const handleUpdateFieldLabel = (sIdx: number, fIdx: number, newLabel: string) => {
+  const handleUpdateFieldLabel = (
+    sIdx: number,
+    fIdx: number,
+    newLabel: string,
+  ) => {
     const newSchema = [...schema];
     newSchema[sIdx].fields[fIdx].label = newLabel;
     setSchema(newSchema);
   };
 
   const handleRemoveField = (sIdx: number, fIdx: number) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذا المعيار/السؤال؟')) return;
+    if (!window.confirm("هل أنت متأكد من حذف هذا المعيار/السؤال؟")) return;
     const newSchema = [...schema];
     newSchema[sIdx].fields.splice(fIdx, 1);
     setSchema(newSchema);
@@ -162,25 +283,28 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ is
 
   const handleAddField = (sIdx: number) => {
     const newSchema = [...schema];
-    const type = window.prompt("نوع الحقل (text, textarea, rating, select, star_rating):", "rating");
+    const type = window.prompt(
+      "نوع الحقل (text, textarea, rating, select, star_rating):",
+      "rating",
+    );
     if (!type) return;
     const label = window.prompt("نص السؤال:");
     if (!label) return;
-    
+
     const newField: any = {
       id: `custom_${Date.now()}`,
       type,
-      label
+      label,
     };
-    if (type === 'select') {
-      newField.options = ['نعم', 'إلى حد ما', 'لا'];
+    if (type === "select") {
+      newField.options = ["نعم", "إلى حد ما", "لا"];
     }
     newSchema[sIdx].fields.push(newField);
     setSchema(newSchema);
   };
 
   const handleRemoveSection = (sIdx: number) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذه البطاقة بالكامل؟')) return;
+    if (!window.confirm("هل أنت متأكد من حذف هذه البطاقة بالكامل؟")) return;
     const newSchema = [...schema];
     newSchema.splice(sIdx, 1);
     setSchema(newSchema);
@@ -193,9 +317,9 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ is
     newSchema.push({
       id: `custom_section_${Date.now()}`,
       title,
-      icon: 'Star',
-      theme: 'blue',
-      fields: []
+      icon: "Star",
+      theme: "blue",
+      fields: [],
     });
     setSchema(newSchema);
   };
@@ -210,64 +334,69 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ is
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className={`relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl flex flex-col my-auto PrintSection ${isSubmitted ? 'h-auto' : ''}`}
+            className={`relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl flex flex-col my-auto PrintSection ${isSubmitted ? "h-auto" : ""}`}
           >
             {isSubmitted ? (
-               <div className="p-12 flex flex-col items-center justify-center text-center space-y-6 min-h-[400px]">
-                 <motion.div 
-                   initial={{ scale: 0 }} 
-                   animate={{ scale: 1 }} 
-                   className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4"
-                 >
-                   <Check size={48} strokeWidth={3} />
-                 </motion.div>
-                 <h2 className="text-3xl font-black text-slate-800">
-                   شكراً لك، {formData['trainee_name'] || 'أستاذي الكريم'}!
-                 </h2>
-                 <p className="text-xl text-slate-600">تم حفظ تقييمك بنجاح، نقدر وقتك ومساهمتك في التطوير.</p>
-                 <div className="flex gap-4 mt-8 pt-8 border-t border-slate-100 w-full justify-center flex-wrap">
-                   <button 
-                     onClick={onClose}
-                     className="px-6 py-3 bg-white border-2 border-slate-200 rounded-xl text-slate-700 font-bold hover:bg-slate-50 transition-colors"
-                   >
-                     العودة للقائمة السابقة
-                   </button>
-                   <button 
-                     onClick={() => setIsSubmitted(false)}
-                     className="px-6 py-3 bg-blue-50 text-blue-700 rounded-xl font-bold hover:bg-blue-100 transition-colors"
-                   >
-                     تعديل الإجابات
-                   </button>
-                   <button 
-                     onClick={onClose}
-                     className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all"
-                   >
-                     حفظ وإغلاق
-                   </button>
-                 </div>
-               </div>
+              <div className="p-12 flex flex-col items-center justify-center text-center space-y-6 min-h-[400px]">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4"
+                >
+                  <Check size={48} strokeWidth={3} />
+                </motion.div>
+                <h2 className="text-3xl font-black text-slate-800">
+                  شكراً لك، {formData["trainee_name"] || "أستاذي الكريم"}!
+                </h2>
+                <p className="text-xl text-slate-600">
+                  تم حفظ تقييمك بنجاح، نقدر وقتك ومساهمتك في التطوير.
+                </p>
+                <div className="flex gap-4 mt-8 pt-8 border-t border-slate-100 w-full justify-center flex-wrap">
+                  <button
+                    onClick={onClose}
+                    className="px-6 py-3 bg-white border-2 border-slate-200 rounded-xl text-slate-700 font-bold hover:bg-slate-50 transition-colors"
+                  >
+                    العودة للقائمة السابقة
+                  </button>
+                  <button
+                    onClick={() => setIsSubmitted(false)}
+                    className="px-6 py-3 bg-blue-50 text-blue-700 rounded-xl font-bold hover:bg-blue-100 transition-colors"
+                  >
+                    تعديل الإجابات
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all"
+                  >
+                    حفظ وإغلاق
+                  </button>
+                </div>
+              </div>
             ) : (
               <>
                 <div className="sticky top-0 bg-white/90 backdrop-blur-xl border-b border-slate-100 p-6 flex items-center justify-between z-10 rounded-t-3xl hide-on-print">
                   <div className="flex items-center gap-4">
-                     <button
-                       onClick={onClose}
-                       className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500"
-                     >
-                       <X size={24} />
-                     </button>
-                     <h2 className="text-2xl font-black text-slate-800">تقييم الدورة التدريبية</h2>
+                    <button
+                      onClick={onClose}
+                      className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500"
+                    >
+                      <X size={24} />
+                    </button>
+                    <h2 className="text-2xl font-black text-slate-800">
+                      تقييم الدورة التدريبية
+                    </h2>
                   </div>
                   <div className="flex items-center gap-3">
                     {canEditSchema && (
-                      <button 
+                      <button
                         onClick={() => setIsEditMode(!isEditMode)}
-                        className={`px-4 py-2 flex items-center gap-2 rounded-xl font-bold transition-all ${isEditMode ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                        className={`px-4 py-2 flex items-center gap-2 rounded-xl font-bold transition-all ${isEditMode ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                       >
-                        <Edit size={18} /> {isEditMode ? 'إلغاء التعديل' : 'تعديل المعايير'}
+                        <Edit size={18} />{" "}
+                        {isEditMode ? "إلغاء التعديل" : "تعديل المعايير"}
                       </button>
                     )}
-                    <button 
+                    <button
                       onClick={handlePrint}
                       className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500 flex items-center gap-2"
                       title="طباعة النموذج"
@@ -278,102 +407,158 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ is
                 </div>
 
                 <div className="p-6 md:p-8 overflow-y-auto space-y-8 bg-slate-50">
-                   {schema.map((section, sIdx) => {
-                     const IconComponent = iconMap[section.icon || 'Star'] || Star;
-                     return (
-                     <div key={section.id} className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 print-break-inside-avoid relative overflow-hidden">
+                  {schema.map((section, sIdx) => {
+                    const IconComponent =
+                      iconMap[section.icon || "Star"] || Star;
+                    return (
+                      <div
+                        key={section.id}
+                        className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 print-break-inside-avoid relative overflow-hidden"
+                      >
                         {/* Decorative background for icon */}
-                        <div className={`absolute -right-6 -top-6 w-32 h-32 opacity-[0.03] text-${section.theme || 'blue'}-500 pointer-events-none`}>
+                        <div
+                          className={`absolute -right-6 -top-6 w-32 h-32 opacity-[0.03] text-${section.theme || "blue"}-500 pointer-events-none`}
+                        >
                           <IconComponent size={128} />
                         </div>
 
                         <div className="flex items-start justify-between mb-6 relative">
-                           <div className="flex items-center gap-4 flex-1">
-                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-${section.theme || 'blue'}-50 text-${section.theme || 'blue'}-600`}>
-                               <IconComponent size={24} />
-                             </div>
-                             <div className="flex-1">
-                               {isEditMode ? (
-                                 <input 
-                                   type="text" 
-                                   value={section.title} 
-                                   onChange={(e) => handleUpdateSectionTitle(sIdx, e.target.value)}
-                                   className="w-full text-xl font-black text-slate-800 bg-slate-50 border-2 border-indigo-100 rounded-lg px-3 py-1 outline-none mb-1"
-                                 />
-                               ) : (
-                                 <h3 className="text-xl font-black text-slate-800">{section.title}</h3>
-                               )}
-                               {section.description && <span className="text-sm font-bold text-slate-400 block mt-1">{section.description}</span>}
-                             </div>
-                           </div>
-                           {isEditMode && (
-                             <button onClick={() => handleRemoveSection(sIdx)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg mr-2 transition-colors shrink-0">
-                               <X size={20} />
-                             </button>
-                           )}
+                          <div className="flex items-center gap-4 flex-1">
+                            <div
+                              className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-${section.theme || "blue"}-50 text-${section.theme || "blue"}-600`}
+                            >
+                              <IconComponent size={24} />
+                            </div>
+                            <div className="flex-1">
+                              {isEditMode ? (
+                                <input
+                                  type="text"
+                                  value={section.title}
+                                  onChange={(e) =>
+                                    handleUpdateSectionTitle(
+                                      sIdx,
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="w-full text-xl font-black text-slate-800 bg-slate-50 border-2 border-indigo-100 rounded-lg px-3 py-1 outline-none mb-1"
+                                />
+                              ) : (
+                                <h3 className="text-xl font-black text-slate-800">
+                                  {section.title}
+                                </h3>
+                              )}
+                              {section.description && (
+                                <span className="text-sm font-bold text-slate-400 block mt-1">
+                                  {section.description}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {isEditMode && (
+                            <button
+                              onClick={() => handleRemoveSection(sIdx)}
+                              className="text-red-500 hover:bg-red-50 p-2 rounded-lg mr-2 transition-colors shrink-0"
+                            >
+                              <X size={20} />
+                            </button>
+                          )}
                         </div>
 
                         <div className="space-y-6">
                           {section.fields.map((field, fIdx) => (
-                            <div key={field.id} className="space-y-3 relative group/field">
+                            <div
+                              key={field.id}
+                              className="space-y-3 relative group/field"
+                            >
                               {isEditMode && (
-                                <button onClick={() => handleRemoveField(sIdx, fIdx)} className="absolute left-[-16px] top-0 text-red-500 opacity-0 group-hover/field:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => handleRemoveField(sIdx, fIdx)}
+                                  className="absolute left-[-16px] top-0 text-red-500 opacity-0 group-hover/field:opacity-100 transition-opacity"
+                                >
                                   <X size={16} />
                                 </button>
                               )}
                               {isEditMode ? (
-                                <input 
+                                <input
                                   type="text"
                                   value={field.label}
-                                  onChange={(e) => handleUpdateFieldLabel(sIdx, fIdx, e.target.value)}
+                                  onChange={(e) =>
+                                    handleUpdateFieldLabel(
+                                      sIdx,
+                                      fIdx,
+                                      e.target.value,
+                                    )
+                                  }
                                   className="w-full block text-slate-700 font-bold bg-slate-50 border-2 border-indigo-100 rounded-lg px-3 py-1 outline-none"
                                 />
                               ) : (
-                                <label className="block text-slate-700 font-bold">{field.label}</label>
+                                <label className="block text-slate-700 font-bold">
+                                  {field.label}
+                                </label>
                               )}
-                              
-                              {field.type === 'text' && (
-                                <input 
-                                  type="text" 
-                                  value={formData[field.id] || ''}
-                                  onChange={(e) => handleFieldChange(field.id, e.target.value)}
+
+                              {field.type === "text" && (
+                                <input
+                                  type="text"
+                                  value={formData[field.id] || ""}
+                                  onChange={(e) =>
+                                    handleFieldChange(field.id, e.target.value)
+                                  }
                                   className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-blue-500 outline-none transition-all"
                                 />
                               )}
 
-                              {field.type === 'date' && (
-                                <input 
-                                  type="date" 
-                                  value={formData[field.id] || ''}
-                                  onChange={(e) => handleFieldChange(field.id, e.target.value)}
+                              {field.type === "date" && (
+                                <input
+                                  type="date"
+                                  value={formData[field.id] || ""}
+                                  onChange={(e) =>
+                                    handleFieldChange(field.id, e.target.value)
+                                  }
                                   className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-blue-500 outline-none transition-all"
                                 />
                               )}
 
-                              {field.type === 'textarea' && (
-                                <textarea 
-                                  value={formData[field.id] || ''}
-                                  onChange={(e) => handleFieldChange(field.id, e.target.value)}
+                              {field.type === "textarea" && (
+                                <textarea
+                                  value={formData[field.id] || ""}
+                                  onChange={(e) =>
+                                    handleFieldChange(field.id, e.target.value)
+                                  }
                                   className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-blue-500 outline-none transition-all min-h-[100px]"
                                 />
                               )}
 
-                              {field.type === 'rating' && (
+                              {field.type === "rating" && (
                                 <div className="flex items-center gap-2 md:gap-4 flex-wrap">
-                                  {[1, 2, 3, 4, 5].map(num => {
-                                    const isSelected = formData[field.id] === num;
-                                    let colorClass = 'bg-slate-100 text-slate-500 hover:bg-slate-200';
+                                  {[1, 2, 3, 4, 5].map((num) => {
+                                    const isSelected =
+                                      formData[field.id] === num;
+                                    let colorClass =
+                                      "bg-slate-100 text-slate-500 hover:bg-slate-200";
                                     if (isSelected) {
-                                      if (num === 5) colorClass = 'bg-[#86efac] text-green-950 shadow-lg shadow-green-200 scale-110 border-2 border-[#4ade80]'; // Light Green
-                                      else if (num === 4) colorClass = 'bg-blue-500 text-white shadow-lg shadow-blue-200 scale-110 border-2 border-blue-600'; // Blue
-                                      else if (num === 3) colorClass = 'bg-cyan-300 text-cyan-950 shadow-lg shadow-cyan-200 scale-110 border-2 border-cyan-400'; // Cyan
-                                      else if (num === 2) colorClass = 'bg-orange-500 text-white shadow-lg shadow-orange-200 scale-110 border-2 border-orange-600'; // Orange
-                                      else if (num === 1) colorClass = 'bg-[#990000] text-white shadow-lg shadow-red-200 scale-110 border-2 border-[#660000]'; // Crimson
+                                      if (num === 5)
+                                        colorClass =
+                                          "bg-[#86efac] text-green-950 shadow-lg shadow-green-200 scale-110 border-2 border-[#4ade80]"; // Light Green
+                                      else if (num === 4)
+                                        colorClass =
+                                          "bg-blue-500 text-white shadow-lg shadow-blue-200 scale-110 border-2 border-blue-600"; // Blue
+                                      else if (num === 3)
+                                        colorClass =
+                                          "bg-cyan-300 text-cyan-950 shadow-lg shadow-cyan-200 scale-110 border-2 border-cyan-400"; // Cyan
+                                      else if (num === 2)
+                                        colorClass =
+                                          "bg-orange-500 text-white shadow-lg shadow-orange-200 scale-110 border-2 border-orange-600"; // Orange
+                                      else if (num === 1)
+                                        colorClass =
+                                          "bg-[#990000] text-white shadow-lg shadow-red-200 scale-110 border-2 border-[#660000]"; // Crimson
                                     }
                                     return (
                                       <button
                                         key={num}
-                                        onClick={() => handleFieldChange(field.id, num)}
+                                        onClick={() =>
+                                          handleFieldChange(field.id, num)
+                                        }
                                         className={`w-12 h-12 md:w-14 md:h-14 rounded-full font-black text-lg flex items-center justify-center transition-all ${colorClass}`}
                                       >
                                         {num}
@@ -383,12 +568,14 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ is
                                 </div>
                               )}
 
-                              {field.type === 'select' && (
+                              {field.type === "select" && (
                                 <div className="flex gap-3 flex-wrap">
-                                  {field.options?.map(opt => (
+                                  {field.options?.map((opt) => (
                                     <button
                                       key={opt}
-                                      onClick={() => handleFieldChange(field.id, opt)}
+                                      onClick={() =>
+                                        handleFieldChange(field.id, opt)
+                                      }
                                       className={`px-6 py-3 rounded-xl font-bold transition-all ${
                                         formData[field.id] === opt
                                           ? `bg-blue-600 text-white shadow-md`
@@ -401,51 +588,56 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({ is
                                 </div>
                               )}
 
-                              {field.type === 'star_rating' && (
+                              {field.type === "star_rating" && (
                                 <div className="flex items-center gap-2">
-                                  {[1, 2, 3, 4, 5].map(num => (
+                                  {[1, 2, 3, 4, 5].map((num) => (
                                     <button
                                       key={num}
-                                      onClick={() => handleFieldChange(field.id, num)}
+                                      onClick={() =>
+                                        handleFieldChange(field.id, num)
+                                      }
                                       className="p-2 transition-transform hover:scale-110"
                                     >
-                                      <Star 
-                                        size={36} 
-                                        className={formData[field.id] >= num ? 'fill-amber-400 text-amber-400' : 'text-slate-200 fill-slate-100'} 
+                                      <Star
+                                        size={36}
+                                        className={
+                                          formData[field.id] >= num
+                                            ? "fill-amber-400 text-amber-400"
+                                            : "text-slate-200 fill-slate-100"
+                                        }
                                       />
                                     </button>
                                   ))}
                                 </div>
                               )}
-
                             </div>
                           ))}
-                          
+
                           {isEditMode && (
-                             <button
-                               onClick={() => handleAddField(sIdx)}
-                               className="mt-4 px-4 py-2 text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors w-full border-2 border-dashed border-indigo-200"
-                             >
-                               + إضافة معيار / سؤال جديد
-                             </button>
+                            <button
+                              onClick={() => handleAddField(sIdx)}
+                              className="mt-4 px-4 py-2 text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors w-full border-2 border-dashed border-indigo-200"
+                            >
+                              + إضافة معيار / سؤال جديد
+                            </button>
                           )}
                         </div>
-                     </div>
-                     );
-                   })}
+                      </div>
+                    );
+                  })}
 
-                   {isEditMode && (
-                     <button
-                       onClick={handleAddSection}
-                       className="w-full py-6 text-lg font-black text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-3xl transition-colors border-4 border-dashed border-indigo-200"
-                     >
-                       + إضافة بطاقة جديدة
-                     </button>
-                   )}
+                  {isEditMode && (
+                    <button
+                      onClick={handleAddSection}
+                      className="w-full py-6 text-lg font-black text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-3xl transition-colors border-4 border-dashed border-indigo-200"
+                    >
+                      + إضافة بطاقة جديدة
+                    </button>
+                  )}
                 </div>
 
                 <div className="p-6 border-t border-slate-100 bg-white flex justify-center hide-on-print rounded-b-3xl">
-                  <button 
+                  <button
                     onClick={handleSubmit}
                     className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-xl hover:bg-blue-700 shadow-xl shadow-blue-200 transition-all hover:-translate-y-1"
                   >

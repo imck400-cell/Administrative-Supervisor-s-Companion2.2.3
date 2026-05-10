@@ -1,22 +1,35 @@
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Search, Filter, BookOpen, User, Calendar, Star, ChevronDown, Check } from 'lucide-react';
-import { useGlobal } from '../context/GlobalState';
+import React, { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  X,
+  Search,
+  Filter,
+  BookOpen,
+  User,
+  Calendar,
+  Star,
+  ChevronDown,
+  Check,
+} from "lucide-react";
+import { useGlobal } from "../context/GlobalState";
 
 interface CourseArchiveModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const CourseArchiveModal: React.FC<CourseArchiveModalProps> = ({ isOpen, onClose }) => {
+export const CourseArchiveModal: React.FC<CourseArchiveModalProps> = ({
+  isOpen,
+  onClose,
+}) => {
   const { data } = useGlobal();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState('newest');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState("newest");
 
   const evaluations = data.trainingEvaluations || [];
 
   const filteredAndSortedEvaluations = useMemo(() => {
-    let result = evaluations.filter(ev => {
+    let result = evaluations.filter((ev) => {
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
       return (
@@ -27,16 +40,24 @@ export const CourseArchiveModal: React.FC<CourseArchiveModalProps> = ({ isOpen, 
     });
 
     switch (filterType) {
-      case 'newest':
-        result.sort((a, b) => new Date(b.evaluationDate).getTime() - new Date(a.evaluationDate).getTime());
+      case "newest":
+        result.sort(
+          (a, b) =>
+            new Date(b.evaluationDate).getTime() -
+            new Date(a.evaluationDate).getTime(),
+        );
         break;
-      case 'oldest':
-        result.sort((a, b) => new Date(a.evaluationDate).getTime() - new Date(b.evaluationDate).getTime());
+      case "oldest":
+        result.sort(
+          (a, b) =>
+            new Date(a.evaluationDate).getTime() -
+            new Date(b.evaluationDate).getTime(),
+        );
         break;
-      case 'highest_rating':
+      case "highest_rating":
         result.sort((a, b) => (b.overallRating || 0) - (a.overallRating || 0));
         break;
-      case 'lowest_rating':
+      case "lowest_rating":
         result.sort((a, b) => (a.overallRating || 0) - (b.overallRating || 0));
         break;
     }
@@ -64,8 +85,12 @@ export const CourseArchiveModal: React.FC<CourseArchiveModalProps> = ({ isOpen, 
                     <BookOpen size={24} />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-black text-slate-800">أرشيف الدورات التدريبية</h2>
-                    <p className="text-sm font-bold text-slate-500">سجل التقييمات الشامل للبرامج المنفذة</p>
+                    <h2 className="text-2xl font-black text-slate-800">
+                      أرشيف الدورات التدريبية
+                    </h2>
+                    <p className="text-sm font-bold text-slate-500">
+                      سجل التقييمات الشامل للبرامج المنفذة
+                    </p>
                   </div>
                 </div>
                 <button
@@ -79,7 +104,10 @@ export const CourseArchiveModal: React.FC<CourseArchiveModalProps> = ({ isOpen, 
               {/* Toolbar */}
               <div className="flex flex-col md:flex-row gap-4 items-center">
                 <div className="relative flex-1 w-full">
-                  <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                  <Search
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={20}
+                  />
                   <input
                     type="text"
                     placeholder="ابحث باسم الدورة، المدرب، أو المتدرب..."
@@ -89,7 +117,10 @@ export const CourseArchiveModal: React.FC<CourseArchiveModalProps> = ({ isOpen, 
                   />
                 </div>
                 <div className="relative w-full md:w-auto min-w-[200px]">
-                  <Filter className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                  <Filter
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={20}
+                  />
                   <select
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value)}
@@ -100,7 +131,10 @@ export const CourseArchiveModal: React.FC<CourseArchiveModalProps> = ({ isOpen, 
                     <option value="highest_rating">الأعلى تقييماً</option>
                     <option value="lowest_rating">الأقل تقييماً</option>
                   </select>
-                  <ChevronDown className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                  <ChevronDown
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                    size={16}
+                  />
                 </div>
               </div>
             </div>
@@ -110,8 +144,12 @@ export const CourseArchiveModal: React.FC<CourseArchiveModalProps> = ({ isOpen, 
               {filteredAndSortedEvaluations.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-4">
                   <BookOpen size={64} className="opacity-20" />
-                  <h3 className="text-xl font-black">لا توجد تقييمات في الأرشيف</h3>
-                  <p className="font-bold">استخدم نموذج التقييم لإضافة سجلات جديدة.</p>
+                  <h3 className="text-xl font-black">
+                    لا توجد تقييمات في الأرشيف
+                  </h3>
+                  <p className="font-bold">
+                    استخدم نموذج التقييم لإضافة سجلات جديدة.
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -123,12 +161,16 @@ export const CourseArchiveModal: React.FC<CourseArchiveModalProps> = ({ isOpen, 
                       className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-xl transition-shadow group relative overflow-hidden"
                     >
                       <div className="absolute top-0 right-0 w-2 h-full bg-emerald-500 group-hover:w-3 transition-all" />
-                      
+
                       <div className="flex justify-between items-start mb-4">
-                        <h3 className="text-lg font-black text-slate-800 line-clamp-2 pr-4">{ev.courseName}</h3>
+                        <h3 className="text-lg font-black text-slate-800 line-clamp-2 pr-4">
+                          {ev.courseName}
+                        </h3>
                         <div className="flex items-center gap-1 bg-amber-50 text-amber-600 px-2 py-1 rounded-lg">
                           <Star size={14} className="fill-amber-400" />
-                          <span className="font-black text-sm">{ev.overallRating?.toFixed(1) || 'N/A'}</span>
+                          <span className="font-black text-sm">
+                            {ev.overallRating?.toFixed(1) || "N/A"}
+                          </span>
                         </div>
                       </div>
 
@@ -144,14 +186,16 @@ export const CourseArchiveModal: React.FC<CourseArchiveModalProps> = ({ isOpen, 
                           <span className="truncate">{ev.traineeName}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-50">
-                           <div className="flex items-center gap-1.5 text-slate-500 text-xs font-bold bg-slate-50 p-2 rounded-lg">
-                             <Calendar size={14} />
-                             الدورة: <br/>{ev.courseDate}
-                           </div>
-                           <div className="flex items-center gap-1.5 text-slate-500 text-xs font-bold bg-slate-50 p-2 rounded-lg">
-                             <Check size={14} />
-                             التقييم: <br/>{ev.evaluationDate}
-                           </div>
+                          <div className="flex items-center gap-1.5 text-slate-500 text-xs font-bold bg-slate-50 p-2 rounded-lg">
+                            <Calendar size={14} />
+                            الدورة: <br />
+                            {ev.courseDate}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-slate-500 text-xs font-bold bg-slate-50 p-2 rounded-lg">
+                            <Check size={14} />
+                            التقييم: <br />
+                            {ev.evaluationDate}
+                          </div>
                         </div>
                       </div>
                     </motion.div>

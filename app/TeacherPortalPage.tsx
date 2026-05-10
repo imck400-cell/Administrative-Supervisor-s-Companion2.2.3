@@ -1,74 +1,91 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { CheckSquare, ListTodo, Star, FileSpreadsheet } from 'lucide-react';
-import { useGlobal } from '../context/GlobalState';
-import { toast } from 'sonner';
-import { SelfEvaluationView } from './SelfEvaluationView';
-import { StudentEvaluationView } from './StudentEvaluationView';
-import { GradeSheetsView } from './GradeSheetsView';
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { CheckSquare, ListTodo, Star, FileSpreadsheet } from "lucide-react";
+import { useGlobal } from "../context/GlobalState";
+import { toast } from "sonner";
+import { SelfEvaluationView } from "./SelfEvaluationView";
+import { StudentEvaluationView } from "./StudentEvaluationView";
+import { GradeSheetsView } from "./GradeSheetsView";
 
 export const TeacherPortalPage = () => {
   const { lang, currentUser } = useGlobal();
-  const [activeView, setActiveView] = useState<'menu' | 'selfEval' | 'studentEval' | 'grades'>('menu');
+  const [activeView, setActiveView] = useState<
+    "menu" | "selfEval" | "studentEval" | "grades"
+  >("menu");
 
   const handleNotImplemented = () => {
-    toast.info(lang === 'ar' ? 'هذه الخاصية قيد التطوير' : 'Feature under development');
+    toast.info(
+      lang === "ar" ? "هذه الخاصية قيد التطوير" : "Feature under development",
+    );
   };
 
-  const isReadOnly = currentUser?.permissions?.readOnly === true;
+  const isGeneralSupervisor =
+    currentUser?.role === "admin" || currentUser?.permissions?.all === true;
+  const isAllowEdits =
+    Array.isArray(currentUser?.permissions?.secretariat) &&
+    currentUser.permissions.secretariat.includes("allowEdits");
+  const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
+  const isReadOnly = !isGeneralSupervisor && isReadOnlyFlag && !isAllowEdits;
 
-  if (activeView === 'selfEval') {
-    return <SelfEvaluationView onBack={() => setActiveView('menu')} />;
+  if (activeView === "selfEval") {
+    return <SelfEvaluationView onBack={() => setActiveView("menu")} />;
   }
 
-  if (activeView === 'studentEval') {
-    return <StudentEvaluationView onBack={() => setActiveView('menu')} />;
+  if (activeView === "studentEval") {
+    return <StudentEvaluationView onBack={() => setActiveView("menu")} />;
   }
 
-  if (activeView === 'grades') {
-    return <GradeSheetsView onBack={() => setActiveView('menu')} />;
+  if (activeView === "grades") {
+    return <GradeSheetsView onBack={() => setActiveView("menu")} />;
   }
 
-  const hasGradesViewPerm = currentUser?.role === 'admin' || currentUser?.permissions?.all || 
-    (currentUser?.permissions?.gradeSheets === undefined) || 
-    (Array.isArray(currentUser?.permissions?.gradeSheets) && currentUser.permissions.gradeSheets.includes('view_button'));
-  const hasGradesDisablePerm = Array.isArray(currentUser?.permissions?.gradeSheets) && currentUser.permissions.gradeSheets.includes('disable_button');
+  const hasGradesViewPerm =
+    currentUser?.role === "admin" ||
+    currentUser?.permissions?.all ||
+    currentUser?.permissions?.gradeSheets === undefined ||
+    (Array.isArray(currentUser?.permissions?.gradeSheets) &&
+      currentUser.permissions.gradeSheets.includes("view_button"));
+  const hasGradesDisablePerm =
+    Array.isArray(currentUser?.permissions?.gradeSheets) &&
+    currentUser.permissions.gradeSheets.includes("disable_button");
 
   const buttons = [
     {
-      id: 'self-eval',
-      label: lang === 'ar' ? 'التقييم الذاتي' : 'Self Evaluation',
-      color: 'bg-blue-600 shadow-blue-200 hover:bg-blue-700',
+      id: "self-eval",
+      label: lang === "ar" ? "التقييم الذاتي" : "Self Evaluation",
+      color: "bg-blue-600 shadow-blue-200 hover:bg-blue-700",
       icon: <CheckSquare size={48} className="mb-4 opacity-80" />,
-      onClick: () => setActiveView('selfEval')
+      onClick: () => setActiveView("selfEval"),
     },
     {
-      id: 'daily-tasks',
-      label: lang === 'ar' ? 'المهام اليومية' : 'Daily Tasks',
-      color: 'bg-emerald-600 shadow-emerald-200 hover:bg-emerald-700',
+      id: "daily-tasks",
+      label: lang === "ar" ? "المهام اليومية" : "Daily Tasks",
+      color: "bg-emerald-600 shadow-emerald-200 hover:bg-emerald-700",
       icon: <ListTodo size={48} className="mb-4 opacity-80" />,
-      onClick: handleNotImplemented
+      onClick: handleNotImplemented,
     },
     {
-      id: 'student-eval',
-      label: lang === 'ar' ? 'تقييم الطلاب' : 'Student Evaluation',
-      color: 'bg-amber-500 shadow-amber-200 hover:bg-amber-600',
+      id: "student-eval",
+      label: lang === "ar" ? "تقييم الطلاب" : "Student Evaluation",
+      color: "bg-amber-500 shadow-amber-200 hover:bg-amber-600",
       icon: <Star size={48} className="mb-4 opacity-80" />,
-      onClick: () => setActiveView('studentEval')
-    }
+      onClick: () => setActiveView("studentEval"),
+    },
   ];
 
   if (hasGradesViewPerm) {
-      buttons.push({
-          id: 'grades',
-          label: lang === 'ar' ? 'كشف الدرجات' : 'Grades Sheet',
-          color: hasGradesDisablePerm ? 'bg-slate-400 shadow-slate-200 cursor-not-allowed' : 'bg-purple-600 shadow-purple-200 hover:bg-purple-700',
-          icon: <FileSpreadsheet size={48} className="mb-4 opacity-80" />,
-          onClick: () => {
-              if (hasGradesDisablePerm) return;
-              setActiveView('grades');
-          }
-      });
+    buttons.push({
+      id: "grades",
+      label: lang === "ar" ? "كشف الدرجات" : "Grades Sheet",
+      color: hasGradesDisablePerm
+        ? "bg-slate-400 shadow-slate-200 cursor-not-allowed"
+        : "bg-purple-600 shadow-purple-200 hover:bg-purple-700",
+      icon: <FileSpreadsheet size={48} className="mb-4 opacity-80" />,
+      onClick: () => {
+        if (hasGradesDisablePerm) return;
+        setActiveView("grades");
+      },
+    });
   }
 
   return (
@@ -76,10 +93,12 @@ export const TeacherPortalPage = () => {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-black text-slate-800">
-            {lang === 'ar' ? 'خاص بالمعلم' : 'Teacher Portal'}
+            {lang === "ar" ? "خاص بالمعلم" : "Teacher Portal"}
           </h1>
           <p className="text-slate-500 font-bold mt-2">
-            {lang === 'ar' ? 'مساحة المعلم وإدارة المهام والتقييمات' : 'Teacher workspace and quick actions'}
+            {lang === "ar"
+              ? "مساحة المعلم وإدارة المهام والتقييمات"
+              : "Teacher workspace and quick actions"}
           </p>
         </div>
       </div>

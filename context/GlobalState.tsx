@@ -1,18 +1,30 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Language, AppData, TaskItem, TaskReport, AuthUser, User } from '../types';
-import { db, auth } from '../firebase';
-import { signInAnonymously } from 'firebase/auth';
-import { doc, setDoc, onSnapshot, getDocFromServer } from 'firebase/firestore';
-import { toast } from 'sonner';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import {
+  Language,
+  AppData,
+  TaskItem,
+  TaskReport,
+  AuthUser,
+  User,
+} from "../types";
+import { db, auth } from "../firebase";
+import { signInAnonymously } from "firebase/auth";
+import {
+  doc,
+  setDoc,
+  onSnapshot,
+  getDoc,
+  getDocFromServer,
+} from "firebase/firestore";
+import { toast } from "sonner";
 
 export enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
+  CREATE = "create",
+  UPDATE = "update",
+  DELETE = "delete",
+  LIST = "list",
+  GET = "get",
+  WRITE = "write",
 }
 
 interface FirestoreErrorInfo {
@@ -26,10 +38,14 @@ interface FirestoreErrorInfo {
     isAnonymous?: boolean;
     tenantId?: string | null;
     providerInfo?: any[];
-  }
+  };
 }
 
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+function handleFirestoreError(
+  error: unknown,
+  operationType: OperationType,
+  path: string | null,
+) {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
@@ -38,17 +54,18 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
       emailVerified: auth.currentUser?.emailVerified,
       isAnonymous: auth.currentUser?.isAnonymous,
       tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData?.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
+      providerInfo:
+        auth.currentUser?.providerData?.map((provider) => ({
+          providerId: provider.providerId,
+          displayName: provider.displayName,
+          email: provider.email,
+          photoUrl: provider.photoURL,
+        })) || [],
     },
     operationType,
-    path
-  }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
+    path,
+  };
+  console.error("Firestore Error: ", JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
 
@@ -61,7 +78,7 @@ const StorageHelper = {
       // If we hit quota, clear non-essential chunks if possible, or just skip caching.
       // This ensures the React state wrapper does not crash.
     }
-  }
+  },
 };
 
 interface GlobalContextType {
@@ -73,10 +90,22 @@ interface GlobalContextType {
   currentUser: AuthUser | null;
   userFilter: string;
   setUserFilter: (userId: string) => void;
-  dashboardFilter: { view: string, filterValue: string } | null;
-  setDashboardFilter: (filter: { view: string, filterValue: string } | null) => void;
-  globalDataFilters: { schools: string[], branches: string[], grades: string[], sections: string[] };
-  setGlobalDataFilters: (filters: { schools: string[], branches: string[], grades: string[], sections: string[] }) => void;
+  dashboardFilter: { view: string; filterValue: string } | null;
+  setDashboardFilter: (
+    filter: { view: string; filterValue: string } | null,
+  ) => void;
+  globalDataFilters: {
+    schools: string[];
+    branches: string[];
+    grades: string[];
+    sections: string[];
+  };
+  setGlobalDataFilters: (filters: {
+    schools: string[];
+    branches: string[];
+    grades: string[];
+    sections: string[];
+  }) => void;
   dateRange: { from: string; to: string };
   setDateRange: (range: { from: string; to: string }) => void;
   login: (username: string, code: string) => User | null;
@@ -99,115 +128,351 @@ const defaultMaxGrades = {
   extra_activities: 10,
   radio: 5,
   creativity: 5,
-  zero_period: 5
+  zero_period: 5,
 };
 
 const defaultMetricLabels = {
-  attendance: 'الحضور اليومي',
-  appearance: 'المظهر الشخصي',
-  preparation: 'اكتمال التحضير',
-  supervision_queue: 'إشراف الطابور',
-  supervision_rest: 'إشراف الراحة',
-  supervision_end: 'إشراف نهاية الدوام',
-  correction_notebooks: 'تصحيح الدفاتر',
-  correction_books: 'تصحيح الكتب',
-  correction_followup: 'تصحيح المتابعة',
-  teaching_aids: 'توفر وسيلة تعلمية',
-  extra_activities: 'أنشطة لا صفية',
-  radio: 'إقامة إذاعة',
-  creativity: 'إبداع',
-  zero_period: 'إقامة حصة صفرية',
-  violations_score: 'المخالفات'
+  attendance: "الحضور اليومي",
+  appearance: "المظهر الشخصي",
+  preparation: "اكتمال التحضير",
+  supervision_queue: "إشراف الطابور",
+  supervision_rest: "إشراف الراحة",
+  supervision_end: "إشراف نهاية الدوام",
+  correction_notebooks: "تصحيح الدفاتر",
+  correction_books: "تصحيح الكتب",
+  correction_followup: "تصحيح المتابعة",
+  teaching_aids: "توفر وسيلة تعلمية",
+  extra_activities: "أنشطة لا صفية",
+  radio: "إقامة إذاعة",
+  creativity: "إبداع",
+  zero_period: "إقامة حصة صفرية",
+  violations_score: "المخالفات",
 };
 
 const initialMetricsList = [
-  { key: 'attendance', label: 'الحضور اليومي', emoji: '📅', color: 'bg-green-600', max: 5 },
-  { key: 'appearance', label: 'المظهر الشخصي', emoji: '👔', color: 'bg-emerald-600', max: 5 },
-  { key: 'preparation', label: 'اكتمال التحضير', emoji: '📝', color: 'bg-teal-600', max: 10 },
-  { key: 'supervision_queue', label: 'إشراف الطابور', emoji: '🚶', color: 'bg-orange-600', max: 5 },
-  { key: 'supervision_rest', label: 'إشراف الراحة', emoji: '☕', color: 'bg-orange-500', max: 5 },
-  { key: 'supervision_end', label: 'إشراف نهاية الدوام', emoji: '🔚', color: 'bg-orange-400', max: 5 },
-  { key: 'correction_books', label: 'تصحيح الكتب', emoji: '📖', color: 'bg-cyan-600', max: 10 },
-  { key: 'correction_notebooks', label: 'تصحيح الدفاتر', emoji: '📒', color: 'bg-cyan-500', max: 10 },
-  { key: 'correction_followup', label: 'تصحيح المتابعة', emoji: '📋', color: 'bg-cyan-400', max: 10 },
-  { key: 'teaching_aids', label: 'توفر وسيلة تعلمية', emoji: '💡', color: 'bg-yellow-600', max: 10 },
-  { key: 'extra_activities', label: 'أنشطة لا صفية', emoji: '⚽', color: 'bg-lime-600', max: 10 },
-  { key: 'radio', label: 'إقامة إذاعة', emoji: '🎙️', color: 'bg-red-600', max: 5 },
-  { key: 'creativity', label: 'إبداع', emoji: '✨', color: 'bg-amber-600', max: 5 },
-  { key: 'zero_period', label: 'إقامة حصة صفرية', emoji: '0️⃣', color: 'bg-slate-600', max: 5 },
-  { key: 'violations_score', label: 'المخالفات', emoji: '⚠️', color: 'bg-red-700', max: 0 },
+  {
+    key: "attendance",
+    label: "الحضور اليومي",
+    emoji: "📅",
+    color: "bg-green-600",
+    max: 5,
+  },
+  {
+    key: "appearance",
+    label: "المظهر الشخصي",
+    emoji: "👔",
+    color: "bg-emerald-600",
+    max: 5,
+  },
+  {
+    key: "preparation",
+    label: "اكتمال التحضير",
+    emoji: "📝",
+    color: "bg-teal-600",
+    max: 10,
+  },
+  {
+    key: "supervision_queue",
+    label: "إشراف الطابور",
+    emoji: "🚶",
+    color: "bg-orange-600",
+    max: 5,
+  },
+  {
+    key: "supervision_rest",
+    label: "إشراف الراحة",
+    emoji: "☕",
+    color: "bg-orange-500",
+    max: 5,
+  },
+  {
+    key: "supervision_end",
+    label: "إشراف نهاية الدوام",
+    emoji: "🔚",
+    color: "bg-orange-400",
+    max: 5,
+  },
+  {
+    key: "correction_books",
+    label: "تصحيح الكتب",
+    emoji: "📖",
+    color: "bg-cyan-600",
+    max: 10,
+  },
+  {
+    key: "correction_notebooks",
+    label: "تصحيح الدفاتر",
+    emoji: "📒",
+    color: "bg-cyan-500",
+    max: 10,
+  },
+  {
+    key: "correction_followup",
+    label: "تصحيح المتابعة",
+    emoji: "📋",
+    color: "bg-cyan-400",
+    max: 10,
+  },
+  {
+    key: "teaching_aids",
+    label: "توفر وسيلة تعلمية",
+    emoji: "💡",
+    color: "bg-yellow-600",
+    max: 10,
+  },
+  {
+    key: "extra_activities",
+    label: "أنشطة لا صفية",
+    emoji: "⚽",
+    color: "bg-lime-600",
+    max: 10,
+  },
+  {
+    key: "radio",
+    label: "إقامة إذاعة",
+    emoji: "🎙️",
+    color: "bg-red-600",
+    max: 5,
+  },
+  {
+    key: "creativity",
+    label: "إبداع",
+    emoji: "✨",
+    color: "bg-amber-600",
+    max: 5,
+  },
+  {
+    key: "zero_period",
+    label: "إقامة حصة صفرية",
+    emoji: "0️⃣",
+    color: "bg-slate-600",
+    max: 5,
+  },
+  {
+    key: "violations_score",
+    label: "المخالفات",
+    emoji: "⚠️",
+    color: "bg-red-700",
+    max: 0,
+  },
 ];
 
 const standardAdminMetrics = [
-  { key: 'appearance', label: 'المظهر الشخصي', emoji: '👔', color: '#E2EFDA', max: 4 },
-  { key: 'discipline', label: 'الانضباط في الوقت', emoji: '⏱️', color: '#FCE4D6', max: 4 },
-  { key: 'quality', label: 'جودة العمل', emoji: '💎', color: '#DDEBF7', max: 4 },
-  { key: 'communication', label: 'التواصل الفعال', emoji: '🗣️', color: '#FFF2CC', max: 4 },
-  { key: 'problem_solving', label: 'حسن احتواء المشكلات', emoji: '🧩', color: '#E1F5FE', max: 4 },
-  { key: 'quality_plan', label: 'السير وفق خطة المدرسة للجودة', emoji: '📊', color: '#F3E5F5', max: 4 },
+  {
+    key: "appearance",
+    label: "المظهر الشخصي",
+    emoji: "👔",
+    color: "#E2EFDA",
+    max: 4,
+  },
+  {
+    key: "discipline",
+    label: "الانضباط في الوقت",
+    emoji: "⏱️",
+    color: "#FCE4D6",
+    max: 4,
+  },
+  {
+    key: "quality",
+    label: "جودة العمل",
+    emoji: "💎",
+    color: "#DDEBF7",
+    max: 4,
+  },
+  {
+    key: "communication",
+    label: "التواصل الفعال",
+    emoji: "🗣️",
+    color: "#FFF2CC",
+    max: 4,
+  },
+  {
+    key: "problem_solving",
+    label: "حسن احتواء المشكلات",
+    emoji: "🧩",
+    color: "#E1F5FE",
+    max: 4,
+  },
+  {
+    key: "quality_plan",
+    label: "السير وفق خطة المدرسة للجودة",
+    emoji: "📊",
+    color: "#F3E5F5",
+    max: 4,
+  },
 ];
 
 const specializedAdminMetrics: Record<string, any[]> = {
-  'متابعة أداء المقصف': [
-    { key: 'appearance', label: 'المظهر الشخصي', emoji: '👔', color: '#E2EFDA', max: 4 },
-    { key: 'hygiene_personal', label: 'النظافة الشخصية', emoji: '🧼', color: '#FCE4D6', max: 4 },
-    { key: 'hygiene_general', label: 'النظافة العامة', emoji: '🧹', color: '#DDEBF7', max: 4 },
-    { key: 'quality', label: 'جودة العمل', emoji: '💎', color: '#FFF2CC', max: 4 },
-    { key: 'provision', label: 'توفير الطلبات', emoji: '📦', color: '#E1F5FE', max: 4 },
-    { key: 'speed', label: 'سرعة الإنجاز', emoji: '⚡', color: '#F3E5F5', max: 4 },
-    { key: 'quality_plan', label: 'السير وفق خطة المدرسة للجودة', emoji: '📊', color: '#E8F5E9', max: 4 },
+  "متابعة أداء المقصف": [
+    {
+      key: "appearance",
+      label: "المظهر الشخصي",
+      emoji: "👔",
+      color: "#E2EFDA",
+      max: 4,
+    },
+    {
+      key: "hygiene_personal",
+      label: "النظافة الشخصية",
+      emoji: "🧼",
+      color: "#FCE4D6",
+      max: 4,
+    },
+    {
+      key: "hygiene_general",
+      label: "النظافة العامة",
+      emoji: "🧹",
+      color: "#DDEBF7",
+      max: 4,
+    },
+    {
+      key: "quality",
+      label: "جودة العمل",
+      emoji: "💎",
+      color: "#FFF2CC",
+      max: 4,
+    },
+    {
+      key: "provision",
+      label: "توفير الطلبات",
+      emoji: "📦",
+      color: "#E1F5FE",
+      max: 4,
+    },
+    {
+      key: "speed",
+      label: "سرعة الإنجاز",
+      emoji: "⚡",
+      color: "#F3E5F5",
+      max: 4,
+    },
+    {
+      key: "quality_plan",
+      label: "السير وفق خطة المدرسة للجودة",
+      emoji: "📊",
+      color: "#E8F5E9",
+      max: 4,
+    },
   ],
-  'متابعة المشرف الأكاديمي': [
-    { key: 'appearance', label: 'المظهر الشخصي', emoji: '👔', color: '#E2EFDA', max: 4 },
-    { key: 'early_attendance', label: 'الحضور أول الوقت', emoji: '⏱️', color: '#FCE4D6', max: 4 },
-    { key: 'quality', label: 'جودة العمل', emoji: '💎', color: '#DDEBF7', max: 4 },
-    { key: 'reports_completion', label: 'اكتمال التقارير', emoji: '📋', color: '#FFF2CC', max: 4 },
-    { key: 'quality_plan', label: 'السير وفق خطة المدرسة للجودة', emoji: '📊', color: '#E1F5FE', max: 4 },
+  "متابعة المشرف الأكاديمي": [
+    {
+      key: "appearance",
+      label: "المظهر الشخصي",
+      emoji: "👔",
+      color: "#E2EFDA",
+      max: 4,
+    },
+    {
+      key: "early_attendance",
+      label: "الحضور أول الوقت",
+      emoji: "⏱️",
+      color: "#FCE4D6",
+      max: 4,
+    },
+    {
+      key: "quality",
+      label: "جودة العمل",
+      emoji: "💎",
+      color: "#DDEBF7",
+      max: 4,
+    },
+    {
+      key: "reports_completion",
+      label: "اكتمال التقارير",
+      emoji: "📋",
+      color: "#FFF2CC",
+      max: 4,
+    },
+    {
+      key: "quality_plan",
+      label: "السير وفق خطة المدرسة للجودة",
+      emoji: "📊",
+      color: "#E1F5FE",
+      max: 4,
+    },
   ],
-  'متابعة أخرى': [
-    { key: 'appearance', label: 'المظهر الشخصي', emoji: '👔', color: '#E2EFDA', max: 4 },
-    { key: 'early_attendance', label: 'الحضور أول الوقت', emoji: '⏱️', color: '#FCE4D6', max: 4 },
-    { key: 'quality', label: 'جودة العمل', emoji: '💎', color: '#DDEBF7', max: 4 },
-    { key: 'communication', label: 'التواصل الفعال', emoji: '🗣️', color: '#FFF2CC', max: 4 },
-    { key: 'problem_solving', label: 'حسن احتواء المشكلات', emoji: '🧩', color: '#E1F5FE', max: 4 },
-    { key: 'quality_plan', label: 'السير وفق خطة المدرسة للجودة', emoji: '📊', color: '#F3E5F5', max: 4 },
-  ]
+  "متابعة أخرى": [
+    {
+      key: "appearance",
+      label: "المظهر الشخصي",
+      emoji: "👔",
+      color: "#E2EFDA",
+      max: 4,
+    },
+    {
+      key: "early_attendance",
+      label: "الحضور أول الوقت",
+      emoji: "⏱️",
+      color: "#FCE4D6",
+      max: 4,
+    },
+    {
+      key: "quality",
+      label: "جودة العمل",
+      emoji: "💎",
+      color: "#DDEBF7",
+      max: 4,
+    },
+    {
+      key: "communication",
+      label: "التواصل الفعال",
+      emoji: "🗣️",
+      color: "#FFF2CC",
+      max: 4,
+    },
+    {
+      key: "problem_solving",
+      label: "حسن احتواء المشكلات",
+      emoji: "🧩",
+      color: "#E1F5FE",
+      max: 4,
+    },
+    {
+      key: "quality_plan",
+      label: "السير وفق خطة المدرسة للجودة",
+      emoji: "📊",
+      color: "#F3E5F5",
+      max: 4,
+    },
+  ],
 };
 
 const adminFollowUpTypes = [
-  'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس',
-  'متابعة المدير العام',
-  'متابعة مدير الفرع',
-  'متابعة إدارة الجودة',
-  'متابعة المالية',
-  'متابعة وكيل المدرسة',
-  'متابعة الإشراف التربوي',
-  'متابعة الإشراف الإداري',
-  'متابعة المشرف الأكاديمي',
-  'متابعة المختص الاجتماعي',
-  'متابعة مسؤول المعمل',
-  'متابعة مسؤول معمل العلوم',
-  'متابعة السكرتارية',
-  'متابعة مسؤول الأنشطة',
-  'متابعة مسؤول المخازن',
-  'متابعة مسؤول الرياضة',
-  'متابعة الفنية',
-  'متابعة مهندس البيئة',
-  'متابعة الحراسة',
-  'متابعة حركة المواصلات',
-  'متابعة أداء المقصف',
-  'متابعة أخرى'
+  "متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس",
+  "متابعة المدير العام",
+  "متابعة مدير الفرع",
+  "متابعة إدارة الجودة",
+  "متابعة المالية",
+  "متابعة وكيل المدرسة",
+  "متابعة الإشراف التربوي",
+  "متابعة الإشراف الإداري",
+  "متابعة المشرف الأكاديمي",
+  "متابعة المختص الاجتماعي",
+  "متابعة مسؤول المعمل",
+  "متابعة مسؤول معمل العلوم",
+  "متابعة السكرتارية",
+  "متابعة مسؤول الأنشطة",
+  "متابعة مسؤول المخازن",
+  "متابعة مسؤول الرياضة",
+  "متابعة الفنية",
+  "متابعة مهندس البيئة",
+  "متابعة الحراسة",
+  "متابعة حركة المواصلات",
+  "متابعة أداء المقصف",
+  "متابعة أخرى",
 ];
 
 // Ensure admin metrics always have max: 4
 const ensureAdminMetricsMax = (metrics: any[]): any[] => {
-  return metrics.map(m => ({ ...m, max: 4 }));
+  return metrics.map((m) => ({ ...m, max: 4 }));
 };
 
 const initialAdminMetricsList: Record<string, any[]> = {};
-adminFollowUpTypes.forEach(type => {
+adminFollowUpTypes.forEach((type) => {
   if (specializedAdminMetrics[type]) {
-    initialAdminMetricsList[type] = ensureAdminMetricsMax(specializedAdminMetrics[type]);
+    initialAdminMetricsList[type] = ensureAdminMetricsMax(
+      specializedAdminMetrics[type],
+    );
   } else {
     initialAdminMetricsList[type] = ensureAdminMetricsMax(standardAdminMetrics);
   }
@@ -215,94 +480,133 @@ adminFollowUpTypes.forEach(type => {
 
 export const defaultTaskTemplates: TaskItem[] = [
   // Daily Tasks
-  { id: 'd1', category: 'daily', text: 'توثيق المهام اليومية في الأدوات' },
-  { id: 'd2', category: 'daily', text: 'الرفع باحتياجات الدور ورقياً' },
-  { id: 'd3', category: 'daily', text: 'التواصل بولي امر الطالب الغائب' },
-  { id: 'd4', category: 'daily', text: 'حصر الأعمال الابداعية للمعلمين' },
-  { id: 'd5', category: 'daily', text: 'متابعة الإشراف على الطابور' },
-  { id: 'd6', category: 'daily', text: 'متابعة الإشراف على الراحة' },
-  { id: 'd7', category: 'daily', text: 'متابعة الإشراف نهاية الدوام' },
-  { id: 'd8', category: 'daily', text: 'متابعة خروج الطلاب من المدرسة' },
-  { id: 'd9', category: 'daily', text: 'متابعة إذاعة الفصول اليومية' },
-  { id: 'd10', category: 'daily', text: 'الاطلاع على دفاتر التحضير' },
-  { id: 'd11', category: 'daily', text: 'متابعة جدول الحصص' },
-  { id: 'd12', category: 'daily', text: 'تغطية الفصول بالمعلمين' },
-  { id: 'd13', category: 'daily', text: 'متابعة المخالفات الطلابية' },
-  { id: 'd14', category: 'daily', text: 'متابعة مخالفات الكادر' },
-  { id: 'd15', category: 'daily', text: 'جلسات فردية لحل المشكلات' },
-  { id: 'd16', category: 'daily', text: 'متابعة نظافة الدور' },
-  { id: 'd17', category: 'daily', text: 'حل مشاكل أولياء الأمور' },
-  { id: 'd18', category: 'daily', text: 'توثيق الأنشطة في الدور' },
-  { id: 'd19', category: 'daily', text: 'إنزال الأنشطة في المجموعات' },
-  { id: 'd20', category: 'daily', text: 'متابعة نظافة الدور وتهيئته' },
-  { id: 'd21', category: 'daily', text: 'التوثيق في سجل مخالفات الطلاب' },
-  { id: 'd22', category: 'daily', text: 'التوثيق في سجل تعهدات الطلاب' },
-  { id: 'd23', category: 'daily', text: 'توثيق الطلاب المصرح لهم بالخروج' },
-  { id: 'd24', category: 'daily', text: 'متابعة المتأخرين عن الحصة الأولى' },
+  { id: "d1", category: "daily", text: "توثيق المهام اليومية في الأدوات" },
+  { id: "d2", category: "daily", text: "الرفع باحتياجات الدور ورقياً" },
+  { id: "d3", category: "daily", text: "التواصل بولي امر الطالب الغائب" },
+  { id: "d4", category: "daily", text: "حصر الأعمال الابداعية للمعلمين" },
+  { id: "d5", category: "daily", text: "متابعة الإشراف على الطابور" },
+  { id: "d6", category: "daily", text: "متابعة الإشراف على الراحة" },
+  { id: "d7", category: "daily", text: "متابعة الإشراف نهاية الدوام" },
+  { id: "d8", category: "daily", text: "متابعة خروج الطلاب من المدرسة" },
+  { id: "d9", category: "daily", text: "متابعة إذاعة الفصول اليومية" },
+  { id: "d10", category: "daily", text: "الاطلاع على دفاتر التحضير" },
+  { id: "d11", category: "daily", text: "متابعة جدول الحصص" },
+  { id: "d12", category: "daily", text: "تغطية الفصول بالمعلمين" },
+  { id: "d13", category: "daily", text: "متابعة المخالفات الطلابية" },
+  { id: "d14", category: "daily", text: "متابعة مخالفات الكادر" },
+  { id: "d15", category: "daily", text: "جلسات فردية لحل المشكلات" },
+  { id: "d16", category: "daily", text: "متابعة نظافة الدور" },
+  { id: "d17", category: "daily", text: "حل مشاكل أولياء الأمور" },
+  { id: "d18", category: "daily", text: "توثيق الأنشطة في الدور" },
+  { id: "d19", category: "daily", text: "إنزال الأنشطة في المجموعات" },
+  { id: "d20", category: "daily", text: "متابعة نظافة الدور وتهيئته" },
+  { id: "d21", category: "daily", text: "التوثيق في سجل مخالفات الطلاب" },
+  { id: "d22", category: "daily", text: "التوثيق في سجل تعهدات الطلاب" },
+  { id: "d23", category: "daily", text: "توثيق الطلاب المصرح لهم بالخروج" },
+  { id: "d24", category: "daily", text: "متابعة المتأخرين عن الحصة الأولى" },
   // Weekly Tasks
-  { id: 'w1', category: 'weekly', text: 'تسليم التقرير الأسبوعي' },
-  { id: 'w2', category: 'weekly', text: 'استقبال أولياء الأمور' },
-  { id: 'w3', category: 'weekly', text: 'الزيارة الصفية للطلاب' },
-  { id: 'w4', category: 'weekly', text: 'متابعة دفتر الحصة والواجب والمتابعة' },
-  { id: 'w5', category: 'weekly', text: 'التواصل بولي امر الطالب المتميز' },
-  { id: 'w6', category: 'weekly', text: 'التواصل بولي امر الطالب الضعيف' },
-  { id: 'w7', category: 'weekly', text: 'متابعة تفعيل الريادة' },
-  { id: 'w8', category: 'weekly', text: 'تفعيل لوحة الشرف والتميز' },
-  { id: 'w9', category: 'weekly', text: 'رفع كشف المتفاعلين في الإشراف' },
-  { id: 'w10', category: 'weekly', text: 'نزول ميداني لمتابعة البوفية' },
-  { id: 'w11', category: 'weekly', text: 'تحفيز الطلاب المتميزين' },
-  { id: 'w12', category: 'weekly', text: 'الرفع بكشف غياب الطلاب المتجاوز' },
-  { id: 'w13', category: 'weekly', text: 'حصر الطلاب كثيري المشاكل' },
-  { id: 'w14', category: 'weekly', text: 'تدوين الزيارات والرفع بأهمها' },
-  { id: 'w15', category: 'weekly', text: 'تعليق أنشطة الدور على الجدار' },
-  { id: 'w16', category: 'weekly', text: 'متابعة الزي والشعر والأظافر' },
-  { id: 'w17', category: 'weekly', text: 'متابعة توظيف المساحات الجدارية' },
+  { id: "w1", category: "weekly", text: "تسليم التقرير الأسبوعي" },
+  { id: "w2", category: "weekly", text: "استقبال أولياء الأمور" },
+  { id: "w3", category: "weekly", text: "الزيارة الصفية للطلاب" },
+  { id: "w4", category: "weekly", text: "متابعة دفتر الحصة والواجب والمتابعة" },
+  { id: "w5", category: "weekly", text: "التواصل بولي امر الطالب المتميز" },
+  { id: "w6", category: "weekly", text: "التواصل بولي امر الطالب الضعيف" },
+  { id: "w7", category: "weekly", text: "متابعة تفعيل الريادة" },
+  { id: "w8", category: "weekly", text: "تفعيل لوحة الشرف والتميز" },
+  { id: "w9", category: "weekly", text: "رفع كشف المتفاعلين في الإشراف" },
+  { id: "w10", category: "weekly", text: "نزول ميداني لمتابعة البوفية" },
+  { id: "w11", category: "weekly", text: "تحفيز الطلاب المتميزين" },
+  { id: "w12", category: "weekly", text: "الرفع بكشف غياب الطلاب المتجاوز" },
+  { id: "w13", category: "weekly", text: "حصر الطلاب كثيري المشاكل" },
+  { id: "w14", category: "weekly", text: "تدوين الزيارات والرفع بأهمها" },
+  { id: "w15", category: "weekly", text: "تعليق أنشطة الدور على الجدار" },
+  { id: "w16", category: "weekly", text: "متابعة الزي والشعر والأظافر" },
+  { id: "w17", category: "weekly", text: "متابعة توظيف المساحات الجدارية" },
   // Monthly Tasks
-  { id: 'm1', category: 'monthly', text: 'اعداد الخلاصة الشهرية' },
-  { id: 'm2', category: 'monthly', text: 'تحفيز المعلمين المبدعين' },
-  { id: 'm3', category: 'monthly', text: 'جمع كشوفات الدرجات' },
-  { id: 'm4', category: 'monthly', text: 'متابعة استلام الاختبارات من المعلمين' },
-  { id: 'm5', category: 'monthly', text: 'تسليم مقررات الاختبارات للسكرتيرة' },
-  { id: 'm6', category: 'monthly', text: 'متابعة استلام سجلات الدرجات' },
-  { id: 'm7', category: 'monthly', text: 'متابعة تسليم سجلات الدرجات' },
-  { id: 'm8', category: 'monthly', text: 'تسليم جدول الاختبارات للطلاب' },
-  { id: 'm9', category: 'monthly', text: 'توزيع أسماء الطلاب على اللجان' },
-  { id: 'm10', category: 'monthly', text: 'استلام أدبيات الكنترول كاملة' },
-  { id: 'm11', category: 'monthly', text: 'متابعة تسليم أرقام الجلوس' },
-  { id: 'm12', category: 'monthly', text: 'متابعة سير الاختبارات الشهرية' },
-  { id: 'm13', category: 'monthly', text: 'متابعة المعلمين لتسليم أوراق الاختبارات مصححة' },
-  { id: 'm14', category: 'monthly', text: 'حصر المتأخرين عن الاختبارات' },
-  { id: 'm15', category: 'monthly', text: 'إعداد جدول اختبار الغائبين' },
-  { id: 'm16', category: 'monthly', text: 'تسليم السكرتير كشوف الدرجات' },
-  { id: 'm17', category: 'monthly', text: 'تسليم السكرتير كشوف غياب الطلاب' },
-  { id: 'm18', category: 'monthly', text: 'مراجعة رصد الدرجات بعد السكرتير' },
-  { id: 'm19', category: 'monthly', text: 'متابعة تسليم أوراق الاختبارات طلاب' },
-  { id: 'm20', category: 'monthly', text: 'رفع استمارة التغطية' },
-  { id: 'm21', category: 'monthly', text: 'حصر الطلاب الضعاف و المتفوقين' },
-  { id: 'm22', category: 'monthly', text: 'حصر الحالات الخاصة' },
+  { id: "m1", category: "monthly", text: "اعداد الخلاصة الشهرية" },
+  { id: "m2", category: "monthly", text: "تحفيز المعلمين المبدعين" },
+  { id: "m3", category: "monthly", text: "جمع كشوفات الدرجات" },
+  {
+    id: "m4",
+    category: "monthly",
+    text: "متابعة استلام الاختبارات من المعلمين",
+  },
+  { id: "m5", category: "monthly", text: "تسليم مقررات الاختبارات للسكرتيرة" },
+  { id: "m6", category: "monthly", text: "متابعة استلام سجلات الدرجات" },
+  { id: "m7", category: "monthly", text: "متابعة تسليم سجلات الدرجات" },
+  { id: "m8", category: "monthly", text: "تسليم جدول الاختبارات للطلاب" },
+  { id: "m9", category: "monthly", text: "توزيع أسماء الطلاب على اللجان" },
+  { id: "m10", category: "monthly", text: "استلام أدبيات الكنترول كاملة" },
+  { id: "m11", category: "monthly", text: "متابعة تسليم أرقام الجلوس" },
+  { id: "m12", category: "monthly", text: "متابعة سير الاختبارات الشهرية" },
+  {
+    id: "m13",
+    category: "monthly",
+    text: "متابعة المعلمين لتسليم أوراق الاختبارات مصححة",
+  },
+  { id: "m14", category: "monthly", text: "حصر المتأخرين عن الاختبارات" },
+  { id: "m15", category: "monthly", text: "إعداد جدول اختبار الغائبين" },
+  { id: "m16", category: "monthly", text: "تسليم السكرتير كشوف الدرجات" },
+  { id: "m17", category: "monthly", text: "تسليم السكرتير كشوف غياب الطلاب" },
+  { id: "m18", category: "monthly", text: "مراجعة رصد الدرجات بعد السكرتير" },
+  {
+    id: "m19",
+    category: "monthly",
+    text: "متابعة تسليم أوراق الاختبارات طلاب",
+  },
+  { id: "m20", category: "monthly", text: "رفع استمارة التغطية" },
+  { id: "m21", category: "monthly", text: "حصر الطلاب الضعاف و المتفوقين" },
+  { id: "m22", category: "monthly", text: "حصر الحالات الخاصة" },
 ];
 
 const defaultData: AppData = {
   users: [
-    { id: 'u1', name: 'المشرف العام', code: 'admin123', schools: ['مدرسة الرواد', 'مدرسة النخبة'], academicYears: ['2024-2025'], expiryDate: '2027-01-01', role: 'admin', permissions: { all: true } },
-    { id: 'u2', name: 'مشرف الدور الأول', code: 'user123', schools: ['مدرسة الرواد'], academicYears: ['2024-2025'], expiryDate: '2026-12-31', role: 'user', permissions: { dashboard: true, dailyFollowUp: true } },
-    { id: 'u3', name: 'مشرف الدور الثاني', code: 'user456', schools: ['مدرسة النخبة'], academicYears: ['2024-2025'], expiryDate: '2025-01-01', role: 'user', permissions: { dashboard: true, dailyFollowUp: true } }, // Expired for testing
+    {
+      id: "u1",
+      name: "المشرف العام",
+      code: "admin123",
+      schools: ["مدرسة الرواد", "مدرسة النخبة"],
+      academicYears: ["2024-2025"],
+      expiryDate: "2027-01-01",
+      role: "admin",
+      permissions: { all: true },
+    },
+    {
+      id: "u2",
+      name: "مشرف الدور الأول",
+      code: "user123",
+      schools: ["مدرسة الرواد"],
+      academicYears: ["2024-2025"],
+      expiryDate: "2026-12-31",
+      role: "user",
+      permissions: { dashboard: true, dailyFollowUp: true },
+    },
+    {
+      id: "u3",
+      name: "مشرف الدور الثاني",
+      code: "user456",
+      schools: ["مدرسة النخبة"],
+      academicYears: ["2024-2025"],
+      expiryDate: "2025-01-01",
+      role: "user",
+      permissions: { dashboard: true, dailyFollowUp: true },
+    }, // Expired for testing
   ],
-  availableSchools: ['مدرسة الرواد', 'مدرسة النخبة'],
-  availableYears: ['2024-2025', '2025-2026'],
+  availableSchools: ["مدرسة الرواد", "مدرسة النخبة"],
+  availableYears: ["2024-2025", "2025-2026"],
   schoolBranches: {},
   trainingEvaluations: [],
   profiles: {},
   profile: {
-    ministry: '',
-    district: '',
-    schoolName: '',
-    branch: '',
-    year: '2024-2025',
-    semester: '',
-    branchManager: '',
-    generalManager: '',
-    customFields: []
+    ministry: "",
+    district: "",
+    schoolName: "",
+    branch: "",
+    year: "2024-2025",
+    semester: "",
+    branchManager: "",
+    generalManager: "",
+    customFields: [],
   },
   substitutions: [],
   timetable: [],
@@ -323,7 +627,7 @@ const defaultData: AppData = {
   customViolationElements: {
     behavior: [],
     duties: [],
-    achievement: []
+    achievement: [],
   },
   taskTemplates: defaultTaskTemplates,
   taskReports: [],
@@ -331,96 +635,141 @@ const defaultData: AppData = {
   metricsList: initialMetricsList,
   adminReports: [],
   adminMetricsList: initialAdminMetricsList,
-  adminFollowUpTypes: adminFollowUpTypes
+  adminFollowUpTypes: adminFollowUpTypes,
 };
 
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 
-export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [lang, setLang] = useState<Language>('ar');
+export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [lang, setLang] = useState<Language>("ar");
   const [data, setData] = useState<AppData>(defaultData);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [userFilter, setUserFilter] = useState('all');
-  const [dashboardFilter, setDashboardFilter] = useState<{ view: string, filterValue: string } | null>(null);
-  const [globalDataFilters, setGlobalDataFilters] = useState<{ schools: string[], branches: string[], grades: string[], sections: string[] }>({
-    schools: [], branches: [], grades: [], sections: []
+  const [userFilter, setUserFilter] = useState("all");
+  const [dashboardFilter, setDashboardFilter] = useState<{
+    view: string;
+    filterValue: string;
+  } | null>(null);
+  const [globalDataFilters, setGlobalDataFilters] = useState<{
+    schools: string[];
+    branches: string[];
+    grades: string[];
+    sections: string[];
+  }>({
+    schools: [],
+    branches: [],
+    grades: [],
+    sections: [],
   });
-  const [dateRange, setDateRange] = useState({ from: '', to: '' });
+  const [dateRange, setDateRange] = useState({ from: "", to: "" });
 
   // 🔥 GLOBAL REAL-TIME SYNC FOR PROFILES
   // This listener is not guarded by ifs that prevent it from syncing. It runs globally as soon as user opens the app.
   useEffect(() => {
     if (!isAuthenticated || !currentUser) return;
-    
+
     if (!currentUser.selectedSchool) {
-      console.warn('⚠️ لا يمكن بدء الاستماع، الـ ID مفقود (selectedSchool غير محدد للمستخدم).');
+      console.warn(
+        "⚠️ لا يمكن بدء الاستماع، الـ ID مفقود (selectedSchool غير محدد للمستخدم).",
+      );
       return;
     }
 
-    const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
-    const schoolsToListen = (selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools).map(s => s.trim());
+    const selectedSchools = currentUser.selectedSchool
+      .split(",")
+      .map((s) => s.trim());
+    const schoolsToListen = (
+      selectedSchools.includes("all")
+        ? data.availableSchools || []
+        : selectedSchools
+    ).map((s) => s.trim());
     // const schoolsToListen = ['TEST_SCHOOL']; // 🔥 HARDCODED FOR TEST
 
     if (schoolsToListen.length === 0) {
-      console.warn('⚠️ لا يمكن بدء الاستماع، قائمة المدارس فارغة.');
+      console.warn("⚠️ لا يمكن بدء الاستماع، قائمة المدارس فارغة.");
       return;
     }
 
-    const activeUnsubs = schoolsToListen.filter(Boolean).map(school => {
+    const activeUnsubs = schoolsToListen.filter(Boolean).map((school) => {
       const fullPath = `schools/${school}/shared/profile`;
-      console.log(`📡 جاري بدء الاستماع. School ID: "${school}" (Length: ${school.length}), Path: ${fullPath}`);
-      const q = doc(db, 'schools', school, 'shared', 'profile');
-      return onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
-        const isFromCache = snapshot.metadata.fromCache;
-        console.log(`📶 connectionState: fromCache=${isFromCache}, navigator.onLine=${typeof navigator !== 'undefined' ? navigator.onLine : 'unknown'}`);
-        if (!snapshot.exists()) {
-          console.warn(`⚠️ مستند ملف المدرسة ${school} غير موجود بعد في المسار: ${fullPath}`);
-          return;
-        }
-        const remoteData = snapshot.data()?.data;
-        
-        if (remoteData) {
-          console.log(`✨ استلمت تحديثاً للمدرسة رقم: ${school} من المسار المباشر (${fullPath}) والبيانات هي:`, remoteData);
-          setData(prev => {
-            const isCurrentlyActive = currentUser?.selectedSchool?.split(',')[0]?.trim() === school || (currentUser?.selectedSchool?.split(',')[0]?.trim() === 'all' && prev.availableSchools?.[0] === school);
-            
-            let updatedCurrentProfile = prev.profile;
-            if (isCurrentlyActive) {
-              const schoolProfiles = remoteData || {};
-              const currentBranch = currentUser?.selectedBranch?.trim();
-              
-              let newProfileProps = {};
-              if (currentBranch && schoolProfiles[currentBranch]) {
-                newProfileProps = schoolProfiles[currentBranch];
-              } else if (schoolProfiles.ministry !== undefined) {
-                newProfileProps = schoolProfiles;
-              } else {
-                const firstBranchKey = Object.keys(schoolProfiles)[0];
-                if (firstBranchKey && typeof schoolProfiles[firstBranchKey] === 'object') {
-                  newProfileProps = schoolProfiles[firstBranchKey];
-                }
-              }
-              updatedCurrentProfile = { ...prev.profile, ...newProfileProps };
-            }
+      console.log(
+        `📡 جاري بدء الاستماع. School ID: "${school}" (Length: ${school.length}), Path: ${fullPath}`,
+      );
+      const q = doc(db, "schools", school, "shared", "profile");
+      return onSnapshot(
+        q,
+        { includeMetadataChanges: true },
+        (snapshot) => {
+          const isFromCache = snapshot.metadata.fromCache;
+          console.log(
+            `📶 connectionState: fromCache=${isFromCache}, navigator.onLine=${typeof navigator !== "undefined" ? navigator.onLine : "unknown"}`,
+          );
+          if (!snapshot.exists()) {
+            console.warn(
+              `⚠️ مستند ملف المدرسة ${school} غير موجود بعد في المسار: ${fullPath}`,
+            );
+            return;
+          }
+          const remoteData = snapshot.data()?.data;
 
-            return {
-              ...prev,
-              profiles: {
-                ...(prev.profiles || {}),
-                [school]: remoteData
-              },
-              ...(isCurrentlyActive ? { profile: updatedCurrentProfile } : {})
-            };
-          });
-        }
-      }, (error) => {
-        console.error(`❌ فشل الاستماع بسبب: ${error.message} (الكود: ${error.code}) في المسار ${fullPath}`);
-      });
+          if (remoteData) {
+            console.log(
+              `✨ استلمت تحديثاً للمدرسة رقم: ${school} من المسار المباشر (${fullPath}) والبيانات هي:`,
+              remoteData,
+            );
+            setData((prev) => {
+              const isCurrentlyActive =
+                currentUser?.selectedSchool?.split(",")[0]?.trim() === school ||
+                (currentUser?.selectedSchool?.split(",")[0]?.trim() === "all" &&
+                  prev.availableSchools?.[0] === school);
+
+              let updatedCurrentProfile = prev.profile;
+              if (isCurrentlyActive) {
+                const schoolProfiles = remoteData || {};
+                const currentBranch = currentUser?.selectedBranch?.trim();
+
+                let newProfileProps = {};
+                if (currentBranch && schoolProfiles[currentBranch]) {
+                  newProfileProps = schoolProfiles[currentBranch];
+                } else if (schoolProfiles.ministry !== undefined) {
+                  newProfileProps = schoolProfiles;
+                } else {
+                  const firstBranchKey = Object.keys(schoolProfiles)[0];
+                  if (
+                    firstBranchKey &&
+                    typeof schoolProfiles[firstBranchKey] === "object"
+                  ) {
+                    newProfileProps = schoolProfiles[firstBranchKey];
+                  }
+                }
+                updatedCurrentProfile = { ...prev.profile, ...newProfileProps };
+              }
+
+              return {
+                ...prev,
+                profiles: {
+                  ...(prev.profiles || {}),
+                  [school]: remoteData,
+                },
+                ...(isCurrentlyActive
+                  ? { profile: updatedCurrentProfile }
+                  : {}),
+              };
+            });
+          }
+        },
+        (error) => {
+          console.error(
+            `❌ فشل الاستماع بسبب: ${error.message} (الكود: ${error.code}) في المسار ${fullPath}`,
+          );
+        },
+      );
     });
 
     return () => {
-      activeUnsubs.forEach(unsub => unsub());
+      activeUnsubs.forEach((unsub) => unsub());
     };
   }, [isAuthenticated, currentUser?.selectedSchool, data.availableSchools]);
 
@@ -430,64 +779,93 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!isAuthenticated || !currentUser) return [];
 
     // If a specific list is chosen, use it directly.
-    if (userFilter !== 'all') {
-      return userFilter.split(',').filter(id => id.length > 0);
+    if (userFilter !== "all") {
+      return userFilter.split(",").filter((id) => id.length > 0);
     }
 
     // userFilter === 'all': derive the allowed set from school membership.
-    const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
-    const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
+    const selectedSchools = currentUser.selectedSchool
+      .split(",")
+      .map((s) => s.trim());
+    const isAdminOrFull =
+      currentUser.role === "admin" || currentUser.permissions?.all === true;
     const managedIds = currentUser.permissions?.managedUserIds || [];
-    const isManager = currentUser.permissions?.userManagement === true || managedIds.length > 0;
+    const isManager =
+      currentUser.permissions?.userManagement === true || managedIds.length > 0;
+
+    const isSchoolWideViewer =
+      isManager ||
+      !!currentUser.permissions?.secretariat ||
+      !!currentUser.permissions?.studentAffairs ||
+      !!currentUser.permissions?.dailyFollowUp ||
+      !!currentUser.permissions?.adminFollowUp ||
+      !!currentUser.permissions?.specialCodes ||
+      !!currentUser.permissions?.specialReports ||
+      !!currentUser.permissions?.issuesModal ||
+      ["مدير عام المدارس", "مدير الفرع", "السكرتارية", "مشرف الدور"].includes(
+        currentUser.jobTitle || "",
+      );
 
     if (managedIds.length > 0) {
       // Priority: If user has an explicit managed list, they ONLY see that list (+ themselves)
-      return data.users.filter(u => {
-        if (u.id === currentUser.id) return true; // Always see self
-        
-        // Hide admins/full-perms from people who aren't super-admins
-        const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
-        if (!isAdminOrFull && isTargetAdmin) return false;
+      return data.users
+        .filter((u) => {
+          if (u.id === currentUser.id) return true; // Always see self
 
-        return managedIds.includes(u.id);
-      }).map(u => u.id);
+          // Hide admins/full-perms from people who aren't super-admins
+          const isTargetAdmin =
+            u.role === "admin" || u.permissions?.all === true;
+          if (!isAdminOrFull && isTargetAdmin) return false;
+
+          return managedIds.includes(u.id);
+        })
+        .map((u) => u.id);
     }
 
     if (isAdminOrFull) {
       // Admin sees all users in the selected school(s)
-      const allSchools = selectedSchools.includes('all')
-        ? (data.availableSchools || [])
+      const allSchools = selectedSchools.includes("all")
+        ? data.availableSchools || []
         : selectedSchools;
       return data.users
-        .filter(u => u.schools.some(s => allSchools.includes(s)))
-        .map(u => u.id);
-    } else if (isManager) {
+        .filter((u) => u.schools.some((s) => allSchools.includes(s)))
+        .map((u) => u.id);
+    } else if (isSchoolWideViewer) {
       // Generic manager without explicit list: sees fellow school members
       return data.users
-        .filter(u => {
-           if (u.id === currentUser.id) return true;
-           const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
-           if (!isAdminOrFull && isTargetAdmin) return false;
-           
-           return u.schools.some(s => {
-             if (!selectedSchools.includes(s)) return false;
-             
-             // Branch check
-             const managerBranches = currentUser.permissions?.schoolsAndBranches?.[s] || [];
-             if (managerBranches.length > 0) {
-               const targetBranches = u.permissions?.schoolsAndBranches?.[s] || [];
-               if (targetBranches.length === 0) return false; // If target has no branch
-               return managerBranches.some(b => targetBranches.includes(b));
-             }
-             return true;
-           });
+        .filter((u) => {
+          if (u.id === currentUser.id) return true;
+          const isTargetAdmin =
+            u.role === "admin" || u.permissions?.all === true;
+          if (!isAdminOrFull && isTargetAdmin) return false;
+
+          return u.schools.some((s) => {
+            if (!selectedSchools.includes(s)) return false;
+
+            // Branch check
+            const managerBranches =
+              currentUser.permissions?.schoolsAndBranches?.[s] || [];
+            if (managerBranches.length > 0) {
+              const targetBranches =
+                u.permissions?.schoolsAndBranches?.[s] || [];
+              if (targetBranches.length === 0) return false; // If target has no branch
+              return managerBranches.some((b) => targetBranches.includes(b));
+            }
+            return true;
+          });
         })
-        .map(u => u.id);
+        .map((u) => u.id);
     } else {
       // Regular users ONLY see themselves
       return [currentUser.id];
     }
-  }, [isAuthenticated, currentUser, userFilter, data.users, data.availableSchools]);
+  }, [
+    isAuthenticated,
+    currentUser,
+    userFilter,
+    data.users,
+    data.availableSchools,
+  ]);
 
   const filteredData = React.useMemo(() => {
     const { from, to } = dateRange;
@@ -499,9 +877,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         item.dateStr ||
         (item.createdAt ? item.createdAt.substring(0, 10) : null);
 
-      if (rawDate && typeof rawDate === 'string') {
+      if (rawDate && typeof rawDate === "string") {
         // Strip range suffixes like "2024-01-01 إلى 2024-01-07"
-        const actualDate = rawDate.split(' ')[0];
+        const actualDate = rawDate.split(" ")[0];
         if (from && actualDate < from) return false;
         if (to && actualDate > to) return false;
       }
@@ -512,71 +890,95 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Always filter: if item has no userId, keep it (shared data)
       if (!item.userId) return true;
 
-      const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+      const isAdminOrFull =
+        currentUser?.role === "admin" || currentUser?.permissions?.all === true;
 
       // Special logic for Daily/Periodical reports
-      if (key === 'dailyReports') {
-        const periodType = item.periodType || 'daily';
-        if (periodType !== 'daily' && !isAdminOrFull) {
+      if (key === "dailyReports") {
+        const periodType = item.periodType || "daily";
+        if (periodType !== "daily" && !isAdminOrFull) {
           // Aggregated reports (weekly, monthly, etc.) are strictly private to the user
           return item.userId === currentUser?.id;
         }
       }
 
-      return effectiveUserIds.length === 0 || effectiveUserIds.includes(item.userId);
+      return (
+        effectiveUserIds.length === 0 || effectiveUserIds.includes(item.userId)
+      );
     };
 
     const newData = { ...data };
 
     // Inject current active school's profile
-    let activeSchool = currentUser?.selectedSchool?.split(',')[0]?.trim();
-    if (activeSchool === 'all') {
+    let activeSchool = currentUser?.selectedSchool?.split(",")[0]?.trim();
+    if (activeSchool === "all") {
       activeSchool = data.availableSchools?.[0];
     }
-    
+
     if (activeSchool && newData.profiles && newData.profiles[activeSchool]) {
       const schoolProfiles = newData.profiles[activeSchool];
       const currentBranch = currentUser?.selectedBranch?.trim();
-      
+
       // Support new branch-based format and legacy fallback
       if (currentBranch && schoolProfiles[currentBranch]) {
-        newData.profile = { ...newData.profile, ...schoolProfiles[currentBranch] };
+        newData.profile = {
+          ...newData.profile,
+          ...schoolProfiles[currentBranch],
+        };
       } else if (schoolProfiles.ministry !== undefined) {
         // Legacy: previously stored directly in profiles[school]
         newData.profile = { ...newData.profile, ...schoolProfiles };
       } else {
         // Default to first available branch if we have branch-based format but current branch not found
         const firstBranchKey = Object.keys(schoolProfiles)[0];
-        if (firstBranchKey && typeof schoolProfiles[firstBranchKey] === 'object') {
-          newData.profile = { ...newData.profile, ...schoolProfiles[firstBranchKey] };
+        if (
+          firstBranchKey &&
+          typeof schoolProfiles[firstBranchKey] === "object"
+        ) {
+          newData.profile = {
+            ...newData.profile,
+            ...schoolProfiles[firstBranchKey],
+          };
         }
       }
     }
 
     // Activity arrays — filter by both user and date
     const activityKeys = [
-      'substitutions', 'dailyReports', 'violations', 'parentVisits',
-      'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs',
-      'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs',
-      'genericSpecialReports', 'taskReports', 'adminReports'
+      "substitutions",
+      "dailyReports",
+      "violations",
+      "parentVisits",
+      "absenceLogs",
+      "studentLatenessLogs",
+      "studentViolationLogs",
+      "exitLogs",
+      "damageLogs",
+      "parentVisitLogs",
+      "examLogs",
+      "genericSpecialReports",
+      "taskReports",
+      "adminReports",
     ];
 
     // Entity arrays — filter by user only (date is irrelevant for profile cards)
-    const entityKeys = ['studentReports', 'timetable', 'teacherFollowUps'];
+    const entityKeys = ["studentReports", "timetable", "teacherFollowUps"];
 
-    activityKeys.forEach(key => {
+    activityKeys.forEach((key) => {
       const k = key as keyof AppData;
       if (Array.isArray(newData[k])) {
         (newData as any)[k] = (newData[k] as any[]).filter(
-          (item: any) => filterByUser(item, key) && filterByDate(item)
+          (item: any) => filterByUser(item, key) && filterByDate(item),
         );
       }
     });
 
-    entityKeys.forEach(key => {
+    entityKeys.forEach((key) => {
       const k = key as keyof AppData;
       if (Array.isArray(newData[k])) {
-        (newData as any)[k] = (newData[k] as any[]).filter(item => filterByUser(item, key));
+        (newData as any)[k] = (newData[k] as any[]).filter((item) =>
+          filterByUser(item, key),
+        );
       }
     });
 
@@ -584,7 +986,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [data, effectiveUserIds, dateRange]);
 
   useEffect(() => {
-    if (isAuthenticated && currentUser && currentUser.role !== 'admin') {
+    if (isAuthenticated && currentUser && currentUser.role !== "admin") {
       // Non-admins default to seeing only themselves; keep userFilter as 'all'
       // so the effectiveUserIds logic (which already scopes by school) applies.
       // No override needed — the effectiveUserIds memo handles it.
@@ -595,12 +997,14 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // This ensures permission changes take effect immediately without re-login
   useEffect(() => {
     if (!isAuthenticated || !currentUser) return;
-    const latestUser = data.users.find(u => u.id === currentUser.id);
+    const latestUser = data.users.find((u) => u.id === currentUser.id);
     if (!latestUser) return;
 
     // Only update if permissions or role actually changed
     const rolesMatch = latestUser.role === currentUser.role;
-    const permsMatch = JSON.stringify(latestUser.permissions) === JSON.stringify(currentUser.permissions);
+    const permsMatch =
+      JSON.stringify(latestUser.permissions) ===
+      JSON.stringify(currentUser.permissions);
     if (rolesMatch && permsMatch) return;
 
     const updatedAuthUser: AuthUser = {
@@ -609,7 +1013,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       permissions: latestUser.permissions,
     };
     setCurrentUser(updatedAuthUser);
-    sessionStorage.setItem('rafiquk_user', JSON.stringify(updatedAuthUser));
+    sessionStorage.setItem("rafiquk_user", JSON.stringify(updatedAuthUser));
   }, [data.users]);
 
   const activeListeners = React.useRef<Set<string>>(new Set());
@@ -617,125 +1021,178 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     async function testConnection() {
       try {
-        await getDocFromServer(doc(db, 'test', 'connection'));
+        await getDocFromServer(doc(db, "test", "connection"));
       } catch (error) {
-        if(error instanceof Error && error.message.includes('the client is offline')) {
+        if (
+          error instanceof Error &&
+          error.message.includes("the client is offline")
+        ) {
           console.error("Please check your Firebase configuration. ");
         }
       }
     }
     testConnection();
 
-    const savedData = localStorage.getItem('rafiquk_data');
+    const savedData = localStorage.getItem("rafiquk_data");
     if (savedData) {
       const parsed = JSON.parse(savedData);
-      
+
       // Ensure default users and schools are retained if accidentally deleted
       if (parsed.users) {
         const mergedUsersMap = new Map();
-        defaultData.users.forEach(u => mergedUsersMap.set(u.id, u));
+        defaultData.users.forEach((u) => mergedUsersMap.set(u.id, u));
         parsed.users.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
         parsed.users = Array.from(mergedUsersMap.values());
       }
-      
+
       if (parsed.availableSchools) {
-        parsed.availableSchools = [...new Set([...(defaultData.availableSchools || []), ...parsed.availableSchools])];
+        parsed.availableSchools = [
+          ...new Set([
+            ...(defaultData.availableSchools || []),
+            ...parsed.availableSchools,
+          ]),
+        ];
       }
 
-      setData(prev => ({ ...prev, ...parsed }));
+      setData((prev) => ({ ...prev, ...parsed }));
     }
-    const authFlag = sessionStorage.getItem('rafiquk_auth');
-    const savedUser = sessionStorage.getItem('rafiquk_user');
-    if (authFlag === 'true' && savedUser) {
+    const authFlag = sessionStorage.getItem("rafiquk_auth");
+    const savedUser = sessionStorage.getItem("rafiquk_user");
+    if (authFlag === "true" && savedUser) {
       setIsAuthenticated(true);
       setCurrentUser(JSON.parse(savedUser));
     }
-    const savedLang = localStorage.getItem('rafiquk_lang') as Language;
+    const savedLang = localStorage.getItem("rafiquk_lang") as Language;
     if (savedLang) setLang(savedLang);
 
     // Initial sync for login data
-    const schoolsToSync = [...new Set([...(data.availableSchools || []), ...(defaultData.availableSchools || [])])];
+    const schoolsToSync = [
+      ...new Set([
+        ...(data.availableSchools || []),
+        ...(defaultData.availableSchools || []),
+      ]),
+    ];
     const unsubscribes: (() => void)[] = [];
 
-    signInAnonymously(auth).then(() => {
-      schoolsToSync.forEach(school => {
-        // Only sync what's needed for login/initial setup here
-        ['users', 'availableSchools', 'availableYears'].forEach(key => {
-          const listenerId = `global-${school}-${key}`;
-          if (activeListeners.current.has(listenerId)) return;
-          
-          activeListeners.current.add(listenerId);
-          const q = doc(db, 'schools', school, 'shared', key);
-          const unsub = onSnapshot(q, (snapshot) => {
-            if (snapshot.exists()) {
-              const remoteData = snapshot.data().data;
-              setData(prev => {
-                if (key === 'users') {
-                  const newUsers = Array.isArray(remoteData) ? remoteData : [];
-                  
-                  // Retain default users and previous users
-                  const mergedUsersMap = new Map();
-                  (prev.users || []).forEach(u => mergedUsersMap.set(u.id, u));
-                  defaultData.users.forEach(u => mergedUsersMap.set(u.id, u));
-                  newUsers.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
-                  const mergedUsers = Array.from(mergedUsersMap.values());
+    signInAnonymously(auth)
+      .then(() => {
+        schoolsToSync.forEach((school) => {
+          // Only sync what's needed for login/initial setup here
+          ["users", "availableSchools", "availableYears"].forEach((key) => {
+            const listenerId = `global-${school}-${key}`;
+            if (activeListeners.current.has(listenerId)) return;
 
-                  // Restore to Firebase if missing
-                  if (newUsers.length < mergedUsers.length) {
-                    setDoc(doc(db, 'schools', school, 'shared', 'users'), { data: mergedUsers }).catch(console.error);
-                  }
-                  
-                  if (JSON.stringify(prev.users) !== JSON.stringify(mergedUsers)) {
-                    return { ...prev, users: mergedUsers };
-                  }
-                  return prev;
-                } else {
-                   const existing = prev[key] as any[] || [];
-                   const incoming = Array.isArray(remoteData) ? remoteData : [];
-                   const merged = [...new Set([...existing, ...incoming])];
-                   if (merged.length === existing.length && merged.every((v, i) => v === existing[i])) {
-                     return prev;
-                   }
-                   return { ...prev, [key]: merged };
+            activeListeners.current.add(listenerId);
+            const q = doc(db, "schools", school, "shared", key);
+            const unsub = onSnapshot(
+              q,
+              (snapshot) => {
+                if (snapshot.exists()) {
+                  const remoteData = snapshot.data().data;
+                  setData((prev) => {
+                    if (key === "users") {
+                      const newUsers = Array.isArray(remoteData)
+                        ? remoteData
+                        : [];
+
+                      // Retain default users and previous users (correct order: default -> prev -> incoming)
+                      const mergedUsersMap = new Map();
+                      defaultData.users.forEach((u) =>
+                        mergedUsersMap.set(u.id, u),
+                      );
+                      (prev.users || []).forEach((u) =>
+                        mergedUsersMap.set(u.id, u),
+                      );
+                      newUsers.forEach((u: AuthUser) =>
+                        mergedUsersMap.set(u.id, u),
+                      );
+                      const mergedUsers = Array.from(mergedUsersMap.values());
+
+                      // Restore to Firebase if missing
+                      if (newUsers.length < mergedUsers.length) {
+                        setDoc(doc(db, "schools", school, "shared", "users"), {
+                          data: mergedUsers,
+                        }).catch(console.error);
+                      }
+
+                      if (
+                        JSON.stringify(prev.users) !==
+                        JSON.stringify(mergedUsers)
+                      ) {
+                        return { ...prev, users: mergedUsers };
+                      }
+                      return prev;
+                    } else {
+                      const existing = (prev[key] as any[]) || [];
+                      const incoming = Array.isArray(remoteData)
+                        ? remoteData
+                        : [];
+                      const merged = [...new Set([...existing, ...incoming])];
+                      if (
+                        merged.length === existing.length &&
+                        merged.every((v, i) => v === existing[i])
+                      ) {
+                        return prev;
+                      }
+                      return { ...prev, [key]: merged };
+                    }
+                  });
                 }
-              });
-            }
-          }, (error) => {
-            if (!error.message.includes('permission-denied')) {
-              console.error(`Global sync error [${key}] for school [${school}]:`, error);
-            }
+              },
+              (error) => {
+                if (!error.message.includes("permission-denied")) {
+                  console.error(
+                    `Global sync error [${key}] for school [${school}]:`,
+                    error,
+                  );
+                }
+              },
+            );
+            unsubscribes.push(unsub);
           });
-          unsubscribes.push(unsub);
         });
-      });
 
-      ['aboutSliderImages', 'aboutExternalLinks', 'aboutLogoImg'].forEach(key => {
-        const listenerId = `system-introConfig-${key}`;
-        if (activeListeners.current.has(listenerId)) return;
-        activeListeners.current.add(listenerId);
-        
-        const q = doc(db, 'system', 'introConfig', 'data', key);
-        const unsub = onSnapshot(q, (snapshot) => {
-          if (snapshot.exists() && snapshot.data().data !== undefined) {
-            const remoteData = snapshot.data().data;
-            setData(prev => {
-              if (JSON.stringify(prev[key as keyof AppData]) === JSON.stringify(remoteData)) return prev;
-              const updated = { ...prev, [key]: remoteData };
-              StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
-              return updated;
-            });
-          }
-        }, (error) => {
-          console.error(`System introConfig sync error [${key}]:`, error);
-        });
-        unsubscribes.push(unsub);
+        ["aboutSliderImages", "aboutExternalLinks", "aboutLogoImg"].forEach(
+          (key) => {
+            const listenerId = `system-introConfig-${key}`;
+            if (activeListeners.current.has(listenerId)) return;
+            activeListeners.current.add(listenerId);
+
+            const q = doc(db, "system", "introConfig", "data", key);
+            const unsub = onSnapshot(
+              q,
+              (snapshot) => {
+                if (snapshot.exists() && snapshot.data().data !== undefined) {
+                  const remoteData = snapshot.data().data;
+                  setData((prev) => {
+                    if (
+                      JSON.stringify(prev[key as keyof AppData]) ===
+                      JSON.stringify(remoteData)
+                    )
+                      return prev;
+                    const updated = { ...prev, [key]: remoteData };
+                    StorageHelper.setItem(
+                      "rafiquk_data",
+                      JSON.stringify(updated),
+                    );
+                    return updated;
+                  });
+                }
+              },
+              (error) => {
+                console.error(`System introConfig sync error [${key}]:`, error);
+              },
+            );
+            unsubscribes.push(unsub);
+          },
+        );
+      })
+      .catch((error) => {
+        console.error("Anonymous authentication failed:", error);
       });
-    }).catch(error => {
-      console.error("Anonymous authentication failed:", error);
-    });
 
     return () => {
-      unsubscribes.forEach(u => u());
+      unsubscribes.forEach((u) => u());
       activeListeners.current.clear();
     };
   }, []); // Run once on mount
@@ -747,19 +1204,19 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Memoize the set of user IDs we need to listen to
   const targetUserIds = React.useMemo(() => {
     if (!isAuthenticated || !currentUser) return "";
-    
+
     const ids = [...effectiveUserIds];
-    
+
     // CRITICAL: Also include any users selected in the userFilter just in case
-    if (userFilter && userFilter !== 'all') {
-      const filterIds = userFilter.split(',').filter(id => id.length > 0);
-      filterIds.forEach(id => {
+    if (userFilter && userFilter !== "all") {
+      const filterIds = userFilter.split(",").filter((id) => id.length > 0);
+      filterIds.forEach((id) => {
         if (!ids.includes(id)) ids.push(id);
       });
     }
-    
+
     if (!ids.includes(currentUser.id)) ids.push(currentUser.id);
-    return ids.sort().join(',');
+    return ids.sort().join(",");
   }, [isAuthenticated, currentUser?.id, effectiveUserIds, userFilter]);
 
   useEffect(() => {
@@ -773,28 +1230,35 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     dataListeners.current.clear();
 
     const startListeners = async () => {
-      let uid = '';
+      let uid = "";
       if (!isAuthDocSetup.current) {
         try {
           const { user } = await signInAnonymously(auth);
           uid = user.uid;
-          
+
           try {
-            await setDoc(doc(db, 'users', uid), {
+            await setDoc(doc(db, "users", uid), {
               customUserId: currentUser.id,
-              role: currentUser.role || 'user',
-              schools: currentUser.selectedSchool.split(',').map(s => s.trim()),
-              permissions: currentUser.permissions || {}
+              role: currentUser.role || "user",
+              schools: currentUser.selectedSchool
+                .split(",")
+                .map((s) => s.trim()),
+              permissions: currentUser.permissions || {},
             });
-            
-            await new Promise(resolve => setTimeout(resolve, 800));
+
+            await new Promise((resolve) => setTimeout(resolve, 800));
             isAuthDocSetup.current = true;
           } catch (err: any) {
             console.error("Error setting user doc:", err);
           }
         } catch (authErr: any) {
-          console.error("Authentication Error. Ensure Anonymous Auth is enabled in Firebase:", authErr);
-          toast.error('أخفق الاتصال المباشر. يرجى تفعيل مصادقة الزوار (Anonymous Authentication) في فايربيس.');
+          console.error(
+            "Authentication Error. Ensure Anonymous Auth is enabled in Firebase:",
+            authErr,
+          );
+          toast.error(
+            "أخفق الاتصال المباشر. يرجى تفعيل مصادقة الزوار (Anonymous Authentication) في فايربيس.",
+          );
           // We do not return here, we can try to proceed but rules might block.
           // Returning here would completely disable all syncing.
         }
@@ -802,93 +1266,193 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const { user } = await signInAnonymously(auth);
         uid = user.uid;
       }
-      
+
       if (!isMounted) return;
 
-      const arrayKeys = ['substitutions', 'timetable', 'dailyReports', 'violations', 'parentVisits', 'teacherFollowUps', 'studentReports', 'absenceLogs', 'studentLatenessLogs', 'studentViolationLogs', 'exitLogs', 'damageLogs', 'parentVisitLogs', 'examLogs', 'genericSpecialReports', 'taskReports', 'adminReports', 'selfEvaluations', 'studentEvaluations', 'deliveryReceiptRecords'];
+      const arrayKeys = [
+        "substitutions",
+        "timetable",
+        "dailyReports",
+        "violations",
+        "parentVisits",
+        "teacherFollowUps",
+        "studentReports",
+        "absenceLogs",
+        "studentLatenessLogs",
+        "studentViolationLogs",
+        "exitLogs",
+        "damageLogs",
+        "parentVisitLogs",
+        "examLogs",
+        "genericSpecialReports",
+        "taskReports",
+        "adminReports",
+        "selfEvaluations",
+        "studentEvaluations",
+        "deliveryReceiptRecords",
+      ];
       if (Object.keys(dataBufferRef.current).length === 0) {
-        arrayKeys.forEach(k => dataBufferRef.current[k] = {});
+        arrayKeys.forEach((k) => (dataBufferRef.current[k] = {}));
       }
 
       // Shared keys for the selected schools
-      const strictlySharedKeys = ['users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList', 'branchMetrics', 'adminBranchMetrics', 'adminFollowUpTypes', 'adminActivitiesList', 'adminBranchActivities', 'adminIndividualReportFields'];
-      const customizableKeys = ['taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
-      const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
-      const schoolsToListen = selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools;
+      const strictlySharedKeys = [
+        "users",
+        "availableSchools",
+        "availableYears",
+        "secretariatStudents",
+        "secretariatStaff",
+        "selfEvaluationTemplates",
+        "metricsList",
+        "adminMetricsList",
+        "branchMetrics",
+        "adminBranchMetrics",
+        "adminFollowUpTypes",
+        "adminActivitiesList",
+        "adminBranchActivities",
+        "adminIndividualReportFields",
+      ];
+      const customizableKeys = [
+        "taskTemplates",
+        "customViolationElements",
+        "absenceManualAdditions",
+        "absenceExclusions",
+      ];
+      const selectedSchools = currentUser.selectedSchool
+        .split(",")
+        .map((s) => s.trim());
+      const schoolsToListen = selectedSchools.includes("all")
+        ? data.availableSchools || []
+        : selectedSchools;
 
-      const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
+      const isAdminOrFull =
+        currentUser.role === "admin" || currentUser.permissions?.all === true;
 
-      schoolsToListen.filter(Boolean).forEach(school => {
+      schoolsToListen.filter(Boolean).forEach((school) => {
         // 1. Strictly Shared Keys
-        strictlySharedKeys.forEach(key => {
+        strictlySharedKeys.forEach((key) => {
           const listenerId = `auth-shared-${school}-${key}`;
           if (dataListeners.current.has(listenerId)) return;
           dataListeners.current.add(listenerId);
 
-          const q = doc(db, 'schools', school, 'shared', key);
+          const q = doc(db, "schools", school, "shared", key);
           const unsub = onSnapshot(q, (snapshot) => {
             if (snapshot.exists()) {
               const remoteData = snapshot.data().data;
-              setData(prev => {
-                if (key === 'users') {
+              setData((prev) => {
+                if (key === "users") {
                   const newUsers = Array.isArray(remoteData) ? remoteData : [];
                   const mergedUsersMap = new Map();
-                  (prev.users || []).forEach(u => mergedUsersMap.set(u.id, u));
-                  defaultData.users.forEach(u => mergedUsersMap.set(u.id, u));
-                  newUsers.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
+                  defaultData.users.forEach((u) => mergedUsersMap.set(u.id, u));
+                  (prev.users || []).forEach((u) =>
+                    mergedUsersMap.set(u.id, u),
+                  );
+                  newUsers.forEach((u: AuthUser) =>
+                    mergedUsersMap.set(u.id, u),
+                  );
                   const mergedUsers = Array.from(mergedUsersMap.values());
-                  
-                  if (JSON.stringify(prev.users) !== JSON.stringify(mergedUsers)) {
+
+                  if (
+                    JSON.stringify(prev.users) !== JSON.stringify(mergedUsers)
+                  ) {
                     const updated = { ...prev, users: mergedUsers };
-                    StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
+                    StorageHelper.setItem(
+                      "rafiquk_data",
+                      JSON.stringify(updated),
+                    );
                     return updated;
                   }
                   return prev;
-                } else if (key === 'availableSchools' || key === 'availableYears') {
-                  const existing = prev[key] as any[] || [];
+                } else if (
+                  key === "availableSchools" ||
+                  key === "availableYears"
+                ) {
+                  const existing = (prev[key] as any[]) || [];
                   const incoming = Array.isArray(remoteData) ? remoteData : [];
-                  
-                  const defaultSchools = key === 'availableSchools' ? (defaultData.availableSchools || []) : [];
+
+                  const defaultSchools =
+                    key === "availableSchools"
+                      ? defaultData.availableSchools || []
+                      : [];
                   const rawMerged = [...new Set([...existing, ...incoming])];
                   // Ensure availableSchools always has defaults
-                  const finalMerged = key === 'availableSchools' ? [...new Set([...defaultSchools, ...rawMerged])] : rawMerged;
+                  const finalMerged =
+                    key === "availableSchools"
+                      ? [...new Set([...defaultSchools, ...rawMerged])]
+                      : rawMerged;
 
-                  if (finalMerged.length === existing.length && finalMerged.every((v, i) => v === existing[i])) {
+                  if (
+                    finalMerged.length === existing.length &&
+                    finalMerged.every((v, i) => v === existing[i])
+                  ) {
                     return prev;
                   }
                   const updated = { ...prev, [key]: finalMerged };
-                  StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
+                  StorageHelper.setItem(
+                    "rafiquk_data",
+                    JSON.stringify(updated),
+                  );
                   return updated;
                 } else if (Array.isArray(remoteData)) {
                   // Buffer incoming array per school to support proper deletion across multi-tenant UI
-                  if (!dataBufferRef.current[key]) dataBufferRef.current[key] = {};
-                  dataBufferRef.current[key]['shared_' + school] = remoteData;
-                  
-                  const finalArray = Object.values(dataBufferRef.current[key]).flat();
-                  
-                  // Deduplicate by ID
-                  const uniqueMergedArray = Array.from(new Map(finalArray.filter((item: any) => item && item.id).map((item: any) => [item.id, item])).values());
-                  const actuallyFinal = (finalArray.length > 0 && !finalArray[0]?.id) ? finalArray : uniqueMergedArray;
+                  if (!dataBufferRef.current[key])
+                    dataBufferRef.current[key] = {};
+                  dataBufferRef.current[key]["shared_" + school] = remoteData;
 
-                  const existing = prev[key as keyof AppData] as any[] || [];
-                  if (JSON.stringify(existing) === JSON.stringify(actuallyFinal)) return prev;
-                  
+                  const finalArray = Object.values(
+                    dataBufferRef.current[key],
+                  ).flat();
+
+                  // Deduplicate by ID
+                  const uniqueMergedArray = Array.from(
+                    new Map(
+                      finalArray
+                        .filter((item: any) => item && item.id)
+                        .map((item: any) => [item.id, item]),
+                    ).values(),
+                  );
+                  const actuallyFinal =
+                    finalArray.length > 0 && !finalArray[0]?.id
+                      ? finalArray
+                      : uniqueMergedArray;
+
+                  const existing = (prev[key as keyof AppData] as any[]) || [];
+                  if (
+                    JSON.stringify(existing) === JSON.stringify(actuallyFinal)
+                  )
+                    return prev;
+
                   const updated = { ...prev, [key]: actuallyFinal };
-                  StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
+                  StorageHelper.setItem(
+                    "rafiquk_data",
+                    JSON.stringify(updated),
+                  );
                   return updated;
                 } else {
                   let updated: any;
-                  if (typeof remoteData === 'object' && !Array.isArray(remoteData) && remoteData !== null) {
+                  if (
+                    typeof remoteData === "object" &&
+                    !Array.isArray(remoteData) &&
+                    remoteData !== null
+                  ) {
                     const existingObj = (prev[key] || {}) as any;
                     const mergedObj = { ...existingObj, ...remoteData };
-                    if (JSON.stringify(existingObj) === JSON.stringify(mergedObj)) return prev;
+                    if (
+                      JSON.stringify(existingObj) === JSON.stringify(mergedObj)
+                    )
+                      return prev;
                     updated = { ...prev, [key]: mergedObj };
-                  } else if (JSON.stringify(prev[key]) === JSON.stringify(remoteData)) {
+                  } else if (
+                    JSON.stringify(prev[key]) === JSON.stringify(remoteData)
+                  ) {
                     return prev;
                   } else {
                     updated = { ...prev, [key]: remoteData };
                   }
-                  StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
+                  StorageHelper.setItem(
+                    "rafiquk_data",
+                    JSON.stringify(updated),
+                  );
                   return updated;
                 }
               });
@@ -898,89 +1462,132 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
 
         // 2. Customizable Keys (Templates, Exclusions, etc.)
-        customizableKeys.forEach(key => {
+        customizableKeys.forEach((key) => {
           const personalListenerId = `auth-personal-config-${school}-${currentUser.id}-${key}`;
           const sharedListenerId = `auth-shared-config-${school}-${key}`;
 
           // Always listen to shared as baseline
           if (!dataListeners.current.has(sharedListenerId)) {
             dataListeners.current.add(sharedListenerId);
-            const sq = doc(db, 'schools', school, 'shared', key);
+            const sq = doc(db, "schools", school, "shared", key);
             const sunsub = onSnapshot(sq, (sharedSnap) => {
               // We only apply shared if the user is an admin OR they have NO personal override yet
               // A personal override is indicated by a separate listener below.
               // To avoid race conditions, we can just fetch the personal doc first or track it in a ref.
               // For simplicity, we just use the shared snap if no personal data is set. (See personal listener logic)
               if (sharedSnap.exists() && isAdminOrFull) {
-                 setData(prev => {
-                   let fetchedData = sharedSnap.data().data;
-                   if (key === 'adminFollowUpTypes') {
-                     fetchedData = Array.from(new Set([...adminFollowUpTypes, ...(fetchedData || [])]));
-                   }
-                   if (JSON.stringify(prev[key]) === JSON.stringify(fetchedData)) return prev;
-                   return { ...prev, [key]: fetchedData };
-                 });
+                setData((prev) => {
+                  let fetchedData = sharedSnap.data().data;
+                  if (key === "adminFollowUpTypes") {
+                    fetchedData = Array.from(
+                      new Set([...adminFollowUpTypes, ...(fetchedData || [])]),
+                    );
+                  }
+                  if (JSON.stringify(prev[key]) === JSON.stringify(fetchedData))
+                    return prev;
+                  return { ...prev, [key]: fetchedData };
+                });
               }
             });
             unsubscribes.push(sunsub);
           }
 
           // If not admin, listen to personal data
-          if (!isAdminOrFull && !dataListeners.current.has(personalListenerId)) {
+          if (
+            !isAdminOrFull &&
+            !dataListeners.current.has(personalListenerId)
+          ) {
             dataListeners.current.add(personalListenerId);
-            const pq = doc(db, 'schools', school, 'users', currentUser.id, 'data', key);
+            const pq = doc(
+              db,
+              "schools",
+              school,
+              "users",
+              currentUser.id,
+              "data",
+              key,
+            );
             const punsub = onSnapshot(pq, async (personalSnap) => {
-               if (personalSnap.exists() && personalSnap.data().data !== undefined) {
-                 // Personal override exists
-                 let fetchedData = personalSnap.data().data;
-                 if (key === 'adminFollowUpTypes') {
-                   fetchedData = Array.from(new Set([...adminFollowUpTypes, ...(fetchedData || [])]));
-                 }
-                 setData(prev => ({ ...prev, [key]: fetchedData }));
-               } else {
-                 // Personal override does not exist => fetch once from shared baseline as initial value
-                 try {
-                   // Removed require
-                   const sq = doc(db, 'schools', school, 'shared', key);
-                   const sharedDoc = await getDoc(sq);
-                   if (sharedDoc.exists()) {
-                     let x = sharedDoc.data().data;
-                     if (key === 'adminFollowUpTypes') x = Array.from(new Set([...adminFollowUpTypes, ...(x||[])]));
-                     setData(prev => ({ ...prev, [key]: x }));
-                   }
-                 } catch(e){}
-               }
+              if (
+                personalSnap.exists() &&
+                personalSnap.data().data !== undefined
+              ) {
+                // Personal override exists
+                let fetchedData = personalSnap.data().data;
+                if (key === "adminFollowUpTypes") {
+                  fetchedData = Array.from(
+                    new Set([...adminFollowUpTypes, ...(fetchedData || [])]),
+                  );
+                }
+                setData((prev) => ({ ...prev, [key]: fetchedData }));
+              } else {
+                // Personal override does not exist => fetch once from shared baseline as initial value
+                try {
+                  // Removed require
+                  const sq = doc(db, "schools", school, "shared", key);
+                  const sharedDoc = await getDoc(sq);
+                  if (sharedDoc.exists()) {
+                    let x = sharedDoc.data().data;
+                    if (key === "adminFollowUpTypes")
+                      x = Array.from(
+                        new Set([...adminFollowUpTypes, ...(x || [])]),
+                      );
+                    setData((prev) => ({ ...prev, [key]: x }));
+                  }
+                } catch (e) {}
+              }
             });
             unsubscribes.push(punsub);
           }
         });
 
-        const uids = targetUserIds.split(',').filter(id => id.length > 0);
+        const uids = targetUserIds.split(",").filter((id) => id.length > 0);
 
-        uids.forEach(uid => {
-          arrayKeys.forEach(key => {
+        uids.forEach((uid) => {
+          arrayKeys.forEach((key) => {
             const listenerId = `auth-user-${school}-${uid}-${key}`;
             if (dataListeners.current.has(listenerId)) return;
             dataListeners.current.add(listenerId);
 
-            const q = doc(db, 'schools', school, 'users', uid, 'data', key);
-            const unsub = onSnapshot(q, (snapshot) => {
-              const items = (snapshot.exists() && Array.isArray(snapshot.data().items)) ? snapshot.data().items : [];
-              dataBufferRef.current[key][school + '_' + uid] = items;
-              
-              const mergedArray = Object.values(dataBufferRef.current[key]).flat();
-              const uniqueMergedArray = Array.from(new Map(mergedArray.filter(item => item && item.id).map(item => [item.id, item])).values());
-              
-              setData(prev => {
-                const updated = { ...prev, [key]: uniqueMergedArray };
-                StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
-                return updated;
-              });
-            }, (error) => {
-              if (!error.message.includes('permission-denied')) {
-                console.error(`Auth user sync error [${uid}] [${key}] for school [${school}]:`, error);
-              }
-            });
+            const q = doc(db, "schools", school, "users", uid, "data", key);
+            const unsub = onSnapshot(
+              q,
+              (snapshot) => {
+                const items =
+                  snapshot.exists() && Array.isArray(snapshot.data().items)
+                    ? snapshot.data().items
+                    : [];
+                dataBufferRef.current[key][school + "_" + uid] = items;
+
+                const mergedArray = Object.values(
+                  dataBufferRef.current[key],
+                ).flat();
+                const uniqueMergedArray = Array.from(
+                  new Map(
+                    mergedArray
+                      .filter((item) => item && item.id)
+                      .map((item) => [item.id, item]),
+                  ).values(),
+                );
+
+                setData((prev) => {
+                  const updated = { ...prev, [key]: uniqueMergedArray };
+                  StorageHelper.setItem(
+                    "rafiquk_data",
+                    JSON.stringify(updated),
+                  );
+                  return updated;
+                });
+              },
+              (error) => {
+                if (!error.message.includes("permission-denied")) {
+                  console.error(
+                    `Auth user sync error [${uid}] [${key}] for school [${school}]:`,
+                    error,
+                  );
+                }
+              },
+            );
             unsubscribes.push(unsub);
           });
         });
@@ -991,43 +1598,63 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     return () => {
       isMounted = false;
-      unsubscribes.forEach(u => u());
+      unsubscribes.forEach((u) => u());
       dataListeners.current.clear();
     };
-  }, [isAuthenticated, currentUser?.id, currentUser?.selectedSchool, targetUserIds, data.availableSchools]);
+  }, [
+    isAuthenticated,
+    currentUser?.id,
+    currentUser?.selectedSchool,
+    targetUserIds,
+    data.availableSchools,
+  ]);
 
-
-  const updateData = async (newDataPayload: Partial<AppData>, overrideSchools?: string[]) => {
+  const updateData = async (
+    newDataPayload: Partial<AppData>,
+    overrideSchools?: string[],
+  ) => {
     if (isAuthenticated && currentUser) {
       const processedNewData = { ...newDataPayload };
-      
+
       // Ensure profile updates always target the branch-specific map format in the cloud
       if (processedNewData.profile) {
-        const isFlatProfile = (processedNewData.profile as any).ministry !== undefined || (processedNewData.profile as any).district !== undefined;
+        const isFlatProfile =
+          (processedNewData.profile as any).ministry !== undefined ||
+          (processedNewData.profile as any).district !== undefined;
         if (isFlatProfile) {
-          const currentSchool = currentUser.selectedSchool?.split(',')[0]?.trim();
+          const currentSchool = currentUser.selectedSchool
+            ?.split(",")[0]
+            ?.trim();
           const currentBranch = currentUser.selectedBranch?.trim();
           if (currentSchool && currentBranch) {
             const existingSchoolProfiles = data.profiles?.[currentSchool] || {};
-            const activeProfileObj = { ...existingSchoolProfiles[currentBranch], ...(processedNewData.profile as any), branch: currentBranch };
+            const activeProfileObj = {
+              ...existingSchoolProfiles[currentBranch],
+              ...(processedNewData.profile as any),
+              branch: currentBranch,
+            };
             delete activeProfileObj.lastUpdated;
             processedNewData.profile = {
               ...existingSchoolProfiles,
               [currentBranch]: activeProfileObj,
             } as any;
           } else if (currentSchool) {
-             const fallbackBranch = 'الاعدادات العامة';
-             const existingSchoolProfiles = data.profiles?.[currentSchool] || {};
-             const activeProfileObj = { ...existingSchoolProfiles[fallbackBranch], ...(processedNewData.profile as any), branch: fallbackBranch };
-             delete activeProfileObj.lastUpdated;
-             processedNewData.profile = {
-               ...existingSchoolProfiles,
-               [fallbackBranch]: activeProfileObj,
-             } as any;
+            const fallbackBranch = "الاعدادات العامة";
+            const existingSchoolProfiles = data.profiles?.[currentSchool] || {};
+            const activeProfileObj = {
+              ...existingSchoolProfiles[fallbackBranch],
+              ...(processedNewData.profile as any),
+              branch: fallbackBranch,
+            };
+            delete activeProfileObj.lastUpdated;
+            processedNewData.profile = {
+              ...existingSchoolProfiles,
+              [fallbackBranch]: activeProfileObj,
+            } as any;
           }
         }
       }
-      
+
       const newData = processedNewData;
 
       let isBlockedByReadOnly = currentUser.permissions?.readOnly;
@@ -1036,44 +1663,44 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // Find if this specific update is allowed by a specific module's allowEdits
         let canBypass = false;
         const perms: any = currentUser.permissions || {};
-        
+
         // Define mapping of data keys to their parent permission key
         const keyToModuleMap: Record<string, string[]> = {
-          secretariatStudents: ['secretariat'],
-          secretariatStaff: ['secretariat'],
-          timetable: ['secretariat'],
-          dailyReports: ['dailyFollowUp'],
-          adminReports: ['adminFollowUp'],
-          studentReports: ['studentAffairs', 'secretariat'], // Secretariat might update this implicitly
-          violations: ['studentAffairs'],
-          parentVisits: ['studentAffairs'],
-          teacherFollowUps: ['teacherPortal'],
-          selfEvaluations: ['teacherPortal'],
-          studentEvaluations: ['teacherPortal'],
-          substitutions: ['substitutions'],
-          schoolProfile: ['schoolProfile'],
-          users: ['userManagement'],
-          taskReports: ['specialReports'],
-          absenceLogs: ['specialReports'],
-          studentLatenessLogs: ['specialReports'],
-          studentViolationLogs: ['specialReports'],
-          exitLogs: ['specialReports'],
-          damageLogs: ['specialReports'],
-          parentVisitLogs: ['specialReports'],
-          examLogs: ['specialReports'],
-          issues: ['issuesModal'],
-          trainingCourses: ['trainingCourses'],
-          caseStudies: ['caseStudyModal'],
-          comprehensiveIndicators: ['comprehensiveIndicators'],
-          taskTemplates: ['dashboard'],
+          secretariatStudents: ["secretariat"],
+          secretariatStaff: ["secretariat"],
+          timetable: ["secretariat"],
+          dailyReports: ["dailyFollowUp"],
+          adminReports: ["adminFollowUp"],
+          studentReports: ["studentAffairs", "secretariat"], // Secretariat might update this implicitly
+          violations: ["studentAffairs"],
+          parentVisits: ["studentAffairs"],
+          teacherFollowUps: ["teacherPortal"],
+          selfEvaluations: ["teacherPortal"],
+          studentEvaluations: ["teacherPortal"],
+          substitutions: ["substitutions"],
+          schoolProfile: ["schoolProfile"],
+          users: ["userManagement"],
+          taskReports: ["specialReports"],
+          absenceLogs: ["specialReports"],
+          studentLatenessLogs: ["specialReports"],
+          studentViolationLogs: ["specialReports"],
+          exitLogs: ["specialReports"],
+          damageLogs: ["specialReports"],
+          parentVisitLogs: ["specialReports"],
+          examLogs: ["specialReports"],
+          issues: ["issuesModal"],
+          trainingCourses: ["trainingCourses"],
+          caseStudies: ["caseStudyModal"],
+          comprehensiveIndicators: ["comprehensiveIndicators"],
+          taskTemplates: ["dashboard"],
         };
 
         const tryingToUpdateKeys = Object.keys(newData);
-        canBypass = tryingToUpdateKeys.every(key => {
+        canBypass = tryingToUpdateKeys.every((key) => {
           const modNames = keyToModuleMap[key] || [key];
-          return modNames.some(modName => {
+          return modNames.some((modName) => {
             const modPerms = perms[modName];
-            return Array.isArray(modPerms) && modPerms.includes('allowEdits');
+            return Array.isArray(modPerms) && modPerms.includes("allowEdits");
           });
         });
 
@@ -1083,19 +1710,51 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
 
       if (isBlockedByReadOnly) {
-        console.warn('ReadOnly permission: Update blocked');
-        toast.error(lang === 'ar' ? 'غير مسموح بتغيير البيانات للرتب الممنوحة لك (للقراءة فقط)' : 'Data change not allowed for your role (Read-Only)');
+        console.warn("ReadOnly permission: Update blocked");
+        toast.error(
+          lang === "ar"
+            ? "غير مسموح بتغيير البيانات للرتب الممنوحة لك (للقراءة فقط)"
+            : "Data change not allowed for your role (Read-Only)",
+        );
         return;
       }
-      const selectedSchools = overrideSchools && overrideSchools.length > 0 ? overrideSchools.map(s => s.trim()) : currentUser.selectedSchool.split(',').map(s => s.trim());
+      const selectedSchools =
+        overrideSchools && overrideSchools.length > 0
+          ? overrideSchools.map((s) => s.trim())
+          : currentUser.selectedSchool.split(",").map((s) => s.trim());
       let targetAvailableSchools = data.availableSchools || [];
       if (newData.availableSchools) {
         targetAvailableSchools = newData.availableSchools;
       }
-      const schoolsToUpdate = (selectedSchools.includes('all') ? targetAvailableSchools : selectedSchools).map(s => s.trim());
+      const schoolsToUpdate = (
+        selectedSchools.includes("all")
+          ? targetAvailableSchools
+          : selectedSchools
+      ).map((s) => s.trim());
       // const schoolsToUpdate = ['TEST_SCHOOL']; // 🔥 HARDCODED FOR TEST
-      const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList', 'branchMetrics', 'adminBranchMetrics', 'adminFollowUpTypes', 'adminActivitiesList', 'adminBranchActivities', 'adminIndividualReportFields'];
-      const customizableKeys = ['taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
+      const strictlySharedKeys = [
+        "profile",
+        "users",
+        "availableSchools",
+        "availableYears",
+        "secretariatStudents",
+        "secretariatStaff",
+        "selfEvaluationTemplates",
+        "metricsList",
+        "adminMetricsList",
+        "branchMetrics",
+        "adminBranchMetrics",
+        "adminFollowUpTypes",
+        "adminActivitiesList",
+        "adminBranchActivities",
+        "adminIndividualReportFields",
+      ];
+      const customizableKeys = [
+        "taskTemplates",
+        "customViolationElements",
+        "absenceManualAdditions",
+        "absenceExclusions",
+      ];
 
       // Helper to check if an item matches the current active filters (user + date).
       // Uses effectiveUserIds so 'all' still resolves to a concrete list.
@@ -1103,19 +1762,23 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const { from, to } = dateRange;
 
         // User filter: item belongs to one of the currently-visible users
-        if (item.userId && effectiveUserIds.length > 0 && !effectiveUserIds.includes(item.userId)) {
+        if (
+          item.userId &&
+          effectiveUserIds.length > 0 &&
+          !effectiveUserIds.includes(item.userId)
+        ) {
           return false;
         }
 
         // Date filter: only for activity arrays
-        const entityKeys = ['studentReports', 'timetable', 'teacherFollowUps'];
+        const entityKeys = ["studentReports", "timetable", "teacherFollowUps"];
         if (!entityKeys.includes(key)) {
           const rawDate =
             item.date ||
             item.dateStr ||
             (item.createdAt ? item.createdAt.substring(0, 10) : null);
-          if (rawDate && typeof rawDate === 'string') {
-            const actualDate = rawDate.split(' ')[0];
+          if (rawDate && typeof rawDate === "string") {
+            const actualDate = rawDate.split(" ")[0];
             if (from && actualDate < from) return false;
             if (to && actualDate > to) return false;
           }
@@ -1128,84 +1791,173 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       for (const key of Object.keys(newData) as Array<keyof AppData>) {
         if (strictlySharedKeys.includes(key)) {
-          const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
-          const isManager = currentUser.permissions?.userManagement === true || (Array.isArray(currentUser.permissions?.userManagement) && currentUser.permissions.userManagement.length > 0);
-          
-          const isSecretariatRole = ['مدير عام المدارس', 'مدير الفرع', 'السكرتارية'].includes(currentUser.jobTitle || '');
-          const isSecretariatDisabled = Array.isArray(currentUser.permissions?.secretariat) && currentUser.permissions.secretariat.includes('disable');
-          const isSecretariatEnabled = !isSecretariatDisabled && (isSecretariatRole || (Array.isArray(currentUser.permissions?.secretariat) ? currentUser.permissions?.secretariat.includes('allowEdits') : currentUser.permissions?.secretariat === true));
-          
-          const canEditTemplate = Array.isArray(currentUser.permissions?.teacherPortal) ? currentUser.permissions.teacherPortal.includes('editEvaluationTemplate') : currentUser.permissions?.teacherPortal === true;
+          const isAdminOrFull =
+            currentUser.role === "admin" ||
+            currentUser.permissions?.all === true;
+          const isManager =
+            currentUser.permissions?.userManagement === true ||
+            (Array.isArray(currentUser.permissions?.userManagement) &&
+              currentUser.permissions.userManagement.length > 0);
 
-          const isGeneralSupervisor = (currentUser.role as string) === 'general_supervisor' || currentUser.permissions?.specialCodes === true || (Array.isArray(currentUser.permissions?.specialCodes) && currentUser.permissions.specialCodes.length > 0);
-          const canEditDaily = isGeneralSupervisor || currentUser.permissions?.dailyFollowUp === true || (Array.isArray(currentUser.permissions?.dailyFollowUp) && !currentUser.permissions.dailyFollowUp.includes('view') && !currentUser.permissions.dailyFollowUp.includes('disable'));
-          const canEditAdminFollowUp = isGeneralSupervisor || currentUser.permissions?.adminFollowUp === true || (Array.isArray(currentUser.permissions?.adminFollowUp) && !currentUser.permissions.adminFollowUp.includes('view') && !currentUser.permissions.adminFollowUp.includes('disable'));
+          const isSecretariatRole = [
+            "مدير عام المدارس",
+            "مدير الفرع",
+            "السكرتارية",
+          ].includes(currentUser.jobTitle || "");
+          const isSecretariatDisabled =
+            Array.isArray(currentUser.permissions?.secretariat) &&
+            currentUser.permissions.secretariat.includes("disable");
+          const isSecretariatEnabled =
+            !isSecretariatDisabled &&
+            (isSecretariatRole ||
+              (Array.isArray(currentUser.permissions?.secretariat)
+                ? currentUser.permissions?.secretariat.includes("allowEdits")
+                : currentUser.permissions?.secretariat === true));
+
+          const canEditTemplate = Array.isArray(
+            currentUser.permissions?.teacherPortal,
+          )
+            ? currentUser.permissions.teacherPortal.includes(
+                "editEvaluationTemplate",
+              )
+            : currentUser.permissions?.teacherPortal === true;
+
+          const isGeneralSupervisor =
+            (currentUser.role as string) === "general_supervisor" ||
+            currentUser.permissions?.specialCodes === true ||
+            (Array.isArray(currentUser.permissions?.specialCodes) &&
+              currentUser.permissions.specialCodes.length > 0);
+          const canEditDaily =
+            isGeneralSupervisor ||
+            currentUser.permissions?.dailyFollowUp === true ||
+            (Array.isArray(currentUser.permissions?.dailyFollowUp) &&
+              !currentUser.permissions.dailyFollowUp.includes("view") &&
+              !currentUser.permissions.dailyFollowUp.includes("disable"));
+          const canEditAdminFollowUp =
+            isGeneralSupervisor ||
+            currentUser.permissions?.adminFollowUp === true ||
+            (Array.isArray(currentUser.permissions?.adminFollowUp) &&
+              !currentUser.permissions.adminFollowUp.includes("view") &&
+              !currentUser.permissions.adminFollowUp.includes("disable"));
 
           let canSave = false;
           if (isAdminOrFull) canSave = true;
-          else if (key === 'users' && isManager) canSave = true;
-          else if ((key === 'secretariatStudents' || key === 'secretariatStaff') && isSecretariatEnabled) canSave = true;
-          else if ((key === 'metricsList' || key === 'branchMetrics') && (isSecretariatEnabled || canEditDaily)) canSave = true;
-          else if ((key === 'adminMetricsList' || key === 'adminBranchMetrics' || key === 'adminActivitiesList' || key === 'adminBranchActivities' || key === 'adminIndividualReportFields' || key === 'adminFollowUpTypes') && (isSecretariatEnabled || canEditAdminFollowUp)) canSave = true;
-          else if (key === 'selfEvaluationTemplates' && canEditTemplate) canSave = true;
-          else if (key === 'profile' && isSecretariatEnabled) canSave = true;
-          else if ((key === 'availableSchools' || key === 'availableYears') && isAdminOrFull) canSave = true;
-          else if ((key === 'aboutSliderImages' || key === 'aboutExternalLinks' || key === 'aboutLogoImg') && isAdminOrFull) canSave = true;
+          else if (key === "users" && isManager) canSave = true;
+          else if (
+            (key === "secretariatStudents" || key === "secretariatStaff") &&
+            isSecretariatEnabled
+          )
+            canSave = true;
+          else if (
+            (key === "metricsList" || key === "branchMetrics") &&
+            (isSecretariatEnabled || canEditDaily)
+          )
+            canSave = true;
+          else if (
+            (key === "adminMetricsList" ||
+              key === "adminBranchMetrics" ||
+              key === "adminActivitiesList" ||
+              key === "adminBranchActivities" ||
+              key === "adminIndividualReportFields" ||
+              key === "adminFollowUpTypes") &&
+            (isSecretariatEnabled || canEditAdminFollowUp)
+          )
+            canSave = true;
+          else if (key === "selfEvaluationTemplates" && canEditTemplate)
+            canSave = true;
+          else if (key === "profile" && isSecretariatEnabled) canSave = true;
+          else if (
+            (key === "availableSchools" || key === "availableYears") &&
+            isAdminOrFull
+          )
+            canSave = true;
+          else if (
+            (key === "aboutSliderImages" ||
+              key === "aboutExternalLinks" ||
+              key === "aboutLogoImg") &&
+            isAdminOrFull
+          )
+            canSave = true;
 
           if (canSave) {
-            if (key === 'profile') {
-              newData[key] = { ...(newData[key] as any), lastUpdated: Date.now() };
+            if (key === "profile") {
+              newData[key] = {
+                ...(newData[key] as any),
+                lastUpdated: Date.now(),
+              };
             }
-            if (key === 'users' && Array.isArray(newData[key])) {
+            if (key === "users" && Array.isArray(newData[key])) {
               const mergedUsersMap = new Map();
-              defaultData.users.forEach(u => mergedUsersMap.set(u.id, u));
-              (newData[key] as any[]).forEach(u => mergedUsersMap.set(u.id, u));
+              defaultData.users.forEach((u) => mergedUsersMap.set(u.id, u));
+              (newData[key] as any[]).forEach((u) =>
+                mergedUsersMap.set(u.id, u),
+              );
               newData[key] = Array.from(mergedUsersMap.values()) as any;
             }
-            if (key === 'availableSchools' && Array.isArray(newData[key])) {
-              newData[key] = [...new Set([...(defaultData.availableSchools || []), ...newData[key]])] as any;
+            if (key === "availableSchools" && Array.isArray(newData[key])) {
+              newData[key] = [
+                ...new Set([
+                  ...(defaultData.availableSchools || []),
+                  ...newData[key],
+                ]),
+              ] as any;
             }
 
             // Priority: Send to Firestore first for strictly shared data
-            const promises = schoolsToUpdate.map(async school => {
+            const promises = schoolsToUpdate.map(async (school) => {
               const fullPath = `schools/${school}/shared/${key}`;
-              
+
               let payloadToSave = newData[key];
-              
+
               // Prevent Multi-Tenant Data Leak: Filter arrays before writing to a specific school's Firebase doc
               if (Array.isArray(payloadToSave)) {
-                if (key === 'users') {
-                  payloadToSave = (payloadToSave as any[]).filter(u => 
-                    (u.schools && u.schools.includes(school)) || 
-                    u.role === 'admin' || 
-                    u.permissions?.all === true
+                if (key === "users") {
+                  payloadToSave = (payloadToSave as any[]).filter(
+                    (u) =>
+                      (u.schools && u.schools.includes(school)) ||
+                      u.role === "admin" ||
+                      u.permissions?.all === true,
                   ) as any;
-                } else if (key === 'secretariatStudents' || key === 'secretariatStaff') {
-                  payloadToSave = (payloadToSave as any[]).filter(s => 
-                    s.school === school || 
-                    (s.schoolBranch && s.schoolBranch.startsWith(school))
+                } else if (
+                  key === "secretariatStudents" ||
+                  key === "secretariatStaff"
+                ) {
+                  payloadToSave = (payloadToSave as any[]).filter(
+                    (s) =>
+                      s.school === school ||
+                      (s.schoolBranch && s.schoolBranch.startsWith(school)),
                   ) as any;
                 }
               }
 
-              if (key === 'profile') {
-                console.log(`جاري الإرسال للمدرسة رقم: "${school}" (Length: ${school.length}) عبر المسار الكامل: ${fullPath}`);
+              if (key === "profile") {
+                console.log(
+                  `جاري الإرسال للمدرسة رقم: "${school}" (Length: ${school.length}) عبر المسار الكامل: ${fullPath}`,
+                );
               } else {
-                console.log(`📤 Pushing ${key} update to Firebase via: ${fullPath} (Items: ${Array.isArray(payloadToSave) ? payloadToSave.length : 'N/A'})`);
+                console.log(
+                  `📤 Pushing ${key} update to Firebase via: ${fullPath} (Items: ${Array.isArray(payloadToSave) ? payloadToSave.length : "N/A"})`,
+                );
               }
-              
-              const setPromise = setDoc(doc(db, 'schools', school, 'shared', key), { data: payloadToSave })
-                .catch(err => handleFirestoreError(err, OperationType.WRITE, fullPath));
 
-              if (key === 'profile') {
+              const setPromise = setDoc(
+                doc(db, "schools", school, "shared", key),
+                { data: payloadToSave },
+              ).catch((err) =>
+                handleFirestoreError(err, OperationType.WRITE, fullPath),
+              );
+
+              if (key === "profile") {
                 await setPromise;
-                console.log(`✅ تأكيد النجاح من السيرفر: تم الإرسال بنجاح للمدرسة ${school}`);
+                console.log(
+                  `✅ تأكيد النجاح من السيرفر: تم الإرسال بنجاح للمدرسة ${school}`,
+                );
               }
 
-              if (key === 'profile') {
+              if (key === "profile") {
                 pendingChanges.profiles = {
                   ...(pendingChanges.profiles || data.profiles),
-                  [school]: newData[key]
+                  [school]: newData[key],
                 } as any;
               }
             });
@@ -1213,48 +1965,93 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             await Promise.all(promises);
 
             // Update local state immediately for instant feedback
-            if (key !== 'profile') {
+            if (key !== "profile") {
               pendingChanges[key] = newData[key] as any;
             } else {
-               const schoolProfiles = newData[key] as any;
-               const currentBranch = currentUser?.selectedBranch?.trim();
-               let newProfileProps = {};
-               if (currentBranch && schoolProfiles[currentBranch]) {
-                 newProfileProps = schoolProfiles[currentBranch];
-               } else if (schoolProfiles.ministry !== undefined) {
-                 newProfileProps = schoolProfiles;
-               } else {
-                 const firstBranchKey = Object.keys(schoolProfiles)[0];
-                 if (firstBranchKey && typeof schoolProfiles[firstBranchKey] === 'object') {
-                   newProfileProps = schoolProfiles[firstBranchKey];
-                 }
-               }
-               pendingChanges.profile = { ...(rawData.profile || {}), ...newProfileProps } as any;
+              const schoolProfiles = newData[key] as any;
+              const currentBranch = currentUser?.selectedBranch?.trim();
+              let newProfileProps = {};
+              if (currentBranch && schoolProfiles[currentBranch]) {
+                newProfileProps = schoolProfiles[currentBranch];
+              } else if (schoolProfiles.ministry !== undefined) {
+                newProfileProps = schoolProfiles;
+              } else {
+                const firstBranchKey = Object.keys(schoolProfiles)[0];
+                if (
+                  firstBranchKey &&
+                  typeof schoolProfiles[firstBranchKey] === "object"
+                ) {
+                  newProfileProps = schoolProfiles[firstBranchKey];
+                }
+              }
+              pendingChanges.profile = {
+                ...(rawData.profile || {}),
+                ...newProfileProps,
+              } as any;
             }
           }
           continue;
         }
 
-        if (key === 'aboutSliderImages' || key === 'aboutExternalLinks' || key === 'aboutLogoImg') {
+        if (
+          key === "aboutSliderImages" ||
+          key === "aboutExternalLinks" ||
+          key === "aboutLogoImg"
+        ) {
           pendingChanges[key] = newData[key] as any;
-          if (currentUser.role === 'admin' || currentUser.permissions?.all === true) {
-            setDoc(doc(db, 'system', 'introConfig', 'data', key), { data: newData[key] })
-              .catch(err => handleFirestoreError(err, OperationType.WRITE, `system/introConfig/data/${key}`));
+          if (
+            currentUser.role === "admin" ||
+            currentUser.permissions?.all === true
+          ) {
+            setDoc(doc(db, "system", "introConfig", "data", key), {
+              data: newData[key],
+            }).catch((err) =>
+              handleFirestoreError(
+                err,
+                OperationType.WRITE,
+                `system/introConfig/data/${key}`,
+              ),
+            );
           }
           continue;
         }
 
         if (customizableKeys.includes(key)) {
           pendingChanges[key] = newData[key] as any;
-          const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
-          
-          schoolsToUpdate.forEach(school => {
+          const isAdminOrFull =
+            currentUser.role === "admin" ||
+            currentUser.permissions?.all === true;
+
+          schoolsToUpdate.forEach((school) => {
             if (isAdminOrFull) {
-              setDoc(doc(db, 'schools', school, 'shared', key), { data: newData[key] })
-                .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/shared/${key}`));
+              setDoc(doc(db, "schools", school, "shared", key), {
+                data: newData[key],
+              }).catch((err) =>
+                handleFirestoreError(
+                  err,
+                  OperationType.WRITE,
+                  `schools/${school}/shared/${key}`,
+                ),
+              );
             } else {
-              setDoc(doc(db, 'schools', school, 'users', currentUser.id, 'data', key), { data: newData[key] })
-                .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${school}/users/${currentUser.id}/data/${key}`));
+              setDoc(
+                doc(
+                  db,
+                  "schools",
+                  school,
+                  "users",
+                  currentUser.id,
+                  "data",
+                  key,
+                ),
+                { data: newData[key] },
+              ).catch((err) =>
+                handleFirestoreError(
+                  err,
+                  OperationType.WRITE,
+                  `schools/${school}/users/${currentUser.id}/data/${key}`,
+                ),
+              );
             }
           });
           continue;
@@ -1266,16 +2063,18 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           continue;
         }
 
-        const oldArray = rawData[key] as any[] || [];
+        const oldArray = (rawData[key] as any[]) || [];
 
         // Merge: keep items outside the current filter window, replace those inside.
-        const itemsNotMatchingFilter = oldArray.filter(item => !matchesCurrentFilter(item, key));
+        const itemsNotMatchingFilter = oldArray.filter(
+          (item) => !matchesCurrentFilter(item, key),
+        );
         const finalArray = [...itemsNotMatchingFilter, ...newArray];
 
         pendingChanges[key] = finalArray as any;
 
         const userIds = new Set<string>();
-        finalArray.forEach(item => {
+        finalArray.forEach((item) => {
           if (!item.userId) item.userId = currentUser.id;
           userIds.add(item.userId);
         });
@@ -1286,53 +2085,71 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         for (const uid of userIds) {
           // Check if the items changed, independent of array ordering
-          const userItems = finalArray.filter(item => item.userId === uid);
-          const oldUserItems = oldArray.filter(item => item.userId === uid);
-          
-           const sortedUserItems = [...userItems].sort((a,b) => (a.id || '').localeCompare(b.id || ''));
-           const sortedOldUserItems = [...oldUserItems].sort((a,b) => (a.id || '').localeCompare(b.id || ''));
+          const userItems = finalArray.filter((item) => item.userId === uid);
+          const oldUserItems = oldArray.filter((item) => item.userId === uid);
 
-          if (JSON.stringify(sortedUserItems) === JSON.stringify(sortedOldUserItems)) {
-             continue; // No changes for this user, skip Firebase write
+          const sortedUserItems = [...userItems].sort((a, b) =>
+            (a.id || "").localeCompare(b.id || ""),
+          );
+          const sortedOldUserItems = [...oldUserItems].sort((a, b) =>
+            (a.id || "").localeCompare(b.id || ""),
+          );
+
+          if (
+            JSON.stringify(sortedUserItems) ===
+            JSON.stringify(sortedOldUserItems)
+          ) {
+            continue; // No changes for this user, skip Firebase write
           }
 
           // Group by school
           const itemsBySchool: Record<string, any[]> = {};
-          schoolsToUpdate.forEach(s => itemsBySchool[s] = []); // Initialize all with empty array
-          
-          userItems.forEach(item => {
-             let sId = item.schoolId || item.schoolName || item.school || schoolsToUpdate[0];
-             if (!schoolsToUpdate.includes(sId)) {
-                 sId = schoolsToUpdate[0];
-             }
-             if (!itemsBySchool[sId]) itemsBySchool[sId] = [];
-             itemsBySchool[sId].push(item);
+          schoolsToUpdate.forEach((s) => (itemsBySchool[s] = [])); // Initialize all with empty array
+
+          userItems.forEach((item) => {
+            let sId =
+              item.schoolId ||
+              item.schoolName ||
+              item.school ||
+              schoolsToUpdate[0];
+            if (!schoolsToUpdate.includes(sId)) {
+              sId = schoolsToUpdate[0];
+            }
+            if (!itemsBySchool[sId]) itemsBySchool[sId] = [];
+            itemsBySchool[sId].push(item);
           });
 
           for (const sId of Object.keys(itemsBySchool)) {
-             setDoc(doc(db, 'schools', sId, 'users', uid, 'data', key), { items: itemsBySchool[sId] })
-               .catch(err => handleFirestoreError(err, OperationType.WRITE, `schools/${sId}/users/${uid}/data/${key}`));
+            setDoc(doc(db, "schools", sId, "users", uid, "data", key), {
+              items: itemsBySchool[sId],
+            }).catch((err) =>
+              handleFirestoreError(
+                err,
+                OperationType.WRITE,
+                `schools/${sId}/users/${uid}/data/${key}`,
+              ),
+            );
           }
         }
       }
 
-      setData(prev => {
+      setData((prev) => {
         const final = { ...prev, ...pendingChanges };
-        StorageHelper.setItem('rafiquk_data', JSON.stringify(final));
+        StorageHelper.setItem("rafiquk_data", JSON.stringify(final));
         return final;
       });
     } else {
       // Fallback for non-authenticated or initial state
-      setData(prev => {
-        const final = { ...prev, ...newData };
-        StorageHelper.setItem('rafiquk_data', JSON.stringify(final));
+      setData((prev) => {
+        const final = { ...prev, ...newDataPayload };
+        StorageHelper.setItem("rafiquk_data", JSON.stringify(final));
         return final;
       });
     }
   };
 
   const login = (username: string, code: string) => {
-    const user = data.users.find(u => u.name === username && u.code === code);
+    const user = data.users.find((u) => u.name === username && u.code === code);
     return user || null;
   };
 
@@ -1343,49 +2160,51 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       selectedSchool: school,
       selectedYear: year,
       role: user.role,
-      permissions: user.permissions
+      permissions: user.permissions,
     };
     setIsAuthenticated(true);
     setCurrentUser(authUser);
-    sessionStorage.setItem('rafiquk_auth', 'true');
-    sessionStorage.setItem('rafiquk_user', JSON.stringify(authUser));
+    sessionStorage.setItem("rafiquk_auth", "true");
+    sessionStorage.setItem("rafiquk_user", JSON.stringify(authUser));
   };
 
   const logout = () => {
     setIsAuthenticated(false);
     setCurrentUser(null);
-    sessionStorage.removeItem('rafiquk_auth');
-    sessionStorage.removeItem('rafiquk_user');
+    sessionStorage.removeItem("rafiquk_auth");
+    sessionStorage.removeItem("rafiquk_user");
   };
 
   const handleSetLang = (l: Language) => {
     setLang(l);
-    localStorage.setItem('rafiquk_lang', l);
-    document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+    localStorage.setItem("rafiquk_lang", l);
+    document.documentElement.dir = l === "ar" ? "rtl" : "ltr";
     document.documentElement.lang = l;
   };
 
   return (
-    <GlobalContext.Provider value={{ 
-      lang, 
-      setLang: handleSetLang, 
-      data: filteredData, 
-      updateData, 
-      isAuthenticated, 
-      currentUser,
-      userFilter,
-      setUserFilter,
-      dashboardFilter,
-      setDashboardFilter,
-      globalDataFilters,
-      setGlobalDataFilters,
-      dateRange,
-      setDateRange,
-      login, 
-      completeLogin,
-      logout,
-      effectiveUserIds
-    }}>
+    <GlobalContext.Provider
+      value={{
+        lang,
+        setLang: handleSetLang,
+        data: filteredData,
+        updateData,
+        isAuthenticated,
+        currentUser,
+        userFilter,
+        setUserFilter,
+        dashboardFilter,
+        setDashboardFilter,
+        globalDataFilters,
+        setGlobalDataFilters,
+        dateRange,
+        setDateRange,
+        login,
+        completeLogin,
+        logout,
+        effectiveUserIds,
+      }}
+    >
       {children}
     </GlobalContext.Provider>
   );
@@ -1393,6 +2212,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
 export const useGlobal = () => {
   const context = useContext(GlobalContext);
-  if (!context) throw new Error('useGlobal must be used within GlobalProvider');
+  if (!context) throw new Error("useGlobal must be used within GlobalProvider");
   return context;
 };

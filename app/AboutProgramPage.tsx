@@ -1,13 +1,30 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useGlobal } from '../context/GlobalState';
-import { 
-  Building, CheckCircle2, ShieldCheck, Cog, 
-  MessageCircle, Mail, ArrowRight, HeartHandshake,
-  Bot, Clock, Users, FileSignature, CheckCircle,
-  ChevronRight, ChevronLeft, Settings, X, Plus, Trash2, Link as LinkIcon, Upload
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'sonner';
+import React, { useState, useEffect, useRef } from "react";
+import { useGlobal } from "../context/GlobalState";
+import {
+  Building,
+  CheckCircle2,
+  ShieldCheck,
+  Cog,
+  MessageCircle,
+  Mail,
+  ArrowRight,
+  HeartHandshake,
+  Bot,
+  Clock,
+  Users,
+  FileSignature,
+  CheckCircle,
+  ChevronRight,
+  ChevronLeft,
+  Settings,
+  X,
+  Plus,
+  Trash2,
+  Link as LinkIcon,
+  Upload,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 interface AboutProgramPageProps {
   onBack: () => void;
@@ -16,8 +33,9 @@ interface AboutProgramPageProps {
 const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
   const { data, updateData, currentUser } = useGlobal();
   const profile = (data?.profile || {}) as any;
-  
-  const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+
+  const isAdminOrFull =
+    currentUser?.role === "admin" || currentUser?.permissions?.all === true;
 
   const [showSettings, setShowSettings] = useState(false);
 
@@ -77,11 +95,16 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
     updateData({ aboutExternalLinks: newLinks });
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+  const handleImageUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    index: number,
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 500 * 1024) {
-        toast.error('حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 500 كيلوبايت.');
+        toast.error(
+          "حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 500 كيلوبايت.",
+        );
         return;
       }
       const reader = new FileReader();
@@ -95,24 +118,30 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 pb-12" dir="rtl">
-      
+    <div
+      className="w-full max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 pb-12"
+      dir="rtl"
+    >
       {/* Header / Back */}
       <div className="flex items-center justify-between bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={onBack}
             className="p-3 bg-slate-50 hover:bg-blue-50 text-slate-400 hover:text-blue-500 rounded-2xl transition-all"
           >
             <ArrowRight size={24} />
           </button>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">التعريف بالنظام</h2>
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">
+            التعريف بالنظام
+          </h2>
         </div>
         {isAdminOrFull && (
           <button
             onClick={() => setShowSettings(!showSettings)}
             className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold transition-all ${
-              showSettings ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              showSettings
+                ? "bg-amber-100 text-amber-700"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
             <Settings size={20} />
@@ -127,19 +156,27 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
             <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
               <Settings className="text-amber-500" /> لوحة تحكم التعريف بالنظام
             </h3>
-            <button onClick={() => setShowSettings(false)} className="p-2 text-slate-400 hover:text-red-500 transition-all bg-slate-50 rounded-xl hover:bg-red-50">
+            <button
+              onClick={() => setShowSettings(false)}
+              className="p-2 text-slate-400 hover:text-red-500 transition-all bg-slate-50 rounded-xl hover:bg-red-50"
+            >
               <X size={24} />
             </button>
           </div>
 
           <div className="space-y-6">
             <h4 className="font-extrabold text-lg text-slate-700 flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">1</div>
+              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                1
+              </div>
               التحكم بشاشة العرض (الصور)
             </h4>
             <div className="grid gap-6">
               {images.map((img, idx) => (
-                <div key={img.id || idx} className="p-6 bg-slate-50 border border-slate-200 rounded-[2rem] space-y-4 shadow-sm relative">
+                <div
+                  key={img.id || idx}
+                  className="p-6 bg-slate-50 border border-slate-200 rounded-[2rem] space-y-4 shadow-sm relative"
+                >
                   <div className="absolute top-4 left-4">
                     <button
                       onClick={() => {
@@ -155,22 +192,37 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
 
                   <div className="flex flex-col md:flex-row gap-6">
                     <div className="w-full md:w-1/3 flex flex-col gap-2">
-                      <label className="text-xs font-bold text-slate-500">صورة العرض</label>
+                      <label className="text-xs font-bold text-slate-500">
+                        صورة العرض
+                      </label>
                       <div className="relative w-full h-32 bg-white rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden group cursor-pointer hover:border-blue-400 transition-all">
                         {img.image ? (
-                          <img src={img.image} className="w-full h-full object-cover" alt="" />
+                          <img
+                            src={img.image}
+                            className="w-full h-full object-cover"
+                            alt=""
+                          />
                         ) : (
                           <div className="text-slate-400 flex flex-col items-center">
                             <Upload size={24} />
-                            <span className="text-xs font-bold mt-1">رفع صورة</span>
+                            <span className="text-xs font-bold mt-1">
+                              رفع صورة
+                            </span>
                           </div>
                         )}
-                        <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleImageUpload(e, idx)} />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          onChange={(e) => handleImageUpload(e, idx)}
+                        />
                       </div>
                     </div>
                     <div className="flex-1 space-y-4 pr-0 md:pr-4">
                       <div>
-                        <label className="text-xs font-bold text-slate-500">عنوان الصورة</label>
+                        <label className="text-xs font-bold text-slate-500">
+                          عنوان الصورة
+                        </label>
                         <input
                           type="text"
                           value={img.title}
@@ -183,7 +235,9 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-slate-500">وصف الصورة</label>
+                        <label className="text-xs font-bold text-slate-500">
+                          وصف الصورة
+                        </label>
                         <textarea
                           value={img.description}
                           onChange={(e) => {
@@ -195,13 +249,16 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-slate-500">فترة العرض (ثواني)</label>
+                        <label className="text-xs font-bold text-slate-500">
+                          فترة العرض (ثواني)
+                        </label>
                         <input
                           type="number"
                           value={img.duration || 5}
                           onChange={(e) => {
                             const newArr = [...images];
-                            newArr[idx].duration = parseInt(e.target.value) || 5;
+                            newArr[idx].duration =
+                              parseInt(e.target.value) || 5;
                             updateImages(newArr);
                           }}
                           className="w-full p-3 rounded-xl border border-slate-200 mt-1 font-bold outline-none focus:border-blue-400"
@@ -213,7 +270,16 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
               ))}
               <button
                 onClick={() => {
-                  updateImages([...images, { id: Date.now().toString(), title: 'عنوان جديد', description: 'وصف جديد', image: '', duration: 5 }]);
+                  updateImages([
+                    ...images,
+                    {
+                      id: Date.now().toString(),
+                      title: "عنوان جديد",
+                      description: "وصف جديد",
+                      image: "",
+                      duration: 5,
+                    },
+                  ]);
                 }}
                 className="w-full py-4 border-2 border-dashed border-blue-300 text-blue-600 rounded-[2rem] font-bold hover:bg-blue-50 transition-all flex justify-center items-center gap-2"
               >
@@ -224,12 +290,17 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
 
           <div className="space-y-6 pt-6 border-t">
             <h4 className="font-extrabold text-lg text-slate-700 flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">2</div>
+              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                2
+              </div>
               روابط خارجية
             </h4>
             <div className="grid gap-4">
               {externalLinks.map((link, idx) => (
-                <div key={link.id || idx} className="flex flex-col md:flex-row gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 items-start md:items-end relative">
+                <div
+                  key={link.id || idx}
+                  className="flex flex-col md:flex-row gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 items-start md:items-end relative"
+                >
                   <div className="absolute top-2 left-2 md:static md:mb-1">
                     <button
                       onClick={() => {
@@ -243,7 +314,9 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
                     </button>
                   </div>
                   <div className="flex-1 w-full pt-6 md:pt-0">
-                    <label className="text-xs font-bold text-slate-500">اسم الرابط (ما سيظهر للزائر)</label>
+                    <label className="text-xs font-bold text-slate-500">
+                      اسم الرابط (ما سيظهر للزائر)
+                    </label>
                     <input
                       type="text"
                       value={link.name}
@@ -257,7 +330,9 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
                     />
                   </div>
                   <div className="flex-1 w-full">
-                    <label className="text-xs font-bold text-slate-500">الرابط الخارجي (URL)</label>
+                    <label className="text-xs font-bold text-slate-500">
+                      الرابط الخارجي (URL)
+                    </label>
                     <input
                       type="url"
                       value={link.url}
@@ -275,7 +350,10 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
               ))}
               <button
                 onClick={() => {
-                  updateLinks([...externalLinks, { id: Date.now().toString(), name: 'رابط جديد', url: '' }]);
+                  updateLinks([
+                    ...externalLinks,
+                    { id: Date.now().toString(), name: "رابط جديد", url: "" },
+                  ]);
                 }}
                 className="w-full py-4 border-2 border-dashed border-emerald-300 text-emerald-600 rounded-[2rem] font-bold hover:bg-emerald-50 transition-all flex justify-center items-center gap-2"
               >
@@ -286,44 +364,56 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
 
           <div className="space-y-6 pt-6 border-t">
             <h4 className="font-extrabold text-lg text-slate-700 flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center">3</div>
+              <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center">
+                3
+              </div>
               شعار البرنامج
             </h4>
             <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-               <div className="w-full flex-col gap-2">
-                 <label className="text-sm font-bold text-slate-500 mb-2 block">اختر صورة الشعار</label>
-                 <div className="relative w-full max-w-sm h-40 bg-white rounded-2xl border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden group cursor-pointer hover:border-violet-400 transition-all">
-                   {data.aboutLogoImg ? (
-                     <img src={data.aboutLogoImg} className="w-full h-full object-contain p-2" alt="" />
-                   ) : (
-                     <div className="text-slate-400 flex flex-col items-center">
-                       <Upload size={32} className="mb-2" />
-                       <span className="text-sm font-bold">رفع الشعار</span>
-                       <span className="text-xs text-slate-500 mt-1">يُفضل بخلفية شفافة</span>
-                     </div>
-                   )}
-                   <input 
-                     type="file" 
-                     accept="image/*" 
-                     className="absolute inset-0 opacity-0 cursor-pointer" 
-                     onChange={(e) => {
-                       const file = e.target.files?.[0];
-                       if (file) {
-                         if (file.size > 500 * 1024) {
-                           toast.error('حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 500 كيلوبايت.');
-                           return;
-                         }
-                         const reader = new FileReader();
-                         reader.onloadend = () => updateData({ aboutLogoImg: reader.result as string });
-                         reader.readAsDataURL(file);
-                       }
-                     }} 
-                   />
-                 </div>
-               </div>
+              <div className="w-full flex-col gap-2">
+                <label className="text-sm font-bold text-slate-500 mb-2 block">
+                  اختر صورة الشعار
+                </label>
+                <div className="relative w-full max-w-sm h-40 bg-white rounded-2xl border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden group cursor-pointer hover:border-violet-400 transition-all">
+                  {data.aboutLogoImg ? (
+                    <img
+                      src={data.aboutLogoImg}
+                      className="w-full h-full object-contain p-2"
+                      alt=""
+                    />
+                  ) : (
+                    <div className="text-slate-400 flex flex-col items-center">
+                      <Upload size={32} className="mb-2" />
+                      <span className="text-sm font-bold">رفع الشعار</span>
+                      <span className="text-xs text-slate-500 mt-1">
+                        يُفضل بخلفية شفافة
+                      </span>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (file.size > 500 * 1024) {
+                          toast.error(
+                            "حجم الصورة كبير جداً. يرجى اختيار صورة أقل من 500 كيلوبايت.",
+                          );
+                          return;
+                        }
+                        const reader = new FileReader();
+                        reader.onloadend = () =>
+                          updateData({ aboutLogoImg: reader.result as string });
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
-
         </div>
       ) : null}
 
@@ -331,22 +421,31 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
       <div className="bg-white p-12 rounded-[3.5rem] shadow-sm border border-slate-100 flex flex-col items-center text-center relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-100/50 rounded-full blur-3xl pointer-events-none -z-10" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-100/50 rounded-full blur-3xl pointer-events-none -z-10" />
-        
+
         {data.aboutLogoImg ? (
-          <img src={data.aboutLogoImg} alt="شعار البرنامج" className="w-32 h-32 object-contain mb-8 animate-in zoom-in" />
+          <img
+            src={data.aboutLogoImg}
+            alt="شعار البرنامج"
+            className="w-32 h-32 object-contain mb-8 animate-in zoom-in"
+          />
         ) : profile.logoImg ? (
-          <img src={profile.logoImg} alt="شعار المدارس" className="w-32 h-32 object-contain mb-8 animate-in zoom-in" />
+          <img
+            src={profile.logoImg}
+            alt="شعار المدارس"
+            className="w-32 h-32 object-contain mb-8 animate-in zoom-in"
+          />
         ) : (
           <div className="w-32 h-32 bg-blue-50 rounded-[2.5rem] flex items-center justify-center border-4 border-white shadow-lg mb-8">
             <Bot size={64} className="text-blue-600" />
           </div>
         )}
-        
+
         <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-4 leading-tight">
           رفيقك في كتابة التقارير
         </h1>
         <p className="text-xl md:text-2xl font-bold text-slate-500 max-w-2xl leading-relaxed">
-          الحل التقني الشامل للإدارة المدرسية الحديثة.. وبديلك الأمثل للأدبيات الورقية
+          الحل التقني الشامل للإدارة المدرسية الحديثة.. وبديلك الأمثل للأدبيات
+          الورقية
         </p>
       </div>
 
@@ -375,11 +474,13 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
                     alt={images[currentIndex].title}
                   />
                 ) : (
-                  <div className="text-white/20 font-black text-4xl">صورة غير متوفرة</div>
+                  <div className="text-white/20 font-black text-4xl">
+                    صورة غير متوفرة
+                  </div>
                 )}
 
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-20" />
-                
+
                 <div className="absolute inset-0 z-30 flex flex-col justify-end p-6 md:p-12 text-white text-right">
                   <motion.div
                     initial={{ y: 15, opacity: 0 }}
@@ -424,7 +525,9 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
                       setCurrentIndex(index);
                     }}
                     className={`h-2 rounded-full transition-all duration-300 ${
-                      index === currentIndex ? "bg-white w-8" : "bg-white/40 w-2"
+                      index === currentIndex
+                        ? "bg-white w-8"
+                        : "bg-white/40 w-2"
                     }`}
                     aria-label={`Go to slide ${index + 1}`}
                   />
@@ -441,32 +544,48 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
           <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6">
             <FileSignature size={32} />
           </div>
-          <h3 className="text-xl font-black text-slate-800 mb-2">إدارة شاملة وسريعة</h3>
-          <p className="text-slate-500 font-bold leading-relaxed">إدارة شاملة وسريعة لجميع التقارير الإدارية بشكل رقمي.</p>
+          <h3 className="text-xl font-black text-slate-800 mb-2">
+            إدارة شاملة وسريعة
+          </h3>
+          <p className="text-slate-500 font-bold leading-relaxed">
+            إدارة شاملة وسريعة لجميع التقارير الإدارية بشكل رقمي.
+          </p>
         </div>
 
         <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 xl:col-span-1 border-b-4 border-b-emerald-400 hover:-translate-y-1 transition-transform">
           <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-6">
             <Users size={32} />
           </div>
-          <h3 className="text-xl font-black text-slate-800 mb-2">أتمتة شؤون الطلاب</h3>
-          <p className="text-slate-500 font-bold leading-relaxed">أتمتة شؤون الطلاب وتسهيل متابعتهم اليومية باحترافية.</p>
+          <h3 className="text-xl font-black text-slate-800 mb-2">
+            أتمتة شؤون الطلاب
+          </h3>
+          <p className="text-slate-500 font-bold leading-relaxed">
+            أتمتة شؤون الطلاب وتسهيل متابعتهم اليومية باحترافية.
+          </p>
         </div>
 
         <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 xl:col-span-1 border-b-4 border-b-purple-400 hover:-translate-y-1 transition-transform">
           <div className="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-6">
             <CheckCircle size={32} />
           </div>
-          <h3 className="text-xl font-black text-slate-800 mb-2">متابعة دقيقة للمعلمين</h3>
-          <p className="text-slate-500 font-bold leading-relaxed">أدوات دقيقة وعملية لمتابعة وتقييم أداء المعلمين بشكل دوري.</p>
+          <h3 className="text-xl font-black text-slate-800 mb-2">
+            متابعة دقيقة للمعلمين
+          </h3>
+          <p className="text-slate-500 font-bold leading-relaxed">
+            أدوات دقيقة وعملية لمتابعة وتقييم أداء المعلمين بشكل دوري.
+          </p>
         </div>
 
         <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 xl:col-span-1 border-b-4 border-b-amber-400 hover:-translate-y-1 transition-transform">
           <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-6">
             <Clock size={32} />
           </div>
-          <h3 className="text-xl font-black text-slate-800 mb-2">توفير الوقت والجهد</h3>
-          <p className="text-slate-500 font-bold leading-relaxed">توفير الوقت والجهد، وخلق بيئة عمل لا ورقية ومتطورة.</p>
+          <h3 className="text-xl font-black text-slate-800 mb-2">
+            توفير الوقت والجهد
+          </h3>
+          <p className="text-slate-500 font-bold leading-relaxed">
+            توفير الوقت والجهد، وخلق بيئة عمل لا ورقية ومتطورة.
+          </p>
         </div>
       </div>
 
@@ -475,13 +594,22 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
         <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-900/40 via-slate-900 to-slate-900 pointer-events-none -z-10" />
         <HeartHandshake className="w-20 h-20 text-amber-400 mx-auto mb-8 opacity-90" />
         <p className="text-xl md:text-2xl text-slate-300 font-bold leading-loose max-w-4xl mx-auto">
-          "هذا البرنامج ليس مجرد أداة تقنية، بل هو ثمرة خبرة ميدانية واستشارية في المجال التربوي والإداري <span className="text-white">تتجاوز عشرين عاماً</span>، وتمت استشارة كبار الخبراء والمستشارين في هذا المجال، فالبرنامج صُمم خصيصاً <span className="text-emerald-400">ليفهم احتياجات القائد والمشرف والمعلم ويلبيها بدقة واحترافية</span>."
+          "هذا البرنامج ليس مجرد أداة تقنية، بل هو ثمرة خبرة ميدانية واستشارية
+          في المجال التربوي والإداري{" "}
+          <span className="text-white">تتجاوز عشرين عاماً</span>، وتمت استشارة
+          كبار الخبراء والمستشارين في هذا المجال، فالبرنامج صُمم خصيصاً{" "}
+          <span className="text-emerald-400">
+            ليفهم احتياجات القائد والمشرف والمعلم ويلبيها بدقة واحترافية
+          </span>
+          ."
         </p>
       </div>
 
       {/* القسم الرابع: قنوات التواصل والدعم */}
       <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100 text-center">
-        <h3 className="text-2xl font-black text-slate-800 mb-8">هل لديك استفسار؟ نحن هنا لمساعدتك واكتشاف المزيد</h3>
+        <h3 className="text-2xl font-black text-slate-800 mb-8">
+          هل لديك استفسار؟ نحن هنا لمساعدتك واكتشاف المزيد
+        </h3>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
           <a
             href="https://wa.me/967780804012"
@@ -513,7 +641,6 @@ const AboutProgramPage: React.FC<AboutProgramPageProps> = ({ onBack }) => {
           </p>
         </div>
       </div>
-
     </div>
   );
 };

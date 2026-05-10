@@ -1,19 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { X, Plus, Trash2, Save, Users, Building, FileSpreadsheet } from 'lucide-react';
-import { useGlobal } from '../context/GlobalState';
-import { AdminActivity } from '../types';
-import { toast } from 'sonner';
-import { ACTIVITIES_DATA } from '../app/evaluationData';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import {
+  X,
+  Plus,
+  Trash2,
+  Save,
+  Users,
+  Building,
+  FileSpreadsheet,
+} from "lucide-react";
+import { useGlobal } from "../context/GlobalState";
+import { AdminActivity } from "../types";
+import { toast } from "sonner";
+import { ACTIVITIES_DATA } from "../app/evaluationData";
 
 interface AdminCriteriaModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const AdminCriteriaModal: React.FC<AdminCriteriaModalProps> = ({ isOpen, onClose }) => {
+export const AdminCriteriaModal: React.FC<AdminCriteriaModalProps> = ({
+  isOpen,
+  onClose,
+}) => {
   const { data, updateData, currentUser } = useGlobal();
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [activities, setActivities] = useState<AdminActivity[]>([]);
 
   const [selectedSchools, setSelectedSchools] = useState<string[]>([]);
@@ -22,136 +33,202 @@ export const AdminCriteriaModal: React.FC<AdminCriteriaModalProps> = ({ isOpen, 
 
   useEffect(() => {
     if (isOpen) {
-      const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
-      const userSchools = isAdminOrFull 
-        ? (data.availableSchools || []) 
+      const isAdminOrFull =
+        currentUser?.role === "admin" || currentUser?.permissions?.all === true;
+      const userSchools = isAdminOrFull
+        ? data.availableSchools || []
         : Object.keys(currentUser?.permissions?.schoolsAndBranches || {});
 
-      const defaultSchools = currentUser?.selectedSchool === 'all' 
-        ? userSchools 
-        : (currentUser?.selectedSchool ? currentUser.selectedSchool.split(',').map(s => s.trim()).filter(s => userSchools.includes(s)) : []);
-      
-      setSelectedSchools(defaultSchools.length > 0 ? defaultSchools : userSchools);
+      const defaultSchools =
+        currentUser?.selectedSchool === "all"
+          ? userSchools
+          : currentUser?.selectedSchool
+            ? currentUser.selectedSchool
+                .split(",")
+                .map((s) => s.trim())
+                .filter((s) => userSchools.includes(s))
+            : [];
+
+      setSelectedSchools(
+        defaultSchools.length > 0 ? defaultSchools : userSchools,
+      );
 
       if (currentUser?.selectedBranch) {
         setSelectedBranches([currentUser.selectedBranch]);
       }
 
-      if (data.adminFollowUpTypes && data.adminFollowUpTypes.length > 0 && !selectedCategory) {
+      if (
+        data.adminFollowUpTypes &&
+        data.adminFollowUpTypes.length > 0 &&
+        !selectedCategory
+      ) {
         setSelectedCategory(data.adminFollowUpTypes[0]);
       }
     }
-  }, [isOpen, data.availableSchools, currentUser, selectedCategory, data.adminFollowUpTypes]);
+  }, [
+    isOpen,
+    data.availableSchools,
+    currentUser,
+    selectedCategory,
+    data.adminFollowUpTypes,
+  ]);
 
   useEffect(() => {
     const branches = new Set<string>();
-    const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+    const isAdminOrFull =
+      currentUser?.role === "admin" || currentUser?.permissions?.all === true;
     if (isAdminOrFull) {
-      data.secretariatStudents?.forEach(s => { if (s.branch) branches.add(s.branch); });
-      data.secretariatStaff?.forEach(s => { if (s.branch) branches.add(s.branch); });
-      if (branches.size === 0) branches.add('بدون فرع مخصص');
+      data.secretariatStudents?.forEach((s) => {
+        if (s.branch) branches.add(s.branch);
+      });
+      data.secretariatStaff?.forEach((s) => {
+        if (s.branch) branches.add(s.branch);
+      });
+      if (branches.size === 0) branches.add("بدون فرع مخصص");
     } else {
-      selectedSchools.forEach(s => {
+      selectedSchools.forEach((s) => {
         const sb = currentUser?.permissions?.schoolsAndBranches?.[s] || [];
-        sb.forEach(b => branches.add(b));
+        sb.forEach((b) => branches.add(b));
       });
     }
     const branchList = Array.from(branches);
     setAvailableBranches(branchList);
-    
+
     if (selectedBranches.length > 0) {
-      const validSelected = selectedBranches.filter(b => branchList.includes(b));
+      const validSelected = selectedBranches.filter((b) =>
+        branchList.includes(b),
+      );
       if (validSelected.length !== selectedBranches.length) {
         setSelectedBranches(validSelected);
       }
     }
-  }, [selectedSchools, currentUser, data.secretariatStudents, data.secretariatStaff]);
+  }, [
+    selectedSchools,
+    currentUser,
+    data.secretariatStudents,
+    data.secretariatStaff,
+  ]);
 
   useEffect(() => {
     if (isOpen && selectedCategory) {
-      const activeSchool = selectedSchools.length > 0 ? selectedSchools[0] : '';
-      const activeBranch = selectedBranches.length > 0 ? selectedBranches[0] : '';
+      const activeSchool = selectedSchools.length > 0 ? selectedSchools[0] : "";
+      const activeBranch =
+        selectedBranches.length > 0 ? selectedBranches[0] : "";
       const key = `${activeSchool}_${activeBranch}`;
 
       let initialActivities: AdminActivity[] = [];
-      if (activeSchool && activeBranch && data.adminBranchActivities?.[key]?.[selectedCategory]) {
-        initialActivities = JSON.parse(JSON.stringify(data.adminBranchActivities[key][selectedCategory]));
+      if (
+        activeSchool &&
+        activeBranch &&
+        data.adminBranchActivities?.[key]?.[selectedCategory]
+      ) {
+        initialActivities = JSON.parse(
+          JSON.stringify(data.adminBranchActivities[key][selectedCategory]),
+        );
       } else if (data.adminActivitiesList?.[selectedCategory]) {
-        initialActivities = JSON.parse(JSON.stringify(data.adminActivitiesList[selectedCategory]));
+        initialActivities = JSON.parse(
+          JSON.stringify(data.adminActivitiesList[selectedCategory]),
+        );
       } else if (ACTIVITIES_DATA[selectedCategory]) {
-        initialActivities = JSON.parse(JSON.stringify(ACTIVITIES_DATA[selectedCategory]));
+        initialActivities = JSON.parse(
+          JSON.stringify(ACTIVITIES_DATA[selectedCategory]),
+        );
       }
 
       // Automatically add an empty row at the end if the last one isn't empty, or if list is empty
-      if (initialActivities.length === 0 || initialActivities[initialActivities.length - 1].text.trim() !== '') {
-        initialActivities.push({ text: '', planned: '', evidence: '' });
+      if (
+        initialActivities.length === 0 ||
+        initialActivities[initialActivities.length - 1].text.trim() !== ""
+      ) {
+        initialActivities.push({ text: "", planned: "", evidence: "" });
       }
 
       setActivities(initialActivities);
     }
-  }, [isOpen, selectedCategory, data.adminActivitiesList, data.adminBranchActivities, selectedBranches, selectedSchools]);
+  }, [
+    isOpen,
+    selectedCategory,
+    data.adminActivitiesList,
+    data.adminBranchActivities,
+    selectedBranches,
+    selectedSchools,
+  ]);
 
   if (!isOpen) return null;
 
   const handleSave = () => {
     if (!selectedCategory) {
-      toast.error('الرجاء اختيار مجال التقرير أولاً');
+      toast.error("الرجاء اختيار مجال التقرير أولاً");
       return;
     }
 
     // Filter out completely empty activities before saving
-    const validActivities = activities.filter(a => a.text.trim() || String(a.planned).trim() || a.evidence.trim());
+    const validActivities = activities.filter(
+      (a) => a.text.trim() || String(a.planned).trim() || a.evidence.trim(),
+    );
 
     if (selectedSchools.length > 0 && selectedBranches.length > 0) {
-      const updatedAdminBranchActivities = { ...(data.adminBranchActivities || {}) };
-      selectedSchools.forEach(school => {
-        selectedBranches.forEach(branch => {
+      const updatedAdminBranchActivities = {
+        ...(data.adminBranchActivities || {}),
+      };
+      selectedSchools.forEach((school) => {
+        selectedBranches.forEach((branch) => {
           const key = `${school}_${branch}`;
           if (!updatedAdminBranchActivities[key]) {
             updatedAdminBranchActivities[key] = {};
           }
           updatedAdminBranchActivities[key] = {
             ...updatedAdminBranchActivities[key],
-            [selectedCategory]: validActivities
+            [selectedCategory]: validActivities,
           };
         });
       });
-      updateData({ adminBranchActivities: updatedAdminBranchActivities }, selectedSchools);
+      updateData(
+        { adminBranchActivities: updatedAdminBranchActivities },
+        selectedSchools,
+      );
     } else {
       const updatedAdminActivitiesList = {
         ...(data.adminActivitiesList || {}),
-        [selectedCategory]: validActivities
+        [selectedCategory]: validActivities,
       };
-      updateData({ adminActivitiesList: updatedAdminActivitiesList }, selectedSchools);
+      updateData(
+        { adminActivitiesList: updatedAdminActivitiesList },
+        selectedSchools,
+      );
     }
 
-    toast.success('تم الحفظ وتعميم المعايير بنجاح');
+    toast.success("تم الحفظ وتعميم المعايير بنجاح");
     onClose();
   };
 
   const handleAdd = () => {
-    setActivities([
-      ...activities,
-      { text: '', planned: '', evidence: '' }
-    ]);
+    setActivities([...activities, { text: "", planned: "", evidence: "" }]);
   };
 
   const handleRemove = (index: number) => {
     const newActivities = [...activities];
     newActivities.splice(index, 1);
-    if (newActivities.length === 0 || newActivities[newActivities.length - 1].text.trim() !== '') {
-        newActivities.push({ text: '', planned: '', evidence: '' });
+    if (
+      newActivities.length === 0 ||
+      newActivities[newActivities.length - 1].text.trim() !== ""
+    ) {
+      newActivities.push({ text: "", planned: "", evidence: "" });
     }
     setActivities(newActivities);
   };
 
-  const handleChange = (index: number, field: keyof AdminActivity, value: string) => {
+  const handleChange = (
+    index: number,
+    field: keyof AdminActivity,
+    value: string,
+  ) => {
     const newActivities = [...activities];
     newActivities[index] = { ...newActivities[index], [field]: value };
-    
+
     // Auto-add empty row if we just typed in the last row
-    if (index === activities.length - 1 && value.trim() !== '') {
-      newActivities.push({ text: '', planned: '', evidence: '' });
+    if (index === activities.length - 1 && value.trim() !== "") {
+      newActivities.push({ text: "", planned: "", evidence: "" });
     }
 
     setActivities(newActivities);
@@ -171,9 +248,14 @@ export const AdminCriteriaModal: React.FC<AdminCriteriaModalProps> = ({ isOpen, 
             <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
               <Users size={24} />
             </div>
-            <h2 className="text-xl font-black">التحكم بمعايير الموظفين والعاملين (التقارير الفردية)</h2>
+            <h2 className="text-xl font-black">
+              التحكم بمعايير الموظفين والعاملين (التقارير الفردية)
+            </h2>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-white/20 rounded-full transition-colors"
+          >
             <X size={24} />
           </button>
         </div>
@@ -186,17 +268,32 @@ export const AdminCriteriaModal: React.FC<AdminCriteriaModalProps> = ({ isOpen, 
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">اسم المدارس المستهدفة</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  اسم المدارس المستهدفة
+                </label>
                 <div className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 h-32 overflow-y-auto space-y-2">
-                  {(currentUser?.role === 'admin' || currentUser?.permissions?.all === true ? (data.availableSchools || []) : Object.keys(currentUser?.permissions?.schoolsAndBranches || {})).map(s => (
-                    <label key={s} className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1.5 rounded-lg transition-colors">
-                      <input 
-                        type="checkbox" 
-                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-emerald-500" 
+                  {(currentUser?.role === "admin" ||
+                  currentUser?.permissions?.all === true
+                    ? data.availableSchools || []
+                    : Object.keys(
+                        currentUser?.permissions?.schoolsAndBranches || {},
+                      )
+                  ).map((s) => (
+                    <label
+                      key={s}
+                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1.5 rounded-lg transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-emerald-500"
                         checked={selectedSchools.includes(s)}
                         onChange={(e) => {
-                          if (e.target.checked) setSelectedSchools([...selectedSchools, s]);
-                          else setSelectedSchools(selectedSchools.filter(x => x !== s));
+                          if (e.target.checked)
+                            setSelectedSchools([...selectedSchools, s]);
+                          else
+                            setSelectedSchools(
+                              selectedSchools.filter((x) => x !== s),
+                            );
                         }}
                       />
                       <span className="text-sm text-slate-700">{s}</span>
@@ -204,60 +301,78 @@ export const AdminCriteriaModal: React.FC<AdminCriteriaModalProps> = ({ isOpen, 
                   ))}
                 </div>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">الفروع المستهدفة</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  الفروع المستهدفة
+                </label>
                 <div className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 h-32 overflow-y-auto space-y-2">
-                   {availableBranches.map(b => (
-                    <label key={b} className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1.5 rounded-lg transition-colors">
-                      <input 
-                        type="checkbox" 
-                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-emerald-500" 
+                  {availableBranches.map((b) => (
+                    <label
+                      key={b}
+                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1.5 rounded-lg transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-emerald-500"
                         checked={selectedBranches.includes(b)}
                         onChange={(e) => {
-                          if (e.target.checked) setSelectedBranches([...selectedBranches, b]);
-                          else setSelectedBranches(selectedBranches.filter(x => x !== b));
+                          if (e.target.checked)
+                            setSelectedBranches([...selectedBranches, b]);
+                          else
+                            setSelectedBranches(
+                              selectedBranches.filter((x) => x !== b),
+                            );
                         }}
                       />
                       <span className="text-sm text-slate-700">{b}</span>
                     </label>
-                   ))}
+                  ))}
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">مجال التقرير</label>
-                <select 
-                  value={selectedCategory} 
-                  onChange={e => setSelectedCategory(e.target.value)} 
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  مجال التقرير
+                </label>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-emerald-500 font-bold"
                 >
-                  <option value="" disabled>اختر المجال...</option>
-                  {(data.adminIndividualReportFields?.length ? data.adminIndividualReportFields : [
-                      'متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس',
-                      'متابعة المدير العام',
-                      'متابعة مدير الفرع',
-                      'متابعة إدارة الجودة',
-                      'متابعة وكيل المدرسة',
-                      'متابعة السكرتارية',
-                      'متابعة المشرف التربوي',
-                      'متابعة المشرف الإداري',
-                      'متابعة المشرف الأكاديمي',
-                      'متابعة المختص الاجتماعي',
-                      'متابعة مسؤول معمل العلوم',
-                      'متابعة مسؤول الأنشطة',
-                      'متابعة مسؤول الرياضة',
-                      'متابعة مسؤول الفنية',
-                      'متابعة مسؤول المخازن',
-                      'متابعة معمل الوسائل',
-                      'متابعة مسؤول المكتبة',
-                      'متابعة شاشة العرض',
-                      'متابعة مهندس البيئة',
-                      'متابعة الحراسة',
-                      'متابعة حركة المواصلات',
-                      'متابعة أداء المقصف'
-                  ]).map(t => (
-                    <option key={t} value={t}>{t}</option>
+                  <option value="" disabled>
+                    اختر المجال...
+                  </option>
+                  {(data.adminIndividualReportFields?.length
+                    ? data.adminIndividualReportFields
+                    : [
+                        "متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس",
+                        "متابعة المدير العام",
+                        "متابعة مدير الفرع",
+                        "متابعة إدارة الجودة",
+                        "متابعة وكيل المدرسة",
+                        "متابعة السكرتارية",
+                        "متابعة المشرف التربوي",
+                        "متابعة المشرف الإداري",
+                        "متابعة المشرف الأكاديمي",
+                        "متابعة المختص الاجتماعي",
+                        "متابعة مسؤول معمل العلوم",
+                        "متابعة مسؤول الأنشطة",
+                        "متابعة مسؤول الرياضة",
+                        "متابعة مسؤول الفنية",
+                        "متابعة مسؤول المخازن",
+                        "متابعة معمل الوسائل",
+                        "متابعة مسؤول المكتبة",
+                        "متابعة شاشة العرض",
+                        "متابعة مهندس البيئة",
+                        "متابعة الحراسة",
+                        "متابعة حركة المواصلات",
+                        "متابعة أداء المقصف",
+                      ]
+                  ).map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -270,43 +385,53 @@ export const AdminCriteriaModal: React.FC<AdminCriteriaModalProps> = ({ isOpen, 
                 <FileSpreadsheet size={20} className="text-emerald-600" />
                 معايير التقييم للمجال: {selectedCategory}
               </h3>
-              
+
               <div className="space-y-4">
                 {activities.map((activity, idx) => {
-                  const isEmptyRow = idx === activities.length - 1 && !activity.text && !activity.planned && !activity.evidence;
+                  const isEmptyRow =
+                    idx === activities.length - 1 &&
+                    !activity.text &&
+                    !activity.planned &&
+                    !activity.evidence;
                   return (
-                    <div 
-                      key={`act-${idx}`} 
+                    <div
+                      key={`act-${idx}`}
                       className={`flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl border transition-all ${
-                          isEmptyRow 
-                            ? 'bg-slate-50/50 border-slate-200 border-dashed opacity-70 hover:opacity-100 focus-within:opacity-100 focus-within:border-emerald-400 focus-within:bg-white' 
-                            : 'bg-slate-50 border-slate-200 hover:border-emerald-200'
+                        isEmptyRow
+                          ? "bg-slate-50/50 border-slate-200 border-dashed opacity-70 hover:opacity-100 focus-within:opacity-100 focus-within:border-emerald-400 focus-within:bg-white"
+                          : "bg-slate-50 border-slate-200 hover:border-emerald-200"
                       }`}
                     >
                       <input
                         type="text"
                         value={activity.text}
-                        onChange={(e) => handleChange(idx, 'text', e.target.value)}
+                        onChange={(e) =>
+                          handleChange(idx, "text", e.target.value)
+                        }
                         placeholder="نص المعيار (مثلاً: الإشراف على صلاة الظهر)"
                         className="flex-[2] w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 outline-none font-bold text-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-50 transition-all text-sm"
                       />
                       <input
                         type="text"
                         value={activity.planned}
-                        onChange={(e) => handleChange(idx, 'planned', e.target.value)}
+                        onChange={(e) =>
+                          handleChange(idx, "planned", e.target.value)
+                        }
                         placeholder="المخطط (مثلاً: 22)"
                         className="flex-1 min-w-[120px] bg-white border border-slate-200 rounded-lg px-3 py-2.5 outline-none font-bold text-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-50 transition-all text-sm text-center"
                       />
                       <input
                         type="text"
                         value={activity.evidence}
-                        onChange={(e) => handleChange(idx, 'evidence', e.target.value)}
+                        onChange={(e) =>
+                          handleChange(idx, "evidence", e.target.value)
+                        }
                         placeholder="الشاهد (مثلاً: سجل المتابعة)"
                         className="flex-1 min-w-[140px] bg-white border border-slate-200 rounded-lg px-3 py-2.5 outline-none font-bold text-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-50 transition-all text-sm text-center"
                       />
-                      <button 
-                        onClick={() => handleRemove(idx)} 
-                        className={`p-2 rounded-lg transition-colors ${isEmptyRow ? 'text-slate-300 pointer-events-none' : 'text-red-400 hover:text-red-600 hover:bg-red-50 cursor-pointer'}`}
+                      <button
+                        onClick={() => handleRemove(idx)}
+                        className={`p-2 rounded-lg transition-colors ${isEmptyRow ? "text-slate-300 pointer-events-none" : "text-red-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"}`}
                         title="حذف المعيار"
                       >
                         <Trash2 size={20} />
@@ -328,10 +453,16 @@ export const AdminCriteriaModal: React.FC<AdminCriteriaModalProps> = ({ isOpen, 
         </div>
 
         <div className="p-6 bg-white border-t border-slate-100 flex justify-end gap-3">
-          <button onClick={onClose} className="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors">
+          <button
+            onClick={onClose}
+            className="px-6 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+          >
             إلغاء
           </button>
-          <button onClick={handleSave} className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-lg shadow-emerald-200">
+          <button
+            onClick={handleSave}
+            className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-lg shadow-emerald-200"
+          >
             <Save size={20} />
             تغيير وتعميم على المدارس والفروع المشتركة
           </button>

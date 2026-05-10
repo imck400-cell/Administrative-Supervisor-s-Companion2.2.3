@@ -25,6 +25,12 @@ service cloud.firestore {
     //
     // ===============================================================
 
+    // System configuration (e.g. intro page settings)
+    match /system/{document=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && userExists() && (getUserData().role == 'admin' || getUserData().get('permissions', {}).get('all', false) == true);
+    }
+
     // Helper functions
     function isAuthenticated() {
       return request.auth != null;
@@ -39,7 +45,8 @@ service cloud.firestore {
     }
 
     function hasSchool(school) {
-      return school in getUserData().schools || 'all' in getUserData().schools;
+      let data = getUserData();
+      return data.get('role', '') == 'admin' || school in data.get('schools', []) || 'all' in data.get('schools', []);
     }
 
     // User mapping document
@@ -55,14 +62,16 @@ service cloud.firestore {
       // Shared data (profile, templates, etc.)
       match /shared/{key} {
         allow read: if isAuthenticated() && (key == 'users' || key == 'profile' || key == 'availableSchools' || key == 'availableYears' || key == 'selfEvaluationTemplates' || (userExists() && hasSchool(school)));
-        allow write: if isAuthenticated() && userExists() && hasSchool(school) && (getUserData().role == 'admin' || key == 'secretariatStudents' || key == 'secretariatStaff' || key == 'users' || key == 'profile' || key == 'availableSchools' || key == 'availableYears' || key == 'selfEvaluationTemplates' || key == 'metricsList' || key == 'adminMetricsList' || key == 'branchMetrics' || key == 'adminBranchMetrics' || key == 'adminFollowUpTypes' || key == 'adminActivitiesList' || key == 'adminBranchActivities' || key == 'adminIndividualReportFields');
+        allow write: if isAuthenticated() && userExists() && (
+          (key == 'users' && (getUserData().role == 'admin' || getUserData().get('permissions', {}).get('userManagement', false) == true)) ||
+          (hasSchool(school) && (getUserData().role == 'admin' || key == 'secretariatStudents' || key == 'secretariatStaff' || key == 'users' || key == 'profile' || key == 'availableSchools' || key == 'availableYears' || key == 'selfEvaluationTemplates' || key == 'metricsList' || key == 'adminMetricsList' || key == 'branchMetrics' || key == 'adminBranchMetrics' || key == 'adminFollowUpTypes' || key == 'adminActivitiesList' || key == 'adminBranchActivities' || key == 'adminIndividualReportFields'))
+        );
       }
 
       // User-specific data
       match /users/{userId}/data/{key} {
         allow read: if isAuthenticated() && userExists() && hasSchool(school);
-        allow write: if isAuthenticated() && userExists() && hasSchool(school) && 
-          (getUserData().role == 'admin' || getUserData().customUserId == userId);
+        allow write: if isAuthenticated() && userExists() && hasSchool(school);
       }
     }
 

@@ -17,6 +17,8 @@ export interface SchoolProfile {
   classes?: string;
   qualityOfficer?: string;
   managerName?: string;
+  logoImg?: string;
+  lastUpdated?: number;
 }
 
 export interface TimetableEntry {
@@ -544,13 +546,46 @@ export interface CreativityRecordReport {
 
 export interface AdminActivity {
   text: string;
-  planned: string;
+  planned: string | number;
   evidence: string;
+}
+
+export interface DeliveryReceiptItem {
+  id: string;
+  teacherName: string;
+  school: string;
+  branch: string;
+  grade: string;
+  section: string;
+  formCount: string;
+  receiveDateStr: string;
+  deliveryDateStr: string;
+  status: 'delivered' | 'in_progress' | 'not_delivered';
+  notes: string;
+  actionTaken: string;
+}
+
+export interface DeliveryReceiptReport {
+  id: string;
+  userId?: string;
+  reportName: string;
+  school: string;
+  branch: string;
+  academicYear: string;
+  supervisorName: string;
+  supervisorJob: string;
+  grade: string;
+  section: string;
+  dateStr: string;
+  items: DeliveryReceiptItem[];
+  createdAt: string;
 }
 
 export interface AppData {
   users: User[];
   profile: SchoolProfile;
+  profiles?: Record<string, SchoolProfile>;
+  deliveryReceiptRecords?: DeliveryReceiptReport[];
   substitutions: SubstitutionEntry[];
   timetable: TimetableEntry[];
   dailyReports: DailyReportContainer[];
@@ -601,6 +636,9 @@ export interface AppData {
   adminIndividualReportFields?: string[];
   adminActivitiesList?: Record<string, AdminActivity[]>;
   adminBranchActivities?: Record<string, Record<string, AdminActivity[]>>;
+  aboutLogoImg?: string;
+  aboutSliderImages?: { id: string; title: string; description: string; image: string; duration: number }[];
+  aboutExternalLinks?: { id: string; name: string; url: string }[];
   availableSchools?: string[];
   availableYears?: string[];
   schoolBranches?: Record<string, string[]>;

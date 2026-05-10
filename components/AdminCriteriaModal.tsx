@@ -100,7 +100,7 @@ export const AdminCriteriaModal: React.FC<AdminCriteriaModalProps> = ({ isOpen, 
     }
 
     // Filter out completely empty activities before saving
-    const validActivities = activities.filter(a => a.text.trim() || a.planned.trim() || a.evidence.trim());
+    const validActivities = activities.filter(a => a.text.trim() || String(a.planned).trim() || a.evidence.trim());
 
     if (selectedSchools.length > 0 && selectedBranches.length > 0) {
       const updatedAdminBranchActivities = { ...(data.adminBranchActivities || {}) };

@@ -5,7 +5,7 @@ import { useGlobal } from '../context/GlobalState';
 import {
   Plus, Search, Trash2, Filter, ChevronDown, ChevronUp, Palette, Check, Calendar, Percent, User, Users, Target, Settings2, AlertCircle, X, ChevronRight, Zap, CheckCircle, FilePlus, FolderOpen, Save, ListOrdered, ArrowUpDown, ArrowUp, ArrowDown, SortAsc, Book, School, Type, Sparkles, FilterIcon, BarChart3, LayoutList, Upload, Download, Phone, UserCircle, Activity, Star, FileText, FileSpreadsheet, Share2, Edit, ChevronLeft, UserCheck, GraduationCap, MessageCircle
 } from 'lucide-react';
-import { TeacherFollowUp, DailyReportContainer, StudentReport } from '../types';
+import { TeacherFollowUp, DailyReportContainer, StudentReport, MetricDefinition } from '../types';
 import DynamicTable from '../components/DynamicTable';
 import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../src/lib/excelExport';
@@ -125,15 +125,15 @@ export const DailyReportsPage: React.FC = () => {
         if (updateMap[r.id]) {
           // Verify we aren't editing someone else's row as a regular user
           const isAdminOrFull = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
-          const isManager = currentUser?.permissions?.userManagement === true;
+          const isManager = currentUser?.permissions?.userManagement === true || (Array.isArray(currentUser?.permissions?.userManagement) && currentUser?.permissions?.userManagement.length > 0);
+          const isGeneralSupervisor = (currentUser?.role as any) === 'general_supervisor' || currentUser?.permissions?.specialCodes === true || (Array.isArray(currentUser?.permissions?.specialCodes) && currentUser?.permissions?.specialCodes.length > 0);
+          const canEditDaily = isGeneralSupervisor || currentUser?.permissions?.dailyFollowUp === true || (Array.isArray(currentUser?.permissions?.dailyFollowUp) && !currentUser.permissions.dailyFollowUp.includes('view') && !currentUser.permissions.dailyFollowUp.includes('disable'));
           
-          if (!isAdminOrFull && !isManager && r.userId !== currentUser?.id) {
-             // In regular unified view, sub-users only see their own rows.
-             // If we reached here, something is wrong, but safety first:
+          if (!isAdminOrFull && !isManager && !canEditDaily && r.userId !== currentUser?.id) {
              return r;
           }
           
-          return { ...r, teachersData: updateMap[r.id] };
+          return { ...r, teachersData: [...updateMap[r.id]] };
         }
         return r;
       });

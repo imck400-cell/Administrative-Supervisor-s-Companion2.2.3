@@ -200,7 +200,7 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [schema, setSchema] = useState(() => {
     try {
-      const saved = localStorage.getItem("courseEvaluationSchema_v2");
+      const saved = null;
       return saved ? JSON.parse(saved) : defaultSchema_v2;
     } catch {
       return defaultSchema_v2;
@@ -209,7 +209,7 @@ export const CourseEvaluationModal: React.FC<CourseEvaluationModalProps> = ({
   const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem("courseEvaluationSchema_v2", JSON.stringify(schema));
+    
   }, [schema]);
 
   // Check if user has permission to edit schema

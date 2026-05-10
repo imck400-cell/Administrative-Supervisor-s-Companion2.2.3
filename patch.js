@@ -1,1 +1,7 @@
-const fs = require('fs'); let c = fs.readFileSync('app/StaffFollowUpPage.tsx', 'utf8'); c = c.split('customActivities[individualForm.reportField]').join('getActivitiesForField(individualForm.reportField)'); fs.writeFileSync('app/StaffFollowUpPage.tsx', c);
+const fs = require('fs');
+let content = fs.readFileSync('context/GlobalState.tsx', 'utf8');
+
+// Replace multiline StorageHelper
+content = content.replace(/StorageHelper\.setItem\([\s\S]*?"rafiquk_data"[\s\S]*?\);/g, '');
+
+fs.writeFileSync('context/GlobalState.tsx', content);

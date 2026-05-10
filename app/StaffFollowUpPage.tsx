@@ -180,7 +180,7 @@ const StaffFollowUpPage: React.FC = () => {
       ...(data.adminIndividualReportFields?.length
         ? data.adminIndividualReportFields
         : (() => {
-            const saved = localStorage.getItem("admin_report_fields");
+            const saved = null;
             if (saved) return JSON.parse(saved);
             return [];
           })()),
@@ -189,7 +189,7 @@ const StaffFollowUpPage: React.FC = () => {
 
   const setReportFields = (newFields: string[]) => {
     updateData({ adminIndividualReportFields: newFields });
-    localStorage.setItem("admin_report_fields", JSON.stringify(newFields));
+    
   };
 
   const activeSchool =
@@ -356,7 +356,7 @@ const StaffFollowUpPage: React.FC = () => {
         unaccredited: unaccreditedItems,
         reportDate,
       };
-      localStorage.setItem("individual_report_draft", JSON.stringify(draft));
+      
     }
   }, [
     individualForm,
@@ -370,7 +370,7 @@ const StaffFollowUpPage: React.FC = () => {
 
   // Load draft on mount
   useEffect(() => {
-    const draft = localStorage.getItem("individual_report_draft");
+    const draft = null;
     if (draft) {
       try {
         const parsed = JSON.parse(draft);
@@ -388,7 +388,7 @@ const StaffFollowUpPage: React.FC = () => {
 
   // Archive Logic
   const [individualArchive, setIndividualArchive] = useState<any[]>(() => {
-    const saved = localStorage.getItem("individual_reports_archive");
+    const saved = null;
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -406,10 +406,7 @@ const StaffFollowUpPage: React.FC = () => {
     };
     const updatedArchive = [newReport, ...individualArchive];
     setIndividualArchive(updatedArchive);
-    localStorage.setItem(
-      "individual_reports_archive",
-      JSON.stringify(updatedArchive),
-    );
+    
     toast.success("تم حفظ التقرير في الأرشيف بنجاح");
   };
 
@@ -422,10 +419,7 @@ const StaffFollowUpPage: React.FC = () => {
       onConfirm: () => {
         const updated = individualArchive.filter((r) => r.id !== id);
         setIndividualArchive(updated);
-        localStorage.setItem(
-          "individual_reports_archive",
-          JSON.stringify(updated),
-        );
+        
         toast.success("تم حذف التقرير من الأرشيف");
       },
     });

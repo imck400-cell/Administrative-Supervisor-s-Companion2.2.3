@@ -2547,10 +2547,7 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({
                             <button
                               onClick={() => {
                                 // Navigation and Highlighting
-                                localStorage.setItem(
-                                  "highlight_student_name",
-                                  m.name,
-                                );
+                                
                                 onNavigate?.("studentReports");
                               }}
                               className="text-[10px] font-bold text-slate-700 hover:text-blue-600 truncate flex-1 text-right"

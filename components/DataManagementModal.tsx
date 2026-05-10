@@ -1,11 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useGlobal } from "../context/GlobalState";
 import {
   Download,
   Upload,
-  Save,
-  History,
-  Trash2,
   AlertTriangle,
   CheckCircle2,
   Loader2,
@@ -19,21 +16,13 @@ import {
   Layers,
   RefreshCcw,
 } from "lucide-react";
-import { AppData } from "../types";
 import ConfirmDialog from "./ConfirmDialog";
-
-interface BackupVersion {
-  id: string;
-  timestamp: string;
-  data: string;
-  label: string;
-}
 
 const DataManagementModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
 }> = ({ isOpen, onClose }) => {
-  const { lang, data, currentUser } = useGlobal();
+  const { lang, data, currentUser, updateData } = useGlobal();
   const isReadOnly = currentUser?.permissions?.readOnly === true;
   const [exportMode, setExportMode] = useState<
     "full" | "teacher" | "school" | "type"
@@ -42,7 +31,6 @@ const DataManagementModal: React.FC<{
   const [selectedType, setSelectedType] = useState<
     "students" | "teachers" | "violations" | "substitutions"
   >("students");
-  const [backups, setBackups] = useState<BackupVersion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{
@@ -62,19 +50,10 @@ const DataManagementModal: React.FC<{
     onConfirm: () => {},
   });
 
-  // START OF CHANGE
   const [pendingData, setPendingData] = useState<any>(null);
   const [showImportChoice, setShowImportChoice] = useState(false);
-  // END OF CHANGE
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const savedBackups = localStorage.getItem("app_history_backups");
-    if (savedBackups) {
-      setBackups(JSON.parse(savedBackups));
-    }
-  }, []);
 
   if (!isOpen) return null;
 
@@ -129,24 +108,6 @@ const DataManagementModal: React.FC<{
     }
   };
 
-  const archiveCurrentData = () => {
-    if (isReadOnly) return;
-    const currentRaw = localStorage.getItem("rafiquk_data");
-    if (!currentRaw) return;
-
-    const newBackup: BackupVersion = {
-      id: Date.now().toString(),
-      timestamp: new Date().toLocaleString("ar-EG"),
-      data: currentRaw,
-      label: `نسخة تلقائية قبل الاستيراد - ${new Date().toLocaleString("ar-EG")}`,
-    };
-
-    const updatedBackups = [newBackup, ...backups].slice(0, 5);
-    localStorage.setItem("app_history_backups", JSON.stringify(updatedBackups));
-    setBackups(updatedBackups);
-  };
-
-  // START OF CHANGE
   const handleImport = async (file: File) => {
     if (isReadOnly) return;
     setIsLoading(true);
@@ -176,9 +137,6 @@ const DataManagementModal: React.FC<{
     if (!pendingData) return;
     setIsLoading(true);
 
-    // 1. Always archive current data as requested
-    archiveCurrentData();
-
     try {
       if (merge) {
         // MERGE LOGIC
@@ -207,7 +165,6 @@ const DataManagementModal: React.FC<{
             const currentArray = (merged as any)[key] || [];
             const combined = [...currentArray, ...incoming[key]];
 
-            // Filter unique by ID to prevent duplicates if merging identical files
             const seen = new Set();
             (merged as any)[key] = combined.filter((item) => {
               const id = item.id || JSON.stringify(item);
@@ -218,7 +175,6 @@ const DataManagementModal: React.FC<{
           }
         });
 
-        // Merge custom violation elements if exist
         if (incoming.customViolationElements) {
           merged.customViolationElements = {
             behavior: Array.from(
@@ -242,46 +198,21 @@ const DataManagementModal: React.FC<{
           };
         }
 
-        localStorage.setItem("rafiquk_data", JSON.stringify(merged));
-        showStatus("success", "تم دمج البيانات بنجاح! جاري التحديث...");
+        updateData(merged);
+        showStatus("success", "تم دمج البيانات بنجاح! جاري المزامنة مع الخادم...");
       } else {
         // OVERRIDE LOGIC
-        // Clear current but preserve backups
-        const currentBackups = localStorage.getItem("app_history_backups");
-        localStorage.clear();
-        if (currentBackups)
-          localStorage.setItem("app_history_backups", currentBackups);
-
-        // Set new data
-        localStorage.setItem("rafiquk_data", JSON.stringify(pendingData));
-        showStatus("success", "تم استبدال البيانات بنجاح! جاري التحديث...");
+        updateData(pendingData);
+        showStatus("success", "تم استبدال البيانات بنجاح! جاري المزامنة مع الخادم...");
       }
 
-      setTimeout(() => window.location.reload(), 1500);
     } catch (e) {
-      showStatus("error", "حدث خطأ أثناء معالجة البيانات");
+      showStatus("error", "حدث خطأ أثناء تحميل البيانات");
     } finally {
       setIsLoading(false);
+      setShowImportChoice(false);
+      setPendingData(null);
     }
-  };
-  // END OF CHANGE
-
-  const handleRestore = (backup: BackupVersion) => {
-    if (isReadOnly) return;
-    setConfirmDialog({
-      isOpen: true,
-      title: "استعادة النسخة الاحتياطية",
-      message:
-        "هل أنت متأكد من استعادة هذه النسخة؟ سيتم فقدان البيانات الحالية غير المحفوظة.",
-      type: "warning",
-      onConfirm: () => {
-        // Archive current before restoring
-        archiveCurrentData();
-
-        localStorage.setItem("rafiquk_data", backup.data);
-        window.location.reload();
-      },
-    });
   };
 
   // Drag & Drop handlers
@@ -570,48 +501,6 @@ const DataManagementModal: React.FC<{
             </div>
           </div>
 
-          {/* History / Backups Section */}
-          <div className="pt-8 border-t">
-            <h3 className="text-lg font-black text-black flex items-center gap-2 mb-4">
-              <History className="text-purple-600" size={20} /> سجل الأرشفة
-              التلقائية (آخر 5 نسخ)
-            </h3>
-
-            <div className="space-y-3">
-              {backups.length === 0 ? (
-                <div className="p-10 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-100 text-slate-400 italic">
-                  لا توجد نسخ مؤرشفة حالياً
-                </div>
-              ) : (
-                backups.map((backup, idx) => (
-                  <div
-                    key={backup.id}
-                    className="bg-white border-2 border-slate-100 p-4 rounded-2xl flex items-center justify-between hover:border-purple-200 transition-all"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center font-black">
-                        {idx + 1}
-                      </div>
-                      <div>
-                        <div className="font-black text-black text-sm">
-                          {backup.label}
-                        </div>
-                        <div className="text-[10px] text-slate-500 font-bold flex items-center gap-1">
-                          <Calendar size={10} /> {backup.timestamp}
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleRestore(backup)}
-                      className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-xl font-bold text-xs hover:bg-purple-600 hover:text-white transition-all"
-                    >
-                      <History size={14} /> استعادة
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Footer info */}

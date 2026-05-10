@@ -5615,11 +5615,11 @@ export const StudentsReportsPage: React.FC = () => {
   >([]);
 
   useEffect(() => {
-    const highlightName = localStorage.getItem("highlight_student_name");
+    const highlightName = null;
     if (highlightName) {
       setFilterMode("student");
       setSelectedStudentNames([highlightName]);
-      localStorage.removeItem("highlight_student_name");
+      
     }
   }, []);
 

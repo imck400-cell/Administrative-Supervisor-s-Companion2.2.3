@@ -795,7 +795,7 @@ const Dashboard: React.FC<{
   }, [data, currentUser, globalDataFilters]);
 
   const [cards, setCards] = useState<CardConfig[]>(() => {
-    const saved = localStorage.getItem("dashboardCards");
+    const saved = null;
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -820,7 +820,7 @@ const Dashboard: React.FC<{
   });
 
   useEffect(() => {
-    localStorage.setItem("dashboardCards", JSON.stringify(cards));
+    
   }, [cards]);
 
   useEffect(() => {

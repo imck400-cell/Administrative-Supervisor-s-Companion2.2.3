@@ -126,13 +126,13 @@ export const useQuickAccess = (userId?: string) => {
     if (!userId) return;
     try {
       const p = JSON.parse(
-        localStorage.getItem(`quickAccess_pinned_${userId}`) || "[]",
+        null || "[]",
       );
       const r = JSON.parse(
-        localStorage.getItem(`quickAccess_recent_${userId}`) || "[]",
+        null || "[]",
       );
       const u = JSON.parse(
-        localStorage.getItem(`quickAccess_usage_${userId}`) || "{}",
+        null || "{}",
       );
       setPinned(Array.isArray(p) ? p : []);
       setRecent(Array.isArray(r) ? r : []);
@@ -144,9 +144,9 @@ export const useQuickAccess = (userId?: string) => {
 
   const save = (p: string[], r: string[], u: Record<string, number>) => {
     if (!userId) return;
-    localStorage.setItem(`quickAccess_pinned_${userId}`, JSON.stringify(p));
-    localStorage.setItem(`quickAccess_recent_${userId}`, JSON.stringify(r));
-    localStorage.setItem(`quickAccess_usage_${userId}`, JSON.stringify(u));
+    
+    
+    
   };
 
   const recordUsage = (actionId: string) => {

@@ -206,7 +206,7 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
         );
       } else {
         const offlineData = JSON.parse(
-          localStorage.getItem("offlineCaseStudies") || "[]",
+          null || "[]",
         );
         setLogs(offlineData);
         setIsLoadingLogs(false);
@@ -580,10 +580,10 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
         setSaveStatus({ type: "success", message: "تم حفظ التقرير بنجاح" });
       } else {
         const offlineData = JSON.parse(
-          localStorage.getItem("offlineCaseStudies") || "[]",
+          null || "[]",
         );
         offlineData.push({ ...payload, id: "local_" + Date.now() });
-        localStorage.setItem("offlineCaseStudies", JSON.stringify(offlineData));
+        
         setSaveStatus({
           type: "warning",
           message:
@@ -616,10 +616,10 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
   const handleDelete = async (docId: string) => {
     if (docId.startsWith("local_")) {
       const offlineData = JSON.parse(
-        localStorage.getItem("offlineCaseStudies") || "[]",
+        null || "[]",
       );
       const newData = offlineData.filter((i: any) => i.id !== docId);
-      localStorage.setItem("offlineCaseStudies", JSON.stringify(newData));
+      
       setLogs(newData);
       return;
     }

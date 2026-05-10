@@ -189,7 +189,7 @@ const StudentsManager = () => {
 
   useEffect(() => {
     let cloudData = data.secretariatStudents;
-    const ls = localStorage.getItem("secretariat_students");
+    const ls = null;
 
     // Migrate local storage if cloud is completely empty AND local storage has something.
     if ((!cloudData || cloudData.length === 0) && ls) {
@@ -198,7 +198,7 @@ const StudentsManager = () => {
         if (parsed && Array.isArray(parsed) && parsed.length > 0) {
           updateData({ secretariatStudents: parsed });
           cloudData = parsed;
-          localStorage.removeItem("secretariat_students"); // cleanup after migrate
+           // cleanup after migrate
         }
       } catch {}
     }
@@ -1139,7 +1139,7 @@ const StaffManager = () => {
 
   useEffect(() => {
     let cloudData = data.secretariatStaff;
-    const ls = localStorage.getItem("secretariat_staff");
+    const ls = null;
 
     // Migrate local storage if cloud is completely empty AND local storage has something.
     if ((!cloudData || cloudData.length === 0) && ls) {
@@ -1148,7 +1148,7 @@ const StaffManager = () => {
         if (parsed && Array.isArray(parsed) && parsed.length > 0) {
           updateData({ secretariatStaff: parsed });
           cloudData = parsed;
-          localStorage.removeItem("secretariat_staff"); // cleanup after migrate
+           // cleanup after migrate
         }
       } catch {}
     }

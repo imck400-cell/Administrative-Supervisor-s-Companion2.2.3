@@ -8,7 +8,7 @@ import {
   User,
 } from "../types";
 import { db, auth } from "../firebase";
-import { signInAnonymously } from "firebase/auth";
+import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
   doc,
   setDoc,
@@ -69,17 +69,7 @@ function handleFirestoreError(
   throw new Error(JSON.stringify(errInfo));
 }
 
-const StorageHelper = {
-  setItem: (key: string, value: string) => {
-    try {
-      localStorage.setItem(key, value);
-    } catch (e: any) {
-      console.warn(`LocalStorage quota exceeded or error for key ${key}:`, e);
-      // If we hit quota, clear non-essential chunks if possible, or just skip caching.
-      // This ensures the React state wrapper does not crash.
-    }
-  },
-};
+// StorageHelper removed
 
 interface GlobalContextType {
   lang: Language;
@@ -1060,48 +1050,36 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     }
     testConnection();
 
-    const authFlag = sessionStorage.getItem("rafiquk_auth");
-    const savedUserStr = sessionStorage.getItem("rafiquk_user");
-    let savedUser = null;
-    if (authFlag === "true" && savedUserStr) {
-      savedUser = JSON.parse(savedUserStr);
-      setIsAuthenticated(true);
-      setCurrentUser(savedUser);
-    }
+    // Listen to Firebase Auth state instead of sessionStorage
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+       if (user) {
+          try {
+             const userDoc = await getDoc(doc(db, "users", user.uid));
+             if (userDoc.exists()) {
+                 const userData = userDoc.data();
+                 if (userData.isActiveSession && userData.customUserId) {
+                     setIsAuthenticated(true);
+                     setCurrentUser({
+                         id: userData.customUserId,
+                         name: userData.name,
+                         jobTitle: userData.jobTitle || "",
+                         grades: userData.grades || [],
+                         sections: userData.sections || [],
+                         selectedSchool: userData.selectedSchool || "",
+                         selectedYear: userData.selectedYear || "",
+                         selectedBranch: userData.selectedBranch || "",
+                         role: userData.role || "user",
+                         permissions: userData.permissions || {}
+                     });
+                 }
+             }
+          } catch(e) {
+             console.error("Failed to load user session", e);
+          }
+       }
+    });
 
-    const savedData = localStorage.getItem("rafiquk_data");
-    const lastUid = localStorage.getItem("rafiquk_last_uid");
-
-    if (savedData) {
-      if (!savedUser || lastUid !== savedUser.id) {
-        // User changed or logged out: don't load full cache to avoiding leaking data
-        localStorage.removeItem("rafiquk_data");
-      } else {
-        const parsed = JSON.parse(savedData);
-
-        // Ensure default users and schools are retained if accidentally deleted
-        if (parsed.users) {
-          const mergedUsersMap = new Map();
-          defaultData.users.forEach((u) => mergedUsersMap.set(u.id, u));
-          parsed.users.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
-          parsed.users = Array.from(mergedUsersMap.values());
-        }
-
-        if (parsed.availableSchools) {
-          parsed.availableSchools = [
-            ...new Set([
-              ...(defaultData.availableSchools || []),
-              ...parsed.availableSchools,
-            ]),
-          ];
-        }
-
-        setData((prev) => ({ ...prev, ...parsed }));
-      }
-    }
-    
-    const savedLang = localStorage.getItem("rafiquk_lang") as Language;
-    if (savedLang) setLang(savedLang);
+    // language reset check removed
 
     // Initial sync for login data
     const schoolsToSync = [
@@ -1110,7 +1088,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         ...(defaultData.availableSchools || []),
       ]),
     ];
-    const unsubscribes: (() => void)[] = [];
+    const unsubscribes: (() => void)[] = [unsubAuth];
 
     signInAnonymously(auth)
       .then(() => {
@@ -1209,10 +1187,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                     )
                       return prev;
                     const updated = { ...prev, [key]: remoteData };
-                    StorageHelper.setItem(
-                      "rafiquk_data",
-                      JSON.stringify(updated),
-                    );
+                    
                     return updated;
                   });
                 }
@@ -1393,10 +1368,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                     JSON.stringify(prev.users) !== JSON.stringify(mergedUsers)
                   ) {
                     const updated = { ...prev, users: mergedUsers };
-                    StorageHelper.setItem(
-                      "rafiquk_data",
-                      JSON.stringify(updated),
-                    );
+                    
                     return updated;
                   }
                   return prev;
@@ -1425,10 +1397,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                     return prev;
                   }
                   const updated = { ...prev, [key]: finalMerged };
-                  StorageHelper.setItem(
-                    "rafiquk_data",
-                    JSON.stringify(updated),
-                  );
+                  
                   return updated;
                 } else if (Array.isArray(remoteData)) {
                   // Buffer incoming array per school to support proper deletion across multi-tenant UI
@@ -1460,10 +1429,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                     return prev;
 
                   const updated = { ...prev, [key]: actuallyFinal };
-                  StorageHelper.setItem(
-                    "rafiquk_data",
-                    JSON.stringify(updated),
-                  );
+                  
                   return updated;
                 } else {
                   let updated: any;
@@ -1486,10 +1452,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                   } else {
                     updated = { ...prev, [key]: remoteData };
                   }
-                  StorageHelper.setItem(
-                    "rafiquk_data",
-                    JSON.stringify(updated),
-                  );
+                  
                   return updated;
                 }
               });
@@ -1609,10 +1572,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
                 setData((prev) => {
                   const updated = { ...prev, [key]: uniqueMergedArray };
-                  StorageHelper.setItem(
-                    "rafiquk_data",
-                    JSON.stringify(updated),
-                  );
+                  
                   return updated;
                 });
               },
@@ -2175,14 +2135,14 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
       setData((prev) => {
         const final = { ...prev, ...pendingChanges };
-        StorageHelper.setItem("rafiquk_data", JSON.stringify(final));
+        
         return final;
       });
     } else {
       // Fallback for non-authenticated or initial state
       setData((prev) => {
         const final = { ...prev, ...newDataPayload };
-        StorageHelper.setItem("rafiquk_data", JSON.stringify(final));
+        
         return final;
       });
     }
@@ -2193,7 +2153,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     return user || null;
   };
 
-  const completeLogin = (user: User, school: string, year: string) => {
+  const completeLogin = async (user: User, school: string, year: string, branch?: string) => {
     const authUser: AuthUser = {
       id: user.id,
       name: user.name,
@@ -2202,14 +2162,13 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       sections: user.sections,
       selectedSchool: school,
       selectedYear: year,
+      selectedBranch: branch,
       role: user.role,
       permissions: user.permissions,
     };
     
-    const lastUid = localStorage.getItem("rafiquk_last_uid");
-    if (lastUid !== user.id) {
-       localStorage.removeItem("rafiquk_data");
-       localStorage.setItem("rafiquk_last_uid", user.id);
+    // Clear old data when a different user logs in
+    if (currentUser?.id && currentUser.id !== user.id) {
        setData((prev) => ({
          ...defaultData,
          users: prev.users, // Retain users list for login dropdown
@@ -2221,17 +2180,32 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
     setIsAuthenticated(true);
     setCurrentUser(authUser);
-    sessionStorage.setItem("rafiquk_auth", "true");
-    sessionStorage.setItem("rafiquk_user", JSON.stringify(authUser));
+    
+    if (auth.currentUser) {
+       setDoc(doc(db, "users", auth.currentUser.uid), {
+             isActiveSession: true,
+             customUserId: user.id,
+             name: user.name,
+             jobTitle: user.jobTitle || "",
+             grades: user.grades || [],
+             sections: user.sections || [],
+             selectedSchool: school,
+             selectedYear: year,
+             selectedBranch: branch || "",
+             role: user.role,
+             permissions: user.permissions || {}
+       }, { merge: true }).catch(console.error);
+    }
   };
 
   const logout = () => {
+    if (auth.currentUser) {
+       setDoc(doc(db, "users", auth.currentUser.uid), {
+             isActiveSession: false
+       }, { merge: true }).catch(console.error);
+    }
     setIsAuthenticated(false);
     setCurrentUser(null);
-    sessionStorage.removeItem("rafiquk_auth");
-    sessionStorage.removeItem("rafiquk_user");
-    localStorage.removeItem("rafiquk_last_uid");
-    localStorage.removeItem("rafiquk_data");
     setData((prev) => ({
       ...defaultData,
       users: prev.users,
@@ -2243,7 +2217,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const handleSetLang = (l: Language) => {
     setLang(l);
-    localStorage.setItem("rafiquk_lang", l);
     document.documentElement.dir = l === "ar" ? "rtl" : "ltr";
     document.documentElement.lang = l;
   };

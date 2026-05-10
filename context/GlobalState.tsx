@@ -838,12 +838,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   newUsers.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
                   const mergedUsers = Array.from(mergedUsersMap.values());
                   
-                  // Restore to Firebase if missing from cloud data, only admins do this to avoid spam
-                  if (newUsers.length < mergedUsers.length && isAdminOrFull) {
-                    console.log('Restoring missing default users to Firebase...');
-                    setDoc(doc(db, 'schools', school, 'shared', 'users'), { data: mergedUsers }).catch(console.error);
-                  }
-
                   if (JSON.stringify(prev.users) !== JSON.stringify(mergedUsers)) {
                     const updated = { ...prev, users: mergedUsers };
                     StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
@@ -858,10 +852,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   const rawMerged = [...new Set([...existing, ...incoming])];
                   // Ensure availableSchools always has defaults
                   const finalMerged = key === 'availableSchools' ? [...new Set([...defaultSchools, ...rawMerged])] : rawMerged;
-                  
-                  if (key === 'availableSchools' && incoming.length < finalMerged.length && isAdminOrFull) {
-                     setDoc(doc(db, 'schools', school, 'shared', key), { data: finalMerged }).catch(console.error);
-                  }
 
                   if (finalMerged.length === existing.length && finalMerged.every((v, i) => v === existing[i])) {
                     return prev;
@@ -870,36 +860,20 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
                   return updated;
                 } else if (Array.isArray(remoteData)) {
-                  // Robust merge for all other strictly shared arrays (like secretariatStudents, metricsList, etc.)
+                  // Buffer incoming array per school to support proper deletion across multi-tenant UI
+                  if (!dataBufferRef.current[key]) dataBufferRef.current[key] = {};
+                  dataBufferRef.current[key]['shared_' + school] = remoteData;
+                  
+                  const finalArray = Object.values(dataBufferRef.current[key]).flat();
+                  
+                  // Deduplicate by ID
+                  const uniqueMergedArray = Array.from(new Map(finalArray.filter((item: any) => item && item.id).map((item: any) => [item.id, item])).values());
+                  const actuallyFinal = (finalArray.length > 0 && !finalArray[0]?.id) ? finalArray : uniqueMergedArray;
+
                   const existing = prev[key as keyof AppData] as any[] || [];
-                  const incoming = remoteData;
+                  if (JSON.stringify(existing) === JSON.stringify(actuallyFinal)) return prev;
                   
-                  // If items have IDs, merge by ID to avoid duplicates
-                  const mergedMap = new Map();
-                  existing.forEach(item => {
-                    if (item && item.id) mergedMap.set(item.id, item);
-                  });
-                  incoming.forEach(item => {
-                    if (item) {
-                      if (item.id) mergedMap.set(item.id, item);
-                      else mergedMap.set(Math.random().toString(), item); // fallback for items without ID
-                    }
-                  });
-                  
-                  const mergedArray = Array.from(mergedMap.values());
-                  // Also retain items without IDs properly if needed, but in our app almost everything has an ID
-                  // We'll trust the map unless there are no IDs at all.
-                  const finalArray = (existing.length > 0 && !existing[0]?.id && incoming.length > 0 && !incoming[0]?.id) 
-                    ? incoming // If no IDs anywhere, just accept incoming to avoid infinite growth
-                    : mergedArray;
-
-                  // If incoming is missing data, push back to heal Firebase
-                  if (incoming.length < finalArray.length && isAdminOrFull) {
-                    setDoc(doc(db, 'schools', school, 'shared', key), { data: finalArray }).catch(console.error);
-                  }
-
-                  if (JSON.stringify(existing) === JSON.stringify(finalArray)) return prev;
-                  const updated = { ...prev, [key]: finalArray };
+                  const updated = { ...prev, [key]: actuallyFinal };
                   StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
                   return updated;
                 } else {
@@ -966,7 +940,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                } else {
                  // Personal override does not exist => fetch once from shared baseline as initial value
                  try {
-                   const { getDoc } = require('firebase/firestore');
+                   // Removed require
                    const sq = doc(db, 'schools', school, 'shared', key);
                    const sharedDoc = await getDoc(sq);
                    if (sharedDoc.exists()) {

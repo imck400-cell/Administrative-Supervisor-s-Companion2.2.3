@@ -1030,8 +1030,15 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       permissions: latestUser.permissions,
     };
     setCurrentUser(updatedAuthUser);
-    sessionStorage.setItem("rafiquk_user", JSON.stringify(updatedAuthUser));
-  }, [data.users]);
+    
+    // Update the active session document in Firebase so that the new permissions persist upon refresh
+    if (auth.currentUser) {
+       setDoc(doc(db, "users", auth.currentUser.uid), {
+             role: latestUser.role,
+             permissions: latestUser.permissions || {}
+       }, { merge: true }).catch(e => console.error("Failed to update session with new permissions", e));
+    }
+  }, [data.users, isAuthenticated, currentUser?.id]);
 
   const activeListeners = React.useRef<Set<string>>(new Set());
 

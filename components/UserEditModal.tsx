@@ -376,7 +376,19 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
 
     console.log("📤 Pushing users to updateData:", cleanUsers.length, "items");
     
-    updateData({ users: cleanUsers }, data.availableSchools);
+    const existingUser = data.users.find((u) => u.id === formData.id);
+    let targetSchools = Array.from(new Set([...(existingUser?.schools || []), ...(formData.schools || [])])).filter(Boolean);
+    
+    if (
+      existingUser?.role === "admin" || 
+      existingUser?.permissions?.all || 
+      formData.role === "admin" || 
+      formData.permissions?.all
+    ) {
+       targetSchools = data.availableSchools || [];
+    }
+    
+    updateData({ users: cleanUsers }, targetSchools);
     onClose();
   };
 
@@ -389,9 +401,16 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
       message: "هل أنت متأكد من حذف هذا المستخدم؟",
       type: "danger",
       onConfirm: () => {
+        const existingUser = data.users.find((u) => u.id === formData.id);
+        let targetSchools = Array.from(new Set(existingUser?.schools || [])).filter(Boolean);
+        
+        if (existingUser?.role === "admin" || existingUser?.permissions?.all) {
+           targetSchools = data.availableSchools || [];
+        }
+        
         updateData(
           { users: data.users.filter((u) => u.id !== formData.id) },
-          data.availableSchools,
+          targetSchools,
         );
         onClose();
       },

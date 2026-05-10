@@ -1913,17 +1913,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
             // Priority: Send to Firestore first for strictly shared data
             let schoolsToUpdateForThisKey = [...schoolsToUpdate];
-            if (key === "users") {
-              const usersInPayload = Array.isArray(newData[key]) ? (newData[key] as any[]) : [];
-              const schoolsFromUsers = new Set<string>();
-              usersInPayload.forEach(u => {
-                if (Array.isArray(u.schools)) {
-                  u.schools.forEach((s: string) => schoolsFromUsers.add(s.trim()));
-                }
-              });
-              // Merge schoolsFromUsers into schoolsToUpdateForThisKey
-              schoolsToUpdateForThisKey = Array.from(new Set([...schoolsToUpdateForThisKey, ...Array.from(schoolsFromUsers)])).filter(Boolean);
-            }
 
             const promises = schoolsToUpdateForThisKey.map(async (school) => {
               const fullPath = `schools/${school}/shared/${key}`;

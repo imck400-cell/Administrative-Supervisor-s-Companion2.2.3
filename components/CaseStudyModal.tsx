@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useGlobal } from '../context/GlobalState';
 import { X, Save, Share2, FileSpreadsheet, User, ClipboardList, Search, Calendar, ChevronDown, ChevronUp, Trash2, CheckCircle2, ChevronLeft, ChevronRight, TrendingUp, Briefcase } from 'lucide-react';
-import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, where, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, deleteDoc, doc, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import * as XLSX from 'xlsx';
 import { StudentReport } from '../types';
@@ -116,39 +116,10 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
   }, []);
 
   useEffect(() => {
-    let unsub: (() => void) | undefined;
-    
     if (activeTab === 'view' && isOpen) {
-      if (navigator.onLine && isAuthenticated) {
-        setIsLoadingLogs(true);
-        const q = query(collection(db, 'CaseStudies'), orderBy('timestamp', 'desc'));
-        
-        unsub = onSnapshot(q, (snapshot) => {
-          let fetchedLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-          
-          const isGenSuper = currentUser?.role === 'admin' || currentUser?.permissions?.all;
-          if (!isGenSuper) {
-             const userSchools = (currentUser?.selectedSchool || '').split(',').map(s => s.trim());
-             fetchedLogs = fetchedLogs.filter(log => userSchools.includes(log.school));
-          }
-  
-          setLogs(fetchedLogs);
-          setIsLoadingLogs(false);
-        }, (err) => {
-          console.error("Error fetching case studies", err);
-          setIsLoadingLogs(false);
-        });
-      } else {
-        const offlineData = JSON.parse(localStorage.getItem('offlineCaseStudies') || '[]');
-        setLogs(offlineData);
-        setIsLoadingLogs(false);
-      }
+      fetchLogs();
     }
-    
-    return () => {
-      if (unsub) unsub();
-    };
-  }, [activeTab, isOpen, currentUser, isAuthenticated]);
+  }, [activeTab, isOpen]);
 
   const filteredStudents = useMemo(() => {
     if (!searchQuery.trim()) return [];
@@ -447,7 +418,34 @@ const CaseStudyModal: React.FC<ModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  // Removed fetchLogs as it's now handled by onSnapshot in useEffect
+  const fetchLogs = async () => {
+    setIsLoadingLogs(true);
+    try {
+      if (navigator.onLine && isAuthenticated) {
+        let q = query(collection(db, 'CaseStudies'), orderBy('timestamp', 'desc'));
+        
+        // Client-side filtering to avoid complex composite index requirements
+        const snapshot = await getDocs(q);
+        let fetchedLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+        
+        // Filter by school for normal users
+        const isGenSuper = currentUser?.role === 'admin' || currentUser?.permissions?.all;
+        if (!isGenSuper) {
+           const userSchools = (currentUser?.selectedSchool || '').split(',').map(s => s.trim());
+           fetchedLogs = fetchedLogs.filter(log => userSchools.includes(log.school));
+        }
+
+        setLogs(fetchedLogs);
+      } else {
+        const offlineData = JSON.parse(localStorage.getItem('offlineCaseStudies') || '[]');
+        setLogs(offlineData);
+      }
+    } catch (err) {
+      console.error("Error fetching case studies", err);
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
 
   const handleDelete = async (docId: string) => {
     if (docId.startsWith('local_')) {

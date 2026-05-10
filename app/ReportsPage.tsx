@@ -6053,7 +6053,7 @@ export const StudentsReportsPage: React.FC = () => {
       notes: "",
       createdAt: new Date().toISOString(),
     };
-    updateData({ studentReports: [...studentData, newStudent] });
+    updateData({ studentReports: [...(data.studentReports || []), newStudent] });
   };
 
   const deleteStudent = (id: string) => {
@@ -6076,7 +6076,6 @@ export const StudentsReportsPage: React.FC = () => {
         );
       },
     });
-    updateData({ studentReports: studentData.filter((s) => s.id !== id) });
     // Reset selection if deleted
     setSelectedStudentIds((prev) => prev.filter((sid) => sid !== id));
   };
@@ -6094,7 +6093,7 @@ export const StudentsReportsPage: React.FC = () => {
       type: "danger",
       onConfirm: () => {
         updateData({
-          studentReports: studentData.filter(
+          studentReports: (data.studentReports || []).filter(
             (s) => !selectedStudentIds.includes(s.id),
           ),
         });
@@ -6125,7 +6124,7 @@ export const StudentsReportsPage: React.FC = () => {
     const normalizedGrades = grades.map((g) => normalizeArabic(g));
     const normalizedSections = sections.map((s) => normalizeArabic(s));
 
-    let studentsToProcess = [...studentData];
+    let studentsToProcess = [...(data.studentReports || [])];
     let deletedCount = 0;
 
     // 1. Handle Duplicates if selected
@@ -6224,6 +6223,11 @@ export const StudentsReportsPage: React.FC = () => {
           academicParticipation: optionsAr.level[0],
           behaviorLevel: optionsAr.behavior[0],
           mainNotes: [],
+          healthStatus: optionsAr.health[0],
+          guardianFollowUp: optionsAr.followUp[0],
+          guardianEducation: optionsAr.eduStatus[0],
+          guardianCooperation: optionsAr.cooperation[0],
+          workOutside: optionsAr.workOutside[0],
         }));
         updateData({ studentReports: updated });
         toast.success(
@@ -6231,19 +6235,6 @@ export const StudentsReportsPage: React.FC = () => {
         );
       },
     });
-    const updated = studentData.map((s) => ({
-      ...s,
-      healthStatus: optionsAr.health[0],
-      guardianFollowUp: optionsAr.followUp[0],
-      guardianEducation: optionsAr.eduStatus[0],
-      guardianCooperation: optionsAr.cooperation[0],
-      academicReading: optionsAr.level[0],
-      academicWriting: optionsAr.level[0],
-      academicParticipation: optionsAr.level[0],
-      behaviorLevel: optionsAr.behavior[0],
-      workOutside: optionsAr.workOutside[0],
-    }));
-    updateData({ studentReports: updated });
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -6302,7 +6293,7 @@ export const StudentsReportsPage: React.FC = () => {
         setPendingImportData(imported as any);
         setShowImportConfirmModal(true);
       } else {
-        updateData({ studentReports: [...studentData, ...(imported as any)] });
+        updateData({ studentReports: [...(data.studentReports || []), ...(imported as any)] });
         toast.success(
           lang === "ar"
             ? "تم استيراد البيانات بنجاح"
@@ -6669,10 +6660,14 @@ export const StudentsReportsPage: React.FC = () => {
   const saveDetailStudent = () => {
     if (isReadOnly) return;
     if (currentDetailStudent) {
-      const updated = studentData.map((s) =>
-        s.id === currentDetailStudent.id ? currentDetailStudent : s,
-      );
-      updateData({ studentReports: updated });
+      const allReports = [...(data.studentReports || [])];
+      const index = allReports.findIndex(s => s.id === currentDetailStudent.id);
+      if (index >= 0) {
+        allReports[index] = currentDetailStudent;
+      } else {
+        allReports.push(currentDetailStudent);
+      }
+      updateData({ studentReports: allReports });
       setShowIndividualReportModal(false);
       setCurrentDetailStudent(null);
       setDetailModalSearch("");
@@ -8410,7 +8405,7 @@ export const StudentsReportsPage: React.FC = () => {
               <button
                 onClick={() => {
                   updateData({
-                    studentReports: [...studentData, ...pendingImportData],
+                    studentReports: [...(data.studentReports || []), ...pendingImportData],
                   });
                   setShowImportConfirmModal(false);
                   setPendingImportData([]);
@@ -8438,14 +8433,14 @@ export const StudentsReportsPage: React.FC = () => {
                 onClick={() => {
                   const filtered = pendingImportData.filter(
                     (imp) =>
-                      !studentData.some(
+                      !(data.studentReports || []).some(
                         (existing) =>
                           existing.name.trim() === imp.name.trim() &&
                           existing.grade === imp.grade &&
                           existing.section === imp.section,
                       ),
                   );
-                  updateData({ studentReports: [...studentData, ...filtered] });
+                  updateData({ studentReports: [...(data.studentReports || []), ...filtered] });
                   setShowImportConfirmModal(false);
                   setPendingImportData([]);
                   toast.success(

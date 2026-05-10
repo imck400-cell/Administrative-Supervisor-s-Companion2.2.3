@@ -791,7 +791,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       currentUser.role === "admin" || currentUser.permissions?.all === true;
     const managedIds = currentUser.permissions?.managedUserIds || [];
     const isManager =
-      currentUser.permissions?.userManagement === true || managedIds.length > 0;
+      currentUser.permissions?.userManagement === true ||
+      (Array.isArray(currentUser.permissions?.userManagement) && currentUser.permissions.userManagement.length > 0) ||
+      managedIds.length > 0;
 
     const isSchoolWideViewer =
       isManager ||
@@ -830,8 +832,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       return data.users
         .filter((u) => u.schools.some((s) => allSchools.includes(s)))
         .map((u) => u.id);
-    } else if (isSchoolWideViewer) {
-      // Generic manager without explicit list: sees fellow school members
+    } else {
+      // Non-admin logic: see fellow members based on overlap
       return data.users
         .filter((u) => {
           if (u.id === currentUser.id) return true;
@@ -848,16 +850,37 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
             if (managerBranches.length > 0) {
               const targetBranches =
                 u.permissions?.schoolsAndBranches?.[s] || [];
-              if (targetBranches.length === 0) return false; // If target has no branch
-              return managerBranches.some((b) => targetBranches.includes(b));
+              // If target has branch restrictions, they must overlap
+              if (targetBranches.length > 0 && !managerBranches.some((b) => targetBranches.includes(b))) {
+                return false;
+              }
             }
+
+            // If not a school-wide viewer, we must enforce grades/sections overlap if defined
+            if (!isSchoolWideViewer) {
+              const managerGrades = currentUser.grades || [];
+              const managerSections = currentUser.sections || [];
+              const targetGrades = u.grades || [];
+              const targetSections = u.sections || [];
+
+               // Only check overlap if the manager actually has specific grades/sections assigned
+               // If the manager has no grades/sections assigned but isn't a schoolWideViewer, they shouldn't see anyone except themselves (which is handled above)
+              if (managerGrades.length === 0 && managerSections.length === 0) {
+                 return false;
+              }
+
+              if (managerGrades.length > 0 && targetGrades.length > 0) {
+                if (!managerGrades.some(g => targetGrades.includes(g))) return false;
+              }
+              if (managerSections.length > 0 && targetSections.length > 0) {
+                 if (!managerSections.some(sec => targetSections.includes(sec))) return false;
+              }
+            }
+
             return true;
           });
         })
         .map((u) => u.id);
-    } else {
-      // Regular users ONLY see themselves
-      return [currentUser.id];
     }
   }, [
     isAuthenticated,
@@ -1097,23 +1120,23 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
                       // Retain default users and previous users (correct order: default -> prev -> incoming)
                       const mergedUsersMap = new Map();
-                      defaultData.users.forEach((u) =>
-                        mergedUsersMap.set(u.id, u),
-                      );
-                      (prev.users || []).forEach((u) =>
-                        mergedUsersMap.set(u.id, u),
-                      );
-                      newUsers.forEach((u: AuthUser) =>
-                        mergedUsersMap.set(u.id, u),
-                      );
+                      defaultData.users.forEach((u) => {
+                        if (u.schools.includes(school) || u.role === "admin") {
+                          mergedUsersMap.set(u.id, u);
+                        }
+                      });
+                      (prev.users || []).forEach((u) => {
+                        mergedUsersMap.set(u.id, u);
+                      });
+                      newUsers.forEach((u: AuthUser) => {
+                        // Only accept users that actually claim this school in their schools array
+                        if (u.schools && u.schools.includes(school)) {
+                           mergedUsersMap.set(u.id, u);
+                        } else if (u.role === "admin" || u.permissions?.all === true) {
+                           mergedUsersMap.set(u.id, u);
+                        }
+                      });
                       const mergedUsers = Array.from(mergedUsersMap.values());
-
-                      // Restore to Firebase if missing
-                      if (newUsers.length < mergedUsers.length) {
-                        setDoc(doc(db, "schools", school, "shared", "users"), {
-                          data: mergedUsers,
-                        }).catch(console.error);
-                      }
 
                       if (
                         JSON.stringify(prev.users) !==
@@ -2157,6 +2180,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     const authUser: AuthUser = {
       id: user.id,
       name: user.name,
+      jobTitle: user.jobTitle,
+      grades: user.grades,
+      sections: user.sections,
       selectedSchool: school,
       selectedYear: year,
       role: user.role,

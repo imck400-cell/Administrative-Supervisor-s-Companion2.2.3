@@ -1792,12 +1792,17 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({
       const statusLabel =
         statusOptions.find((o) => o.id === statusId)?.label || "";
       const isRemoving = !current.includes(studentId); // removing from auto list via exclusion
-      const updatedStudents = students.map((s) => {
-        if (s.id === studentId) {
-          return { ...s, otherNotesText: isRemoving ? "" : statusLabel };
+
+      const updatedStudents = [...(data.studentReports || [])];
+      const index = updatedStudents.findIndex(s => s.id === studentId);
+      if (index >= 0) {
+        updatedStudents[index] = { ...updatedStudents[index], otherNotesText: isRemoving ? "" : statusLabel };
+      } else {
+        const sourceStudent = students.find(s => s.id === studentId);
+        if (sourceStudent) {
+          updatedStudents.push({ ...sourceStudent, otherNotesText: isRemoving ? "" : statusLabel });
         }
-        return s;
-      });
+      }
 
       updateData({
         absenceExclusions: { ...exclusions, [statusId]: updated },
@@ -1811,10 +1816,18 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({
       if (!current.includes(studentId)) {
         const statusLabel =
           statusOptions.find((o) => o.id === statusId)?.label || "";
-        const updatedStudents = students.map((s) => {
-          if (s.id === studentId) return { ...s, otherNotesText: statusLabel };
-          return s;
-        });
+          
+        const updatedStudents = [...(data.studentReports || [])];
+        const index = updatedStudents.findIndex(s => s.id === studentId);
+        if (index >= 0) {
+          updatedStudents[index] = { ...updatedStudents[index], otherNotesText: statusLabel };
+        } else {
+          const sourceStudent = students.find(s => s.id === studentId);
+          if (sourceStudent) {
+            updatedStudents.push({ ...sourceStudent, otherNotesText: statusLabel });
+          }
+        }
+
         updateData({
           absenceManualAdditions: {
             ...manual,

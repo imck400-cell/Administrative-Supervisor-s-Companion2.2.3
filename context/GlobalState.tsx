@@ -1111,6 +1111,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
             const q = doc(db, "schools", school, "shared", key);
             const unsub = onSnapshot(
               q,
+              { includeMetadataChanges: true },
               (snapshot) => {
                 if (snapshot.exists()) {
                   const remoteData = snapshot.data().data;
@@ -1196,6 +1197,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
             const q = doc(db, "system", "introConfig", "data", key);
             const unsub = onSnapshot(
               q,
+              { includeMetadataChanges: true },
               (snapshot) => {
                 if (snapshot.exists() && snapshot.data().data !== undefined) {
                   const remoteData = snapshot.data().data;
@@ -1232,6 +1234,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
   const dataListeners = React.useRef<Set<string>>(new Set());
   const isAuthDocSetup = React.useRef(false);
   const dataBufferRef = React.useRef<Record<string, Record<string, any[]>>>({});
+  // Track which buffer keys belong to the current listener cycle so we can clean stale ones
+  const activeBufferKeys = React.useRef<Set<string>>(new Set());
 
   // Memoize the set of user IDs we need to listen to
   const targetUserIds = React.useMemo(() => {
@@ -1257,8 +1261,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     const unsubscribes: (() => void)[] = [];
     let isMounted = true;
 
-    // Clear listeners so we re-listen for every new configuration change
+    // Clear listener IDs so we re-listen for every new configuration change
+    // But do NOT clear dataBufferRef — we preserve accumulated data across re-subscriptions
     dataListeners.current.clear();
+    // Track which buffer keys we create in this cycle
+    const currentCycleBufferKeys = new Set<string>();
 
     const startListeners = async () => {
       let uid = "";
@@ -1382,7 +1389,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
           dataListeners.current.add(listenerId);
 
           const q = doc(db, "schools", school, "shared", key);
-          const unsub = onSnapshot(q, (snapshot) => {
+          const unsub = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
             if (snapshot.exists()) {
               const remoteData = snapshot.data().data;
 
@@ -1403,7 +1410,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
               // Use buffering for all array-based shared keys (Users, Schools, Secretariat, etc.)
               if (Array.isArray(remoteData)) {
                 if (!dataBufferRef.current[key]) dataBufferRef.current[key] = {};
-                dataBufferRef.current[key]["shared_" + school] = remoteData;
+                const bufKey = "shared_" + school;
+                dataBufferRef.current[key][bufKey] = remoteData;
+                currentCycleBufferKeys.add(key + "::" + bufKey);
 
                 const allItemsFromAllDocs = Object.values(
                   dataBufferRef.current[key],
@@ -1493,7 +1502,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
           if (!dataListeners.current.has(sharedListenerId)) {
             dataListeners.current.add(sharedListenerId);
             const sq = doc(db, "schools", school, "shared", key);
-            const sunsub = onSnapshot(sq, (sharedSnap) => {
+            const sunsub = onSnapshot(sq, { includeMetadataChanges: true }, (sharedSnap) => {
               if (sharedSnap.exists() && (isAdminOrFull || !dataListeners.current.has(personalListenerId))) {
                 const fetchedData = sharedSnap.data().data;
                 setData((prev) => {
@@ -1520,7 +1529,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
               "data",
               key,
             );
-            const punsub = onSnapshot(pq, (personalSnap) => {
+            const punsub = onSnapshot(pq, { includeMetadataChanges: true }, (personalSnap) => {
               if (personalSnap.exists()) {
                 const fetchedData = personalSnap.data().data;
                 setData((prev) => {
@@ -1545,6 +1554,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
             const q = doc(db, "schools", school, "users", uid, "data", key);
             const unsub = onSnapshot(
               q,
+              { includeMetadataChanges: true },
               (snapshot) => {
                 const items =
                   snapshot.exists() && Array.isArray(snapshot.data().items)
@@ -1552,7 +1562,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                     : [];
                 
                 if (!dataBufferRef.current[key]) dataBufferRef.current[key] = {};
-                dataBufferRef.current[key][school + "_" + uid] = items;
+                const bufKey = school + "_" + uid;
+                dataBufferRef.current[key][bufKey] = items;
+                currentCycleBufferKeys.add(key + "::" + bufKey);
 
                 const mergedArray = Object.values(
                   dataBufferRef.current[key],
@@ -1596,7 +1608,23 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       isMounted = false;
       unsubscribes.forEach((u) => u());
       dataListeners.current.clear();
-      dataBufferRef.current = {};
+      // IMPORTANT: Do NOT clear dataBufferRef entirely.
+      // Only remove buffer entries that are NOT part of the current cycle,
+      // so that data from active snapshots is preserved across re-subscriptions.
+      // This prevents the "flash of empty data" that was causing sync issues.
+      // We keep all current cycle keys and remove stale ones from previous cycles.
+      const keysToKeep = currentCycleBufferKeys;
+      for (const dataKey of Object.keys(dataBufferRef.current)) {
+        for (const subKey of Object.keys(dataBufferRef.current[dataKey])) {
+          if (!keysToKeep.has(dataKey + "::" + subKey)) {
+            delete dataBufferRef.current[dataKey][subKey];
+          }
+        }
+        // Remove empty parent keys
+        if (Object.keys(dataBufferRef.current[dataKey]).length === 0) {
+          delete dataBufferRef.current[dataKey];
+        }
+      }
     };
   }, [
     isAuthenticated,

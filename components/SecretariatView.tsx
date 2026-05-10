@@ -380,31 +380,23 @@ const StudentsManager = () => {
   };
 
   const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
-  const isExplicitlyDisabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser!.permissions!.secretariat.includes('disable');
-  const isAllowEdits = Array.isArray(currentUser?.permissions?.secretariat) && currentUser!.permissions!.secretariat.includes('allowEdits');
+  const isExplicitlyDisabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('disable');
+  const isAllowEdits = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('allowEdits');
   const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
-  
   const isReadOnly = !isGeneralSupervisor && ((isReadOnlyFlag && !isAllowEdits) || isExplicitlyDisabled);
 
-  const availableSchoolsKeys = data.availableSchools || [];
+  const availableSchoolsKeys = Object.keys(data.profile.schoolsAndBranches || {});
   const userSchools = isGeneralSupervisor ? availableSchoolsKeys : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
 
   const getAvailableBranches = (school: string) => {
-    const allBranches = data.schoolBranches?.[school] || [];
-    if (isGeneralSupervisor) return allBranches;
-    const userBranches = currentUser?.permissions?.schoolsAndBranches?.[school] || [];
-    if (userBranches.length > 0) return userBranches;
-    return allBranches;
+    if (isGeneralSupervisor) return data.profile.schoolsAndBranches?.[school] || [];
+    const userBranches = currentUser?.permissions?.schoolsAndBranches?.[school];
+    if (userBranches && userBranches.length > 0) return userBranches;
+    return userBranches || [];
   };
 
   const filteredStudents = useMemo(() => {
     let result = students;
-    if (!isGeneralSupervisor && currentUser?.selectedBranch) {
-        const userBranches = currentUser.selectedBranch.split(',').map(b => b.trim());
-        if (!userBranches.includes('all') && userBranches.length > 0) {
-           result = result.filter(s => userBranches.includes(s.branch));
-        }
-    }
     if (showMissingOnly) {
       result = result.filter(s => getMissingFields(s).length > 0);
     }
@@ -570,9 +562,7 @@ const StudentsManager = () => {
                 <td className="p-2">
                   <select className="w-full bg-white border border-orange-300 rounded-lg p-2 outline-none focus:border-orange-500 text-sm" onChange={e => { bulkUpdateField('branch', e.target.value); e.target.value = ''; }}>
                     <option value="">تطبيق فرع...</option>
-                    {Array.from(new Set(userSchools.flatMap(s => getAvailableBranches(s)))).map(b => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
+                    {data.profile.schoolsAndBranches && Object.values(data.profile.schoolsAndBranches).flat().filter((v, i, a) => a.indexOf(v) === i).map((b: any) => <option key={b} value={b}>{b}</option>)}
                   </select>
                 </td>
                 <td className="p-2 text-center text-orange-700 text-xs font-bold">لا يمكن تعميم الاسم</td>
@@ -912,34 +902,25 @@ const StaffManager = () => {
   };
 
   const isGeneralSupervisor = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
-  const isExplicitlyDisabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser!.permissions!.secretariat.includes('disable');
-  const isAllowEdits = Array.isArray(currentUser?.permissions?.secretariat) && currentUser!.permissions!.secretariat.includes('allowEdits');
+  const isExplicitlyDisabled = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('disable');
+  const isAllowEdits = Array.isArray(currentUser?.permissions?.secretariat) && currentUser.permissions.secretariat.includes('allowEdits');
   const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
-  
   const isReadOnly = !isGeneralSupervisor && ((isReadOnlyFlag && !isAllowEdits) || isExplicitlyDisabled);
 
-  const availableSchoolsKeys = data.availableSchools || [];
+  const availableSchoolsKeys = Object.keys(data.profile.schoolsAndBranches || {});
   const userSchools = isGeneralSupervisor ? availableSchoolsKeys : currentUser?.selectedSchool.split(',').map(s => s.trim()) || [];
 
   const getAvailableBranches = (school: string) => {
-    const allBranches = data.schoolBranches?.[school] || [];
-    if (isGeneralSupervisor) return allBranches;
-    const userBranches = currentUser?.permissions?.schoolsAndBranches?.[school] || [];
-    if (userBranches.length > 0) return userBranches;
-    return allBranches;
+    if (isGeneralSupervisor) return data.profile.schoolsAndBranches?.[school] || [];
+    const userBranches = currentUser?.permissions?.schoolsAndBranches?.[school];
+    if (userBranches && userBranches.length > 0) return userBranches;
+    return userBranches || [];
   };
 
   const filteredStaff = useMemo(() => {
-    let result = staff;
-    if (!isGeneralSupervisor && currentUser?.selectedBranch) {
-        const userBranches = currentUser.selectedBranch.split(',').map(b => b.trim());
-        if (!userBranches.includes('all') && userBranches.length > 0) {
-           result = result.filter(s => userBranches.includes(s.branch));
-        }
-    }
-    if (!searchQuery) return result;
+    if (!searchQuery) return staff;
     const lowerQ = searchQuery.toLowerCase();
-    return result.filter(s => 
+    return staff.filter(s => 
       String(s.name || '').toLowerCase().includes(lowerQ) ||
       String(s.school || '').toLowerCase().includes(lowerQ) ||
       String(s.branch || '').toLowerCase().includes(lowerQ) ||

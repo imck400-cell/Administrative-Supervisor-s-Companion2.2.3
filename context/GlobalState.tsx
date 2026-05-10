@@ -384,33 +384,13 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           console.log(`✨ استلمت تحديثاً للمدرسة رقم: ${school} من المسار المباشر (${fullPath}) والبيانات هي:`, remoteData);
           setData(prev => {
             const isCurrentlyActive = currentUser?.selectedSchool?.split(',')[0]?.trim() === school || (currentUser?.selectedSchool?.split(',')[0]?.trim() === 'all' && prev.availableSchools?.[0] === school);
-            
-            let updatedCurrentProfile = prev.profile;
-            if (isCurrentlyActive) {
-              const schoolProfiles = remoteData || {};
-              const currentBranch = currentUser?.selectedBranch?.trim();
-              
-              let newProfileProps = {};
-              if (currentBranch && schoolProfiles[currentBranch]) {
-                newProfileProps = schoolProfiles[currentBranch];
-              } else if (schoolProfiles.ministry !== undefined) {
-                newProfileProps = schoolProfiles;
-              } else {
-                const firstBranchKey = Object.keys(schoolProfiles)[0];
-                if (firstBranchKey && typeof schoolProfiles[firstBranchKey] === 'object') {
-                  newProfileProps = schoolProfiles[firstBranchKey];
-                }
-              }
-              updatedCurrentProfile = { ...prev.profile, ...newProfileProps };
-            }
-
             return {
               ...prev,
               profiles: {
                 ...(prev.profiles || {}),
                 [school]: remoteData
               },
-              ...(isCurrentlyActive ? { profile: updatedCurrentProfile } : {})
+              ...(isCurrentlyActive ? { profile: { ...prev.profile, ...remoteData } } : {})
             };
           });
         }
@@ -535,22 +515,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     
     if (activeSchool && newData.profiles && newData.profiles[activeSchool]) {
-      const schoolProfiles = newData.profiles[activeSchool];
-      const currentBranch = currentUser?.selectedBranch?.trim();
-      
-      // Support new branch-based format and legacy fallback
-      if (currentBranch && schoolProfiles[currentBranch]) {
-        newData.profile = { ...newData.profile, ...schoolProfiles[currentBranch] };
-      } else if (schoolProfiles.ministry !== undefined) {
-        // Legacy: previously stored directly in profiles[school]
-        newData.profile = { ...newData.profile, ...schoolProfiles };
-      } else {
-        // Default to first available branch if we have branch-based format but current branch not found
-        const firstBranchKey = Object.keys(schoolProfiles)[0];
-        if (firstBranchKey && typeof schoolProfiles[firstBranchKey] === 'object') {
-          newData.profile = { ...newData.profile, ...schoolProfiles[firstBranchKey] };
-        }
-      }
+      newData.profile = { ...newData.profile, ...newData.profiles[activeSchool] };
     }
 
     // Activity arrays — filter by both user and date
@@ -629,19 +594,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const savedData = localStorage.getItem('rafiquk_data');
     if (savedData) {
       const parsed = JSON.parse(savedData);
-      
-      // Ensure default users and schools are retained if accidentally deleted
-      if (parsed.users) {
-        const mergedUsersMap = new Map();
-        defaultData.users.forEach(u => mergedUsersMap.set(u.id, u));
-        parsed.users.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
-        parsed.users = Array.from(mergedUsersMap.values());
-      }
-      
-      if (parsed.availableSchools) {
-        parsed.availableSchools = [...new Set([...(defaultData.availableSchools || []), ...parsed.availableSchools])];
-      }
-
       setData(prev => ({ ...prev, ...parsed }));
     }
     const authFlag = sessionStorage.getItem('rafiquk_auth');
@@ -671,24 +623,23 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               const remoteData = snapshot.data().data;
               setData(prev => {
                 if (key === 'users') {
+                  const existingUsers = prev.users || [];
                   const newUsers = Array.isArray(remoteData) ? remoteData : [];
-                  
-                  // Retain default users and previous users
-                  const mergedUsersMap = new Map();
-                  (prev.users || []).forEach(u => mergedUsersMap.set(u.id, u));
-                  defaultData.users.forEach(u => mergedUsersMap.set(u.id, u));
-                  newUsers.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
-                  const mergedUsers = Array.from(mergedUsersMap.values());
-
-                  // Restore to Firebase if missing
-                  if (newUsers.length < mergedUsers.length) {
-                    setDoc(doc(db, 'schools', school, 'shared', 'users'), { data: mergedUsers }).catch(console.error);
-                  }
-                  
-                  if (JSON.stringify(prev.users) !== JSON.stringify(mergedUsers)) {
-                    return { ...prev, users: mergedUsers };
-                  }
-                  return prev;
+                  const merged = [...existingUsers];
+                  let changed = false;
+                  newUsers.forEach(nu => {
+                    const idx = merged.findIndex(u => u.id === nu.id);
+                    if (idx >= 0) {
+                      if (JSON.stringify(merged[idx]) !== JSON.stringify(nu)) {
+                        merged[idx] = nu;
+                        changed = true;
+                      }
+                    } else {
+                      merged.push(nu);
+                      changed = true;
+                    }
+                  });
+                  return changed ? { ...prev, users: merged } : prev;
                 } else {
                    const existing = prev[key] as any[] || [];
                    const incoming = Array.isArray(remoteData) ? remoteData : [];
@@ -747,12 +698,40 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Memoize the set of user IDs we need to listen to
   const targetUserIds = React.useMemo(() => {
     if (!isAuthenticated || !currentUser) return "";
+    const selectedSchools = currentUser.selectedSchool.split(',').map(s => s.trim());
+    const isAdminOrFull = currentUser.role === 'admin' || currentUser.permissions?.all === true;
+    const isManager = currentUser.permissions?.userManagement === true;
     
-    const ids = [...effectiveUserIds];
-    
-    // CRITICAL: Also include any users selected in the userFilter just in case
+    let ids: string[] = [];
+
+    if (isAdminOrFull) {
+      ids = data.users.filter(u => 
+        selectedSchools.includes('all') || 
+        u.schools.some(s => selectedSchools.includes(s))
+      ).map(u => u.id);
+    } else {
+      if (userFilter === 'all') {
+        if (isManager) {
+          const explicitlyManaged = currentUser.permissions?.managedUserIds || [];
+          ids = data.users.filter(u => {
+            if (u.id === currentUser.id) return true;
+            const isTargetAdmin = u.role === 'admin' || u.permissions?.all === true;
+            if (isTargetAdmin) return false;
+
+            return explicitlyManaged.includes(u.id);
+          }).map(u => u.id);
+        } else {
+          // Regular users ONLY see themselves
+          ids = [currentUser.id];
+        }
+      } else {
+        ids = userFilter.split(',');
+      }
+    }
+
+    // CRITICAL: Also include any users selected in the userFilter
     if (userFilter && userFilter !== 'all') {
-      const filterIds = userFilter.split(',').filter(id => id.length > 0);
+      const filterIds = userFilter.split(',');
       filterIds.forEach(id => {
         if (!ids.includes(id)) ids.push(id);
       });
@@ -760,7 +739,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     
     if (!ids.includes(currentUser.id)) ids.push(currentUser.id);
     return ids.sort().join(',');
-  }, [isAuthenticated, currentUser?.id, effectiveUserIds, userFilter]);
+  }, [isAuthenticated, currentUser?.id, currentUser?.selectedSchool, currentUser?.role, currentUser?.permissions, data.users, userFilter]);
 
   useEffect(() => {
     if (!isAuthenticated || !currentUser) return;
@@ -782,7 +761,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           try {
             await setDoc(doc(db, 'users', uid), {
               customUserId: currentUser.id,
-              role: currentUser.role || 'user',
+              role: currentUser.role,
               schools: currentUser.selectedSchool.split(',').map(s => s.trim()),
               permissions: currentUser.permissions || {}
             });
@@ -831,21 +810,25 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               const remoteData = snapshot.data().data;
               setData(prev => {
                 if (key === 'users') {
+                  const existingUsers = prev.users || [];
                   const newUsers = Array.isArray(remoteData) ? remoteData : [];
-                  const mergedUsersMap = new Map();
-                  (prev.users || []).forEach(u => mergedUsersMap.set(u.id, u));
-                  defaultData.users.forEach(u => mergedUsersMap.set(u.id, u));
-                  newUsers.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
-                  const mergedUsers = Array.from(mergedUsersMap.values());
-                  
-                  // Restore to Firebase if missing from cloud data, only admins do this to avoid spam
-                  if (newUsers.length < mergedUsers.length && isAdminOrFull) {
-                    console.log('Restoring missing default users to Firebase...');
-                    setDoc(doc(db, 'schools', school, 'shared', 'users'), { data: mergedUsers }).catch(console.error);
-                  }
-
-                  if (JSON.stringify(prev.users) !== JSON.stringify(mergedUsers)) {
-                    const updated = { ...prev, users: mergedUsers };
+                  const merged = [...existingUsers];
+                  let changed = false;
+                  let updated: any;
+                  newUsers.forEach(nu => {
+                    const idx = merged.findIndex(u => u.id === nu.id);
+                    if (idx >= 0) {
+                      if (JSON.stringify(merged[idx]) !== JSON.stringify(nu)) {
+                        merged[idx] = nu;
+                        changed = true;
+                      }
+                    } else {
+                      merged.push(nu);
+                      changed = true;
+                    }
+                  });
+                  if (changed) {
+                    updated = { ...prev, users: merged };
                     StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
                     return updated;
                   }
@@ -853,20 +836,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 } else if (key === 'availableSchools' || key === 'availableYears') {
                   const existing = prev[key] as any[] || [];
                   const incoming = Array.isArray(remoteData) ? remoteData : [];
-                  
-                  const defaultSchools = key === 'availableSchools' ? (defaultData.availableSchools || []) : [];
-                  const rawMerged = [...new Set([...existing, ...incoming])];
-                  // Ensure availableSchools always has defaults
-                  const finalMerged = key === 'availableSchools' ? [...new Set([...defaultSchools, ...rawMerged])] : rawMerged;
-                  
-                  if (key === 'availableSchools' && incoming.length < finalMerged.length && isAdminOrFull) {
-                     setDoc(doc(db, 'schools', school, 'shared', key), { data: finalMerged }).catch(console.error);
-                  }
-
-                  if (finalMerged.length === existing.length && finalMerged.every((v, i) => v === existing[i])) {
+                  const merged = [...new Set([...existing, ...incoming])];
+                  if (merged.length === existing.length && merged.every((v, i) => v === existing[i])) {
                     return prev;
                   }
-                  const updated = { ...prev, [key]: finalMerged };
+                  const updated = { ...prev, [key]: merged };
                   StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
                   return updated;
                 } else {
@@ -965,6 +939,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               const uniqueMergedArray = Array.from(new Map(mergedArray.filter(item => item && item.id).map(item => [item.id, item])).values());
               
               setData(prev => {
+                const currentArray = prev[key] as any[];
+                if (currentArray && currentArray.length === uniqueMergedArray.length && 
+                    JSON.stringify(currentArray) === JSON.stringify(uniqueMergedArray)) {
+                  return prev;
+                }
                 const updated = { ...prev, [key]: uniqueMergedArray };
                 StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
                 return updated;
@@ -990,39 +969,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [isAuthenticated, currentUser?.id, currentUser?.selectedSchool, targetUserIds, data.availableSchools]);
 
 
-  const updateData = async (newDataPayload: Partial<AppData>, overrideSchools?: string[]) => {
+  const updateData = async (newData: Partial<AppData>, overrideSchools?: string[]) => {
     if (isAuthenticated && currentUser) {
-      const processedNewData = { ...newDataPayload };
-      
-      // Ensure profile updates always target the branch-specific map format in the cloud
-      if (processedNewData.profile) {
-        const isFlatProfile = (processedNewData.profile as any).ministry !== undefined || (processedNewData.profile as any).district !== undefined;
-        if (isFlatProfile) {
-          const currentSchool = currentUser.selectedSchool?.split(',')[0]?.trim();
-          const currentBranch = currentUser.selectedBranch?.trim();
-          if (currentSchool && currentBranch) {
-            const existingSchoolProfiles = data.profiles?.[currentSchool] || {};
-            const activeProfileObj = { ...existingSchoolProfiles[currentBranch], ...(processedNewData.profile as any), branch: currentBranch };
-            delete activeProfileObj.lastUpdated;
-            processedNewData.profile = {
-              ...existingSchoolProfiles,
-              [currentBranch]: activeProfileObj,
-            } as any;
-          } else if (currentSchool) {
-             const fallbackBranch = 'الاعدادات العامة';
-             const existingSchoolProfiles = data.profiles?.[currentSchool] || {};
-             const activeProfileObj = { ...existingSchoolProfiles[fallbackBranch], ...(processedNewData.profile as any), branch: fallbackBranch };
-             delete activeProfileObj.lastUpdated;
-             processedNewData.profile = {
-               ...existingSchoolProfiles,
-               [fallbackBranch]: activeProfileObj,
-             } as any;
-          }
-        }
-      }
-      
-      const newData = processedNewData;
-
       let isBlockedByReadOnly = currentUser.permissions?.readOnly;
 
       if (isBlockedByReadOnly) {
@@ -1079,11 +1027,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return;
       }
       const selectedSchools = overrideSchools && overrideSchools.length > 0 ? overrideSchools.map(s => s.trim()) : currentUser.selectedSchool.split(',').map(s => s.trim());
-      let targetAvailableSchools = data.availableSchools || [];
-      if (newData.availableSchools) {
-        targetAvailableSchools = newData.availableSchools;
-      }
-      const schoolsToUpdate = (selectedSchools.includes('all') ? targetAvailableSchools : selectedSchools).map(s => s.trim());
+      const schoolsToUpdate = (selectedSchools.includes('all') ? (data.availableSchools || []) : selectedSchools).map(s => s.trim());
       // const schoolsToUpdate = ['TEST_SCHOOL']; // 🔥 HARDCODED FOR TEST
       const strictlySharedKeys = ['profile', 'users', 'availableSchools', 'availableYears', 'secretariatStudents', 'secretariatStaff', 'selfEvaluationTemplates', 'metricsList', 'adminMetricsList', 'branchMetrics', 'adminBranchMetrics', 'adminFollowUpTypes', 'adminActivitiesList', 'adminBranchActivities', 'adminIndividualReportFields'];
       const customizableKeys = ['taskTemplates', 'customViolationElements', 'absenceManualAdditions', 'absenceExclusions'];
@@ -1147,15 +1091,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             if (key === 'profile') {
               newData[key] = { ...(newData[key] as any), lastUpdated: Date.now() };
             }
-            if (key === 'users' && Array.isArray(newData[key])) {
-              const mergedUsersMap = new Map();
-              defaultData.users.forEach(u => mergedUsersMap.set(u.id, u));
-              (newData[key] as any[]).forEach(u => mergedUsersMap.set(u.id, u));
-              newData[key] = Array.from(mergedUsersMap.values()) as any;
-            }
-            if (key === 'availableSchools' && Array.isArray(newData[key])) {
-              newData[key] = [...new Set([...(defaultData.availableSchools || []), ...newData[key]])] as any;
-            }
 
             // Priority: Send to Firestore first for strictly shared data
             const promises = schoolsToUpdate.map(async school => {
@@ -1185,24 +1120,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             await Promise.all(promises);
 
             // Update local state immediately for instant feedback
-            if (key !== 'profile') {
-              pendingChanges[key] = newData[key] as any;
-            } else {
-               const schoolProfiles = newData[key] as any;
-               const currentBranch = currentUser?.selectedBranch?.trim();
-               let newProfileProps = {};
-               if (currentBranch && schoolProfiles[currentBranch]) {
-                 newProfileProps = schoolProfiles[currentBranch];
-               } else if (schoolProfiles.ministry !== undefined) {
-                 newProfileProps = schoolProfiles;
-               } else {
-                 const firstBranchKey = Object.keys(schoolProfiles)[0];
-                 if (firstBranchKey && typeof schoolProfiles[firstBranchKey] === 'object') {
-                   newProfileProps = schoolProfiles[firstBranchKey];
-                 }
-               }
-               pendingChanges.profile = { ...(rawData.profile || {}), ...newProfileProps } as any;
-            }
+            pendingChanges[key] = newData[key] as any;
           }
           continue;
         }
@@ -1257,17 +1175,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         for (const uid of userIds) {
-          // Check if the items changed, independent of array ordering
+          if (currentUser.role !== 'admin' && uid !== currentUser.id) continue;
+
           const userItems = finalArray.filter(item => item.userId === uid);
-          const oldUserItems = oldArray.filter(item => item.userId === uid);
           
-           const sortedUserItems = [...userItems].sort((a,b) => (a.id || '').localeCompare(b.id || ''));
-           const sortedOldUserItems = [...oldUserItems].sort((a,b) => (a.id || '').localeCompare(b.id || ''));
-
-          if (JSON.stringify(sortedUserItems) === JSON.stringify(sortedOldUserItems)) {
-             continue; // No changes for this user, skip Firebase write
-          }
-
           // Group by school
           const itemsBySchool: Record<string, any[]> = {};
           schoolsToUpdate.forEach(s => itemsBySchool[s] = []); // Initialize all with empty array

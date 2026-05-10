@@ -88,12 +88,12 @@ const ProfilePage: React.FC = () => {
                 <label className="text-xs font-black text-slate-500 mr-2 flex items-center gap-2">
                   {field.icon}
                   {field.label}
-                  {field.autoFilled && <span className="text-[10px] text-white bg-gradient-to-r from-violet-500 to-purple-500 px-2 py-0.5 rounded-full shadow-sm">تلقائي من السكرتارية</span>}
+                  {field.autoFilled && <span className="text-[10px] text-white bg-slate-400 px-1.5 py-0.5 rounded-full">تلقائي من السكرتارية</span>}
                 </label>
                 <input
                   type="text"
                   disabled={isFieldReadOnly}
-                  className={`w-full p-4 rounded-2xl border-2 transition-all outline-none font-bold ${field.autoFilled ? 'bg-violet-50/50 border-violet-100 text-violet-900 shadow-inner' : isFieldReadOnly ? 'bg-slate-100 border-slate-200 text-slate-700 opacity-70 cursor-not-allowed' : 'bg-slate-50 border-slate-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-slate-700'}`}
+                  className={`w-full p-4 rounded-2xl border-2 transition-all outline-none font-bold text-slate-700 ${isFieldReadOnly ? 'bg-slate-100 border-slate-200 opacity-70 cursor-not-allowed' : 'bg-slate-50 border-slate-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-100'}`}
                   value={(profile as any)[field.key] || ''}
                   onChange={(e) => updateField(field.key, e.target.value)}
                   placeholder="..."

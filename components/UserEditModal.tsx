@@ -268,7 +268,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
     
     const cleanUsers = JSON.parse(JSON.stringify(newUsers));
     
-    updateData({ users: cleanUsers }, data.availableSchools);
+    updateData({ users: cleanUsers });
     onClose();
   };
 
@@ -281,7 +281,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user }) 
       message: 'هل أنت متأكد من حذف هذا المستخدم؟',
       type: 'danger',
       onConfirm: () => {
-        updateData({ users: data.users.filter(u => u.id !== formData.id) }, data.availableSchools);
+        updateData({ users: data.users.filter(u => u.id !== formData.id) });
         onClose();
       }
     });

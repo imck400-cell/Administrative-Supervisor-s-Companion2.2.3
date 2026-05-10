@@ -15,6 +15,7 @@ import {
   onSnapshot,
   getDoc,
   getDocFromServer,
+  writeBatch,
 } from "firebase/firestore";
 import { toast } from "sonner";
 
@@ -1965,6 +1966,15 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                       s.school === school ||
                       (s.schoolBranch && s.schoolBranch.startsWith(school)),
                   ) as any;
+                }
+                
+                // PERFORMANCE FIX: Only push to the network if the array for this specific school actually changed
+                if (dataBufferRef.current[key]) {
+                  const existingBuffer = dataBufferRef.current[key]["shared_" + school];
+                  if (existingBuffer && JSON.stringify(existingBuffer) === JSON.stringify(payloadToSave)) {
+                    // Array is identical to what's already in Firebase for this branch, skip write
+                    return; 
+                  }
                 }
               }
 

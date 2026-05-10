@@ -45,6 +45,9 @@ const AdvancedLoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [showMultiSchool, setShowMultiSchool] = useState(false);
 
+ 
+
+
   // Auto-fill school and year when username matches a user
   useEffect(() => {
     if (username.trim()) {

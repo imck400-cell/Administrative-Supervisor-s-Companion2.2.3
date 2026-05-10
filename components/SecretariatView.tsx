@@ -204,8 +204,7 @@ const StudentsManager = () => {
     }
 
     if (cloudData) {
-      setStudents(
-        cloudData.map((s: any) => ({
+      const newStudents = cloudData.map((s: any) => ({
           ...s,
           school:
             s.school ||
@@ -215,10 +214,14 @@ const StudentsManager = () => {
           branch:
             s.branch ||
             (s.schoolBranch ? s.schoolBranch.split("-")[1]?.trim() || "" : ""),
-        })),
-      );
+        }));
+        
+        // Deep compare to prevent flickering from frequent refetches
+        if (JSON.stringify(students) !== JSON.stringify(newStudents)) {
+           setStudents(newStudents);
+        }
     }
-  }, [data.secretariatStudents, updateData]);
+  }, [data.secretariatStudents, updateData, students]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -1151,8 +1154,7 @@ const StaffManager = () => {
     }
 
     if (cloudData) {
-      setStaff(
-        cloudData.map((s: any) => ({
+      const newStaff = cloudData.map((s: any) => ({
           ...s,
           school:
             s.school ||
@@ -1162,10 +1164,13 @@ const StaffManager = () => {
           branch:
             s.branch ||
             (s.schoolBranch ? s.schoolBranch.split("-")[1]?.trim() || "" : ""),
-        })),
-      );
+        }));
+        
+        if (JSON.stringify(staff) !== JSON.stringify(newStaff)) {
+            setStaff(newStaff);
+        }
     }
-  }, [data.secretariatStaff, updateData]);
+  }, [data.secretariatStaff, updateData, staff]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);

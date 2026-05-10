@@ -771,7 +771,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       activeUnsubs.forEach((unsub) => unsub());
     };
-  }, [isAuthenticated, currentUser?.selectedSchool, data.availableSchools]);
+  }, [
+    isAuthenticated,
+    currentUser?.selectedSchool, 
+    data.availableSchools?.join(",")
+  ]);
 
   // Compute the effective set of user IDs that should be visible.
   // This is ALWAYS a concrete list — never null — so filtering is always applied.
@@ -887,7 +891,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     currentUser,
     userFilter,
     data.users,
-    data.availableSchools,
+    data.availableSchools?.join(",")
   ]);
 
   const filteredData = React.useMemo(() => {
@@ -1056,35 +1060,46 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     }
     testConnection();
 
-    const savedData = localStorage.getItem("rafiquk_data");
-    if (savedData) {
-      const parsed = JSON.parse(savedData);
-
-      // Ensure default users and schools are retained if accidentally deleted
-      if (parsed.users) {
-        const mergedUsersMap = new Map();
-        defaultData.users.forEach((u) => mergedUsersMap.set(u.id, u));
-        parsed.users.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
-        parsed.users = Array.from(mergedUsersMap.values());
-      }
-
-      if (parsed.availableSchools) {
-        parsed.availableSchools = [
-          ...new Set([
-            ...(defaultData.availableSchools || []),
-            ...parsed.availableSchools,
-          ]),
-        ];
-      }
-
-      setData((prev) => ({ ...prev, ...parsed }));
-    }
     const authFlag = sessionStorage.getItem("rafiquk_auth");
-    const savedUser = sessionStorage.getItem("rafiquk_user");
-    if (authFlag === "true" && savedUser) {
+    const savedUserStr = sessionStorage.getItem("rafiquk_user");
+    let savedUser = null;
+    if (authFlag === "true" && savedUserStr) {
+      savedUser = JSON.parse(savedUserStr);
       setIsAuthenticated(true);
-      setCurrentUser(JSON.parse(savedUser));
+      setCurrentUser(savedUser);
     }
+
+    const savedData = localStorage.getItem("rafiquk_data");
+    const lastUid = localStorage.getItem("rafiquk_last_uid");
+
+    if (savedData) {
+      if (!savedUser || lastUid !== savedUser.id) {
+        // User changed or logged out: don't load full cache to avoiding leaking data
+        localStorage.removeItem("rafiquk_data");
+      } else {
+        const parsed = JSON.parse(savedData);
+
+        // Ensure default users and schools are retained if accidentally deleted
+        if (parsed.users) {
+          const mergedUsersMap = new Map();
+          defaultData.users.forEach((u) => mergedUsersMap.set(u.id, u));
+          parsed.users.forEach((u: AuthUser) => mergedUsersMap.set(u.id, u));
+          parsed.users = Array.from(mergedUsersMap.values());
+        }
+
+        if (parsed.availableSchools) {
+          parsed.availableSchools = [
+            ...new Set([
+              ...(defaultData.availableSchools || []),
+              ...parsed.availableSchools,
+            ]),
+          ];
+        }
+
+        setData((prev) => ({ ...prev, ...parsed }));
+      }
+    }
+    
     const savedLang = localStorage.getItem("rafiquk_lang") as Language;
     if (savedLang) setLang(savedLang);
 
@@ -1267,9 +1282,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                 .split(",")
                 .map((s) => s.trim()),
               permissions: currentUser.permissions || {},
-            });
+            }, { merge: true });
 
-            await new Promise((resolve) => setTimeout(resolve, 800));
             isAuthDocSetup.current = true;
           } catch (err: any) {
             console.error("Error setting user doc:", err);
@@ -1629,7 +1643,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     currentUser?.id,
     currentUser?.selectedSchool,
     targetUserIds,
-    data.availableSchools,
+    data.availableSchools?.join(",")
   ]);
 
   const updateData = async (
@@ -1702,6 +1716,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
           studentEvaluations: ["teacherPortal"],
           substitutions: ["substitutions"],
           schoolProfile: ["schoolProfile"],
+          profile: ["schoolProfile"],
+          schoolBranches: ["schoolProfile"],
+          availableSchools: ["schoolProfile"], // Admins can manage this usually, but keep it mapped just in case
           users: ["userManagement"],
           taskReports: ["specialReports"],
           absenceLogs: ["specialReports"],
@@ -2188,6 +2205,20 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       role: user.role,
       permissions: user.permissions,
     };
+    
+    const lastUid = localStorage.getItem("rafiquk_last_uid");
+    if (lastUid !== user.id) {
+       localStorage.removeItem("rafiquk_data");
+       localStorage.setItem("rafiquk_last_uid", user.id);
+       setData((prev) => ({
+         ...defaultData,
+         users: prev.users, // Retain users list for login dropdown
+         availableSchools: prev.availableSchools,
+         availableYears: prev.availableYears,
+         schoolBranches: prev.schoolBranches,
+       }));
+    }
+
     setIsAuthenticated(true);
     setCurrentUser(authUser);
     sessionStorage.setItem("rafiquk_auth", "true");
@@ -2199,6 +2230,15 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     setCurrentUser(null);
     sessionStorage.removeItem("rafiquk_auth");
     sessionStorage.removeItem("rafiquk_user");
+    localStorage.removeItem("rafiquk_last_uid");
+    localStorage.removeItem("rafiquk_data");
+    setData((prev) => ({
+      ...defaultData,
+      users: prev.users,
+      availableSchools: prev.availableSchools,
+      availableYears: prev.availableYears,
+      schoolBranches: prev.schoolBranches,
+    }));
   };
 
   const handleSetLang = (l: Language) => {

@@ -1118,16 +1118,16 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                         ? remoteData
                         : [];
 
-                      // Retain default users and previous users (correct order: default -> prev -> incoming)
                       const mergedUsersMap = new Map();
-                      defaultData.users.forEach((u) => {
-                        if (u.schools.includes(school) || u.role === "admin") {
-                          mergedUsersMap.set(u.id, u);
-                        }
-                      });
+                      
+                      // Keep users from prev that DO NOT belong to this school
                       (prev.users || []).forEach((u) => {
-                        mergedUsersMap.set(u.id, u);
+                         if (!(u.schools && u.schools.includes(school)) && u.role !== "admin" && !u.permissions?.all) {
+                            mergedUsersMap.set(u.id, u);
+                         }
                       });
+
+                      // Add new users from remote
                       newUsers.forEach((u: AuthUser) => {
                         // Only accept users that actually claim this school in their schools array
                         if (u.schools && u.schools.includes(school)) {
@@ -1136,6 +1136,16 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                            mergedUsersMap.set(u.id, u);
                         }
                       });
+                      
+                      // Add defaults last if missing
+                      defaultData.users.forEach((u) => {
+                        if (!mergedUsersMap.has(u.id)) {
+                           if (u.schools.includes(school) || u.role === "admin") {
+                              mergedUsersMap.set(u.id, u);
+                           }
+                        }
+                      });
+
                       const mergedUsers = Array.from(mergedUsersMap.values());
 
                       if (
@@ -1364,13 +1374,27 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                 if (key === "users") {
                   const newUsers = Array.isArray(remoteData) ? remoteData : [];
                   const mergedUsersMap = new Map();
-                  defaultData.users.forEach((u) => mergedUsersMap.set(u.id, u));
-                  (prev.users || []).forEach((u) =>
-                    mergedUsersMap.set(u.id, u),
-                  );
+                  
+                  // Keep users from prev that DO NOT belong to this school
+                  // This allows removing users that were deleted from this school's remoteData
+                  (prev.users || []).forEach((u) => {
+                     if (!(u.schools && u.schools.includes(school)) && u.role !== "admin" && !u.permissions?.all) {
+                        mergedUsersMap.set(u.id, u);
+                     }
+                  });
+
+                  // Add new users from remote
                   newUsers.forEach((u: AuthUser) =>
                     mergedUsersMap.set(u.id, u),
                   );
+
+                  // Add defaults last if missing
+                  defaultData.users.forEach((u) => {
+                    if (!mergedUsersMap.has(u.id)) {
+                      mergedUsersMap.set(u.id, u);
+                    }
+                  });
+                  
                   const mergedUsers = Array.from(mergedUsersMap.values());
 
                   if (

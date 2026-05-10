@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { User as UserType, UserPermissions } from "../types";
 import ConfirmDialog from "./ConfirmDialog";
+import { toast } from "sonner";
 
 const gradesOptions = [
   "تمهيدي",
@@ -334,6 +335,21 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
   const handleSave = () => {
     if (isReadOnly) return;
     if (!formData) return;
+    
+    if (
+      formData.role !== "admin" &&
+      !formData.permissions?.all &&
+      (!formData.schools || formData.schools.length === 0)
+    ) {
+      toast.error("الرجاء اختيار مدرسة واحدة على الأقل لهذا المستخدم");
+      // Switch to the schools section so the user sees it
+      const schoolSection = document.getElementById("schools-section");
+      if (schoolSection) {
+        schoolSection.scrollIntoView({ behavior: 'smooth' });
+      }
+      return;
+    }
+
     const existingUserIndex = data.users.findIndex((u) => u.id === formData.id);
     let newUsers = [...data.users];
 
@@ -771,7 +787,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
                 </div>
               </section>
 
-              <section className="space-y-4">
+              <section id="schools-section" className="space-y-4">
                 <div className="flex items-center gap-2 text-purple-600 mb-4">
                   <School size={20} />
                   <h3 className="font-black text-xl">

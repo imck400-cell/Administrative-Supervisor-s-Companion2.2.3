@@ -1089,6 +1089,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     // language reset check removed
 
     // Initial sync for login data
+    if (isAuthenticated) return; // Authenticated session is handled by the main useEffect
+
     const schoolsToSync = [
       ...new Set([
         ...(data.availableSchools || []),
@@ -1252,11 +1254,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     if (!isAuthenticated || !currentUser) return;
 
-    const school = currentUser.selectedSchool.trim();
     const unsubscribes: (() => void)[] = [];
     let isMounted = true;
 
-    // Clear listeners so we re-listen for every new targetUserIds change
+    // Clear listeners so we re-listen for every new configuration change
     dataListeners.current.clear();
 
     const startListeners = async () => {
@@ -1267,14 +1268,18 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
           uid = user.uid;
 
           try {
-            await setDoc(doc(db, "users", uid), {
-              customUserId: currentUser.id,
-              role: currentUser.role || "user",
-              schools: currentUser.selectedSchool
-                .split(",")
-                .map((s) => s.trim()),
-              permissions: currentUser.permissions || {},
-            }, { merge: true });
+            await setDoc(
+              doc(db, "users", uid),
+              {
+                customUserId: currentUser.id,
+                role: currentUser.role || "user",
+                schools: currentUser.selectedSchool
+                  .split(",")
+                  .map((s) => s.trim()),
+                permissions: currentUser.permissions || {},
+              },
+              { merge: true },
+            );
 
             isAuthDocSetup.current = true;
           } catch (err: any) {
@@ -1285,11 +1290,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
             "Authentication Error. Ensure Anonymous Auth is enabled in Firebase:",
             authErr,
           );
-          toast.error(
-            "أخفق الاتصال المباشر. يرجى تفعيل مصادقة الزوار (Anonymous Authentication) في فايربيس.",
-          );
-          // We do not return here, we can try to proceed but rules might block.
-          // Returning here would completely disable all syncing.
         }
       } else {
         const { user } = await signInAnonymously(auth);
@@ -1321,11 +1321,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         "studentEvaluations",
         "deliveryReceiptRecords",
       ];
-      if (Object.keys(dataBufferRef.current).length === 0) {
-        arrayKeys.forEach((k) => (dataBufferRef.current[k] = {}));
-      }
 
-      // Shared keys for the selected schools
       const strictlySharedKeys = [
         "profile",
         "users",
@@ -1351,24 +1347,35 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         "creativityRecords",
         "trainingEvaluations",
       ];
+
       const customizableKeys = [
         "taskTemplates",
         "customViolationElements",
         "absenceManualAdditions",
         "absenceExclusions",
       ];
+
+      // Initialize all necessary buffers
+      if (Object.keys(dataBufferRef.current).length === 0) {
+        [...arrayKeys, ...strictlySharedKeys].forEach((k) => {
+          if (!dataBufferRef.current[k]) dataBufferRef.current[k] = {};
+        });
+      }
+
       const selectedSchools = currentUser.selectedSchool
         .split(",")
         .map((s) => s.trim());
-      const schoolsToListen = selectedSchools.includes("all")
-        ? data.availableSchools || []
-        : selectedSchools;
+      const schoolsToListen = (
+        selectedSchools.includes("all") ? data.availableSchools || [] : selectedSchools
+      )
+        .filter(Boolean)
+        .map((s) => s.trim());
 
       const isAdminOrFull =
         currentUser.role === "admin" || currentUser.permissions?.all === true;
 
-      schoolsToListen.filter(Boolean).forEach((school) => {
-        // 1. Strictly Shared Keys
+      schoolsToListen.forEach((school) => {
+        // 1. Strictly Shared Keys (Profile, Users, Shared Admin Config)
         strictlySharedKeys.forEach((key) => {
           const listenerId = `auth-shared-${school}-${key}`;
           if (dataListeners.current.has(listenerId)) return;
@@ -1378,152 +1385,118 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
           const unsub = onSnapshot(q, (snapshot) => {
             if (snapshot.exists()) {
               const remoteData = snapshot.data().data;
-              setData((prev) => {
-                if (key === "users") {
-                  const newUsers = Array.isArray(remoteData) ? remoteData : [];
-                  const mergedUsersMap = new Map();
-                  
-                  // Keep users from prev that DO NOT belong to this school
-                  // This allows removing users that were deleted from this school's remoteData
-                  (prev.users || []).forEach((u) => {
-                     if (!(u.schools && u.schools.includes(school)) && u.role !== "admin" && !u.permissions?.all) {
-                        mergedUsersMap.set(u.id, u);
-                     }
-                  });
 
-                  // Add new users from remote
-                  newUsers.forEach((u: AuthUser) =>
-                    mergedUsersMap.set(u.id, u),
-                  );
-
-                  // Add defaults last if missing
-                  defaultData.users.forEach((u) => {
-                    if (!mergedUsersMap.has(u.id)) {
-                      mergedUsersMap.set(u.id, u);
-                    }
-                  });
-                  
-                  const mergedUsers = Array.from(mergedUsersMap.values());
-
+              // Profile is a special object that we merge across branches/schools
+              if (key === "profile") {
+                setData((prev) => {
+                  const mergedProfile = { ...prev.profile, ...remoteData };
                   if (
-                    JSON.stringify(prev.users) !== JSON.stringify(mergedUsers)
-                  ) {
-                    const updated = { ...prev, users: mergedUsers };
-                    
-                    return updated;
-                  }
-                  return prev;
-                } else if (
-                  key === "availableSchools" ||
-                  key === "availableYears"
-                ) {
-                  const existing = (prev[key] as any[]) || [];
-                  const incoming = Array.isArray(remoteData) ? remoteData : [];
-
-                  const defaultSchools =
-                    key === "availableSchools"
-                      ? defaultData.availableSchools || []
-                      : [];
-                  const rawMerged = [...new Set([...existing, ...incoming])];
-                  // Ensure availableSchools always has defaults
-                  const finalMerged =
-                    key === "availableSchools"
-                      ? [...new Set([...defaultSchools, ...rawMerged])]
-                      : rawMerged;
-
-                  if (
-                    finalMerged.length === existing.length &&
-                    finalMerged.every((v, i) => v === existing[i])
-                  ) {
-                    return prev;
-                  }
-                  const updated = { ...prev, [key]: finalMerged };
-                  
-                  return updated;
-                } else if (Array.isArray(remoteData)) {
-                  // Buffer incoming array per school to support proper deletion across multi-tenant UI
-                  if (!dataBufferRef.current[key])
-                    dataBufferRef.current[key] = {};
-                  dataBufferRef.current[key]["shared_" + school] = remoteData;
-
-                  const finalArray = Object.values(
-                    dataBufferRef.current[key],
-                  ).flat();
-
-                  // Deduplicate by ID
-                  const uniqueMergedArray = Array.from(
-                    new Map(
-                      finalArray
-                        .filter((item: any) => item && item.id)
-                        .map((item: any) => [item.id, item]),
-                    ).values(),
-                  );
-                  const actuallyFinal =
-                    finalArray.length > 0 && !finalArray[0]?.id
-                      ? finalArray
-                      : uniqueMergedArray;
-
-                  const existing = (prev[key as keyof AppData] as any[]) || [];
-                  if (
-                    JSON.stringify(existing) === JSON.stringify(actuallyFinal)
+                    JSON.stringify(prev.profile) ===
+                    JSON.stringify(mergedProfile)
                   )
                     return prev;
+                  return { ...prev, profile: mergedProfile };
+                });
+                return;
+              }
 
-                  const updated = { ...prev, [key]: actuallyFinal };
-                  
-                  return updated;
-                } else {
-                  let updated: any;
-                  if (
-                    typeof remoteData === "object" &&
-                    !Array.isArray(remoteData) &&
-                    remoteData !== null
-                  ) {
-                    const existingObj = (prev[key] || {}) as any;
-                    const mergedObj = { ...existingObj, ...remoteData };
+              // Use buffering for all array-based shared keys (Users, Schools, Secretariat, etc.)
+              if (Array.isArray(remoteData)) {
+                if (!dataBufferRef.current[key]) dataBufferRef.current[key] = {};
+                dataBufferRef.current[key]["shared_" + school] = remoteData;
+
+                const allItemsFromAllDocs = Object.values(
+                  dataBufferRef.current[key],
+                ).flat();
+
+                if (key === "availableSchools") {
+                  const uniqueSchools = Array.from(
+                    new Set([
+                      ...(defaultData.availableSchools || []),
+                      ...allItemsFromAllDocs.map((s) =>
+                        typeof s === "string" ? s.trim() : s,
+                      ),
+                    ]),
+                  ).filter(Boolean);
+                  setData((prev) => {
                     if (
-                      JSON.stringify(existingObj) === JSON.stringify(mergedObj)
+                      JSON.stringify(prev.availableSchools) ===
+                      JSON.stringify(uniqueSchools)
                     )
                       return prev;
-                    updated = { ...prev, [key]: mergedObj };
-                  } else if (
-                    JSON.stringify(prev[key]) === JSON.stringify(remoteData)
-                  ) {
-                    return prev;
-                  } else {
-                    updated = { ...prev, [key]: remoteData };
-                  }
-                  
-                  return updated;
+                    return { ...prev, availableSchools: uniqueSchools };
+                  });
+                  return;
                 }
-              });
+
+                if (key === "availableYears") {
+                  const uniqueYears = Array.from(
+                    new Set([
+                      ...(defaultData.availableYears || []),
+                      ...allItemsFromAllDocs.map((y) =>
+                        typeof y === "string" ? y.trim() : y,
+                      ),
+                    ]),
+                  ).filter(Boolean);
+                  setData((prev) => {
+                    if (
+                      JSON.stringify(prev.availableYears) ===
+                      JSON.stringify(uniqueYears)
+                    )
+                      return prev;
+                    return { ...prev, availableYears: uniqueYears };
+                  });
+                  return;
+                }
+
+                // Standard ID-based deduplication for shared lists
+                let mergedList = Array.from(
+                  new Map(
+                    allItemsFromAllDocs
+                      .filter((item: any) => item && item.id)
+                      .map((item: any) => [item.id, item]),
+                  ).values(),
+                );
+
+                if (key === "users") {
+                  const usersMap = new Map();
+                  defaultData.users.forEach((u) => usersMap.set(u.id, u));
+                  mergedList.forEach((u: any) => {
+                    if (u && u.id) usersMap.set(u.id, u);
+                  });
+                  mergedList = Array.from(usersMap.values());
+                }
+
+                setData((prev) => {
+                  if (JSON.stringify(prev[key]) === JSON.stringify(mergedList))
+                    return prev;
+                  return { ...prev, [key]: mergedList };
+                });
+              } else {
+                // Non-array shared keys (e.g. schoolBranches map)
+                setData((prev) => {
+                  if (JSON.stringify(prev[key]) === JSON.stringify(remoteData))
+                    return prev;
+                  return { ...prev, [key]: remoteData };
+                });
+              }
             }
           });
           unsubscribes.push(unsub);
         });
 
-        // 2. Customizable Keys (Templates, Exclusions, etc.)
+        // 2. Customizable Keys (Templates / Config)
         customizableKeys.forEach((key) => {
           const personalListenerId = `auth-personal-config-${school}-${currentUser.id}-${key}`;
           const sharedListenerId = `auth-shared-config-${school}-${key}`;
 
-          // Always listen to shared as baseline
           if (!dataListeners.current.has(sharedListenerId)) {
             dataListeners.current.add(sharedListenerId);
             const sq = doc(db, "schools", school, "shared", key);
             const sunsub = onSnapshot(sq, (sharedSnap) => {
-              // We only apply shared if the user is an admin OR they have NO personal override yet
-              // A personal override is indicated by a separate listener below.
-              // To avoid race conditions, we can just fetch the personal doc first or track it in a ref.
-              // For simplicity, we just use the shared snap if no personal data is set. (See personal listener logic)
-              if (sharedSnap.exists() && isAdminOrFull) {
+              if (sharedSnap.exists() && (isAdminOrFull || !dataListeners.current.has(personalListenerId))) {
+                const fetchedData = sharedSnap.data().data;
                 setData((prev) => {
-                  let fetchedData = sharedSnap.data().data;
-                  if (key === "adminFollowUpTypes") {
-                    fetchedData = Array.from(
-                      new Set([...adminFollowUpTypes, ...(fetchedData || [])]),
-                    );
-                  }
                   if (JSON.stringify(prev[key]) === JSON.stringify(fetchedData))
                     return prev;
                   return { ...prev, [key]: fetchedData };
@@ -1533,7 +1506,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
             unsubscribes.push(sunsub);
           }
 
-          // If not admin, listen to personal data
           if (
             !isAdminOrFull &&
             !dataListeners.current.has(personalListenerId)
@@ -1548,48 +1520,22 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
               "data",
               key,
             );
-            const punsub = onSnapshot(pq, async (personalSnap) => {
-              if (
-                personalSnap.exists() &&
-                personalSnap.data().data !== undefined
-              ) {
-                // Personal override exists
-                let fetchedData = personalSnap.data().data;
-                if (key === "adminFollowUpTypes") {
-                  fetchedData = Array.from(
-                    new Set([...adminFollowUpTypes, ...(fetchedData || [])]),
-                  );
-                }
+            const punsub = onSnapshot(pq, (personalSnap) => {
+              if (personalSnap.exists()) {
+                const fetchedData = personalSnap.data().data;
                 setData((prev) => {
-                  if (JSON.stringify(prev[key]) === JSON.stringify(fetchedData)) return prev;
+                  if (JSON.stringify(prev[key]) === JSON.stringify(fetchedData))
+                    return prev;
                   return { ...prev, [key]: fetchedData };
                 });
-              } else {
-                // Personal override does not exist => fetch once from shared baseline as initial value
-                try {
-                  // Removed require
-                  const sq = doc(db, "schools", school, "shared", key);
-                  const sharedDoc = await getDoc(sq);
-                  if (sharedDoc.exists()) {
-                    let x = sharedDoc.data().data;
-                    if (key === "adminFollowUpTypes")
-                      x = Array.from(
-                        new Set([...adminFollowUpTypes, ...(x || [])]),
-                      );
-                    setData((prev) => {
-                      if (JSON.stringify(prev[key]) === JSON.stringify(x)) return prev;
-                      return { ...prev, [key]: x };
-                    });
-                  }
-                } catch (e) {}
               }
             });
             unsubscribes.push(punsub);
           }
         });
 
+        // 3. User-Specific Data (Follow-ups, reports, logs)
         const uids = targetUserIds.split(",").filter((id) => id.length > 0);
-
         uids.forEach((uid) => {
           arrayKeys.forEach((key) => {
             const listenerId = `auth-user-${school}-${uid}-${key}`;
@@ -1604,6 +1550,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                   snapshot.exists() && Array.isArray(snapshot.data().items)
                     ? snapshot.data().items
                     : [];
+                
+                if (!dataBufferRef.current[key]) dataBufferRef.current[key] = {};
                 dataBufferRef.current[key][school + "_" + uid] = items;
 
                 const mergedArray = Object.values(
@@ -1618,18 +1566,19 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                 );
 
                 setData((prev) => {
-                  if (JSON.stringify(prev[key]) === JSON.stringify(uniqueMergedArray)) {
+                  if (
+                    JSON.stringify(prev[key]) ===
+                    JSON.stringify(uniqueMergedArray)
+                  ) {
                     return prev;
                   }
-                  const updated = { ...prev, [key]: uniqueMergedArray };
-                  
-                  return updated;
+                  return { ...prev, [key]: uniqueMergedArray };
                 });
               },
               (error) => {
                 if (!error.message.includes("permission-denied")) {
                   console.error(
-                    `Auth user sync error [${uid}] [${key}] for school [${school}]:`,
+                    `Auth user sync error [${uid}] [${key}] school [${school}]:`,
                     error,
                   );
                 }
@@ -1647,13 +1596,14 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       isMounted = false;
       unsubscribes.forEach((u) => u());
       dataListeners.current.clear();
+      dataBufferRef.current = {};
     };
   }, [
     isAuthenticated,
     currentUser?.id,
     currentUser?.selectedSchool,
     targetUserIds,
-    data.availableSchools?.join(",")
+    data.availableSchools?.join(","),
   ]);
 
   const updateData = async (
@@ -1972,7 +1922,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                 if (key === "users") {
                   payloadToSave = (payloadToSave as any[]).filter(
                     (u) =>
-                      (u.schools && u.schools.includes(school)) ||
+                      (u.schools && u.schools.some(s => s.trim() === school.trim())) ||
                       u.role === "admin" ||
                       u.permissions?.all === true,
                   ) as any;

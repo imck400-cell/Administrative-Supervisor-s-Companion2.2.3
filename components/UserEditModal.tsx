@@ -412,16 +412,22 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
       };
       const currentBranches = schoolsAndBranches[school] || [];
 
+      let nextSchools = prev.schools || [];
       if (currentBranches.includes(branch)) {
         schoolsAndBranches[school] = currentBranches.filter(
           (b) => b !== branch,
         );
       } else {
         schoolsAndBranches[school] = [...currentBranches, branch];
+        // Ensure the school is also in the schools array
+        if (!nextSchools.includes(school)) {
+          nextSchools = [...nextSchools, school];
+        }
       }
 
       return {
         ...prev,
+        schools: nextSchools,
         permissions: {
           ...currentPermissions,
           schoolsAndBranches,

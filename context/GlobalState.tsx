@@ -869,6 +869,39 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                   const updated = { ...prev, [key]: finalMerged };
                   StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
                   return updated;
+                } else if (Array.isArray(remoteData)) {
+                  // Robust merge for all other strictly shared arrays (like secretariatStudents, metricsList, etc.)
+                  const existing = prev[key as keyof AppData] as any[] || [];
+                  const incoming = remoteData;
+                  
+                  // If items have IDs, merge by ID to avoid duplicates
+                  const mergedMap = new Map();
+                  existing.forEach(item => {
+                    if (item && item.id) mergedMap.set(item.id, item);
+                  });
+                  incoming.forEach(item => {
+                    if (item) {
+                      if (item.id) mergedMap.set(item.id, item);
+                      else mergedMap.set(Math.random().toString(), item); // fallback for items without ID
+                    }
+                  });
+                  
+                  const mergedArray = Array.from(mergedMap.values());
+                  // Also retain items without IDs properly if needed, but in our app almost everything has an ID
+                  // We'll trust the map unless there are no IDs at all.
+                  const finalArray = (existing.length > 0 && !existing[0]?.id && incoming.length > 0 && !incoming[0]?.id) 
+                    ? incoming // If no IDs anywhere, just accept incoming to avoid infinite growth
+                    : mergedArray;
+
+                  // If incoming is missing data, push back to heal Firebase
+                  if (incoming.length < finalArray.length && isAdminOrFull) {
+                    setDoc(doc(db, 'schools', school, 'shared', key), { data: finalArray }).catch(console.error);
+                  }
+
+                  if (JSON.stringify(existing) === JSON.stringify(finalArray)) return prev;
+                  const updated = { ...prev, [key]: finalArray };
+                  StorageHelper.setItem('rafiquk_data', JSON.stringify(updated));
+                  return updated;
                 } else {
                   let updated: any;
                   if (typeof remoteData === 'object' && !Array.isArray(remoteData) && remoteData !== null) {

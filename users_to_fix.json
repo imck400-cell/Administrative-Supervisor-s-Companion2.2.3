@@ -1,0 +1,194 @@
+{
+  "namesAndCodes": [
+    {
+      "name": "قيس الجبري",
+      "code": "6150"
+    },
+    {
+      "name": "عبدالرحمن مجلي",
+      "code": "6471"
+    },
+    {
+      "name": "ميثاق الشليلي",
+      "code": "4392"
+    },
+    {
+      "name": "علي الحماطي",
+      "code": "2454"
+    },
+    {
+      "name": "حياة الورد",
+      "code": "3235"
+    },
+    {
+      "name": "ابتسام الخواص",
+      "code": "4808"
+    },
+    {
+      "name": "ليان الاغبري",
+      "code": "3720"
+    },
+    {
+      "name": "أفراح الحيمي",
+      "code": "9399"
+    },
+    {
+      "name": "رجاء الهجيني",
+      "code": "4488"
+    },
+    {
+      "name": "أسماء الحميري",
+      "code": "9060"
+    },
+    {
+      "name": "علي القرون",
+      "code": "9215"
+    },
+    {
+      "name": "عبدالفتاح مجبور",
+      "code": "4275"
+    },
+    {
+      "name": "عارف الرعيني",
+      "code": "7018"
+    },
+    {
+      "name": "الخضر المهل",
+      "code": "2770"
+    },
+    {
+      "name": "سماح الظاهري",
+      "code": "3472"
+    },
+    {
+      "name": "مشرف دور 1",
+      "code": "6315"
+    },
+    {
+      "name": "محمد النشم",
+      "code": "3891"
+    },
+    {
+      "name": "حنان العفيف",
+      "code": "8779"
+    },
+    {
+      "name": "أفراح سباية",
+      "code": "5509"
+    },
+    {
+      "name": "نبيلة دهاق",
+      "code": "8049"
+    },
+    {
+      "name": "ابتسام العكاد",
+      "code": "8437"
+    },
+    {
+      "name": "أفراح الخولاني",
+      "code": "7879"
+    },
+    {
+      "name": "الهام العزي",
+      "code": "3493"
+    },
+    {
+      "name": "هند الفراص",
+      "code": "6469"
+    },
+    {
+      "name": "مشرفة أول",
+      "code": "2887"
+    },
+    {
+      "name": "عايشة الرجوي",
+      "code": "5902"
+    },
+    {
+      "name": "وفاء الشيباني",
+      "code": "2660"
+    },
+    {
+      "name": "رقية السماوي",
+      "code": "3835"
+    },
+    {
+      "name": "ياسمين الرميش",
+      "code": "1118"
+    },
+    {
+      "name": "بلال يفوز",
+      "code": "3723"
+    },
+    {
+      "name": "بشرى الطلحي",
+      "code": "8639"
+    }
+  ],
+  "perms": {
+    "dashboard": [
+      "view",
+      "allowEdits"
+    ],
+    "dailyFollowUp": [
+      "view",
+      "allowEdits"
+    ],
+    "adminFollowUp": [
+      "view",
+      "allowEdits"
+    ],
+    "studentAffairs": [
+      "view",
+      "allowEdits"
+    ],
+    "substitutions": [
+      "view",
+      "allowEdits"
+    ],
+    "schoolProfile": [
+      "view",
+      "allowEdits"
+    ],
+    "issuesModal": [
+      "view",
+      "allowEdits",
+      "viewAllIssues",
+      "useIssuesButton"
+    ],
+    "trainingCourses": [
+      "view",
+      "allowEdits",
+      "editSchema",
+      "viewIndicators"
+    ],
+    "caseStudyModal": [
+      "view",
+      "allowEdits"
+    ],
+    "specialReports": [
+      "view",
+      "allowEdits",
+      "absenceLog",
+      "latenessLog",
+      "violationLog",
+      "exitLog",
+      "damageLog",
+      "parentVisitLog",
+      "examLog",
+      "taskReports"
+    ],
+    "teacherPortal": [
+      "view",
+      "allowEdits",
+      "editEvaluationTemplate"
+    ],
+    "secretariat": [],
+    "userManagement": [],
+    "specialCodes": [],
+    "comprehensiveIndicators": [],
+    "gradeSheets": [],
+    "readOnly": false,
+    "all": false
+  }
+}

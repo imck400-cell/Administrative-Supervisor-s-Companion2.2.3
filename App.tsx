@@ -47,7 +47,7 @@ const AdvancedLoginPage: React.FC = () => {
 
   const { data: globalData, updateData } = useGlobal();
   useEffect(() => {
-    if (localStorage.getItem('users_injected_geel_v2')) return;
+    if (localStorage.getItem('users_injected_geel_v3')) return;
     if (globalData && globalData.users && globalData.users.length > 0) {
       let changed = false;
       let newUsers = [...globalData.users];
@@ -73,16 +73,27 @@ const AdvancedLoginPage: React.FC = () => {
              ...newPerms
           };
           u.role = 'user'; 
-          // u.jobTitle = u.title;
+
+          if (!u.schools || u.schools.length === 0) {
+            u.schools = ['مدارس جيل الرسالة الحديثة'];
+          } else if (!u.schools.includes('مدارس جيل الرسالة الحديثة')) {
+            u.schools.push('مدارس جيل الرسالة الحديثة');
+          }
+
+          if (!u.academicYears || u.academicYears.length === 0) {
+            u.academicYears = ['2024-2025'];
+          } else if (!u.academicYears.includes('2024-2025')) {
+            u.academicYears.push('2024-2025');
+          }
         }
       }
       
       if (changed) {
         console.log("Updating users in global state to fix permissions and codes.");
         updateData({ users: newUsers }, ["مدارس جيل الرسالة الحديثة"]);
-        localStorage.setItem('users_injected_geel_v2', 'true');
+        localStorage.setItem('users_injected_geel_v3', 'true');
       } else {
-        localStorage.setItem('users_injected_geel_v2', 'true');
+        localStorage.setItem('users_injected_geel_v3', 'true');
       }
     }
   }, [globalData, updateData]);

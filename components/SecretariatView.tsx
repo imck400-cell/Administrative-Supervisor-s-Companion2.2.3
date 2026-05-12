@@ -442,12 +442,13 @@ const StudentsManager = () => {
       guardianInfo: "",
     };
 
-    saveStudents([...students, newStudent]);
+    saveStudents([newStudent, ...students]);
     
-    // Move to the page where the new student is added (usually the last page)
-    const newTotal = filteredStudents.length + 1;
-    const newPage = Math.ceil(newTotal / studentPageSize);
-    if (newPage > studentPage) setStudentPage(newPage);
+    // Move to first page to see the new student
+    setStudentPage(1);
+    
+    // Clear search so the new empty row is visible
+    setSearchQuery("");
   };
 
   const updateRow = (id: string, field: string, value: any) => {
@@ -1262,6 +1263,7 @@ const StaffManager = () => {
           s.branch ||
           (s.schoolBranch ? s.schoolBranch.split("-")[1]?.trim() || "" : ""),
         jobTitles: s.jobTitles || s.subjects || [],
+        grades: s.grades || [],
         phone: s.phone || "",
       }));
 
@@ -1303,15 +1305,17 @@ const StaffManager = () => {
         let changed = false;
         newStaff.forEach((s) => {
           // Only sync if they have teacher-like job title
-          const isTeacher = s.jobTitles.some((title) =>
+          const isTeacher = (s.jobTitles || []).some((title) =>
             TEACHER_JOB_TITLES.includes(title),
           );
           if (!isTeacher) return;
 
-          if (!r.teachersData.some((t) => t.teacherName === s.name)) {
+          if (!r.teachersData) r.teachersData = [];
+
+          if (!r.teachersData.some((t: any) => t.teacherName === s.name)) {
             r.teachersData.push({
               id: crypto.randomUUID(),
-              teacherName: s.name,
+              teacherName: s.name || "",
               subjectCode:
                 s.jobTitles && s.jobTitles.length > 0
                   ? s.jobTitles.join(" / ")
@@ -1361,7 +1365,7 @@ const StaffManager = () => {
     let updatedFollowUps = false;
 
     newStaff.forEach((s) => {
-      const isTeacher = s.jobTitles.some((title) =>
+      const isTeacher = (s.jobTitles || []).some((title) =>
         TEACHER_JOB_TITLES.includes(title),
       );
       if (!isTeacher) return;
@@ -1372,10 +1376,10 @@ const StaffManager = () => {
       if (existingIndex === -1) {
         teacherFollowUps.push({
           id: s.id,
-          teacherName: s.name,
-          subjectCode: s.jobTitles.join(" / "),
-          className: s.grades.join(" / "),
-          gender: s.gender,
+          teacherName: s.name || "",
+          subjectCode: (s.jobTitles || []).join(" / "),
+          className: (s.grades || []).join(" / "),
+          gender: s.gender || "",
           attendance: 0,
           appearance: 0,
           preparation: 0,
@@ -1397,16 +1401,18 @@ const StaffManager = () => {
       } else {
         // Update existing entry if needed
         const t = teacherFollowUps[existingIndex];
+        const newSubjectCode = (s.jobTitles || []).join(" / ");
+        const newClassName = (s.grades || []).join(" / ");
         if (
-          t.subjectCode !== s.jobTitles.join(" / ") ||
-          t.className !== s.grades.join(" / ") ||
+          t.subjectCode !== newSubjectCode ||
+          t.className !== newClassName ||
           t.gender !== s.gender
         ) {
           teacherFollowUps[existingIndex] = {
             ...t,
-            subjectCode: s.jobTitles.join(" / "),
-            className: s.grades.join(" / "),
-            gender: s.gender,
+            subjectCode: newSubjectCode,
+            className: newClassName,
+            gender: s.gender || "",
           };
           updatedFollowUps = true;
         }
@@ -1522,7 +1528,8 @@ const StaffManager = () => {
       grades: [],
     };
 
-    saveStaff([...staff, newEmployee]);
+    saveStaff([newEmployee, ...staff]);
+    setSearchQuery(""); // Make sure we can see the empty row
   };
 
   const updateRow = (id: string, field: string, value: any) => {

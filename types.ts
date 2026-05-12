@@ -368,6 +368,7 @@ export interface User {
   expiryDate: string; // ISO format
   role: 'admin' | 'user';
   permissions?: UserPermissions;
+  customSchoolProfiles?: Record<string, Record<string, any>>;
 }
 
 export interface AuthUser {
@@ -382,6 +383,7 @@ export interface AuthUser {
   selectedYear?: string;
   role: 'admin' | 'user';
   permissions?: UserPermissions;
+  customSchoolProfiles?: Record<string, Record<string, any>>;
 }
 
 export interface TrainingEvaluation {

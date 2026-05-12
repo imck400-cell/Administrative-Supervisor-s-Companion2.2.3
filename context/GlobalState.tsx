@@ -960,6 +960,16 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
           };
         }
       }
+      
+      // Override with user's custom profile for this school/branch if any
+      const customProfiles = currentUser?.customSchoolProfiles?.[activeSchool];
+      if (customProfiles) {
+        if (currentBranch && customProfiles[currentBranch]) {
+             newData.profile = { ...newData.profile, ...customProfiles[currentBranch] };
+        } else if (customProfiles[""] !== undefined) { // general overlay
+             newData.profile = { ...newData.profile, ...customProfiles[""] };
+        }
+      }
     }
 
     // Activity arrays — filter by both user and date
@@ -1024,12 +1034,17 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     const permsMatch =
       JSON.stringify(latestUser.permissions) ===
       JSON.stringify(currentUser.permissions);
-    if (rolesMatch && permsMatch) return;
+    const customProfilesMatch =
+      JSON.stringify(latestUser.customSchoolProfiles) ===
+      JSON.stringify(currentUser.customSchoolProfiles);
+      
+    if (rolesMatch && permsMatch && customProfilesMatch) return;
 
     const updatedAuthUser: AuthUser = {
       ...currentUser,
       role: latestUser.role,
       permissions: latestUser.permissions,
+      customSchoolProfiles: latestUser.customSchoolProfiles,
     };
     setCurrentUser(updatedAuthUser);
     
@@ -1037,7 +1052,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     if (auth.currentUser) {
        setDoc(doc(db, "users", auth.currentUser.uid), {
              role: latestUser.role,
-             permissions: latestUser.permissions || {}
+             permissions: latestUser.permissions || {},
+             customSchoolProfiles: latestUser.customSchoolProfiles || {}
        }, { merge: true }).catch(e => console.error("Failed to update session with new permissions", e));
     }
   }, [data.users, isAuthenticated, currentUser?.id]);
@@ -1080,7 +1096,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                          selectedYear: userData.selectedYear || "",
                          selectedBranch: userData.selectedBranch || "",
                          role: userData.role || "user",
-                         permissions: userData.permissions || {}
+                         permissions: userData.permissions || {},
+                         customSchoolProfiles: userData.customSchoolProfiles || {}
                      });
                  }
              } else {
@@ -2257,7 +2274,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
              selectedYear: year,
              selectedBranch: branch || "",
              role: user.role,
-             permissions: user.permissions || {}
+             permissions: user.permissions || {},
+             customSchoolProfiles: user.customSchoolProfiles || {}
        }, { merge: true }).catch(console.error);
     }
   };

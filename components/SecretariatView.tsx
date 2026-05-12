@@ -74,7 +74,7 @@ export const SecretariatView: React.FC = () => {
               <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="relative z-10 flex flex-col items-center">
                 <Users size={48} className="mb-4" />
-                <h3 className="text-2xl font-black">شؤون الطلاب</h3>
+                <h3 className="text-2xl font-black">التحكم بشؤون الطلاب</h3>
               </div>
             </motion.button>
 
@@ -87,7 +87,7 @@ export const SecretariatView: React.FC = () => {
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-400 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="relative z-10 flex flex-col items-center">
                 <Briefcase size={48} className="mb-4" />
-                <h3 className="text-2xl font-black">شؤون الموظفين</h3>
+                <h3 className="text-2xl font-black">التحكم بشؤون الموظفين</h3>
               </div>
             </motion.button>
           </div>
@@ -103,7 +103,7 @@ export const SecretariatView: React.FC = () => {
                 <div className="bg-gradient-to-br from-blue-500 to-indigo-500 p-4 rounded-2xl mb-4 shadow-lg text-white group-hover:scale-110 transition-transform">
                   <FileSpreadsheet size={32} />
                 </div>
-                <h3 className="text-lg font-black">معايير المعلمين</h3>
+                <h3 className="text-lg font-black">التحكم بمعايير المعلمين</h3>
                 <p className="text-xs text-slate-500 mt-2">
                   إضافة، تعديل، وحذف المعايير الافتراضية
                 </p>
@@ -120,7 +120,7 @@ export const SecretariatView: React.FC = () => {
                 <div className="bg-gradient-to-br from-emerald-500 to-teal-500 p-4 rounded-2xl mb-4 shadow-lg text-white group-hover:scale-110 transition-transform">
                   <Briefcase size={32} />
                 </div>
-                <h3 className="text-lg font-black">معايير الموظفين</h3>
+                <h3 className="text-lg font-black">التحكم بمعايير الموظفين</h3>
                 <p className="text-xs text-slate-500 mt-2">
                   تخصيص مجالات التقارير ومعايير التقييم
                 </p>
@@ -137,7 +137,7 @@ export const SecretariatView: React.FC = () => {
                 <div className="bg-gradient-to-br from-violet-500 to-purple-500 p-4 rounded-2xl mb-4 shadow-lg text-white group-hover:scale-110 transition-transform">
                   <School size={32} />
                 </div>
-                <h3 className="text-lg font-black">ملف المدرسة</h3>
+                <h3 className="text-lg font-black">التحكم بملف المدرسة</h3>
                 <p className="text-xs text-slate-500 mt-2">
                   تعديل وتعميم البيانات والشعار
                 </p>
@@ -149,7 +149,7 @@ export const SecretariatView: React.FC = () => {
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-black text-slate-800">
-              {activeTab === "students" ? "شؤون الطلاب" : "شؤون الموظفين"}
+              {activeTab === "students" ? "التحكم بشؤون الطلاب" : "التحكم بشؤون الموظفين"}
             </h3>
             <button
               onClick={() => setActiveTab(null)}

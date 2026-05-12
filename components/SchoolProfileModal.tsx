@@ -123,6 +123,23 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
     setSelectedBranch(branch);
   };
 
+  const [isSpecialChangeMode, setIsSpecialChangeMode] = useState(false);
+  const [showUserSelection, setShowUserSelection] = useState(false);
+  const [selectedSpecUsers, setSelectedSpecUsers] = useState<string[]>([]);
+
+  // Users belonging to selected school and branch
+  const availableUsers = (data.users || []).filter((u) => {
+    if (!selectedSchool) return false;
+    // Admins or users that have this school
+    if (u.role === "admin" || u.permissions?.all === true) return true;
+    if (!u.schools?.includes(selectedSchool)) return false;
+    // Check branch permissions
+    if (selectedBranch && u.permissions?.schoolsAndBranches?.[selectedSchool]) {
+      return u.permissions.schoolsAndBranches[selectedSchool].includes(selectedBranch);
+    }
+    return true; // Default include if branch logic doesn't strictly apply
+  });
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -177,6 +194,41 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
     // We only set logoImg if a new one is uploaded, otherwise keep existing
     if (logoImg) {
       (updatedProfile as any).logoImg = logoImg;
+    }
+
+    if (isSpecialChangeMode) {
+      if (selectedSpecUsers.length === 0) {
+        toast.error("يرجى اختيار مستخدم واحد على الأقل");
+        return;
+      }
+
+      const updatedUsers = (data.users || []).map((u) => {
+        if (selectedSpecUsers.includes(u.id)) {
+          const currentCustomProfiles = u.customSchoolProfiles || {};
+          const currentSchoolProfiles = currentCustomProfiles[selectedSchool] || {};
+          const key = selectedBranch || "";
+
+          return {
+            ...u,
+            customSchoolProfiles: {
+              ...currentCustomProfiles,
+              [selectedSchool]: {
+                ...currentSchoolProfiles,
+                [key]: {
+                  ...currentSchoolProfiles[key],
+                  ...updatedProfile,
+                },
+              },
+            },
+          };
+        }
+        return u;
+      });
+
+      updateData({ users: updatedUsers }, [selectedSchool]);
+      toast.success("تم حفظ التغيير الخاص بنجاح");
+      onClose();
+      return;
     }
 
     // Update the profile in the new branch-based map format
@@ -242,12 +294,20 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
                 </p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-200/50 text-slate-500 transition-colors"
-            >
-              <X size={24} />
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowUserSelection(true)}
+                className="px-4 py-2 bg-slate-100 text-blue-600 font-bold rounded-xl border border-slate-200 hover:bg-slate-200 transition-colors text-sm"
+              >
+                تغيير خاص
+              </button>
+              <button
+                onClick={onClose}
+                className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-200/50 text-slate-500 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
           </div>
 
           <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
@@ -279,20 +339,41 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
               </div>
             </div>
 
+            {isSpecialChangeMode && (
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-blue-800 text-sm mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></span>
+                  <span className="font-bold">وضع التغيير الخاص: </span>
+                  <span>سيتم تطبيق التعديلات فقط على المستخدمين المختارين أدناه.</span>
+                </div>
+                <div className="space-y-1 pr-4 border-r-2 border-blue-200">
+                  {data.users?.filter(u => selectedSpecUsers.includes(u.id)).map(u => (
+                    <div key={u.id} className="flex items-center gap-2">
+                      <span className="font-bold">{u.name}</span>
+                      <span className="text-blue-400">|</span>
+                      <span>{selectedBranch || "الفرع الرئيسي"}</span>
+                      <span className="text-blue-400">|</span>
+                      <span className="font-mono text-xs bg-blue-100 px-1 rounded">{u.code}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4 p-5 bg-white/50 rounded-2xl border border-slate-200/50 shadow-sm">
-              <label className="text-sm font-bold text-slate-700">
-                تحديد المدرسة المراد تعديلها
+              <label className="text-sm font-bold text-slate-700 block">
+                تحديد المدرسة {isSpecialChangeMode && <span className="text-xs text-red-500 font-normal">(مغلق حالياً - وضع التغيير الخاص)</span>}
               </label>
               <div className="flex flex-wrap gap-2">
                 {availableSchools.map((sch) => (
                   <button
                     key={sch}
-                    onClick={() => handleSchoolToggle(sch)}
+                    onClick={() => !isSpecialChangeMode && handleSchoolToggle(sch)}
                     className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
                       selectedSchool === sch
                         ? "bg-gradient-to-l from-violet-600 to-indigo-600 text-white shadow-md"
                         : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
-                    }`}
+                    } ${isSpecialChangeMode ? "opacity-60 cursor-not-allowed" : ""}`}
                   >
                     {sch}
                   </button>
@@ -314,18 +395,18 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
                   className="space-y-4 p-5 bg-white/50 rounded-2xl border border-slate-200/50 shadow-sm overflow-hidden"
                 >
                   <label className="text-sm font-bold text-slate-700 block">
-                    تحديد الفرع المراد تعديله
+                    تحديد الفرع {isSpecialChangeMode && <span className="text-xs text-red-500 font-normal">(مغلق حالياً - وضع التغيير الخاص)</span>}
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {availableBranches.map((branch) => (
                       <button
                         key={branch}
-                        onClick={() => handleBranchToggle(branch)}
+                        onClick={() => !isSpecialChangeMode && handleBranchToggle(branch)}
                         className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
                           selectedBranch === branch
                             ? "bg-gradient-to-l from-blue-600 to-cyan-600 text-white shadow-md"
                             : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
-                        }`}
+                        } ${isSpecialChangeMode ? "opacity-60 cursor-not-allowed" : ""}`}
                       >
                         {branch}
                       </button>
@@ -453,6 +534,59 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
           </div>
         </motion.div>
       </div>
+
+      {showUserSelection && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" dir="rtl">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-[2rem] p-6 max-w-md w-full shadow-2xl border border-white"
+          >
+            <h3 className="text-xl font-black text-slate-800 mb-4">تغيير خاص (اختيار المستخدمين)</h3>
+            <p className="text-sm text-slate-600 mb-4">
+              اختر المستخدمين الذين ترغب بتطبيق التعديلات على ملفهم الشخصي فقط في مدرسة ({selectedSchool}) فرع ({selectedBranch || 'عام'}).
+            </p>
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto custom-scrollbar border border-slate-100 rounded-xl p-2 bg-slate-50">
+              {availableUsers.map(u => (
+                <label key={u.id} className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors shadow-sm">
+                  <input 
+                    type="checkbox" 
+                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                    checked={selectedSpecUsers.includes(u.id)} 
+                    onChange={(e) => {
+                      if (e.target.checked) setSelectedSpecUsers([...selectedSpecUsers, u.id]);
+                      else setSelectedSpecUsers(selectedSpecUsers.filter(id => id !== u.id));
+                    }} 
+                  />
+                  <div className="flex flex-col">
+                    <span className="font-bold text-slate-800">{u.name}</span>
+                    <span className="text-xs text-slate-500">{u.role === 'admin' ? 'مدير' : 'مستخدم'}</span>
+                  </div>
+                </label>
+              ))}
+              {availableUsers.length === 0 && (
+                <div className="p-4 text-center text-sm text-slate-500">لا يوجد مستخدمين آخرين في هذا الفرع.</div>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button 
+                onClick={() => { setShowUserSelection(false); setSelectedSpecUsers([]); setIsSpecialChangeMode(false); }} 
+                className="px-6 py-2 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors"
+              >
+                إلغاء
+              </button>
+              <button 
+                onClick={() => { setShowUserSelection(false); setIsSpecialChangeMode(true); }} 
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition-colors"
+                disabled={selectedSpecUsers.length === 0}
+              >
+                موافق
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </AnimatePresence>
   );
 };

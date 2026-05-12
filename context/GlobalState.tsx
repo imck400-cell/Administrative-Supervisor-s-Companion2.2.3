@@ -582,7 +582,7 @@ const defaultData: AppData = {
       permissions: { dashboard: true, dailyFollowUp: true },
     }, // Expired for testing
   ],
-  availableSchools: ["مدرسة الرواد", "مدرسة النخبة"],
+  availableSchools: ["مدرسة الرواد", "مدرسة النخبة", "مدارس جيل الرسالة الحديثة"],
   availableYears: ["2024-2025", "2025-2026"],
   schoolBranches: {},
   trainingEvaluations: [],
@@ -1199,7 +1199,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
           });
         });
 
-        ["aboutSliderImages", "aboutExternalLinks", "aboutLogoImg"].forEach(
+        ["aboutSliderImages", "aboutExternalLinks", "aboutLogoImg", "availableSchools", "availableYears"].forEach(
           (key) => {
             const listenerId = `system-introConfig-${key}`;
             if (activeListeners.current.has(listenerId)) return;
@@ -2019,6 +2019,14 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
             });
 
             await Promise.all(promises);
+
+            if (key === "availableSchools" || key === "availableYears") {
+               if (isAdminOrFull) {
+                 setDoc(doc(db, "system", "introConfig", "data", key), {
+                   data: newData[key]
+                 }).catch(err => console.error("Failed to sync global", err));
+               }
+            }
 
             // Update local state immediately for instant feedback
             if (key !== "profile") {

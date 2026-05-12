@@ -1432,7 +1432,16 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                           const merged = { ...p1, ...p2 };
                           Object.keys(merged).forEach(pk => {
                             if (pk === 'schoolsAndBranches') {
-                              merged[pk] = { ...(p1[pk] || {}), ...(p2[pk] || {}) };
+                              const p1Map = p1[pk] || {};
+                              const p2Map = p2[pk] || {};
+                              const mergedMap: any = {};
+                              const allKeys = new Set([...Object.keys(p1Map), ...Object.keys(p2Map)]);
+                              allKeys.forEach(schoolKey => {
+                                const arr1 = p1Map[schoolKey] || [];
+                                const arr2 = p2Map[schoolKey] || [];
+                                mergedMap[schoolKey] = Array.from(new Set([...arr1, ...arr2]));
+                              });
+                              merged[pk] = mergedMap;
                             } else if (Array.isArray(p1[pk]) && Array.isArray(p2[pk])) {
                               merged[pk] = Array.from(new Set([...p1[pk], ...p2[pk]]));
                             } else if (typeof p1[pk] === 'boolean' && typeof p2[pk] === 'boolean') {
@@ -1473,10 +1482,25 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                   
                   // Merge objects to avoid overwriting data from different schools
                   if (typeof remoteData === 'object' && remoteData !== null && !Array.isArray(remoteData)) {
-                    newValue = {
-                      ...(typeof existingValue === 'object' && existingValue !== null ? existingValue : {}),
-                      ...remoteData
-                    };
+                    const mergedObject: any = { ...(typeof existingValue === 'object' && existingValue !== null ? existingValue : {}) };
+                    
+                    Object.keys(remoteData).forEach((k) => {
+                      if (Array.isArray(remoteData[k]) && Array.isArray(mergedObject[k])) {
+                        mergedObject[k] = Array.from(new Set([...mergedObject[k], ...remoteData[k]]));
+                      } else if (
+                        typeof remoteData[k] === 'object' && remoteData[k] !== null && !Array.isArray(remoteData[k]) &&
+                        typeof mergedObject[k] === 'object' && mergedObject[k] !== null && !Array.isArray(mergedObject[k])
+                      ) {
+                        mergedObject[k] = { ...mergedObject[k], ...remoteData[k] };
+                      } else if (remoteData[k] !== undefined && remoteData[k] !== null && (!Array.isArray(remoteData[k]) || remoteData[k].length > 0 || !mergedObject[k] || mergedObject[k].length === 0)) {
+                         // Overwrite only if the new value is meaningful (e.g. not an empty array wiping a populated one accidentally from an old snapshot)
+                        mergedObject[k] = remoteData[k];
+                      } else if (!mergedObject[k]) {
+                        mergedObject[k] = remoteData[k];
+                      }
+                    });
+                    
+                    newValue = mergedObject;
                   }
 
                   if (JSON.stringify(existingValue) === JSON.stringify(newValue))

@@ -915,38 +915,44 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Sync currentUser permissions from Firestore whenever data.users changes
   // This ensures permission changes take effect immediately without re-login
+  // We use a debounce to prevent "evaporation" of permissions during multi-school load cycles
   useEffect(() => {
     if (!isAuthenticated || !currentUser) return;
-    const latestUser = data.users.find((u) => u.id === currentUser.id);
-    if (!latestUser) return;
 
-    // Only update if permissions or role actually changed
-    const rolesMatch = latestUser.role === currentUser.role;
-    const permsMatch =
-      JSON.stringify(latestUser.permissions) ===
-      JSON.stringify(currentUser.permissions);
-    const customProfilesMatch =
-      JSON.stringify(latestUser.customSchoolProfiles) ===
-      JSON.stringify(currentUser.customSchoolProfiles);
+    const timer = setTimeout(() => {
+      const latestUser = data.users.find((u) => u.id === currentUser.id);
+      if (!latestUser) return;
+
+      // Only update if permissions or role actually changed
+      const rolesMatch = latestUser.role === currentUser.role;
+      const permsMatch =
+        JSON.stringify(latestUser.permissions) ===
+        JSON.stringify(currentUser.permissions);
+      const customProfilesMatch =
+        JSON.stringify(latestUser.customSchoolProfiles) ===
+        JSON.stringify(currentUser.customSchoolProfiles);
+        
+      if (rolesMatch && permsMatch && customProfilesMatch) return;
+
+      const updatedAuthUser: AuthUser = {
+        ...currentUser,
+        role: latestUser.role,
+        permissions: latestUser.permissions,
+        customSchoolProfiles: latestUser.customSchoolProfiles,
+      };
+      setCurrentUser(updatedAuthUser);
       
-    if (rolesMatch && permsMatch && customProfilesMatch) return;
+      // Update the active session document in Firebase so that the new permissions persist upon refresh
+      if (auth.currentUser) {
+         setDoc(doc(db, "users", auth.currentUser.uid), {
+               role: latestUser.role,
+               permissions: latestUser.permissions || {},
+               customSchoolProfiles: latestUser.customSchoolProfiles || {}
+         }, { merge: true }).catch(e => console.error("Failed to update session with new permissions", e));
+      }
+    }, 1500); // 1.5s debounce to allow all school snapshots to arrive and merge
 
-    const updatedAuthUser: AuthUser = {
-      ...currentUser,
-      role: latestUser.role,
-      permissions: latestUser.permissions,
-      customSchoolProfiles: latestUser.customSchoolProfiles,
-    };
-    setCurrentUser(updatedAuthUser);
-    
-    // Update the active session document in Firebase so that the new permissions persist upon refresh
-    if (auth.currentUser) {
-       setDoc(doc(db, "users", auth.currentUser.uid), {
-             role: latestUser.role,
-             permissions: latestUser.permissions || {},
-             customSchoolProfiles: latestUser.customSchoolProfiles || {}
-       }, { merge: true }).catch(e => console.error("Failed to update session with new permissions", e));
-    }
+    return () => clearTimeout(timer);
   }, [data.users, isAuthenticated, currentUser?.id]);
 
   const activeListeners = React.useRef<Set<string>>(new Set());
@@ -1422,11 +1428,21 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                           ...(u.academicYears || [])
                         ])).filter(Boolean);
 
-                        const mergedPermissions = {
-                          ...(existing.permissions || {}),
-                          ...(u.permissions || {}),
-                          schoolsAndBranches: mergedSchoolsAndBranches,
+                        const mergePermissions = (p1: any, p2: any) => {
+                          const merged = { ...p1, ...p2 };
+                          Object.keys(merged).forEach(pk => {
+                            if (pk === 'schoolsAndBranches') {
+                              merged[pk] = { ...(p1[pk] || {}), ...(p2[pk] || {}) };
+                            } else if (Array.isArray(p1[pk]) && Array.isArray(p2[pk])) {
+                              merged[pk] = Array.from(new Set([...p1[pk], ...p2[pk]]));
+                            } else if (typeof p1[pk] === 'boolean' && typeof p2[pk] === 'boolean') {
+                              merged[pk] = p1[pk] || p2[pk];
+                            }
+                          });
+                          return merged;
                         };
+
+                        const mergedPermissions = mergePermissions(existing.permissions || {}, u.permissions || {});
 
                         usersMap.set(u.id, { 
                           ...existing, 

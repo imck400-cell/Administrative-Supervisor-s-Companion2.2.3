@@ -68,9 +68,21 @@ const AdvancedLoginPage: React.FC = () => {
             schoolsAndBranchesTemp = u.permissions.schoolsAndBranches;
           }
           
+          const currentPerms = (u.permissions || {}) as any;
+          const mergedPerms = { ...currentPerms };
+          
+          // Only apply newPerms keys if they don't exist or are empty, avoiding overwriting legitimate supervisor edits
+          Object.keys(newPerms).forEach((k) => {
+            if (k === 'schoolsAndBranches') return;
+            const key = k as keyof typeof newPerms;
+            if (!currentPerms[key] || (Array.isArray(currentPerms[key]) && currentPerms[key].length === 0)) {
+               mergedPerms[key] = newPerms[key];
+            }
+          });
+
           u.permissions = {
-             schoolsAndBranches: schoolsAndBranchesTemp,
-             ...newPerms
+            ...mergedPerms,
+            schoolsAndBranches: schoolsAndBranchesTemp
           };
           u.role = 'user'; 
 

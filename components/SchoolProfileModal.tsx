@@ -34,10 +34,22 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
   // Load defaults from first available selected school if exists
   useEffect(() => {
     if (isOpen) {
-      const initialSchool =
-        currentUser?.selectedSchool === "all"
-          ? data.availableSchools?.[0] || ""
-          : currentUser?.selectedSchool.split(",")[0].trim() || "";
+      // First, prioritize schools the user is actually currently working in (from session)
+      const sessionSchools = currentUser?.selectedSchool?.split(",").map(s => s.trim()).filter(s => s !== "all") || [];
+      
+      // But only use them if they are in the availableSchools list (which means they have permissions)
+      const allowedAvailable = (data.availableSchools || []).filter(sch => 
+        currentUser?.role === "admin" || 
+        currentUser?.permissions?.all === true || 
+        availableSchools.includes(sch)
+      );
+
+      let initialSchool = "";
+      if (sessionSchools.length > 0 && availableSchools.includes(sessionSchools[0])) {
+        initialSchool = sessionSchools[0];
+      } else if (availableSchools.length > 0) {
+        initialSchool = availableSchools[0];
+      }
 
       if (initialSchool) {
         setSelectedSchool(initialSchool);
@@ -52,7 +64,7 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
         setSelectedBranch("");
       }
     }
-  }, [isOpen, data.availableSchools, currentUser]);
+  }, [isOpen, data.availableSchools, currentUser, availableSchools]);
 
   useEffect(() => {
     if (selectedSchool) {

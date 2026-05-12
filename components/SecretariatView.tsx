@@ -188,6 +188,11 @@ const StudentsManager = () => {
 
   const [students, setStudents] = useState<StudentData[]>([]);
 
+  const [localNames, setLocalNames] = useState<Record<string, string>>({});
+  const [localResidence, setLocalResidence] = useState<Record<string, string>>({});
+  const [localHealth, setLocalHealth] = useState<Record<string, string>>({});
+  const [localGuardian, setLocalGuardian] = useState<Record<string, string>>({});
+
   useEffect(() => {
     let cloudData = data.secretariatStudents;
     const ls = null;
@@ -265,8 +270,9 @@ const StudentsManager = () => {
 
   const bulkUpdateField = (field: string, value: any) => {
     if (!value) return;
+    const filteredIds = new Set(filteredStudents.map((fs) => fs.id));
     const newStudents = students.map((s) => {
-      if (filteredStudents.find((fs) => fs.id === s.id)) {
+      if (filteredIds.has(s.id)) {
         return { ...s, [field]: value };
       }
       return s;
@@ -280,19 +286,28 @@ const StudentsManager = () => {
     // Sync to studentReports to ensure imported students are globally available
     const existingReports = data.studentReports || [];
     const mergedReports = [...existingReports];
+    
+    // Quick lookup maps to avoid O(N^2) freezes
+    const idMap = new Map();
+    const compoundMap = new Map();
+    mergedReports.forEach((r, i) => {
+      idMap.set(r.id, i);
+      if (r.name && r.grade && r.section) {
+        compoundMap.set(`${r.name}-${r.grade}-${r.section}`, i);
+      }
+    });
+
+    let reportsChanged = false;
 
     newStudents.forEach((s) => {
-      // Find by ID, or by name + grade + section to prevent duplicates
-      const exists = mergedReports.find(
-        (r) =>
-          r.id === s.id ||
-          (r.name &&
-            s.name &&
-            r.name === s.name &&
-            r.grade === s.grade &&
-            r.section === s.section),
-      );
-      if (!exists) {
+      let existsIdx = idMap.has(s.id) ? idMap.get(s.id) : -1;
+      if (existsIdx === -1 && s.name && s.grade && s.section) {
+        existsIdx = compoundMap.has(`${s.name}-${s.grade}-${s.section}`) 
+          ? compoundMap.get(`${s.name}-${s.grade}-${s.section}`) 
+          : -1;
+      }
+
+      if (existsIdx === -1) {
         mergedReports.push({
           id: s.id,
           userId: currentUser?.id || "",
@@ -318,22 +333,37 @@ const StudentsManager = () => {
           guardianCooperation: "متوسط",
           notes: "",
         } as any);
+        reportsChanged = true;
       } else {
         // Sync immutable details so that editing in secretariat reflects globally
-        exists.name = s.name || exists.name;
-        exists.gender = s.gender || exists.gender;
-        exists.address = s.residenceWork || exists.address;
-        exists.healthStatus = s.healthStatus || exists.healthStatus;
-        exists.guardianName = s.guardianInfo || exists.guardianName;
-        exists.grade = s.grade || exists.grade;
-        exists.section = s.section || exists.section;
+        const exists = mergedReports[existsIdx];
+        if (
+          exists.name !== (s.name || exists.name) ||
+          exists.gender !== (s.gender || exists.gender) ||
+          exists.address !== (s.residenceWork || exists.address) ||
+          exists.healthStatus !== (s.healthStatus || exists.healthStatus) ||
+          exists.guardianName !== (s.guardianInfo || exists.guardianName) ||
+          exists.grade !== (s.grade || exists.grade) ||
+          exists.section !== (s.section || exists.section)
+        ) {
+          mergedReports[existsIdx] = {
+            ...exists,
+            name: s.name || exists.name,
+            gender: s.gender || exists.gender,
+            address: s.residenceWork || exists.address,
+            healthStatus: s.healthStatus || exists.healthStatus,
+            guardianName: s.guardianInfo || exists.guardianName,
+            grade: s.grade || exists.grade,
+            section: s.section || exists.section,
+          };
+          reportsChanged = true;
+        }
       }
     });
 
-    updateData({
-      secretariatStudents: newStudents,
-      studentReports: mergedReports,
-    });
+    const updates: any = { secretariatStudents: newStudents };
+    if (reportsChanged) updates.studentReports = mergedReports;
+    updateData(updates);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -520,7 +550,7 @@ const StudentsManager = () => {
       // 1. School Isolation
       const userSchools = (currentUser?.selectedSchool || "").split(',').map(s => s.trim());
       if (!userSchools.includes('all')) {
-        result = result.filter(s => userSchools.includes(s.school));
+        result = result.filter(s => !s.school || userSchools.includes(s.school));
       }
 
       // 2. Branch Isolation
@@ -528,6 +558,7 @@ const StudentsManager = () => {
       const permsMap = currentUser?.permissions?.schoolsAndBranches || {};
       
       result = result.filter(s => {
+        if (!s.branch) return true; // Show empty branch for editing
         if (currentSelectedBranches.includes('all')) {
            const allowedInThisSchool = permsMap[s.school] || [];
            if (allowedInThisSchool.length > 0) {
@@ -969,10 +1000,15 @@ const StudentsManager = () => {
                       disabled={isReadOnly}
                       type="text"
                       className={`w-full bg-transparent border rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50 ${missingFields.includes("name") ? "border-orange-400 bg-orange-100/50" : "border-slate-200"}`}
-                      value={student.name}
+                      value={localNames[student.id] ?? student.name}
                       onChange={(e) =>
-                        updateRow(student.id, "name", e.target.value)
+                        setLocalNames(prev => ({ ...prev, [student.id]: e.target.value }))
                       }
+                      onBlur={(e) => {
+                        if (e.target.value !== student.name) {
+                          updateRow(student.id, "name", e.target.value);
+                        }
+                      }}
                     />
                   </td>
                   <td className="p-2">
@@ -1044,10 +1080,15 @@ const StudentsManager = () => {
                       disabled={isReadOnly}
                       type="text"
                       className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50"
-                      value={student.residenceWork}
+                      value={localResidence[student.id] ?? student.residenceWork}
                       onChange={(e) =>
-                        updateRow(student.id, "residenceWork", e.target.value)
+                        setLocalResidence(prev => ({ ...prev, [student.id]: e.target.value }))
                       }
+                      onBlur={(e) => {
+                        if (e.target.value !== student.residenceWork) {
+                          updateRow(student.id, "residenceWork", e.target.value);
+                        }
+                      }}
                     />
                   </td>
                   <td className="p-2">
@@ -1055,10 +1096,15 @@ const StudentsManager = () => {
                       disabled={isReadOnly}
                       type="text"
                       className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50"
-                      value={student.healthStatus}
+                      value={localHealth[student.id] ?? student.healthStatus}
                       onChange={(e) =>
-                        updateRow(student.id, "healthStatus", e.target.value)
+                        setLocalHealth(prev => ({ ...prev, [student.id]: e.target.value }))
                       }
+                      onBlur={(e) => {
+                        if (e.target.value !== student.healthStatus) {
+                          updateRow(student.id, "healthStatus", e.target.value);
+                        }
+                      }}
                     />
                   </td>
                   <td className="p-2">
@@ -1066,10 +1112,15 @@ const StudentsManager = () => {
                       disabled={isReadOnly}
                       type="text"
                       className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50"
-                      value={student.guardianInfo}
+                      value={localGuardian[student.id] ?? student.guardianInfo}
                       onChange={(e) =>
-                        updateRow(student.id, "guardianInfo", e.target.value)
+                        setLocalGuardian(prev => ({ ...prev, [student.id]: e.target.value }))
                       }
+                      onBlur={(e) => {
+                        if (e.target.value !== student.guardianInfo) {
+                          updateRow(student.id, "guardianInfo", e.target.value);
+                        }
+                      }}
                     />
                   </td>
                   <td className="p-2 text-center">
@@ -1269,15 +1320,6 @@ const StaffManager = () => {
 
       if (JSON.stringify(staff) !== JSON.stringify(newStaff)) {
         setStaff(newStaff);
-        // Initialize local states
-        const names: Record<string, string> = {};
-        const phones: Record<string, string> = {};
-        newStaff.forEach((item: StaffData) => {
-          names[item.id] = item.name;
-          phones[item.id] = item.phone;
-        });
-        setLocalNames(names);
-        setLocalPhones(phones);
       }
     }
   }, [data.secretariatStaff, updateData, staff]);
@@ -1618,7 +1660,7 @@ const StaffManager = () => {
       // 1. Mandatory School Filtering
       const userSchools = (currentUser?.selectedSchool || "").split(',').map(s => s.trim());
       if (!userSchools.includes('all')) {
-        result = result.filter(s => userSchools.includes(s.school));
+        result = result.filter(s => !s.school || userSchools.includes(s.school));
       }
 
       // 2. Branch Filtering
@@ -1626,6 +1668,7 @@ const StaffManager = () => {
       const permsMap = currentUser?.permissions?.schoolsAndBranches || {};
       
       result = result.filter(s => {
+        if (!s.branch) return true; // Show empty branch for editing
         // If "all" branches selected in UI, still limit by permissions for that school
         if (currentSelectedBranches.includes('all')) {
            const allowedInThisSchool = permsMap[s.school] || [];
@@ -1821,7 +1864,7 @@ const StaffManager = () => {
                     disabled={isReadOnly}
                     type="text"
                     className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50"
-                    value={localNames[employee.id] || ""}
+                    value={localNames[employee.id] ?? employee.name}
                     onChange={(e) => {
                       setLocalNames(prev => ({ ...prev, [employee.id]: e.target.value }));
                     }}
@@ -1853,7 +1896,7 @@ const StaffManager = () => {
                     dir="ltr"
                     className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50 text-right"
                     placeholder="0xxx..."
-                    value={localPhones[employee.id] || ""}
+                    value={localPhones[employee.id] ?? employee.phone}
                     onChange={(e) => {
                       setLocalPhones(prev => ({ ...prev, [employee.id]: e.target.value }));
                     }}

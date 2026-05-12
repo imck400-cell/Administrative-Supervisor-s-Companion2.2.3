@@ -559,22 +559,60 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
                         newPerms.schoolsAndBranches =
                           formData.permissions?.schoolsAndBranches;
 
-                        if (
-                          [
-                            "مدير عام المدارس",
-                            "مدير الفرع",
-                            "السكرتارية",
-                          ].includes(jobTitle)
-                        ) {
+                        if (jobTitle === "مدير عام المدارس" || jobTitle === "مدير الفرع") {
+                          newPerms.dashboard = ["view", "allowEdits"];
+                          newPerms.dailyFollowUp = ["view", "allowEdits"];
+                          newPerms.adminFollowUp = ["view", "allowEdits"];
+                          newPerms.studentAffairs = ["view", "allowEdits"];
+                          newPerms.substitutions = ["view", "allowEdits"];
+                          newPerms.schoolProfile = ["view", "allowEdits"];
+                          newPerms.secretariat = ["view", "allowEdits"];
+                          newPerms.userManagement = ["view"];
+                          newPerms.readOnly = false;
+                          newPerms.issuesModal = [
+                            "view",
+                            "allowEdits",
+                            "useIssuesButton",
+                            "viewAllIssues",
+                          ];
+                          newPerms.trainingCourses = [
+                            "view",
+                            "allowEdits",
+                            "editSchema",
+                            "viewIndicators",
+                          ];
+                          newPerms.caseStudyModal = ["view", "allowEdits"];
+                          newPerms.comprehensiveIndicators = [
+                            "view",
+                            "allowEdits",
+                            "showButton",
+                            "managePermissions",
+                          ];
+                          newPerms.specialReports = [
+                            "view",
+                            "allowEdits",
+                            "absenceLog",
+                            "latenessLog",
+                            "violationLog",
+                            "exitLog",
+                            "damageLog",
+                            "parentVisitLog",
+                            "examLog",
+                            "taskReports"
+                          ];
+
+                          newGrades = [...gradesOptions];
+                          newSections = [...sectionsOptions];
+                        } else if (jobTitle === "السكرتارية") {
                           newPerms.dashboard = ["view"];
                           newPerms.dailyFollowUp = ["view"];
                           newPerms.adminFollowUp = ["view"];
                           newPerms.studentAffairs = ["view"];
                           newPerms.substitutions = ["view"];
                           newPerms.schoolProfile = ["view"];
-                          newPerms.secretariat = ["showButton"];
+                          newPerms.secretariat = ["view", "allowEdits"]; // Key fix here
                           newPerms.userManagement = ["view"];
-                          newPerms.readOnly = true;
+                          newPerms.readOnly = false; // Must be false to allow edits
                           newPerms.issuesModal = [
                             "view",
                             "useIssuesButton",

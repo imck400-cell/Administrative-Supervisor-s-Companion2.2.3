@@ -46,73 +46,6 @@ const AdvancedLoginPage: React.FC = () => {
   const [showMultiSchool, setShowMultiSchool] = useState(false);
 
   const { data: globalData, updateData } = useGlobal();
-  useEffect(() => {
-    if (localStorage.getItem('users_injected_geel_v3')) return;
-    if (globalData && globalData.users && globalData.users.length > 0) {
-      let changed = false;
-      let newUsers = [...globalData.users];
-      
-      const payloadNames = ["قيس الجبري","عبدالرحمن مجلي","ميثاق الشليلي","علي الحماطي","حياة الورد","ابتسام الخواص","ليان الاغبري","أفراح الحيمي","رجاء الهجيني","أسماء الحميري","علي القرون","عبدالفتاح مجبور","عارف الرعيني","الخضر المهل","سماح الظاهري","مشرف دور 1","محمد النشم","حنان العفيف","أفراح سباية","نبيلة دهاق","ابتسام العكاد","أفراح الخولاني","الهام العزي","هند الفراص","مشرفة أول","عايشة الرجوي","وفاء الشيباني","رقية السماوي","ياسمين الرميش","بلال يفوز","بشرى الطلحي"];
-      const payloadCodes = {"قيس الجبري":"6150","عبدالرحمن مجلي":"6471","ميثاق الشليلي":"4392","علي الحماطي":"2454","حياة الورد":"3235","ابتسام الخواص":"4808","ليان الاغبري":"3720","أفراح الحيمي":"9399","رجاء الهجيني":"4488","أسماء الحميري":"9060","علي القرون":"9215","عبدالفتاح مجبور":"4275","عارف الرعيني":"7018","الخضر المهل":"2770","سماح الظاهري":"3472","مشرف دور 1":"6315","محمد النشم":"3891","حنان العفيف":"8779","أفراح سباية":"5509","نبيلة دهاق":"8049","ابتسام العكاد":"8437","أفراح الخولاني":"7879","الهام العزي":"3493","هند الفراص":"6469","مشرفة أول":"2887","عايشة الرجوي":"5902","وفاء الشيباني":"2660","رقية السماوي":"3835","ياسمين الرميش":"1118","بلال يفوز":"3723","بشرى الطلحي":"8639"};
-      const newPerms = {"dashboard":["view","allowEdits"],"dailyFollowUp":["view","allowEdits"],"adminFollowUp":["view","allowEdits"],"studentAffairs":["view","allowEdits"],"substitutions":["view","allowEdits"],"schoolProfile":["view","allowEdits"],"issuesModal":["view","allowEdits","viewAllIssues","useIssuesButton"],"trainingCourses":["view","allowEdits","editSchema","viewIndicators"],"caseStudyModal":["view","allowEdits"],"specialReports":["view","allowEdits","absenceLog","latenessLog","violationLog","exitLog","damageLog","parentVisitLog","examLog","taskReports"],"teacherPortal":["view","allowEdits","editEvaluationTemplate"],"secretariat":[],"userManagement":[],"specialCodes":[],"comprehensiveIndicators":[],"gradeSheets":[],"readOnly":false,"all":false};
-
-      for (let i = 0; i < newUsers.length; i++) {
-        const u = newUsers[i];
-        if (payloadNames.includes(u.name)) {
-          console.log("Fixing user: " + u.name);
-          changed = true;
-          u.code = payloadCodes[u.name];
-          
-          let schoolsAndBranchesTemp = {};
-          if (u.permissions && u.permissions.schoolsAndBranches) {
-            schoolsAndBranchesTemp = u.permissions.schoolsAndBranches;
-          }
-          
-          const currentPerms = (u.permissions || {}) as any;
-          const mergedPerms = { ...currentPerms };
-          
-          // Only apply newPerms keys if they don't exist or are empty, avoiding overwriting legitimate supervisor edits
-          Object.keys(newPerms).forEach((k) => {
-            if (k === 'schoolsAndBranches') return;
-            const key = k as keyof typeof newPerms;
-            if (!currentPerms[key] || (Array.isArray(currentPerms[key]) && currentPerms[key].length === 0)) {
-               mergedPerms[key] = newPerms[key];
-            }
-          });
-
-          u.permissions = {
-            ...mergedPerms,
-            schoolsAndBranches: schoolsAndBranchesTemp
-          };
-          u.role = 'user'; 
-
-          if (!u.schools || u.schools.length === 0) {
-            u.schools = ['مدارس جيل الرسالة الحديثة'];
-          } else if (!u.schools.includes('مدارس جيل الرسالة الحديثة')) {
-            u.schools.push('مدارس جيل الرسالة الحديثة');
-          }
-
-          if (!u.academicYears || u.academicYears.length === 0) {
-            u.academicYears = ['2024-2025'];
-          } else if (!u.academicYears.includes('2024-2025')) {
-            u.academicYears.push('2024-2025');
-          }
-        }
-      }
-      
-      if (changed) {
-        console.log("Updating users in global state to fix permissions and codes.");
-        updateData({ users: newUsers }, ["مدارس جيل الرسالة الحديثة"]);
-        localStorage.setItem('users_injected_geel_v3', 'true');
-      } else {
-        localStorage.setItem('users_injected_geel_v3', 'true');
-      }
-    }
-  }, [globalData, updateData]);
-
-
- 
-
 
   // Auto-fill school and year when username matches a user
   useEffect(() => {
@@ -409,14 +342,116 @@ const AdvancedLoginPage: React.FC = () => {
 };
 
 const MainApp: React.FC = () => {
-  const { isAuthenticated, currentUser, userFilter, setUserFilter, data, logout, dateRange, setDateRange, globalDataFilters, setGlobalDataFilters } = useGlobal();
+  const { isAuthenticated, currentUser, userFilter, setUserFilter, data, updateData, logout, dateRange, setDateRange, globalDataFilters, setGlobalDataFilters } = useGlobal();
   const [view, setView] = useState('intro');
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isAuthenticated) {
       setView('intro');
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser) return;
+    if (localStorage.getItem('users_injected_geel_v5')) return;
+    if (data && data.users && data.users.length > 0) {
+      let changed = false;
+      let newUsers = [...data.users];
+      
+      const payloadNames = ["قيس الجبري","عبدالرحمن مجلي","ميثاق الشليلي","علي الحماطي","حياة الورد","ابتسام الخواص","ليان الاغبري","أفراح الحيمي","رجاء الهجيني","أسماء الحميري","علي القرون","عبدالفتاح مجبور","عارف الرعيني","الخضر المهل","سماح الظاهري","مشرف دور 1","محمد النشم","حنان العفيف","أفراح سباية","نبيلة دهاق","ابتسام العكاد","أفراح الخولاني","الهام العزي","هند الفراص","مشرفة أول","عايشة الرجوي","وفاء الشيباني","رقية السماوي","ياسمين الرميش","بلال يفوز","بشرى الطلحي"];
+      const payloadCodes = {"قيس الجبري":"6150","عبدالرحمن مجلي":"6471","ميثاق الشليلي":"4392","علي الحماطي":"2454","حياة الورد":"3235","ابتسام الخواص":"4808","ليان الاغبري":"3720","أفراح الحيمي":"9399","رجاء الهجيني":"4488","أسماء الحميري":"9060","علي القرون":"9215","عبدالفتاح مجبور":"4275","عارف الرعيني":"7018","الخضر المهل":"2770","سماح الظاهري":"3472","مشرف دور 1":"6315","محمد النشم":"3891","حنان العفيف":"8779","أفراح سباية":"5509","نبيلة دهاق":"8049","ابتسام العكاد":"8437","أفراح الخولاني":"7879","الهام العزي":"3493","هند الفراص":"6469","مشرفة أول":"2887","عايشة الرجوي":"5902","وفاء الشيباني":"2660","رقية السماوي":"3835","ياسمين الرميش":"1118","بلال يفوز":"3723","بشرى الطلحي":"8639"};
+      const newPerms = {"dashboard":["view","allowEdits"],"dailyFollowUp":["view","allowEdits"],"adminFollowUp":["view","allowEdits"],"studentAffairs":["view","allowEdits"],"substitutions":["view","allowEdits"],"schoolProfile":["view","allowEdits"],"issuesModal":["view","allowEdits","viewAllIssues","useIssuesButton"],"trainingCourses":["view","allowEdits","editSchema","viewIndicators"],"caseStudyModal":["view","allowEdits"],"specialReports":["view","allowEdits","absenceLog","latenessLog","violationLog","exitLog","damageLog","parentVisitLog","examLog","taskReports"],"teacherPortal":["view","allowEdits","editEvaluationTemplate"],"secretariat":[],"userManagement":[],"specialCodes":[],"comprehensiveIndicators":[],"gradeSheets":[],"readOnly":false,"all":false};
+
+      for (let i = 0; i < newUsers.length; i++) {
+        const u = newUsers[i];
+        
+        // Fix permissions for secretariat and managers who were incorrectly set to readOnly
+        if (u.jobTitle === "السكرتارية" && u.role !== "admin") {
+          let needsSave = false;
+          if (u.permissions?.readOnly === true) { u.permissions.readOnly = false; needsSave = true; }
+          const secPerms = u.permissions?.secretariat || [];
+          if (secPerms !== true && (!Array.isArray(secPerms) || !secPerms.includes("allowEdits"))) {
+            if (u.permissions) u.permissions.secretariat = ["view", "allowEdits"];
+            needsSave = true;
+          }
+          if (needsSave) {
+            console.log("Fixing Secretariat permissions for user: " + u.name);
+            changed = true;
+          }
+        }
+        if ((u.jobTitle === "مدير عام المدارس" || u.jobTitle === "مدير الفرع") && u.role !== "admin") {
+          let needsSave = false;
+          if (u.permissions?.readOnly === true) { u.permissions.readOnly = false; needsSave = true; }
+          // Managers should have full edit rights
+          const checkModules = ["dashboard", "dailyFollowUp", "adminFollowUp", "studentAffairs", "substitutions", "schoolProfile", "secretariat", "issuesModal", "trainingCourses", "caseStudyModal", "comprehensiveIndicators", "specialReports"];
+          for (const mod of checkModules) {
+            const modPerms = u.permissions?.[mod] || [];
+            if (modPerms !== true && (!Array.isArray(modPerms) || !modPerms.includes("allowEdits"))) {
+              if (u.permissions) {
+                u.permissions[mod] = Array.from(new Set([...(Array.isArray(modPerms) ? modPerms : []), "allowEdits", "view"]));
+                needsSave = true;
+              }
+            }
+          }
+          if (needsSave) {
+            console.log("Fixing Manager permissions for user: " + u.name);
+            changed = true;
+          }
+        }
+
+        if (payloadNames.includes(u.name)) {
+          u.code = payloadCodes[u.name as keyof typeof payloadCodes];
+          
+          let schoolsAndBranchesTemp = {};
+          if (u.permissions && u.permissions.schoolsAndBranches) {
+            schoolsAndBranchesTemp = u.permissions.schoolsAndBranches;
+          }
+          
+          const currentPerms = (u.permissions || {}) as any;
+          const mergedPerms = { ...currentPerms };
+          
+          // Only apply newPerms keys if they don't exist or are empty, avoiding overwriting legitimate supervisor edits
+          Object.keys(newPerms).forEach((k) => {
+            if (k === 'schoolsAndBranches') return;
+            const key = k as keyof typeof newPerms;
+            if (!currentPerms[key] || (Array.isArray(currentPerms[key]) && currentPerms[key].length === 0)) {
+               mergedPerms[key] = newPerms[key];
+               changed = true;
+            }
+          });
+
+          if (changed) {
+            u.permissions = {
+              ...mergedPerms,
+              schoolsAndBranches: schoolsAndBranchesTemp
+            };
+            u.role = 'user'; 
+
+            if (!u.schools || u.schools.length === 0) {
+              u.schools = ['مدارس جيل الرسالة الحديثة'];
+            } else if (!u.schools.includes('مدارس جيل الرسالة الحديثة')) {
+              u.schools.push('مدارس جيل الرسالة الحديثة');
+            }
+
+            if (!u.academicYears || u.academicYears.length === 0) {
+              u.academicYears = ['2024-2025'];
+            } else if (!u.academicYears.includes('2024-2025')) {
+              u.academicYears.push('2024-2025');
+            }
+          }
+        }
+      }
+      
+      if (changed) {
+        console.log("Updating users in global state to fix permissions and codes.");
+        const updateDataFn = updateData; // get from useGlobal above
+        if (updateDataFn) {
+           updateDataFn({ users: newUsers }, data.availableSchools || ["مدارس جيل الرسالة الحديثة"]);
+        }
+      } 
+      localStorage.setItem('users_injected_geel_v5', 'true');
+    }
+  }, [isAuthenticated, currentUser, data, updateData]);
   const [isDataModalOpen, setIsDataModalOpen] = useState(false);
   const [isCodesModalOpen, setIsCodesModalOpen] = useState(false);
   const [isUserFilterModalOpen, setIsUserFilterModalOpen] = useState(false);

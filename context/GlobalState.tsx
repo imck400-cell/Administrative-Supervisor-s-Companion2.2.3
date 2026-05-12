@@ -2032,7 +2032,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                 ) {
                   payloadToSave = (payloadToSave as any[]).filter(
                     (s) =>
-                      s.school === school ||
+                      (s.school && s.school.trim() === school.trim()) ||
                       (s.schoolBranch && s.schoolBranch.startsWith(school)),
                   ) as any;
                 }

@@ -2,33 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    //
-    // Collection: users
-    // Document ID: {uid} (Firebase Auth UID)
-    // Fields:
-    //   - customUserId: string (required)
-    //   - role: string (required, 'admin' or 'user')
-    //   - schools: list (required)
-    //
-    // Collection: schools/{school}/shared/{key}
-    // Document ID: {key} (e.g., 'profile', 'taskTemplates')
-    // Fields:
-    //   - data: any (required)
-    //
-    // Collection: schools/{school}/users/{userId}/data/{key}
-    // Document ID: {key} (e.g., 'dailyReports', 'substitutions')
-    // Fields:
-    //   - items: list (required)
-    //
-    // ===============================================================
-
     // System configuration (e.g. intro page settings)
     match /system/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated() && userExists() && (getUserData().role == 'admin' || getUserData().get('permissions', {}).get('all', false) == true);
+      allow write: if isAuthenticated() && getUserData().get('role', 'user') == 'admin' || getUserData().get('permissions', {}).get('all', false) == true;
     }
 
     // Helper functions
@@ -36,24 +13,30 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userExists() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function hasSchool(school) {
-      let data = getUserData();
-      return data.get('role', '') == 'admin' || school in data.get('schools', []) || 'all' in data.get('schools', []);
+      return getUserData().get('role', 'user') == 'admin' || 
+             getUserData().get('permissions', {}).get('all', false) == true || 
+             school in getUserData().get('schools', []) || 
+             'all' in getUserData().get('schools', []);
+    }
+
+    function isManager() {
+       let perms = getUserData().get('permissions', {});
+       return perms.get('userManagement', false) == true || (perms.get('userManagement', [])).size() > 0;
+    }
+
+    function isSecretariatKey(key) {
+       return key == 'secretariatStudents' || key == 'secretariatStaff' || key == 'users' || key == 'profile' || key == 'availableSchools' || key == 'availableYears' || key == 'schoolBranches' || key == 'selfEvaluationTemplates' || key == 'courseEvaluationSchema_v2' || key == 'metricsList' || key == 'adminMetricsList' || key == 'branchMetrics' || key == 'adminBranchMetrics' || key == 'adminFollowUpTypes' || key == 'adminActivitiesList' || key == 'adminBranchActivities' || key == 'adminIndividualReportFields' || key == 'adminIndividualReports' || key == 'addedTasks' || key == 'postponedTasks' || key == 'issueRecommendations' || key == 'creativityRecords' || key == 'trainingEvaluations';
     }
 
     // User mapping document
     match /users/{uid} {
-      allow read: if isAuthenticated() && request.auth.uid == uid;
-      allow create: if isAuthenticated() && request.auth.uid == uid;
-      allow update: if isAuthenticated() && request.auth.uid == uid;
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (request.auth.uid == uid);
     }
 
     // School data
@@ -61,37 +44,52 @@ service cloud.firestore {
       
       // Shared data (profile, templates, etc.)
       match /shared/{key} {
-        allow read: if isAuthenticated() && (key == 'users' || key == 'profile' || key == 'availableSchools' || key == 'availableYears' || key == 'schoolBranches' || key == 'selfEvaluationTemplates' || (userExists() && hasSchool(school)));
-        allow write: if isAuthenticated() && userExists() && (
-          (key == 'users' && (getUserData().role == 'admin' || (getUserData().get('permissions', {}).get('userManagement', false) == true) || (getUserData().get('permissions', {}).get('userManagement', [])).size() > 0)) ||
-          (hasSchool(school) && (getUserData().role == 'admin' || key == 'secretariatStudents' || key == 'secretariatStaff' || key == 'users' || key == 'profile' || key == 'availableSchools' || key == 'availableYears' || key == 'schoolBranches' || key == 'selfEvaluationTemplates' || key == 'courseEvaluationSchema_v2' || key == 'metricsList' || key == 'adminMetricsList' || key == 'branchMetrics' || key == 'adminBranchMetrics' || key == 'adminFollowUpTypes' || key == 'adminActivitiesList' || key == 'adminBranchActivities' || key == 'adminIndividualReportFields' || key == 'adminIndividualReports' || key == 'addedTasks' || key == 'postponedTasks' || key == 'issueRecommendations' || key == 'creativityRecords' || key == 'trainingEvaluations'))
+        // Allow anonymous reads for login-essential keys
+        allow read: if isAuthenticated() && (
+          key == 'users' || 
+          key == 'profile' || 
+          key == 'availableSchools' || 
+          key == 'availableYears' || 
+          key == 'schoolBranches' || 
+          key == 'selfEvaluationTemplates' ||
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && hasSchool(school))
         );
+        
+        allow write: if isAuthenticated() && 
+                     exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+                       getUserData().get('role', 'user') == 'admin' || 
+                       getUserData().get('permissions', {}).get('all', false) == true || 
+                       (key == 'users' && isManager()) ||
+                       (hasSchool(school) && isSecretariatKey(key))
+                     );
       }
 
       // User-specific data
       match /users/{userId}/data/{key} {
-        allow read: if isAuthenticated() && userExists() && hasSchool(school);
-        allow write: if isAuthenticated() && userExists() && hasSchool(school);
+        allow read, write: if isAuthenticated() && 
+                             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+                             hasSchool(school);
       }
     }
 
-    // Issues and Solutions Log (New Collection)
+    // Issues and Solutions Log
     match /issuesAndSolutions_log/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read, write: if isAuthenticated();
     }
 
     // Case Studies Log
     match /CaseStudies/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read, write: if isAuthenticated();
     }
 
     // GradeSheets
     match /GradeSheets/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
-

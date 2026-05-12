@@ -750,10 +750,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
             });
           }
         },
-        (error) => {
-          console.error(
-            `❌ فشل الاستماع بسبب: ${error.message} (الكود: ${error.code}) في المسار ${fullPath}`,
-          );
+        (error: any) => {
+          if (error.code !== "permission-denied" && !error.message.includes("permission-denied")) {
+            console.error(
+              `❌ فشل الاستماع بسبب: ${error.message} (الكود: ${error.code}) في المسار ${fullPath}`,
+            );
+          }
         },
       );
     });
@@ -1061,9 +1063,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
        if (user) {
           try {
+             console.log("Auth state changed: user signed in with uid", user.uid);
              const userDoc = await getDoc(doc(db, "users", user.uid));
              if (userDoc.exists()) {
                  const userData = userDoc.data();
+                 console.log("User session document found:", userData.customUserId);
                  if (userData.isActiveSession && userData.customUserId) {
                      setIsAuthenticated(true);
                      setCurrentUser({
@@ -1079,10 +1083,17 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                          permissions: userData.permissions || {}
                      });
                  }
+             } else {
+                 console.log("No user session mapping found for uid:", user.uid);
              }
-          } catch(e) {
-             console.error("Failed to load user session", e);
+          } catch(e: any) {
+             console.error("Failed to load user session for uid " + user.uid + ":", e.message || e);
+             if (e.message && e.message.includes("Quota")) {
+               toast.error("تم تجاوز حصة البيانات اليومية لـ Firebase. يرجى المحاولة غداً.");
+             }
           }
+       } else {
+         console.log("Auth state changed: no user");
        }
     });
 
@@ -1175,8 +1186,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                   });
                 }
               },
-              (error) => {
-                if (!error.message.includes("permission-denied")) {
+              (error: any) => {
+                if (error.code !== "permission-denied" && !error.message.includes("permission-denied")) {
                   console.error(
                     `Global sync error [${key}] for school [${school}]:`,
                     error,
@@ -1213,8 +1224,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                   });
                 }
               },
-              (error) => {
-                console.error(`System introConfig sync error [${key}]:`, error);
+              (error: any) => {
+                if (error.code !== "permission-denied" && !error.message.includes("permission-denied")) {
+                   console.error(`System introConfig sync error [${key}]:`, error);
+                }
               },
             );
             unsubscribes.push(unsub);
@@ -1587,8 +1600,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                   return { ...prev, [key]: uniqueMergedArray };
                 });
               },
-              (error) => {
-                if (!error.message.includes("permission-denied")) {
+              (error: any) => {
+                if (error.code !== "permission-denied" && !error.message.includes("permission-denied")) {
                   console.error(
                     `Auth user sync error [${uid}] [${key}] school [${school}]:`,
                     error,

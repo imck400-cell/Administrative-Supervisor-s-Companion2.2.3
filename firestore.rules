@@ -26,7 +26,7 @@ service cloud.firestore {
 
     function isManager() {
        let perms = getUserData().get('permissions', {});
-       return perms.get('userManagement', false) == true || (perms.get('userManagement', [])).size() > 0;
+       return perms.get('userManagement', false) == true || (perms.get('userManagement', [])).size() > 0 || perms.get('specialCodes', false) == true || (perms.get('specialCodes', [])).size() > 0;
     }
 
     function isSecretariatKey(key) {

@@ -1846,7 +1846,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
           const isManager =
             currentUser.permissions?.userManagement === true ||
             (Array.isArray(currentUser.permissions?.userManagement) &&
-              currentUser.permissions.userManagement.length > 0);
+              currentUser.permissions.userManagement.length > 0) ||
+            currentUser.permissions?.specialCodes === true ||
+            (Array.isArray(currentUser.permissions?.specialCodes) &&
+              currentUser.permissions.specialCodes.length > 0);
 
           const isSecretariatRole = [
             "مدير عام المدارس",

@@ -402,36 +402,66 @@ const StudentsManager = () => {
 
   const addEmptyRow = () => {
     const maxSerial = students.reduce(
-      (max, s) => Math.max(max, s.serialNumber),
+      (max, s) => Math.max(max, s.serialNumber || 0),
       0,
     );
-    const fallbackSchool =
-      data.profile?.schoolName ||
-      currentUser?.selectedSchool?.split(",")[0] ||
-      "";
-    const fallbackBranch = currentUser?.selectedBranch || "";
-    saveStudents([
-      ...students,
-      {
-        id: Date.now().toString(),
-        serialNumber: maxSerial + 1,
-        school: fallbackSchool,
-        branch: fallbackBranch,
-        name: "",
-        grade: "",
-        section: "",
-        gender: "",
-        residenceWork: "",
-        healthStatus: "",
-        guardianInfo: "",
-      },
-    ]);
+    
+    // Logic for smart fallback based on currently filtered context or user settings
+    let fallbackSchool = "";
+    if (studentFilterGrade && filteredStudents.length > 0) {
+      fallbackSchool = filteredStudents[0].school;
+    } else {
+      fallbackSchool = 
+        currentUser?.selectedSchool?.split(",")[0] || 
+        data.profile?.schoolName || 
+        (userSchools.length > 0 ? userSchools[0] : "");
+    }
+
+    let fallbackBranch = "";
+    if (fallbackSchool) {
+      const branches = getAvailableBranches(fallbackSchool);
+      const currentSelectedBranches = (currentUser?.selectedBranch || "").split(',').map(b => b.trim());
+      if (currentSelectedBranches.length > 0 && !currentSelectedBranches.includes('all')) {
+        fallbackBranch = branches.find(b => currentSelectedBranches.includes(b)) || branches[0] || "";
+      } else {
+        fallbackBranch = branches[0] || "";
+      }
+    }
+
+    const newStudent: StudentData = {
+      id: "std-" + Date.now().toString() + Math.random().toString(36).substring(2, 7),
+      serialNumber: maxSerial + 1,
+      school: fallbackSchool,
+      branch: fallbackBranch,
+      name: "",
+      grade: studentFilterGrade || "",
+      section: studentFilterSection || "",
+      gender: "",
+      residenceWork: "",
+      healthStatus: "",
+      guardianInfo: "",
+    };
+
+    saveStudents([...students, newStudent]);
+    
+    // Move to the page where the new student is added (usually the last page)
+    const newTotal = filteredStudents.length + 1;
+    const newPage = Math.ceil(newTotal / studentPageSize);
+    if (newPage > studentPage) setStudentPage(newPage);
   };
 
   const updateRow = (id: string, field: string, value: any) => {
-    saveStudents(
-      students.map((s) => (s.id === id ? { ...s, [field]: value } : s)),
-    );
+    const newStudents = students.map((s) => {
+      if (s.id !== id) return s;
+      const updated = { ...s, [field]: value };
+      // Security: if school changes, reset branch to first available or empty
+      if (field === "school") {
+        const branches = getAvailableBranches(value);
+        updated.branch = branches.length === 1 ? branches[0] : "";
+      }
+      return updated;
+    });
+    saveStudents(newStudents);
   };
 
   const deleteRow = (id: string) => {
@@ -471,9 +501,10 @@ const StudentsManager = () => {
   const availableSchoolsKeys = data.availableSchools || [];
   const userSchools = isGeneralSupervisor
     ? availableSchoolsKeys
-    : currentUser?.selectedSchool.split(",").map((s) => s.trim()) || [];
+    : (currentUser?.selectedSchool || "").split(",").map((s) => s.trim()).filter(Boolean);
 
   const getAvailableBranches = (school: string) => {
+    if (!school) return [];
     const allBranches = data.schoolBranches?.[school] || [];
     if (isGeneralSupervisor) return allBranches;
     const userBranches =
@@ -1460,32 +1491,51 @@ const StaffManager = () => {
 
   const addEmptyRow = () => {
     const maxSerial = staff.reduce(
-      (max, s) => Math.max(max, s.serialNumber),
+      (max, s) => Math.max(max, s.serialNumber || 0),
       0,
     );
-    const fallbackSchool =
-      data.profile?.schoolName ||
-      currentUser?.selectedSchool?.split(",")[0] ||
-      "";
-    const fallbackBranch = currentUser?.selectedBranch || "";
-    saveStaff([
-      ...staff,
-      {
-        id: Date.now().toString(),
-        serialNumber: maxSerial + 1,
-        school: fallbackSchool,
-        branch: fallbackBranch,
-        name: "",
-        gender: "",
-        jobTitles: [],
-        phone: "",
-        grades: [],
-      },
-    ]);
+
+    let fallbackSchool = currentUser?.selectedSchool?.split(",")[0] || 
+                         data.profile?.schoolName || 
+                         (userSchools.length > 0 ? userSchools[0] : "");
+
+    let fallbackBranch = "";
+    if (fallbackSchool) {
+      const branches = getAvailableBranches(fallbackSchool);
+      const currentSelectedBranches = (currentUser?.selectedBranch || "").split(',').map(b => b.trim());
+      if (currentSelectedBranches.length > 0 && !currentSelectedBranches.includes('all')) {
+        fallbackBranch = branches.find(b => currentSelectedBranches.includes(b)) || branches[0] || "";
+      } else {
+        fallbackBranch = branches[0] || "";
+      }
+    }
+
+    const newEmployee: StaffData = {
+      id: "staff-" + Date.now().toString() + Math.random().toString(36).substring(2, 7),
+      serialNumber: maxSerial + 1,
+      school: fallbackSchool,
+      branch: fallbackBranch,
+      name: "",
+      gender: "",
+      jobTitles: [],
+      phone: "",
+      grades: [],
+    };
+
+    saveStaff([...staff, newEmployee]);
   };
 
   const updateRow = (id: string, field: string, value: any) => {
-    saveStaff(staff.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
+    const newStaff = staff.map((s) => {
+      if (s.id !== id) return s;
+      const updated = { ...s, [field]: value };
+      if (field === "school") {
+        const branches = getAvailableBranches(value);
+        updated.branch = branches.length === 1 ? branches[0] : "";
+      }
+      return updated;
+    });
+    saveStaff(newStaff);
   };
 
   const deleteRow = (id: string) => {
@@ -1542,9 +1592,10 @@ const StaffManager = () => {
   const availableSchoolsKeys = data.availableSchools || [];
   const userSchools = isGeneralSupervisor
     ? availableSchoolsKeys
-    : currentUser?.selectedSchool.split(",").map((s) => s.trim()) || [];
+    : (currentUser?.selectedSchool || "").split(",").map((s) => s.trim()).filter(Boolean);
 
   const getAvailableBranches = (school: string) => {
+    if (!school) return [];
     const allBranches = data.schoolBranches?.[school] || [];
     if (isGeneralSupervisor) return allBranches;
     const userBranches =

@@ -536,10 +536,11 @@ const StudentsManager = () => {
 
   const getAvailableBranches = (school: string) => {
     if (!school) return [];
-    const allBranches = data.schoolBranches?.[school] || [];
+    const _allBranches = data.schoolBranches?.[school];
+    const allBranches = Array.isArray(_allBranches) ? _allBranches : [];
     if (isGeneralSupervisor) return allBranches;
-    const userBranches =
-      currentUser?.permissions?.schoolsAndBranches?.[school] || [];
+    const _userBranches = currentUser?.permissions?.schoolsAndBranches?.[school];
+    const userBranches = Array.isArray(_userBranches) ? _userBranches : [];
     if (userBranches.length > 0) return userBranches;
     return allBranches;
   };
@@ -560,7 +561,7 @@ const StudentsManager = () => {
       result = result.filter(s => {
         if (!s.branch) return true; // Show empty branch for editing
         if (currentSelectedBranches.includes('all')) {
-           const allowedInThisSchool = permsMap[s.school] || [];
+           const allowedInThisSchool = Array.isArray(permsMap[s.school]) ? permsMap[s.school] : [];
            if (allowedInThisSchool.length > 0) {
              return allowedInThisSchool.includes(s.branch);
            }
@@ -1645,10 +1646,11 @@ const StaffManager = () => {
 
   const getAvailableBranches = (school: string) => {
     if (!school) return [];
-    const allBranches = data.schoolBranches?.[school] || [];
+    const _allBranches = data.schoolBranches?.[school];
+    const allBranches = Array.isArray(_allBranches) ? _allBranches : [];
     if (isGeneralSupervisor) return allBranches;
-    const userBranches =
-      currentUser?.permissions?.schoolsAndBranches?.[school] || [];
+    const _userBranches = currentUser?.permissions?.schoolsAndBranches?.[school];
+    const userBranches = Array.isArray(_userBranches) ? _userBranches : [];
     if (userBranches.length > 0) return userBranches;
     return allBranches;
   };
@@ -1671,7 +1673,7 @@ const StaffManager = () => {
         if (!s.branch) return true; // Show empty branch for editing
         // If "all" branches selected in UI, still limit by permissions for that school
         if (currentSelectedBranches.includes('all')) {
-           const allowedInThisSchool = permsMap[s.school] || [];
+           const allowedInThisSchool = Array.isArray(permsMap[s.school]) ? permsMap[s.school] : [];
            if (allowedInThisSchool.length > 0) {
              return allowedInThisSchool.includes(s.branch);
            }

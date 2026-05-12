@@ -387,11 +387,12 @@ const StudentsManager = () => {
             importedBranch = row["الفرع"] || row["اسم الفرع"];
         }
 
+        const userSch = currentUser?.selectedSchool?.split(",")[0];
+        const defaultAvail = data.availableSchools && data.availableSchools.length > 0 ? data.availableSchools[0] : "";
+        
         const fallbackSchool =
           importedSchool ||
-          data.profile?.schoolName ||
-          currentUser?.selectedSchool?.split(",")[0] ||
-          "";
+          (userSch && userSch !== "all" ? userSch : (data.profile?.schoolName || defaultAvail));
         const fallbackBranch =
           importedBranch || currentUser?.selectedBranch || "";
 
@@ -436,15 +437,18 @@ const StudentsManager = () => {
       0,
     );
     
-    // Logic for smart fallback based on currently filtered context or user settings
+    const rawSchool = currentUser?.selectedSchool?.split(",")[0];
+    const defaultAvailable = data.availableSchools && data.availableSchools.length > 0 ? data.availableSchools[0] : "";
+    
+    let fallbackSchoolDefault = rawSchool && rawSchool !== "all" 
+      ? rawSchool 
+      : (data.profile?.schoolName || defaultAvailable);
+
     let fallbackSchool = "";
     if (studentFilterGrade && filteredStudents.length > 0) {
       fallbackSchool = filteredStudents[0].school;
     } else {
-      fallbackSchool = 
-        currentUser?.selectedSchool?.split(",")[0] || 
-        data.profile?.schoolName || 
-        (userSchools.length > 0 ? userSchools[0] : "");
+      fallbackSchool = fallbackSchoolDefault;
     }
 
     let fallbackBranch = "";
@@ -472,13 +476,13 @@ const StudentsManager = () => {
       guardianInfo: "",
     };
 
-    saveStudents([newStudent, ...students]);
+    saveStudents([...students, newStudent]);
     
-    // Move to first page to see the new student
-    setStudentPage(1);
-    
-    // Clear search so the new empty row is visible
     setSearchQuery("");
+    
+    const newTotal = filteredStudents.length + 1;
+    const newPage = Math.ceil(newTotal / studentPageSize);
+    setStudentPage(newPage > 0 ? newPage : 1);
   };
 
   const updateRow = (id: string, field: string, value: any) => {
@@ -631,7 +635,7 @@ const StudentsManager = () => {
   // Reset page when filters change
   useEffect(() => {
     setStudentPage(1);
-  }, [searchQuery, studentFilterGrade, studentFilterSection, studentPageSize]);
+  }, [studentFilterGrade, studentFilterSection, studentPageSize]);
 
   const toggleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) setSelectedIds(filteredStudents.map((s) => s.id));
@@ -710,7 +714,10 @@ const StudentsManager = () => {
               placeholder="بحث عن طالب، صف، فرع، ولي أمر..."
               className="w-full bg-white border-2 border-slate-200 rounded-xl py-3 pr-12 pl-4 outline-none focus:border-blue-500 transition-colors font-bold text-sm"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setStudentPage(1);
+              }}
             />
           </div>
           <select
@@ -1490,11 +1497,12 @@ const StaffManager = () => {
             importedBranch = row["الفرع"] || row["اسم الفرع"];
         }
 
+        const userSch = currentUser?.selectedSchool?.split(",")[0];
+        const defaultAvail = data.availableSchools && data.availableSchools.length > 0 ? data.availableSchools[0] : "";
+        
         const fallbackSchool =
           importedSchool ||
-          data.profile?.schoolName ||
-          currentUser?.selectedSchool?.split(",")[0] ||
-          "";
+          (userSch && userSch !== "all" ? userSch : (data.profile?.schoolName || defaultAvail));
         const fallbackBranch =
           importedBranch || currentUser?.selectedBranch || "";
 
@@ -1544,9 +1552,12 @@ const StaffManager = () => {
       0,
     );
 
-    let fallbackSchool = currentUser?.selectedSchool?.split(",")[0] || 
-                         data.profile?.schoolName || 
-                         (userSchools.length > 0 ? userSchools[0] : "");
+    const rawSchool = currentUser?.selectedSchool?.split(",")[0];
+    const defaultAvailable = data.availableSchools && data.availableSchools.length > 0 ? data.availableSchools[0] : "";
+    
+    let fallbackSchool = rawSchool && rawSchool !== "all" 
+      ? rawSchool 
+      : (data.profile?.schoolName || defaultAvailable);
 
     let fallbackBranch = "";
     if (fallbackSchool) {
@@ -1571,7 +1582,7 @@ const StaffManager = () => {
       grades: [],
     };
 
-    saveStaff([newEmployee, ...staff]);
+    saveStaff([...staff, newEmployee]);
     setSearchQuery(""); // Make sure we can see the empty row
   };
 

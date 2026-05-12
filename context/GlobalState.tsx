@@ -918,12 +918,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         // Legacy: previously stored directly in profiles[school]
         newData.profile = { ...newData.profile, ...schoolProfiles };
       } else {
-        // Default to first available branch if we have branch-based format but current branch not found
-        const firstBranchKey = Object.keys(schoolProfiles)[0];
-        if (
-          firstBranchKey &&
-          typeof schoolProfiles[firstBranchKey] === "object"
-        ) {
+        // Default to the first available real branch (excluding metadata like lastUpdated)
+        const firstBranchKey = Object.keys(schoolProfiles).find(k => 
+          k !== "lastUpdated" && typeof schoolProfiles[k] === "object"
+        );
+        if (firstBranchKey) {
           newData.profile = {
             ...newData.profile,
             ...schoolProfiles[firstBranchKey],
@@ -1937,10 +1936,18 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
           if (canSave) {
             if (key === "profile") {
-              newData[key] = {
+              const profileData = {
                 ...(newData[key] as any),
                 lastUpdated: Date.now(),
               };
+              newData[key] = profileData;
+
+              // Update local profiles map for all targeted schools to ensure instant feedback
+              const currentProfiles = { ...(data.profiles || {}) };
+              schoolsToUpdate.forEach((s) => {
+                currentProfiles[s] = profileData;
+              });
+              pendingChanges.profiles = currentProfiles;
             }
             if (key === "users" && Array.isArray(newData[key])) {
               const mergedUsersMap = new Map();
@@ -2024,10 +2031,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
             await Promise.all(promises);
 
-            if (key === "profile") {
-               // No need to manually update pendingChanges.profile here,
-               // filteredData useMemo will handle it as soon as profiles is updated.
-            } else if (key === "availableSchools" || key === "availableYears") {
+            if (key === "availableSchools" || key === "availableYears") {
                if (isAdminOrFull) {
                  setDoc(doc(db, "system", "introConfig", "data", key), {
                    data: newData[key]
@@ -2036,7 +2040,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
             }
 
             // Update local state immediately for instant feedback
-            if (key !== "profile") {
+            if (key !== "profile" && key !== "profiles") {
               pendingChanges[key] = newData[key] as any;
             }
           }

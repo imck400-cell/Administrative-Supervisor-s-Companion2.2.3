@@ -156,8 +156,8 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
   };
 
   const handleSaveAndBroadcast = () => {
-    if (!selectedSchool) {
-      toast.error("يرجى اختيار مدرسة لتعديل ملفها");
+    if (!selectedSchool || selectedSchool === "all") {
+      toast.error("يرجى اختيار مدرسة محددة لتعديل ملفها");
       return;
     }
 
@@ -226,7 +226,7 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
       });
 
       updateData({ users: updatedUsers }, [selectedSchool]);
-      toast.success("تم حفظ التغيير الخاص بنجاح");
+      toast.success(`تم حفظ التغيير الخاص لـ (${selectedSpecUsers.length}) مستخدم بنجاح`);
       onClose();
       return;
     }
@@ -234,19 +234,16 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
     // Update the profile in the new branch-based map format
     const payloadMap: any = { ...existingSchoolProfiles };
 
-    // For legacy documents: if it's currently a flat Document, just migrate it.
+    // For legacy documents: if it's currently a flat Document, just migrate it to "الفرع الرئيسي" or its branch property
     if (payloadMap.ministry !== undefined) {
       const legacyBranch = payloadMap.branch || "الفرع الرئيسي";
       payloadMap[legacyBranch] = { ...existingSchoolProfiles };
-      delete payloadMap.ministry;
-      delete payloadMap.district;
-      delete payloadMap.schoolName;
-      delete payloadMap.logoImg;
-      delete payloadMap.branchManager;
-      delete payloadMap.generalManager;
-      delete payloadMap.year;
-      delete payloadMap.branch;
-      delete payloadMap.lastUpdated;
+      // Remove all flat fields from the payloadMap (which will now hold branches as keys)
+      const flatFields = [
+        "ministry", "district", "schoolName", "logoImg", 
+        "branchManager", "generalManager", "year", "branch", "lastUpdated"
+      ];
+      flatFields.forEach(f => delete payloadMap[f]);
     }
 
     if (selectedBranch) {
@@ -255,14 +252,19 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
         branch: selectedBranch,
       };
     } else {
-      payloadMap["الاعدادات العامة"] = {
+      // If no branch is explicitly selected (and branches exist), 
+      // we might want to update the "General Settings" or the first branch.
+      // But based on user request, it should be the branch chosen.
+      const branchKey = selectedBranch || "اعدادات عامة";
+      payloadMap[branchKey] = {
         ...updatedProfile,
-        branch: "",
+        branch: branchKey === "اعدادات عامة" ? "" : branchKey,
       };
     }
 
+    // Explicitly target ONLY the selected school to ensure isolation
     updateData({ profile: payloadMap as any }, [selectedSchool]);
-    toast.success("تم الحفظ بنجاح");
+    toast.success(`تم حفظ تعديلات مدرسة (${selectedSchool}) - فرع (${selectedBranch || "العام"}) بنجاح`);
     onClose();
   };
 
@@ -360,58 +362,82 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
               </div>
             )}
 
-            <div className="space-y-4 p-5 bg-white/50 rounded-2xl border border-slate-200/50 shadow-sm">
-              <label className="text-sm font-bold text-slate-700 block">
-                تحديد المدرسة {isSpecialChangeMode && <span className="text-xs text-red-500 font-normal">(مغلق حالياً - وضع التغيير الخاص)</span>}
-              </label>
+            <div className="space-y-4 p-5 bg-white/50 rounded-2xl border border-slate-200/50 shadow-sm transition-all">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-black text-slate-800 flex items-center gap-2">
+                  <div className="w-2 h-5 bg-violet-500 rounded-full" />
+                  قائمة المدارس المتاحة
+                </label>
+                {isSpecialChangeMode && <span className="text-xs text-red-500 font-bold bg-red-50 px-2 py-1 rounded-lg">وضع التغيير الخاص نشط (المدرسة مقيدة)</span>}
+              </div>
               <div className="flex flex-wrap gap-2">
                 {availableSchools.map((sch) => (
                   <button
                     key={sch}
                     onClick={() => !isSpecialChangeMode && handleSchoolToggle(sch)}
-                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                    className={`px-5 py-2.5 rounded-2xl text-sm font-bold transition-all duration-300 transform active:scale-95 ${
                       selectedSchool === sch
-                        ? "bg-gradient-to-l from-violet-600 to-indigo-600 text-white shadow-md"
-                        : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                        ? "bg-gradient-to-l from-violet-600 to-indigo-600 text-white shadow-xl shadow-violet-500/20 translate-y-[-2px]"
+                        : "bg-white text-slate-600 border border-slate-200 hover:border-violet-300 hover:text-violet-600"
                     } ${isSpecialChangeMode ? "opacity-60 cursor-not-allowed" : ""}`}
                   >
-                    {sch}
+                    <div className="flex items-center gap-2">
+                      <School size={16} />
+                      {sch}
+                    </div>
                   </button>
                 ))}
                 {availableSchools.length === 0 && (
-                  <span className="text-sm text-slate-400">
-                    لا يوجد مدارس ضمن صلاحياتك
-                  </span>
+                  <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 w-full text-center text-sm text-slate-400 font-medium">
+                    لا يوجد مدارس ضمن صلاحياتك حالياً
+                  </div>
                 )}
               </div>
             </div>
 
-            <AnimatePresence>
-              {selectedSchool && availableBranches.length > 0 && (
+            <AnimatePresence mode="wait">
+              {selectedSchool && (
                 <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="space-y-4 p-5 bg-white/50 rounded-2xl border border-slate-200/50 shadow-sm overflow-hidden"
+                  key={selectedSchool}
+                  initial={{ opacity: 0, y: 10, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: "auto" }}
+                  exit={{ opacity: 0, y: -10, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-4 p-5 bg-white/80 rounded-2xl border border-blue-100 shadow-md overflow-hidden relative"
                 >
-                  <label className="text-sm font-bold text-slate-700 block">
-                    تحديد الفرع {isSpecialChangeMode && <span className="text-xs text-red-500 font-normal">(مغلق حالياً - وضع التغيير الخاص)</span>}
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {availableBranches.map((branch) => (
-                      <button
-                        key={branch}
-                        onClick={() => !isSpecialChangeMode && handleBranchToggle(branch)}
-                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                          selectedBranch === branch
-                            ? "bg-gradient-to-l from-blue-600 to-cyan-600 text-white shadow-md"
-                            : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
-                        } ${isSpecialChangeMode ? "opacity-60 cursor-not-allowed" : ""}`}
-                      >
-                        {branch}
-                      </button>
-                    ))}
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full blur-3xl -z-10 opacity-60" />
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-black text-slate-800 flex items-center gap-2">
+                      <div className="w-2 h-5 bg-blue-500 rounded-full" />
+                      الفروع التابعة للمدرسة
+                    </label>
+                    {isSpecialChangeMode && <span className="text-xs text-red-500 font-bold bg-red-50 px-2 py-1 rounded-lg">الفرع مقيد</span>}
                   </div>
+                  
+                  {availableBranches.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {availableBranches.map((branch) => (
+                        <button
+                          key={branch}
+                          onClick={() => !isSpecialChangeMode && handleBranchToggle(branch)}
+                          className={`px-5 py-2.5 rounded-2xl text-sm font-bold transition-all duration-300 transform active:scale-95 ${
+                            selectedBranch === branch
+                              ? "bg-gradient-to-l from-blue-600 to-cyan-600 text-white shadow-xl shadow-blue-500/20 translate-y-[-2px]"
+                              : "bg-white text-slate-600 border border-slate-200 hover:border-blue-300 hover:text-blue-600"
+                          } ${isSpecialChangeMode ? "opacity-60 cursor-not-allowed" : ""}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Building2 size={16} />
+                            {branch}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-blue-50/50 rounded-xl border border-dashed border-blue-100 w-full text-center text-sm text-blue-400 font-medium">
+                      لا توجد فروع مسجلة لهذه المدرسة أو ضمن صلاحياتك
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

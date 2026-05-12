@@ -111,12 +111,24 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
           currentUser?.role === "admin" ||
           currentUser?.permissions?.all === true;
         if (!isAdminOrFull) {
-          const freshUser = data.users?.find((u) => u.id === currentUser?.id);
-          const allowed =
-            freshUser?.permissions?.schoolsAndBranches?.[trimmedSchool] ||
-            currentUser?.permissions?.schoolsAndBranches?.[trimmedSchool] ||
-            [];
-          branches = branches.filter((b) => allowed.includes(b));
+          const freshUser = (data.users || []).find((u) => u.id === currentUser?.id);
+          const userPermsMap = freshUser?.permissions?.schoolsAndBranches || currentUser?.permissions?.schoolsAndBranches || {};
+          
+          // Try to find the school in the user's perms map using trimmed keys
+          let allowed: string[] = [];
+          Object.keys(userPermsMap).forEach(key => {
+            if (key.trim() === trimmedSchool) {
+              allowed = userPermsMap[key] || [];
+            }
+          });
+          
+          if (allowed.length > 0) {
+            branches = branches.filter((b) => b && allowed.includes(b.trim()));
+          } else {
+            // If the school is in availableSchools but has no specific branches allowed, it might be an 'all branches' case 
+            // OR it might be truly restricted. We default to restricted for safety unless the user has school-wide view.
+            branches = branches.filter((b) => b && allowed.includes(b.trim()));
+          }
         }
         return branches;
       })()

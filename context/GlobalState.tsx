@@ -796,11 +796,33 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     const filterByUser = (item: any, key?: string) => {
+      const isGeneralSupervisor =
+        currentUser?.role === "admin" || currentUser?.permissions?.all === true;
+
+      // School & Branch Isolation (Even for items without userId like synced staff items)
+      if (item.school && !isGeneralSupervisor) {
+        const userSchools = (currentUser?.selectedSchool || "")
+          .split(",")
+          .map((s) => s.trim());
+        if (!userSchools.includes("all") && !userSchools.includes(item.school))
+          return false;
+      }
+      if (item.branch && !isGeneralSupervisor) {
+        const userBranches = (currentUser?.selectedBranch || "")
+          .split(",")
+          .map((b) => b.trim());
+        if (
+          userBranches.length > 0 &&
+          !userBranches.includes("all") &&
+          !userBranches.includes(item.branch)
+        )
+          return false;
+      }
+
       // Always filter: if item has no userId, keep it (shared data)
       if (!item.userId) return true;
 
-      const isAdminOrFull =
-        currentUser?.role === "admin" || currentUser?.permissions?.all === true;
+      const isAdminOrFull = isGeneralSupervisor;
 
       // Special logic for Daily/Periodical reports
       if (key === "dailyReports") {
@@ -923,8 +945,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       const latestUser = data.users.find((u) => u.id === currentUser.id);
       if (!latestUser) return;
 
-      // Only update if permissions or role actually changed
+      // Only update if permissions or relevant fields actually changed
       const rolesMatch = latestUser.role === currentUser.role;
+      const schoolsMatch = JSON.stringify(latestUser.schools || []) === JSON.stringify(currentUser.schools || []);
+      const gradesMatch = JSON.stringify(latestUser.grades || []) === JSON.stringify(currentUser.grades || []);
+      const sectionsMatch = JSON.stringify(latestUser.sections || []) === JSON.stringify(currentUser.sections || []);
       const permsMatch =
         JSON.stringify(latestUser.permissions) ===
         JSON.stringify(currentUser.permissions);
@@ -932,20 +957,34 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         JSON.stringify(latestUser.customSchoolProfiles) ===
         JSON.stringify(currentUser.customSchoolProfiles);
         
-      if (rolesMatch && permsMatch && customProfilesMatch) return;
+      if (rolesMatch && permsMatch && customProfilesMatch && schoolsMatch && gradesMatch && sectionsMatch) return;
 
+      console.log("🔄 GlobalState: Correcting local session from remote master (data.users)");
+      
       const updatedAuthUser: AuthUser = {
         ...currentUser,
         role: latestUser.role,
+        schools: latestUser.schools || [],
+        grades: latestUser.grades || [],
+        sections: latestUser.sections || [],
         permissions: latestUser.permissions,
         customSchoolProfiles: latestUser.customSchoolProfiles,
       };
+      
+      // Also ensure selectedSchool includes at least all assigned schools if it's currently empty
+      if (!updatedAuthUser.selectedSchool && (latestUser.schools || []).length > 0) {
+        updatedAuthUser.selectedSchool = (latestUser.schools || []).join(',');
+      }
+
       setCurrentUser(updatedAuthUser);
       
       // Update the active session document in Firebase so that the new permissions persist upon refresh
       if (auth.currentUser) {
          setDoc(doc(db, "users", auth.currentUser.uid), {
                role: latestUser.role,
+               schools: latestUser.schools || [],
+               grades: latestUser.grades || [],
+               sections: latestUser.sections || [],
                permissions: latestUser.permissions || {},
                customSchoolProfiles: latestUser.customSchoolProfiles || {}
          }, { merge: true }).catch(e => console.error("Failed to update session with new permissions", e));
@@ -987,6 +1026,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                          id: userData.customUserId,
                          name: userData.name,
                          jobTitle: userData.jobTitle || "",
+                         schools: userData.schools || [],
                          grades: userData.grades || [],
                          sections: userData.sections || [],
                          selectedSchool: userData.selectedSchool || "",

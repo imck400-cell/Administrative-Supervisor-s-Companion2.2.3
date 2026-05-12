@@ -38,7 +38,8 @@ interface StaffData {
   branch: string;
   name: string;
   gender: string;
-  subjects: string[];
+  jobTitles: string[];
+  phone: string;
   grades: string[];
 }
 
@@ -483,14 +484,39 @@ const StudentsManager = () => {
 
   const filteredStudents = useMemo(() => {
     let result = students;
-    if (!isGeneralSupervisor && currentUser?.selectedBranch) {
-      const userBranches = currentUser.selectedBranch
-        .split(",")
-        .map((b) => b.trim());
-      if (!userBranches.includes("all") && userBranches.length > 0) {
-        result = result.filter((s) => userBranches.includes(s.branch));
+    if (!isGeneralSupervisor) {
+      // 1. School Isolation
+      const userSchools = (currentUser?.selectedSchool || "").split(',').map(s => s.trim());
+      if (!userSchools.includes('all')) {
+        result = result.filter(s => userSchools.includes(s.school));
+      }
+
+      // 2. Branch Isolation
+      const currentSelectedBranches = (currentUser?.selectedBranch || "").split(',').map(b => b.trim());
+      const permsMap = currentUser?.permissions?.schoolsAndBranches || {};
+      
+      result = result.filter(s => {
+        if (currentSelectedBranches.includes('all')) {
+           const allowedInThisSchool = permsMap[s.school] || [];
+           if (allowedInThisSchool.length > 0) {
+             return allowedInThisSchool.includes(s.branch);
+           }
+           return true;
+        }
+        return currentSelectedBranches.includes(s.branch);
+      });
+
+      // 3. Grade/Section isolation
+      const userGrades = currentUser?.grades || [];
+      const userSections = currentUser?.sections || [];
+      if (userGrades.length > 0 && !userGrades.includes("all")) {
+        result = result.filter(s => userGrades.includes(s.grade));
+      }
+      if (userSections.length > 0 && !userSections.includes("all")) {
+        result = result.filter(s => userSections.includes(s.section));
       }
     }
+
     if (showMissingOnly) {
       result = result.filter((s) => getMissingFields(s).length > 0);
     }
@@ -730,7 +756,7 @@ const StudentsManager = () => {
               <th className="p-3 w-16 text-center">الرقم</th>
               <th className="p-3 w-32">المدرسة</th>
               <th className="p-3 w-32">الفرع</th>
-              <th className="p-3 min-w-[200px]">اسم الطالب</th>
+              <th className="p-3 min-w-[200px]">الاسم</th>
               <th className="p-3 w-32">الصف</th>
               <th className="p-3 w-24">الشعبة</th>
               <th className="p-3 w-24">النوع</th>
@@ -1131,44 +1157,95 @@ const StudentsManager = () => {
   );
 };
 
+const JOB_TITLES = [
+  "مدير عام",
+  "مدير فرع",
+  "الإدارة المالية",
+  "المحاسب",
+  "أمين صندوق",
+  "وكيل إداري",
+  "وكيل أكاديمي",
+  "مدير الموادر البشرية",
+  "إدارة الجودة",
+  "مدير العلاقات",
+  "المشرف التربوي",
+  "المشرف الأكاديمي",
+  "المشرف الإداري",
+  "السكرتارية",
+  "المختص الاجتماعي",
+  "مسؤول معمل العلوم",
+  "مسؤول الوسائل",
+  "مسؤول المكتبة",
+  "مسؤول الأنشطة",
+  "معلم فنية",
+  "معلم الرياضة",
+  "معلم مادة",
+  "مربية",
+  "مسؤول الحركة",
+  "الحراسة",
+  "مهندس البيئة",
+  "مسؤول المقصف",
+];
+
+const TEACHER_JOB_TITLES = [
+  "معلم مادة",
+  "معلم فنية",
+  "مربية",
+  "معلم رياضة",
+  "مسؤول الأنشطة",
+];
+
 const StaffManager = () => {
   const { currentUser, data, updateData } = useGlobal();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [staff, setStaff] = useState<StaffData[]>([]);
 
+  // Performance optimizing local weights for text inputs
+  const [localNames, setLocalNames] = useState<Record<string, string>>({});
+  const [localPhones, setLocalPhones] = useState<Record<string, string>>({});
+
   useEffect(() => {
     let cloudData = data.secretariatStaff;
     const ls = null;
 
-    // Migrate local storage if cloud is completely empty AND local storage has something.
     if ((!cloudData || cloudData.length === 0) && ls) {
       try {
         const parsed = JSON.parse(ls);
         if (parsed && Array.isArray(parsed) && parsed.length > 0) {
           updateData({ secretariatStaff: parsed });
           cloudData = parsed;
-           // cleanup after migrate
         }
       } catch {}
     }
 
     if (cloudData) {
       const newStaff = cloudData.map((s: any) => ({
-          ...s,
-          school:
-            s.school ||
-            (s.schoolBranch
-              ? s.schoolBranch.split("-")[0]?.trim() || s.schoolBranch
-              : ""),
-          branch:
-            s.branch ||
-            (s.schoolBranch ? s.schoolBranch.split("-")[1]?.trim() || "" : ""),
-        }));
-        
-        if (JSON.stringify(staff) !== JSON.stringify(newStaff)) {
-            setStaff(newStaff);
-        }
+        ...s,
+        school:
+          s.school ||
+          (s.schoolBranch
+            ? s.schoolBranch.split("-")[0]?.trim() || s.schoolBranch
+            : ""),
+        branch:
+          s.branch ||
+          (s.schoolBranch ? s.schoolBranch.split("-")[1]?.trim() || "" : ""),
+        jobTitles: s.jobTitles || s.subjects || [],
+        phone: s.phone || "",
+      }));
+
+      if (JSON.stringify(staff) !== JSON.stringify(newStaff)) {
+        setStaff(newStaff);
+        // Initialize local states
+        const names: Record<string, string> = {};
+        const phones: Record<string, string> = {};
+        newStaff.forEach((item: StaffData) => {
+          names[item.id] = item.name;
+          phones[item.id] = item.phone;
+        });
+        setLocalNames(names);
+        setLocalPhones(phones);
+      }
     }
   }, [data.secretariatStaff, updateData, staff]);
 
@@ -1185,24 +1262,28 @@ const StaffManager = () => {
   const saveStaff = (newStaff: StaffData[]) => {
     setStaff(newStaff);
 
-    // Auto-sync imported staff to today's daily report so they appear immediately in the Dashboard
+    // 1. Daily Reports Sync
     const today = new Date().toISOString().split("T")[0];
     const dailyReports = [...(data.dailyReports || [])];
-
-    // Only update reports from today that belong to the user's school (or all if admin)
     let updatedReports = false;
+
     dailyReports.forEach((r) => {
       if (r.dateStr === today) {
         let changed = false;
         newStaff.forEach((s) => {
-          // Check if this teacher is already in the report
+          // Only sync if they have teacher-like job title
+          const isTeacher = s.jobTitles.some((title) =>
+            TEACHER_JOB_TITLES.includes(title),
+          );
+          if (!isTeacher) return;
+
           if (!r.teachersData.some((t) => t.teacherName === s.name)) {
             r.teachersData.push({
               id: crypto.randomUUID(),
               teacherName: s.name,
               subjectCode:
-                s.subjects && s.subjects.length > 0
-                  ? s.subjects.join(" / ")
+                s.jobTitles && s.jobTitles.length > 0
+                  ? s.jobTitles.join(" / ")
                   : "",
               className:
                 s.grades && s.grades.length > 0 ? s.grades.join(" / ") : "",
@@ -1244,11 +1325,68 @@ const StaffManager = () => {
       }
     });
 
-    if (updatedReports) {
-      updateData({ secretariatStaff: newStaff, dailyReports });
-    } else {
-      updateData({ secretariatStaff: newStaff });
-    }
+    // 2. Global teacherFollowUps Sync (جدول متابعة المعلمين)
+    const teacherFollowUps = [...(data.teacherFollowUps || [])];
+    let updatedFollowUps = false;
+
+    newStaff.forEach((s) => {
+      const isTeacher = s.jobTitles.some((title) =>
+        TEACHER_JOB_TITLES.includes(title),
+      );
+      if (!isTeacher) return;
+
+      const existingIndex = teacherFollowUps.findIndex(
+        (t) => t.teacherName === s.name,
+      );
+      if (existingIndex === -1) {
+        teacherFollowUps.push({
+          id: s.id,
+          teacherName: s.name,
+          subjectCode: s.jobTitles.join(" / "),
+          className: s.grades.join(" / "),
+          gender: s.gender,
+          attendance: 0,
+          appearance: 0,
+          preparation: 0,
+          supervision_queue: 0,
+          supervision_rest: 0,
+          supervision_end: 0,
+          correction_books: 0,
+          correction_notebooks: 0,
+          correction_followup: 0,
+          teaching_aids: 0,
+          extra_activities: 0,
+          radio: 0,
+          creativity: 0,
+          zero_period: 0,
+          violations_score: 0,
+          violations_notes: [],
+        } as any);
+        updatedFollowUps = true;
+      } else {
+        // Update existing entry if needed
+        const t = teacherFollowUps[existingIndex];
+        if (
+          t.subjectCode !== s.jobTitles.join(" / ") ||
+          t.className !== s.grades.join(" / ") ||
+          t.gender !== s.gender
+        ) {
+          teacherFollowUps[existingIndex] = {
+            ...t,
+            subjectCode: s.jobTitles.join(" / "),
+            className: s.grades.join(" / "),
+            gender: s.gender,
+          };
+          updatedFollowUps = true;
+        }
+      }
+    });
+
+    const updates: any = { secretariatStaff: newStaff };
+    if (updatedReports) updates.dailyReports = dailyReports;
+    if (updatedFollowUps) updates.teacherFollowUps = teacherFollowUps;
+
+    updateData(updates);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1288,6 +1426,7 @@ const StaffManager = () => {
 
         rows.forEach((row: any) => {
           maxSerial++;
+          const nameField = row["اسم الموظف"] || row["اسم المعلم"] || row["الاسم"] || "";
           newStaff.push({
             id:
               Date.now().toString() +
@@ -1295,12 +1434,14 @@ const StaffManager = () => {
             serialNumber: maxSerial,
             school: row["اسم المدرسة"] || row["المدرسة"] || fallbackSchool,
             branch: row["اسم الفرع"] || row["الفرع"] || fallbackBranch,
-            name: row["اسم المعلم"] || row["الاسم"] || "",
+            name: nameField,
             gender: row["النوع"] || "",
-            subjects:
+            jobTitles:
+              row["الصفة"]?.toString().split(",") ||
               row["المواد"]?.toString().split(",") ||
               row["المادة"]?.toString().split(",") ||
               [],
+            phone: row["رقم الهاتف"] || row["الهاتف"] || "",
             grades:
               row["الصفوف"]?.toString().split(",") ||
               row["الصف"]?.toString().split(",") ||
@@ -1336,7 +1477,8 @@ const StaffManager = () => {
         branch: fallbackBranch,
         name: "",
         gender: "",
-        subjects: [],
+        jobTitles: [],
+        phone: "",
         grades: [],
       },
     ]);
@@ -1368,13 +1510,13 @@ const StaffManager = () => {
 
   const toggleArrayItem = (
     id: string,
-    field: "subjects" | "grades",
+    field: "jobTitles" | "grades",
     item: string,
   ) => {
-    setStaff(
+    saveStaff(
       staff.map((s) => {
         if (s.id !== id) return s;
-        const arr = s[field] || [];
+        const arr = (s[field] as string[]) || [];
         const newArr = arr.includes(item)
           ? arr.filter((x) => x !== item)
           : [...arr, item];
@@ -1413,14 +1555,39 @@ const StaffManager = () => {
 
   const filteredStaff = useMemo(() => {
     let result = staff;
-    if (!isGeneralSupervisor && currentUser?.selectedBranch) {
-      const userBranches = currentUser.selectedBranch
-        .split(",")
-        .map((b) => b.trim());
-      if (!userBranches.includes("all") && userBranches.length > 0) {
-        result = result.filter((s) => userBranches.includes(s.branch));
+    
+    if (!isGeneralSupervisor) {
+      // 1. Mandatory School Filtering
+      const userSchools = (currentUser?.selectedSchool || "").split(',').map(s => s.trim());
+      if (!userSchools.includes('all')) {
+        result = result.filter(s => userSchools.includes(s.school));
+      }
+
+      // 2. Branch Filtering
+      const currentSelectedBranches = (currentUser?.selectedBranch || "").split(',').map(b => b.trim());
+      const permsMap = currentUser?.permissions?.schoolsAndBranches || {};
+      
+      result = result.filter(s => {
+        // If "all" branches selected in UI, still limit by permissions for that school
+        if (currentSelectedBranches.includes('all')) {
+           const allowedInThisSchool = permsMap[s.school] || [];
+           if (allowedInThisSchool.length > 0) {
+             return allowedInThisSchool.includes(s.branch);
+           }
+           return true; 
+        }
+        return currentSelectedBranches.includes(s.branch);
+      });
+
+      // 3. Grade Filtering
+      const userGrades = currentUser?.grades || [];
+      if (userGrades.length > 0 && !userGrades.includes("all")) {
+        result = result.filter((s) => 
+          s.grades.some(g => userGrades.includes(g)) || s.grades.length === 0
+        );
       }
     }
+
     if (!searchQuery) return result;
     const lowerQ = searchQuery.toLowerCase();
     return result.filter(
@@ -1434,14 +1601,17 @@ const StaffManager = () => {
         String(s.branch || "")
           .toLowerCase()
           .includes(lowerQ) ||
-        String((s.subjects || []).join(" "))
+        String((s.jobTitles || []).join(" "))
           .toLowerCase()
           .includes(lowerQ) ||
         String((s.grades || []).join(" "))
           .toLowerCase()
+          .includes(lowerQ) ||
+        String(s.phone || "")
+          .toLowerCase()
           .includes(lowerQ),
     );
-  }, [staff, searchQuery]);
+  }, [staff, searchQuery, currentUser]);
 
   const toggleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) setSelectedIds(filteredStaff.map((s) => s.id));
@@ -1527,9 +1697,10 @@ const StaffManager = () => {
               <th className="p-3 w-16 text-center">الرقم</th>
               <th className="p-3 w-32">المدرسة</th>
               <th className="p-3 w-32">الفرع</th>
-              <th className="p-3 min-w-[200px]">اسم المعلم</th>
+              <th className="p-3 min-w-[200px]">اسم الموظف</th>
               <th className="p-3 w-32">النوع</th>
-              <th className="p-3 w-64">المادة (يمكن اختيار أكثر من واحدة)</th>
+              <th className="p-3 w-40">رقم الهاتف</th>
+              <th className="p-3 w-64">الصفة (يمكن اختيار أكثر من واحدة)</th>
               <th className="p-3 w-64">الصف (يمكن اختيار أكثر من واحد)</th>
               <th className="p-3 w-16"></th>
             </tr>
@@ -1592,10 +1763,15 @@ const StaffManager = () => {
                     disabled={isReadOnly}
                     type="text"
                     className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50"
-                    value={employee.name}
-                    onChange={(e) =>
-                      updateRow(employee.id, "name", e.target.value)
-                    }
+                    value={localNames[employee.id] || ""}
+                    onChange={(e) => {
+                      setLocalNames(prev => ({ ...prev, [employee.id]: e.target.value }));
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value !== employee.name) {
+                        updateRow(employee.id, "name", e.target.value);
+                      }
+                    }}
                   />
                 </td>
                 <td className="p-2">
@@ -1613,46 +1789,52 @@ const StaffManager = () => {
                   </select>
                 </td>
                 <td className="p-2">
+                  <input
+                    disabled={isReadOnly}
+                    type="text"
+                    dir="ltr"
+                    className="w-full bg-transparent border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 disabled:opacity-50 text-right"
+                    placeholder="0xxx..."
+                    value={localPhones[employee.id] || ""}
+                    onChange={(e) => {
+                      setLocalPhones(prev => ({ ...prev, [employee.id]: e.target.value }));
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value !== employee.phone) {
+                        updateRow(employee.id, "phone", e.target.value);
+                      }
+                    }}
+                  />
+                </td>
+                <td className="p-2">
                   <div className="relative group">
                     <div
                       className="min-h-[38px] p-2 border border-slate-200 rounded-lg bg-transparent truncate max-w-[200px]"
-                      title={(employee.subjects || []).join("، ")}
+                      title={(employee.jobTitles || []).join("، ")}
                     >
-                      {(employee.subjects || []).join("، ") || "اختر..."}
+                      {(employee.jobTitles || []).join("، ") || "اختر الصفة..."}
                     </div>
                     {!isReadOnly && (
-                      <div className="absolute top-full right-0 mt-1 w-48 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl hidden group-hover:block z-50">
-                        {[
-                          "مربية",
-                          "القرآن الكريم",
-                          "التربية الإسلامية",
-                          "اللغة العربية",
-                          "اللغة الإنجليزية",
-                          "الرياضيات",
-                          "العلوم",
-                          "الكيمياء",
-                          "الفيزياء",
-                          "الأحياء",
-                          "الاجتماعيات",
-                          "الحاسوب",
-                          "المكتبة",
-                          "الفنية",
-                          "المختص الاجتماعي",
-                          "الأنشطة",
-                        ].map((subj) => (
+                      <div className="absolute top-full right-0 mt-1 w-56 max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl hidden group-hover:block z-[100]">
+                        <div className="p-2 border-b border-slate-100 bg-slate-50 text-xs font-bold text-slate-500">
+                          اختر صفة أو أكثر:
+                        </div>
+                        {JOB_TITLES.map((title) => (
                           <label
-                            key={subj}
-                            className="flex items-center gap-2 p-2 hover:bg-slate-50 cursor-pointer text-sm"
+                            key={title}
+                            className="flex items-center gap-2 p-3 hover:bg-blue-50 cursor-pointer text-sm transition-colors border-b border-slate-50 last:border-0"
                           >
                             <input
                               type="checkbox"
-                              checked={(employee.subjects || []).includes(subj)}
+                              checked={(employee.jobTitles || []).includes(title)}
                               onChange={() =>
-                                toggleArrayItem(employee.id, "subjects", subj)
+                                toggleArrayItem(employee.id, "jobTitles", title)
                               }
-                              className="rounded border-slate-300 text-blue-500 w-4 h-4 cursor-pointer"
+                              className="rounded border-slate-300 text-blue-600 w-4 h-4 cursor-pointer"
                             />
-                            {subj}
+                            <span className={(employee.jobTitles || []).includes(title) ? "font-bold text-blue-700" : "text-slate-700"}>
+                              {title}
+                            </span>
                           </label>
                         ))}
                       </div>
@@ -1718,7 +1900,7 @@ const StaffManager = () => {
             {filteredStaff.length === 0 && (
               <tr>
                 <td
-                  colSpan={9}
+                  colSpan={10}
                   className="p-8 text-center text-slate-500 font-bold"
                 >
                   لا يوجد موظفون مطابقون للبحث، قم بالإضافة أو الاستيراد من إكسل

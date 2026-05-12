@@ -693,9 +693,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         { includeMetadataChanges: true },
         (snapshot) => {
           const isFromCache = snapshot.metadata.fromCache;
-          console.log(
-            `📶 connectionState: fromCache=${isFromCache}, navigator.onLine=${typeof navigator !== "undefined" ? navigator.onLine : "unknown"}`,
-          );
           if (!snapshot.exists()) {
             console.warn(
               `⚠️ مستند ملف المدرسة ${school} غير موجود بعد في المسار: ${fullPath}`,
@@ -706,46 +703,18 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
           if (remoteData) {
             console.log(
-              `✨ استلمت تحديثاً للمدرسة رقم: ${school} من المسار المباشر (${fullPath}) والبيانات هي:`,
+              `✨ استلمت تحديثاً لملف المدرسة: ${school}`,
               remoteData,
             );
             setData((prev) => {
-              const isCurrentlyActive =
-                currentUser?.selectedSchool?.split(",")[0]?.trim() === school ||
-                (currentUser?.selectedSchool?.split(",")[0]?.trim() === "all" &&
-                  prev.availableSchools?.[0] === school);
-
-              let updatedCurrentProfile = prev.profile;
-              if (isCurrentlyActive) {
-                const schoolProfiles = remoteData || {};
-                const currentBranch = currentUser?.selectedBranch?.trim();
-
-                let newProfileProps = {};
-                if (currentBranch && schoolProfiles[currentBranch]) {
-                  newProfileProps = schoolProfiles[currentBranch];
-                } else if (schoolProfiles.ministry !== undefined) {
-                  newProfileProps = schoolProfiles;
-                } else {
-                  const firstBranchKey = Object.keys(schoolProfiles)[0];
-                  if (
-                    firstBranchKey &&
-                    typeof schoolProfiles[firstBranchKey] === "object"
-                  ) {
-                    newProfileProps = schoolProfiles[firstBranchKey];
-                  }
-                }
-                updatedCurrentProfile = { ...prev.profile, ...newProfileProps };
-              }
-
+              // Update the profiles map. 
+              // React's useMemo for filteredData will automatically re-derive 'profile' from this map.
               return {
                 ...prev,
                 profiles: {
                   ...(prev.profiles || {}),
                   [school]: remoteData,
-                },
-                ...(isCurrentlyActive
-                  ? { profile: updatedCurrentProfile }
-                  : {}),
+                }
               };
             });
           }
@@ -943,6 +912,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         newData.profile = {
           ...newData.profile,
           ...schoolProfiles[currentBranch],
+          branch: currentBranch
         };
       } else if (schoolProfiles.ministry !== undefined) {
         // Legacy: previously stored directly in profiles[school]
@@ -957,6 +927,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
           newData.profile = {
             ...newData.profile,
             ...schoolProfiles[firstBranchKey],
+            branch: firstBranchKey
           };
         }
       }
@@ -965,9 +936,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       const customProfiles = currentUser?.customSchoolProfiles?.[activeSchool];
       if (customProfiles) {
         if (currentBranch && customProfiles[currentBranch]) {
-             newData.profile = { ...newData.profile, ...customProfiles[currentBranch] };
+             newData.profile = { ...newData.profile, ...customProfiles[currentBranch], branch: currentBranch };
         } else if (customProfiles[""] !== undefined) { // general overlay
-             newData.profile = { ...newData.profile, ...customProfiles[""] };
+             newData.profile = { ...newData.profile, ...customProfiles[""], branch: "" };
         }
       }
     }
@@ -1012,7 +983,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
     return newData;
-  }, [data, effectiveUserIds, dateRange]);
+  }, [data, effectiveUserIds, dateRange, currentUser?.selectedSchool, currentUser?.selectedBranch]);
 
   useEffect(() => {
     if (isAuthenticated && currentUser && currentUser.role !== "admin") {
@@ -1499,9 +1470,25 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
                 if (key === "users") {
                   const usersMap = new Map();
+                  
+                  // Initialize with default/constant users
                   defaultData.users.forEach((u) => usersMap.set(u.id, u));
-                  mergedList.forEach((u: any) => {
-                    if (u && u.id) usersMap.set(u.id, u);
+                  
+                  // Merge items from all listened sources (shared docs from different schools)
+                  allItemsFromAllDocs.forEach((u: any) => {
+                    if (u && u.id) {
+                      const existing = usersMap.get(u.id);
+                      if (existing) {
+                        // Deep merge specific nested maps like customSchoolProfiles
+                        const mergedCustomProfiles = {
+                          ...(existing.customSchoolProfiles || {}),
+                          ...(u.customSchoolProfiles || {}),
+                        };
+                        usersMap.set(u.id, { ...existing, ...u, customSchoolProfiles: mergedCustomProfiles });
+                      } else {
+                        usersMap.set(u.id, u);
+                      }
+                    }
                   });
                   mergedList = Array.from(usersMap.values());
                 }
@@ -2037,7 +2024,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
             await Promise.all(promises);
 
-            if (key === "availableSchools" || key === "availableYears") {
+            if (key === "profile") {
+               // No need to manually update pendingChanges.profile here,
+               // filteredData useMemo will handle it as soon as profiles is updated.
+            } else if (key === "availableSchools" || key === "availableYears") {
                if (isAdminOrFull) {
                  setDoc(doc(db, "system", "introConfig", "data", key), {
                    data: newData[key]
@@ -2048,27 +2038,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
             // Update local state immediately for instant feedback
             if (key !== "profile") {
               pendingChanges[key] = newData[key] as any;
-            } else {
-              const schoolProfiles = newData[key] as any;
-              const currentBranch = currentUser?.selectedBranch?.trim();
-              let newProfileProps = {};
-              if (currentBranch && schoolProfiles[currentBranch]) {
-                newProfileProps = schoolProfiles[currentBranch];
-              } else if (schoolProfiles.ministry !== undefined) {
-                newProfileProps = schoolProfiles;
-              } else {
-                const firstBranchKey = Object.keys(schoolProfiles)[0];
-                if (
-                  firstBranchKey &&
-                  typeof schoolProfiles[firstBranchKey] === "object"
-                ) {
-                  newProfileProps = schoolProfiles[firstBranchKey];
-                }
-              }
-              pendingChanges.profile = {
-                ...(rawData.profile || {}),
-                ...newProfileProps,
-              } as any;
             }
           }
           continue;

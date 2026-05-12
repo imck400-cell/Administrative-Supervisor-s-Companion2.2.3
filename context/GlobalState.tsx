@@ -655,88 +655,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
   });
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
 
-  // 🔥 GLOBAL REAL-TIME SYNC FOR PROFILES
-  // This listener is not guarded by ifs that prevent it from syncing. It runs globally as soon as user opens the app.
-  useEffect(() => {
-    if (!isAuthenticated || !currentUser) return;
-
-    if (!currentUser.selectedSchool) {
-      console.warn(
-        "⚠️ لا يمكن بدء الاستماع، الـ ID مفقود (selectedSchool غير محدد للمستخدم).",
-      );
-      return;
-    }
-
-    const selectedSchools = currentUser.selectedSchool
-      .split(",")
-      .map((s) => s.trim());
-    const schoolsToListen = (
-      selectedSchools.includes("all")
-        ? data.availableSchools || []
-        : selectedSchools
-    ).map((s) => s.trim());
-    // const schoolsToListen = ['TEST_SCHOOL']; // 🔥 HARDCODED FOR TEST
-
-    if (schoolsToListen.length === 0) {
-      console.warn("⚠️ لا يمكن بدء الاستماع، قائمة المدارس فارغة.");
-      return;
-    }
-
-    const activeUnsubs = schoolsToListen.filter(Boolean).map((school) => {
-      const fullPath = `schools/${school}/shared/profile`;
-      console.log(
-        `📡 جاري بدء الاستماع. School ID: "${school}" (Length: ${school.length}), Path: ${fullPath}`,
-      );
-      const q = doc(db, "schools", school, "shared", "profile");
-      return onSnapshot(
-        q,
-        { includeMetadataChanges: true },
-        (snapshot) => {
-          const isFromCache = snapshot.metadata.fromCache;
-          if (!snapshot.exists()) {
-            console.warn(
-              `⚠️ مستند ملف المدرسة ${school} غير موجود بعد في المسار: ${fullPath}`,
-            );
-            return;
-          }
-          const remoteData = snapshot.data()?.data;
-
-          if (remoteData) {
-            console.log(
-              `✨ استلمت تحديثاً لملف المدرسة: ${school}`,
-              remoteData,
-            );
-            setData((prev) => {
-              // Update the profiles map. 
-              // React's useMemo for filteredData will automatically re-derive 'profile' from this map.
-              return {
-                ...prev,
-                profiles: {
-                  ...(prev.profiles || {}),
-                  [school]: remoteData,
-                }
-              };
-            });
-          }
-        },
-        (error: any) => {
-          if (error.code !== "permission-denied" && !error.message.includes("permission-denied")) {
-            console.error(
-              `❌ فشل الاستماع بسبب: ${error.message} (الكود: ${error.code}) في المسار ${fullPath}`,
-            );
-          }
-        },
-      );
-    });
-
-    return () => {
-      activeUnsubs.forEach((unsub) => unsub());
-    };
-  }, [
-    isAuthenticated,
-    currentUser?.selectedSchool, 
-    data.availableSchools?.join(",")
-  ]);
+  // 🔥 GLOBAL REAL-TIME SYNC FOR PROFILES - Handled in the main effect below to avoid conflicts
+  // The logic for listening to 'profile' and populating 'data.profiles' is moved 
+  // into the main strictlySharedKeys listener to ensure atomicity and consistency.
 
   // Compute the effective set of user IDs that should be visible.
   // This is ALWAYS a concrete list — never null — so filtering is always applied.
@@ -1393,16 +1314,18 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
             if (snapshot.exists()) {
               const remoteData = snapshot.data().data;
 
-              // Profile is a special object that we merge across branches/schools
+              // Profile is a special object that we store in 'profiles' map by school
               if (key === "profile") {
                 setData((prev) => {
-                  const mergedProfile = { ...prev.profile, ...remoteData };
-                  if (
-                    JSON.stringify(prev.profile) ===
-                    JSON.stringify(mergedProfile)
-                  )
+                  if (JSON.stringify(prev.profiles?.[school]) === JSON.stringify(remoteData))
                     return prev;
-                  return { ...prev, profile: mergedProfile };
+                  return {
+                    ...prev,
+                    profiles: {
+                      ...(prev.profiles || {}),
+                      [school]: remoteData,
+                    }
+                  };
                 });
                 return;
               }
@@ -1478,12 +1401,41 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                     if (u && u.id) {
                       const existing = usersMap.get(u.id);
                       if (existing) {
-                        // Deep merge specific nested maps like customSchoolProfiles
+                        // Deep merge critical nested structures to prevent data loss across schools
                         const mergedCustomProfiles = {
                           ...(existing.customSchoolProfiles || {}),
                           ...(u.customSchoolProfiles || {}),
                         };
-                        usersMap.set(u.id, { ...existing, ...u, customSchoolProfiles: mergedCustomProfiles });
+                        
+                        const mergedSchoolsAndBranches = {
+                          ...(existing.permissions?.schoolsAndBranches || {}),
+                          ...(u.permissions?.schoolsAndBranches || {}),
+                        };
+
+                        const mergedSchools = Array.from(new Set([
+                          ...(existing.schools || []),
+                          ...(u.schools || [])
+                        ])).filter(Boolean);
+
+                        const mergedAcademicYears = Array.from(new Set([
+                          ...(existing.academicYears || []),
+                          ...(u.academicYears || [])
+                        ])).filter(Boolean);
+
+                        const mergedPermissions = {
+                          ...(existing.permissions || {}),
+                          ...(u.permissions || {}),
+                          schoolsAndBranches: mergedSchoolsAndBranches,
+                        };
+
+                        usersMap.set(u.id, { 
+                          ...existing, 
+                          ...u, 
+                          schools: mergedSchools,
+                          academicYears: mergedAcademicYears,
+                          customSchoolProfiles: mergedCustomProfiles,
+                          permissions: mergedPermissions 
+                        });
                       } else {
                         usersMap.set(u.id, u);
                       }
@@ -1500,9 +1452,20 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
               } else {
                 // Non-array shared keys (e.g. schoolBranches map)
                 setData((prev) => {
-                  if (JSON.stringify(prev[key]) === JSON.stringify(remoteData))
+                  const existingValue = prev[key as keyof AppData];
+                  let newValue = remoteData;
+                  
+                  // Merge objects to avoid overwriting data from different schools
+                  if (typeof remoteData === 'object' && remoteData !== null && !Array.isArray(remoteData)) {
+                    newValue = {
+                      ...(typeof existingValue === 'object' && existingValue !== null ? existingValue : {}),
+                      ...remoteData
+                    };
+                  }
+
+                  if (JSON.stringify(existingValue) === JSON.stringify(newValue))
                     return prev;
-                  return { ...prev, [key]: remoteData };
+                  return { ...prev, [key]: newValue };
                 });
               }
             }

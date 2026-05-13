@@ -1088,21 +1088,14 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
                       const mergedUsersMap = new Map();
                       
-                      // Keep users from prev that DO NOT belong to this school
+                      // Keep all previous users, they will be overwritten by newer data from remote if IDs match
                       (prev.users || []).forEach((u) => {
-                         if (!(u.schools && u.schools.includes(school)) && u.role !== "admin" && !u.permissions?.all) {
-                            mergedUsersMap.set(u.id, u);
-                         }
+                         mergedUsersMap.set(u.id, u);
                       });
 
                       // Add new users from remote
                       newUsers.forEach((u: AuthUser) => {
-                        // Only accept users that actually claim this school in their schools array
-                        if (u.schools && u.schools.includes(school)) {
-                           mergedUsersMap.set(u.id, u);
-                        } else if (u.role === "admin" || u.permissions?.all === true) {
-                           mergedUsersMap.set(u.id, u);
-                        }
+                         mergedUsersMap.set(u.id, u);
                       });
                       
                       // Add defaults last if missing

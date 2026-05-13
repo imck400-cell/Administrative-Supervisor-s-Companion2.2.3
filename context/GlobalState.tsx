@@ -1068,7 +1068,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       .then(() => {
         schoolsToSync.forEach((school) => {
           // Only sync what's needed for login/initial setup here
-          ["users", "availableSchools", "availableYears"].forEach((key) => {
+          ["users", "availableSchools", "availableYears", "schoolBranches"].forEach((key) => {
             const listenerId = `global-${school}-${key}`;
             if (activeListeners.current.has(listenerId)) return;
 
@@ -1123,6 +1123,18 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                         return { ...prev, users: mergedUsers };
                       }
                       return prev;
+                    } else if (key === "schoolBranches") {
+                      // schoolBranches is an object map, not an array - merge it properly
+                      const existingBranches = prev.schoolBranches || {};
+                      const newBranches = typeof remoteData === 'object' && !Array.isArray(remoteData) ? remoteData : {};
+                      const merged: Record<string, string[]> = { ...existingBranches };
+                      Object.keys(newBranches).forEach(k => {
+                        if (Array.isArray(newBranches[k])) {
+                          merged[k] = Array.from(new Set([...(merged[k] || []), ...newBranches[k]]));
+                        }
+                      });
+                      if (JSON.stringify(prev.schoolBranches) === JSON.stringify(merged)) return prev;
+                      return { ...prev, schoolBranches: merged };
                     } else {
                       const existing = (prev[key] as any[]) || [];
                       const incoming = Array.isArray(remoteData)

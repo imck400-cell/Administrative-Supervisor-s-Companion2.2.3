@@ -103,6 +103,7 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
   const [year, setYear] = useState("");
 
   // Combine all branches for the selected school from data.schoolBranches
+  // Falls back to user's permissions.schoolsAndBranches if global data hasn't loaded
   const availableBranches = selectedSchool
     ? (() => {
         const trimmedSchool = selectedSchool.trim();
@@ -123,8 +124,14 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
           });
           
           if (allowed.length > 0) {
-            // User has specific branches assigned - filter to only those
-            branches = branches.filter((b) => b && allowed.includes(b.trim()));
+            if (branches.length > 0) {
+              // Global branches exist - filter to only allowed ones
+              branches = branches.filter((b) => b && allowed.includes(b.trim()));
+            } else {
+              // FALLBACK: data.schoolBranches is empty (not loaded yet or doesn't exist)
+              // Use the user's permission branches directly as the source of truth
+              branches = [...allowed];
+            }
           }
           // If allowed.length === 0, the user has the school but no specific branch restrictions
           // In this case, show ALL branches for this school (don't filter)

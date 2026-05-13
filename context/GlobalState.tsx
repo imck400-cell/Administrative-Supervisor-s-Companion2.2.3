@@ -2251,6 +2251,30 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const completeLogin = async (user: User, school: string, year: string, branch?: string) => {
+    // Auto-derive branch from user's schoolsAndBranches permissions if not explicitly provided
+    let derivedBranch = branch || "";
+    if (!derivedBranch && user.permissions?.schoolsAndBranches) {
+      const selectedSchools = school.split(",").map(s => s.trim());
+      const allBranches: string[] = [];
+      
+      selectedSchools.forEach(sch => {
+        const branchesForSchool = user.permissions?.schoolsAndBranches?.[sch];
+        if (Array.isArray(branchesForSchool) && branchesForSchool.length > 0) {
+          allBranches.push(...branchesForSchool);
+        }
+      });
+      
+      if (allBranches.length > 0) {
+        // Set all permitted branches, joined by comma
+        derivedBranch = [...new Set(allBranches)].join(",");
+      }
+    }
+    
+    // If user is admin or has 'all' permissions, set branch to 'all' so nothing is filtered
+    if (!derivedBranch && (user.role === 'admin' || user.permissions?.all === true)) {
+      derivedBranch = 'all';
+    }
+
     const authUser: AuthUser = {
       id: user.id,
       name: user.name,
@@ -2259,7 +2283,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       sections: user.sections,
       selectedSchool: school,
       selectedYear: year,
-      selectedBranch: branch,
+      selectedBranch: derivedBranch,
       role: user.role,
       permissions: user.permissions,
     };
@@ -2288,7 +2312,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
              sections: user.sections || [],
              selectedSchool: school,
              selectedYear: year,
-             selectedBranch: branch || "",
+             selectedBranch: derivedBranch,
              role: user.role,
              permissions: user.permissions || {},
              customSchoolProfiles: user.customSchoolProfiles || {}

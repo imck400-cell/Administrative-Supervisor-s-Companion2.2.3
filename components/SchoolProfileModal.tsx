@@ -123,12 +123,11 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
           });
           
           if (allowed.length > 0) {
-            branches = branches.filter((b) => b && allowed.includes(b.trim()));
-          } else {
-            // If the school is in availableSchools but has no specific branches allowed, it might be an 'all branches' case 
-            // OR it might be truly restricted. We default to restricted for safety unless the user has school-wide view.
+            // User has specific branches assigned - filter to only those
             branches = branches.filter((b) => b && allowed.includes(b.trim()));
           }
+          // If allowed.length === 0, the user has the school but no specific branch restrictions
+          // In this case, show ALL branches for this school (don't filter)
         }
         return branches;
       })()

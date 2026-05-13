@@ -527,11 +527,18 @@ const StudentsManager = () => {
   const isAllowEdits =
     Array.isArray(currentUser?.permissions?.secretariat) &&
     currentUser!.permissions!.secretariat.includes("allowEdits");
+  const hasSecretariatAccess =
+    currentUser?.permissions?.secretariat === true ||
+    (Array.isArray(currentUser?.permissions?.secretariat) &&
+      (currentUser!.permissions!.secretariat.includes("view") ||
+       currentUser!.permissions!.secretariat.includes("showButton")));
   const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
 
   const isReadOnly =
     !isGeneralSupervisor &&
-    ((isReadOnlyFlag && !isAllowEdits) || isExplicitlyDisabled);
+    (isExplicitlyDisabled ||
+     (!isAllowEdits) ||
+     (isReadOnlyFlag && !isAllowEdits));
 
   const availableSchoolsKeys = data.availableSchools || [];
   const userSchools = isGeneralSupervisor
@@ -559,11 +566,21 @@ const StudentsManager = () => {
       }
 
       // 2. Branch Isolation
-      const currentSelectedBranches = (currentUser?.selectedBranch || "").split(',').map(b => b.trim());
+      const currentSelectedBranches = (currentUser?.selectedBranch || "").split(',').map(b => b.trim()).filter(Boolean);
       const permsMap = currentUser?.permissions?.schoolsAndBranches || {};
       
       result = result.filter(s => {
         if (!s.branch) return true; // Show empty branch for editing
+        
+        // If no branch was selected at login, fall back to permissions map
+        if (currentSelectedBranches.length === 0 || (currentSelectedBranches.length === 1 && currentSelectedBranches[0] === '')) {
+           const allowedInThisSchool = Array.isArray(permsMap[s.school]) ? permsMap[s.school] : [];
+           if (allowedInThisSchool.length > 0) {
+             return allowedInThisSchool.includes(s.branch);
+           }
+           return true; // No branch restriction
+        }
+        
         if (currentSelectedBranches.includes('all')) {
            const allowedInThisSchool = Array.isArray(permsMap[s.school]) ? permsMap[s.school] : [];
            if (allowedInThisSchool.length > 0) {
@@ -625,6 +642,8 @@ const StudentsManager = () => {
     studentFilterGrade,
     studentFilterSection,
     showMissingOnly,
+    isGeneralSupervisor,
+    currentUser,
   ]);
 
   const paginatedStudents = useMemo(() => {
@@ -1644,11 +1663,18 @@ const StaffManager = () => {
   const isAllowEdits =
     Array.isArray(currentUser?.permissions?.secretariat) &&
     currentUser!.permissions!.secretariat.includes("allowEdits");
+  const hasSecretariatAccess =
+    currentUser?.permissions?.secretariat === true ||
+    (Array.isArray(currentUser?.permissions?.secretariat) &&
+      (currentUser!.permissions!.secretariat.includes("view") ||
+       currentUser!.permissions!.secretariat.includes("showButton")));
   const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
 
   const isReadOnly =
     !isGeneralSupervisor &&
-    ((isReadOnlyFlag && !isAllowEdits) || isExplicitlyDisabled);
+    (isExplicitlyDisabled ||
+     (!isAllowEdits) ||
+     (isReadOnlyFlag && !isAllowEdits));
 
   const availableSchoolsKeys = data.availableSchools || [];
   const userSchools = isGeneralSupervisor
@@ -1677,11 +1703,21 @@ const StaffManager = () => {
       }
 
       // 2. Branch Filtering
-      const currentSelectedBranches = (currentUser?.selectedBranch || "").split(',').map(b => b.trim());
+      const currentSelectedBranches = (currentUser?.selectedBranch || "").split(',').map(b => b.trim()).filter(Boolean);
       const permsMap = currentUser?.permissions?.schoolsAndBranches || {};
       
       result = result.filter(s => {
         if (!s.branch) return true; // Show empty branch for editing
+        
+        // If no branch was selected at login, fall back to permissions map
+        if (currentSelectedBranches.length === 0 || (currentSelectedBranches.length === 1 && currentSelectedBranches[0] === '')) {
+           const allowedInThisSchool = Array.isArray(permsMap[s.school]) ? permsMap[s.school] : [];
+           if (allowedInThisSchool.length > 0) {
+             return allowedInThisSchool.includes(s.branch);
+           }
+           return true; // No branch restriction
+        }
+        
         // If "all" branches selected in UI, still limit by permissions for that school
         if (currentSelectedBranches.includes('all')) {
            const allowedInThisSchool = Array.isArray(permsMap[s.school]) ? permsMap[s.school] : [];
@@ -1725,7 +1761,7 @@ const StaffManager = () => {
           .toLowerCase()
           .includes(lowerQ),
     );
-  }, [staff, searchQuery, currentUser]);
+  }, [staff, searchQuery, currentUser, isGeneralSupervisor]);
 
   const toggleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) setSelectedIds(filteredStaff.map((s) => s.id));

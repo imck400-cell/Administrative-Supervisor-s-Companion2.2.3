@@ -130,9 +130,6 @@ export const DailyReportsPage: React.FC = () => {
   const isAllowEdits =
     Array.isArray(currentUser?.permissions?.secretariat) &&
     currentUser.permissions.secretariat.includes("allowEdits");
-  const isDailyFollowUpAllowEdits =
-    Array.isArray(currentUser?.permissions?.dailyFollowUp) &&
-    currentUser.permissions.dailyFollowUp.includes("allowEdits");
   const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
   const isModuleDisabled =
     Array.isArray(currentUser?.permissions?.dailyFollowUp) &&
@@ -141,9 +138,6 @@ export const DailyReportsPage: React.FC = () => {
     !isGeneralSupervisor &&
     ((isReadOnlyFlag && !isAllowEdits) || isModuleDisabled);
   const isSecretariatEnabled = isAllowEdits || isGeneralSupervisor;
-  // Core identity fields (name, gender, subject, grade) are locked UNLESS
-  // the user has dailyFollowUp: allowEdits permission, or is admin/supervisor
-  const coreFieldsLocked = !isGeneralSupervisor && !isDailyFollowUpAllowEdits;
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
@@ -1770,7 +1764,7 @@ export const DailyReportsPage: React.FC = () => {
               <FolderOpen size={16} /> الأرشيف
             </button>
           </div>
-          {!coreFieldsLocked && (
+          {isSecretariatEnabled && (
             <>
               <button
                 onClick={addNewTeacher}
@@ -2169,7 +2163,7 @@ export const DailyReportsPage: React.FC = () => {
                       <td className="p-1 border-e bg-inherit">
                         <input
                           list="teacher-names-list"
-                          disabled={isReadOnly || coreFieldsLocked}
+                          disabled={isReadOnly}
                           className="w-full text-right font-bold outline-none bg-transparent text-xs disabled:opacity-70"
                           value={t.teacherName || ""}
                           onChange={(e) => {
@@ -2192,7 +2186,7 @@ export const DailyReportsPage: React.FC = () => {
                             <select
                               className="w-full bg-transparent outline-none text-[10px] text-center font-bold disabled:opacity-70"
                               value={t.gender || "ذكر"}
-                              disabled={isReadOnly || coreFieldsLocked}
+                              disabled={isReadOnly}
                               onChange={(e) =>
                                 updateTeacher(t.id, { gender: e.target.value })
                               }
@@ -2204,7 +2198,7 @@ export const DailyReportsPage: React.FC = () => {
                           <td className="p-1 border-e">
                             <div
                               className={
-                                (isReadOnly || coreFieldsLocked)
+                                isReadOnly
                                   ? "pointer-events-none opacity-70"
                                   : ""
                               }
@@ -2227,7 +2221,7 @@ export const DailyReportsPage: React.FC = () => {
                           <td className="p-1 border-e">
                             <div
                               className={
-                                (isReadOnly || coreFieldsLocked)
+                                isReadOnly
                                   ? "pointer-events-none opacity-70"
                                   : ""
                               }
@@ -5062,7 +5056,6 @@ const StudentRow = memo(
     index: number;
     showBulkActions: boolean;
     isSecretariatEnabled?: boolean;
-    coreFieldsLocked?: boolean;
   }) => {
     return (
       <tr
@@ -5123,18 +5116,16 @@ const StudentRow = memo(
               />
             </button>
             <input
-              className="flex-1 bg-transparent border-none outline-none font-bold text-[10px] text-right disabled:opacity-70"
+              className="flex-1 bg-transparent border-none outline-none font-bold text-[10px] text-right"
               value={s.name}
-              disabled={coreFieldsLocked}
               onChange={(e) => updateStudent(s.id, "name", e.target.value)}
             />
           </div>
         </td>
         <td className="p-1 border-e border-slate-100">
           <select
-            className="bg-transparent font-bold text-[9px] outline-none w-full appearance-none text-center disabled:opacity-70"
+            className="bg-transparent font-bold text-[9px] outline-none w-full appearance-none text-center"
             value={s.grade}
-            disabled={coreFieldsLocked}
             onChange={(e) => updateStudent(s.id, "grade", e.target.value)}
           >
             {optionsAr.grades.map((o: any, idx: number) => (
@@ -5148,9 +5139,8 @@ const StudentRow = memo(
         </td>
         <td className="p-1 border-e border-slate-100">
           <select
-            className="bg-transparent font-bold text-[9px] outline-none w-full appearance-none text-center disabled:opacity-70"
+            className="bg-transparent font-bold text-[9px] outline-none w-full appearance-none text-center"
             value={s.section}
-            disabled={coreFieldsLocked}
             onChange={(e) => updateStudent(s.id, "section", e.target.value)}
           >
             {optionsAr.sections.map((o: any, idx: number) => (
@@ -5164,9 +5154,8 @@ const StudentRow = memo(
         </td>
         <td className="p-1 border-e border-slate-100">
           <select
-            className="bg-transparent font-bold text-[9px] outline-none w-full appearance-none text-center disabled:opacity-70"
+            className="bg-transparent font-bold text-[9px] outline-none w-full appearance-none text-center"
             value={s.gender}
-            disabled={coreFieldsLocked}
             onChange={(e) => updateStudent(s.id, "gender", e.target.value)}
           >
             {optionsAr.gender.map((o: any, idx: number) => (
@@ -5234,9 +5223,8 @@ const StudentRow = memo(
         <td className="p-1 border-e border-slate-100">
           <div className="flex flex-col gap-0.5">
             <input
-              className="text-[9px] font-bold text-right outline-none bg-transparent disabled:opacity-70"
+              className="text-[9px] font-bold text-right outline-none bg-transparent"
               value={s.guardianName || ""}
-              disabled={coreFieldsLocked}
               onChange={(e) =>
                 updateStudent(s.id, "guardianName", e.target.value)
               }
@@ -5247,9 +5235,8 @@ const StudentRow = memo(
                 className="flex gap-0.5 items-center"
               >
                 <input
-                  className="text-[8px] w-full text-center bg-slate-50/50 outline-none disabled:opacity-70"
+                  className="text-[8px] w-full text-center bg-slate-50/50 outline-none"
                   value={p || ""}
-                  disabled={coreFieldsLocked}
                   onChange={(e) => {
                     const newP = [...s.guardianPhones];
                     newP[i] = e.target.value;
@@ -5502,9 +5489,6 @@ export const StudentsReportsPage: React.FC = () => {
   const isAllowEdits =
     Array.isArray(currentUser?.permissions?.secretariat) &&
     currentUser.permissions.secretariat.includes("allowEdits");
-  const isStudentAffairsAllowEdits =
-    Array.isArray(currentUser?.permissions?.studentAffairs) &&
-    currentUser.permissions.studentAffairs.includes("allowEdits");
   const isReadOnlyFlag = currentUser?.permissions?.readOnly === true;
   const isModuleDisabled =
     Array.isArray(currentUser?.permissions?.studentAffairs) &&
@@ -5512,9 +5496,6 @@ export const StudentsReportsPage: React.FC = () => {
   const isReadOnly =
     !isGeneralSupervisor &&
     ((isReadOnlyFlag && !isAllowEdits) || isModuleDisabled);
-  // Core identity fields (name, grade, section, gender, guardian, phone) are locked UNLESS
-  // the user has studentAffairs: allowEdits permission, or is admin/supervisor
-  const coreFieldsLocked = !isGeneralSupervisor && !isStudentAffairsAllowEdits;
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -6704,7 +6685,7 @@ export const StudentsReportsPage: React.FC = () => {
     <div className="space-y-4 font-arabic animate-in fade-in duration-150">
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border">
         <div className="flex flex-wrap items-center gap-2">
-          {!coreFieldsLocked && (
+          {isSecretariatEnabled && (
             <>
               <button
                 onClick={addStudent}
@@ -7228,7 +7209,6 @@ export const StudentsReportsPage: React.FC = () => {
                     index={idx}
                     showBulkActions={selectedStudentIds.length > 0}
                     isSecretariatEnabled={isSecretariatEnabled}
-                    coreFieldsLocked={coreFieldsLocked}
                   />
                 ))
               )}

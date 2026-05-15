@@ -75,6 +75,7 @@ const Dashboard: React.FC<{
     setDashboardFilter,
     currentUser,
     globalDataFilters,
+    effectiveUserIds,
   } = useGlobal();
 
   const today = new Date().toISOString().split("T")[0];
@@ -496,6 +497,37 @@ const Dashboard: React.FC<{
   };
 
   const processedData = useMemo(() => {
+    const isGeneralSupervisor =
+      currentUser?.role === "admin" || currentUser?.permissions?.all === true;
+    const allowedIds = effectiveUserIds || [currentUser?.id];
+    const userGrades = currentUser?.grades || [];
+    const userSections = currentUser?.sections || [];
+    const userSchools = currentUser?.selectedSchool?.split(",").map((s) => s.trim()) || [];
+
+    // Check if the current user has permission over a specific item based on their assignments
+    const canSeeStudent = (s: any, secMatch?: any) => {
+      if (isGeneralSupervisor) return true;
+      let ok = true;
+      
+      const grade = secMatch?.grade || s.grade;
+      if (userGrades.length > 0 && grade && !userGrades.includes(grade)) ok = false;
+      
+      const section = secMatch?.section || s.section;
+      if (userSections.length > 0 && section && !userSections.includes(section)) ok = false;
+      
+      const uid = s.userId || s._ownerId;
+      if (uid && !allowedIds.includes(uid)) ok = false;
+      
+      return ok;
+    };
+
+    const canSeeTeacher = (t: any, secMatch?: any) => {
+      if (isGeneralSupervisor) return true;
+      const uid = t.userId || t._ownerId;
+      if (uid && !allowedIds.includes(uid)) return false;
+      return true;
+    };
+
     // Pre-merge students
     let mergedStudents = [...(data.studentReports || [])];
     (data.secretariatStudents || []).forEach((s: any) => {
@@ -508,6 +540,14 @@ const Dashboard: React.FC<{
           section: s.section || "",
         } as any);
       }
+    });
+
+    // Apply baseline authorization filter for students
+    mergedStudents = mergedStudents.filter((s) => {
+      const secMatch = (data.secretariatStudents || []).find(
+        (ss: any) => ss.id === s.id || ss.name === s.name,
+      );
+      return canSeeStudent(s, secMatch);
     });
 
     if (globalDataFilters) {
@@ -532,25 +572,23 @@ const Dashboard: React.FC<{
           )
             ok = false;
         } else if (globalDataFilters.schools.length > 0) {
-          const userSchoolArr =
-            currentUser?.selectedSchool?.split(",").map((ss) => ss.trim()) ||
-            [];
-          if (
-            !userSchoolArr.some((us) => globalDataFilters.schools.includes(us))
-          )
+          if (!userSchools.some((us) => globalDataFilters.schools.includes(us)))
             ok = false;
         }
 
+        const grade = secMatch?.grade || s.grade;
         if (
           globalDataFilters.grades.length > 0 &&
-          s.grade &&
-          !globalDataFilters.grades.includes(String(s.grade).trim())
+          grade &&
+          !globalDataFilters.grades.includes(String(grade).trim())
         )
           ok = false;
+          
+        const section = secMatch?.section || s.section;
         if (
           globalDataFilters.sections.length > 0 &&
-          s.section &&
-          !globalDataFilters.sections.includes(String(s.section).trim())
+          section &&
+          !globalDataFilters.sections.includes(String(section).trim())
         )
           ok = false;
         return ok;
@@ -603,6 +641,14 @@ const Dashboard: React.FC<{
               date: today,
             } as any);
           }
+        });
+
+        // Apply baseline authorization filter for teachers
+        mergedTeachers = mergedTeachers.filter((t) => {
+          const secMatch = (data.secretariatStaff || []).find(
+            (ss: any) => ss.id === t.id || ss.name === t.teacherName,
+          );
+          return canSeeTeacher(t, secMatch);
         });
 
         if (globalDataFilters) {

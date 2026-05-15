@@ -1056,115 +1056,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
     // Initial sync for login data
     if (isAuthenticated) return; // Authenticated session is handled by the main useEffect
 
-    const schoolsToSync = [
-      ...new Set([
-        ...(data.availableSchools || []),
-        ...(defaultData.availableSchools || []),
-      ]),
-    ];
     const unsubscribes: (() => void)[] = [unsubAuth];
 
     signInAnonymously(auth)
       .then(() => {
-        schoolsToSync.forEach((school) => {
-          // Only sync what's needed for login/initial setup here
-          ["users", "availableSchools", "availableYears", "schoolBranches"].forEach((key) => {
-            const listenerId = `global-${school}-${key}`;
-            if (activeListeners.current.has(listenerId)) return;
-
-            activeListeners.current.add(listenerId);
-            const q = doc(db, "schools", school, "shared", key);
-            const unsub = onSnapshot(
-              q,
-              { includeMetadataChanges: true },
-              (snapshot) => {
-                if (snapshot.exists()) {
-                  const remoteData = snapshot.data().data;
-                  setData((prev) => {
-                    if (key === "users") {
-                      const newUsers = Array.isArray(remoteData)
-                        ? remoteData
-                        : [];
-
-                      const mergedUsersMap = new Map();
-                      
-                      // Keep users from prev that DO NOT belong to this school
-                      (prev.users || []).forEach((u) => {
-                         if (!(u.schools && u.schools.includes(school)) && u.role !== "admin" && !u.permissions?.all) {
-                            mergedUsersMap.set(u.id, u);
-                         }
-                      });
-
-                      // Add new users from remote
-                      newUsers.forEach((u: AuthUser) => {
-                        // Only accept users that actually claim this school in their schools array
-                        if (u.schools && u.schools.includes(school)) {
-                           mergedUsersMap.set(u.id, u);
-                        } else if (u.role === "admin" || u.permissions?.all === true) {
-                           mergedUsersMap.set(u.id, u);
-                        }
-                      });
-                      
-                      // Add defaults last if missing
-                      defaultData.users.forEach((u) => {
-                        if (!mergedUsersMap.has(u.id)) {
-                           if (u.schools.includes(school) || u.role === "admin") {
-                              mergedUsersMap.set(u.id, u);
-                           }
-                        }
-                      });
-
-                      const mergedUsers = Array.from(mergedUsersMap.values());
-
-                      if (
-                        JSON.stringify(prev.users) !==
-                        JSON.stringify(mergedUsers)
-                      ) {
-                        return { ...prev, users: mergedUsers };
-                      }
-                      return prev;
-                    } else if (key === "schoolBranches") {
-                      // schoolBranches is an object map, not an array - merge it properly
-                      const existingBranches = prev.schoolBranches || {};
-                      const newBranches = typeof remoteData === 'object' && !Array.isArray(remoteData) ? remoteData : {};
-                      const merged: Record<string, string[]> = { ...existingBranches };
-                      Object.keys(newBranches).forEach(k => {
-                        if (Array.isArray(newBranches[k])) {
-                          merged[k] = Array.from(new Set([...(merged[k] || []), ...newBranches[k]]));
-                        }
-                      });
-                      if (JSON.stringify(prev.schoolBranches) === JSON.stringify(merged)) return prev;
-                      return { ...prev, schoolBranches: merged };
-                    } else {
-                      const existing = (prev[key] as any[]) || [];
-                      const incoming = Array.isArray(remoteData)
-                        ? remoteData
-                        : [];
-                      const merged = [...new Set([...existing, ...incoming])];
-                      if (
-                        merged.length === existing.length &&
-                        merged.every((v, i) => v === existing[i])
-                      ) {
-                        return prev;
-                      }
-                      return { ...prev, [key]: merged };
-                    }
-                  });
-                }
-              },
-              (error: any) => {
-                if (error.code !== "permission-denied" && !error.message.includes("permission-denied")) {
-                  console.error(
-                    `Global sync error [${key}] for school [${school}]:`,
-                    error,
-                  );
-                }
-              },
-            );
-            unsubscribes.push(unsub);
-          });
-        });
-
         ["aboutSliderImages", "aboutExternalLinks", "aboutLogoImg", "availableSchools", "availableYears"].forEach(
           (key) => {
             const listenerId = `system-introConfig-${key}`;
@@ -1209,6 +1104,96 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       activeListeners.current.clear();
     };
   }, []); // Run once on mount
+
+  // Reactive anonymous listeners for users/branches
+  useEffect(() => {
+    if (isAuthenticated) return;
+    
+    const schoolsToSync = [
+      ...new Set([
+        ...(data.availableSchools || []),
+        ...(defaultData.availableSchools || []),
+      ]),
+    ];
+    const unsubscribes: (() => void)[] = [];
+
+    schoolsToSync.forEach((school) => {
+      ["users", "schoolBranches"].forEach((key) => {
+        const listenerId = `global-${school}-${key}`;
+        if (activeListeners.current.has(listenerId)) return;
+
+        activeListeners.current.add(listenerId);
+        const q = doc(db, "schools", school, "shared", key);
+        const unsub = onSnapshot(
+          q,
+          { includeMetadataChanges: true },
+          (snapshot) => {
+            if (snapshot.exists()) {
+              const remoteData = snapshot.data().data;
+              setData((prev) => {
+                if (key === "users") {
+                  const newUsers = Array.isArray(remoteData) ? remoteData : [];
+                  const mergedUsersMap = new Map();
+                  
+                  (prev.users || []).forEach((u) => {
+                     if (!(u.schools && u.schools.includes(school)) && u.role !== "admin" && !u.permissions?.all) {
+                        mergedUsersMap.set(u.id, u);
+                     }
+                  });
+
+                  newUsers.forEach((u: AuthUser) => {
+                    if (u.schools && u.schools.includes(school)) {
+                       mergedUsersMap.set(u.id, u);
+                    } else if (u.role === "admin" || u.permissions?.all === true) {
+                       mergedUsersMap.set(u.id, u);
+                    }
+                  });
+                  
+                  defaultData.users.forEach((u) => {
+                    if (!mergedUsersMap.has(u.id)) {
+                       if (u.schools.includes(school) || u.role === "admin") {
+                          mergedUsersMap.set(u.id, u);
+                       }
+                    }
+                  });
+
+                  const mergedUsers = Array.from(mergedUsersMap.values());
+                  if (JSON.stringify(prev.users) !== JSON.stringify(mergedUsers)) {
+                    return { ...prev, users: mergedUsers };
+                  }
+                  return prev;
+                } else if (key === "schoolBranches") {
+                  const existingBranches = prev.schoolBranches || {};
+                  const newBranches = typeof remoteData === 'object' && !Array.isArray(remoteData) ? remoteData : {};
+                  const merged: Record<string, string[]> = { ...existingBranches };
+                  Object.keys(newBranches).forEach(k => {
+                    if (Array.isArray(newBranches[k])) {
+                      merged[k] = Array.from(new Set([...(merged[k] || []), ...newBranches[k]]));
+                    }
+                  });
+                  if (JSON.stringify(prev.schoolBranches) === JSON.stringify(merged)) return prev;
+                  return { ...prev, schoolBranches: merged };
+                }
+                return prev;
+              });
+            }
+          },
+          (error: any) => {
+            if (error.code !== "permission-denied" && !error.message.includes("permission-denied")) {
+              console.error(`Global sync error [${key}] for school [${school}]:`, error);
+            }
+          }
+        );
+        unsubscribes.push(unsub);
+      });
+    });
+
+    return () => {
+      unsubscribes.forEach((u) => u());
+      // we do not clear activeListeners to avoid infinite refetching,
+      // it's cleared on unmount in the main effect
+    };
+  }, [isAuthenticated, data.availableSchools?.join(",")]);
 
   const dataListeners = React.useRef<Set<string>>(new Set());
   const isAuthDocSetup = React.useRef(false);
@@ -1311,8 +1296,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       const strictlySharedKeys = [
         "profile",
         "users",
-        "availableSchools",
-        "availableYears",
         "schoolBranches",
         "secretariatStudents",
         "secretariatStaff",
@@ -1835,8 +1818,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
       const strictlySharedKeys = [
         "profile",
         "users",
-        "availableSchools",
-        "availableYears",
         "schoolBranches",
         "secretariatStudents",
         "secretariatStaff",
@@ -2107,7 +2088,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         if (
           key === "aboutSliderImages" ||
           key === "aboutExternalLinks" ||
-          key === "aboutLogoImg"
+          key === "aboutLogoImg" ||
+          key === "availableSchools" ||
+          key === "availableYears"
         ) {
           pendingChanges[key] = newData[key] as any;
           if (

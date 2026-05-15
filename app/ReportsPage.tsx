@@ -581,11 +581,7 @@ export const DailyReportsPage: React.FC = () => {
       } as unknown as TeacherFollowUp;
     });
 
-    const manualTeachers = currentTeacherData.filter(
-      (t) => !list.some((l) => l.teacherName === t.teacherName),
-    );
-    list = [...list, ...manualTeachers];
-
+    // Directly use list matched from secretariat
     // Filter by accessibility for sub-users matching what was originally there
     if (
       !isAdminOrFull &&
@@ -1773,22 +1769,7 @@ export const DailyReportsPage: React.FC = () => {
               <FolderOpen size={16} /> الأرشيف
             </button>
           </div>
-          {isSecretariatEnabled && (
-            <>
-              <button
-                onClick={addNewTeacher}
-                className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-xl font-bold border border-purple-200 hover:bg-purple-100 transition-all text-xs sm:text-sm"
-              >
-                <UserCircle size={16} /> إضافة معلم
-              </button>
-              <button
-                onClick={() => setShowImportModal(true)}
-                className="flex items-center gap-2 bg-orange-50 text-orange-700 px-4 py-2 rounded-xl font-bold border border-orange-200 hover:bg-orange-100 transition-all text-xs sm:text-sm"
-              >
-                <Upload size={16} /> استيراد أسماء المعلمين
-              </button>
-            </>
-          )}
+          {/* Removed adding/importing teachers to strictly rely on Secretariat */}
           <button
             onClick={() => setShowTeacherReport(true)}
             className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-xl font-bold border border-green-200 hover:bg-green-100 transition-all text-xs sm:text-sm"
@@ -2155,18 +2136,6 @@ export const DailyReportsPage: React.FC = () => {
                           <span className="font-bold text-xs font-sans">
                             {idx + 1}
                           </span>
-                          {!isReadOnly && isSecretariatEnabled && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteTeacher(t.id);
-                              }}
-                              className="p-1 text-slate-400 hover:text-red-600 transition-colors"
-                              title="حذف الاسم"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          )}
                         </div>
                       </td>
                       <td className="p-1 border-e bg-inherit">
@@ -3229,18 +3198,6 @@ export const DailyReportsPage: React.FC = () => {
                       </button>
                       <div className="flex items-center gap-2">
                         {reportTeacherId === t.id && <Check size={18} />}
-                        {!isReadOnly && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteTeacher(t.id);
-                            }}
-                            className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${reportTeacherId === t.id ? "hover:bg-blue-700 text-white" : "hover:bg-red-50 text-red-400 hover:text-red-600"}`}
-                            title="حذف هذا المعلم"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
                       </div>
                     </div>
                   ))}
@@ -4157,16 +4114,22 @@ export const ViolationsPage: React.FC = () => {
   const [activeSearchId, setActiveSearchId] = useState<string | null>(null);
 
   const studentList = useMemo(() => {
-    const list = [...(data.studentReports || [])];
-    (data.secretariatStudents || []).forEach((ss: any) => {
-      if (!list.some((r) => r.id === ss.id)) {
-        list.push({
-          id: ss.id,
-          name: ss.name || "",
-          grade: ss.grade || "",
-          section: ss.section || "",
-        } as any);
+    const list = (data.secretariatStudents || []).map((ss: any) => {
+      const existing = (data.studentReports || []).find((r) => r.id === ss.id);
+      if (existing) {
+        return {
+          ...existing,
+          name: ss.name || existing.name,
+          grade: ss.grade || existing.grade,
+          section: ss.section || existing.section,
+        };
       }
+      return {
+        id: ss.id,
+        name: ss.name || "",
+        grade: ss.grade || "",
+        section: ss.section || "",
+      } as any;
     });
     return list;
   }, [data.studentReports, data.secretariatStudents]);
@@ -5075,18 +5038,6 @@ const StudentRow = memo(
           className={`p-1 border-e border-slate-100 transition-colors ${isHighlighted ? "bg-yellow-50" : "bg-white group-hover:bg-blue-50"} w-20`}
         >
           <div className="flex items-center justify-center gap-2">
-            {isSecretariatEnabled && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(s.id);
-                }}
-                className="p-1 text-slate-300 hover:text-red-500 transition-colors"
-                title={lang === "ar" ? "حذف الطالب" : "Delete Student"}
-              >
-                <Trash2 size={12} />
-              </button>
-            )}
             <span className="text-[10px] font-black text-slate-400 w-4 text-center">
               {index + 1}
             </span>
@@ -6607,35 +6558,7 @@ export const StudentsReportsPage: React.FC = () => {
     <div className="space-y-4 font-arabic animate-in fade-in duration-150">
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border">
         <div className="flex flex-wrap items-center gap-2">
-          {isSecretariatEnabled && (
-            <>
-              <button
-                onClick={addStudent}
-                className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-sm hover:bg-blue-700 shadow-md transform active:scale-95 transition-all"
-              >
-                <Plus className="w-4 h-4" />{" "}
-                {lang === "ar" ? "إضافة طالب" : "Add Student"}
-              </button>
-              <label className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2.5 rounded-xl font-bold text-sm border border-green-200 cursor-pointer hover:bg-green-100 transition-all">
-                <Upload className="w-4 h-4" />{" "}
-                {lang === "ar" ? "استيراد ملف" : "Import File"}
-                <input
-                  type="file"
-                  className="hidden"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={handleFileUpload}
-                />
-              </label>
-              <button
-                onClick={handleDeleteDuplicates}
-                className="flex items-center gap-2 bg-red-50 text-red-700 px-4 py-2.5 rounded-xl font-bold text-sm border border-red-200 hover:bg-red-100 transition-all font-black"
-              >
-                <Trash2 size={16} />{" "}
-                {lang === "ar" ? "حذف الطلاب" : "Delete Students"}
-              </button>
-            </>
-          )}
-
+          {/* Add, Import, Delete buttons strictly removed to enforce Secretariat control */}
           <button
             onClick={() => setShowIndividualReportModal(true)}
             className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-black text-sm hover:bg-emerald-700 shadow-md transform active:scale-95 transition-all"

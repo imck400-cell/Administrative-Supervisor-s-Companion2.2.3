@@ -329,8 +329,19 @@ const StaffFollowUpPage: React.FC = () => {
   const employees = useMemo(() => {
     const report = reports.find((r) => r.id === currentReportId);
     if (!report) return [];
-    return report.employeesData;
-  }, [reports, currentReportId]);
+    
+    // Ensure we only show employees that STILL exist in secretariatStaff 
+    // AND match the current user's school/branch permissions.
+    const validStaffNames = new Set((data.secretariatStaff || [])
+      .filter((s: any) => {
+        if (activeSchool && s.school !== activeSchool) return false;
+        if (activeBranch && s.branch && s.branch !== activeBranch) return false;
+        return true;
+      })
+      .map((s: any) => s.name));
+
+    return report.employeesData.filter(emp => validStaffNames.has(emp.employeeName));
+  }, [reports, currentReportId, data.secretariatStaff, activeSchool, activeBranch]);
 
   const displayedEmployees = useMemo(
     () => employees.slice(0, displayLimit),

@@ -539,35 +539,53 @@ const SpecialReportsPage: React.FC<SpecialReportsPageProps> = ({
   const students = useMemo(() => {
     const reports = data.studentReports || [];
     const sec = data.secretariatStudents || [];
-    const merged = [...reports];
-    sec.forEach((s: any) => {
-      if (!merged.some((r) => r.id === s.id)) {
-        merged.push({
-          id: s.id,
-          name: s.name || "",
-          gender: s.gender || "",
-          grade: s.grade || "",
-          section: s.section || "",
-          address: s.residenceWork || "",
-          workOutside: "",
-          healthStatus: s.healthStatus || "ممتاز",
-          healthDetails: "",
-          guardianName: s.guardianInfo || "",
-          guardianPhones: [],
-          academicReading: "متوسط",
-          academicWriting: "متوسط",
-          academicParticipation: "متوسط",
-          behaviorLevel: "متوسط",
-          mainNotes: [],
-          otherNotesText: "",
-          guardianEducation: "متعلم",
-          guardianFollowUp: "متوسط",
-          guardianCooperation: "متوسط",
-          notes: "",
-          createdAt: new Date().toISOString(),
-        } as StudentReport);
+    
+    // Strictly map from secretariat so deleted students are automatically removed.
+    const merged = sec.map((s: any) => {
+      const existing = reports.find((r) => r.id === s.id);
+      if (existing) {
+        return {
+          ...existing,
+          // Sync immutable fields back from secretariat
+          name: s.name || existing.name,
+          gender: s.gender || existing.gender,
+          grade: s.grade || existing.grade,
+          section: s.section || existing.section,
+          address: s.residenceWork || existing.address,
+          healthStatus: s.healthStatus || existing.healthStatus,
+          guardianName: s.guardianInfo || existing.guardianName,
+        } as StudentReport;
       }
+      return {
+        id: s.id,
+        name: s.name || "",
+        gender: s.gender || "",
+        grade: s.grade || "",
+        section: s.section || "",
+        address: s.residenceWork || "",
+        workOutside: "",
+        healthStatus: s.healthStatus || "ممتاز",
+        healthDetails: "",
+        guardianName: s.guardianInfo || "",
+        guardianPhones: [],
+        academicReading: "متوسط",
+        academicWriting: "متوسط",
+        academicParticipation: "متوسط",
+        behaviorLevel: "متوسط",
+        mainNotes: [],
+        otherNotesText: "",
+        guardianEducation: "متعلم",
+        guardianFollowUp: "متوسط",
+        guardianCooperation: "متوسط",
+        notes: "",
+        createdAt: new Date().toISOString(),
+      } as StudentReport;
     });
+
+    // Also include any students in reports that might have been created by users with NO secretariat (if any fallback is needed, but the user explicitly requested strict typing).
+    // The user requested: "بحيث تتم الإضافة فقط للطلاب المسجلين في لوحة السكرتير"
+    // So we do NOT append reports that are missing from sec.
+
     return merged;
   }, [data.studentReports, data.secretariatStudents]);
 

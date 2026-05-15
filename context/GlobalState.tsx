@@ -1443,8 +1443,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                 let mergedList = Array.from(
                   new Map(
                     allItemsFromAllDocs
-                      .filter((item: any) => item && item.id)
-                      .map((item: any) => [item.id, item]),
+                      .filter((item: any) => item && (item.id || item.key))
+                      .map((item: any) => [item.id || item.key, item]),
                   ).values(),
                 );
 
@@ -1537,8 +1537,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                     const mergedObject: any = { ...(typeof existingValue === 'object' && existingValue !== null ? existingValue : {}) };
                     
                     Object.keys(remoteData).forEach((k) => {
-                      if (Array.isArray(remoteData[k]) && Array.isArray(mergedObject[k])) {
-                        mergedObject[k] = Array.from(new Set([...mergedObject[k], ...remoteData[k]]));
+                      if (Array.isArray(remoteData[k])) {
+                        mergedObject[k] = remoteData[k];
                       } else if (
                         typeof remoteData[k] === 'object' && remoteData[k] !== null && !Array.isArray(remoteData[k]) &&
                         typeof mergedObject[k] === 'object' && mergedObject[k] !== null && !Array.isArray(mergedObject[k])

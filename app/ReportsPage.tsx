@@ -519,6 +519,15 @@ export const DailyReportsPage: React.FC = () => {
         if (!s.grades.some((g: string) => currentUser.grades!.includes(g)))
           ok = false;
       }
+      if (
+        currentUser?.sections &&
+        currentUser.sections.length > 0 &&
+        s.classes &&
+        s.classes.length > 0
+      ) {
+        if (!s.classes.some((c: string) => currentUser.sections!.includes(c)))
+          ok = false;
+      }
       return ok;
     });
 

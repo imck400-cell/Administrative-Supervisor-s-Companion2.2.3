@@ -1362,7 +1362,18 @@ const StaffManager = () => {
   }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
 
   const saveStaff = (newStaff: StaffData[]) => {
-    setStaff(newStaff);
+    // 0. Sort alphabetically by name and correctly re-number
+    const sortedStaff = [...newStaff]
+      .sort((a, b) => {
+        const nameA = a.name ? a.name.trim() : "";
+        const nameB = b.name ? b.name.trim() : "";
+        if (!nameA && nameB) return 1;
+        if (nameA && !nameB) return -1;
+        return nameA.localeCompare(nameB, "ar");
+      })
+      .map((s, idx) => ({ ...s, serialNumber: idx + 1 }));
+
+    setStaff(sortedStaff);
 
     // 1. Daily Reports Sync
     const today = new Date().toISOString().split("T")[0];
@@ -1372,7 +1383,7 @@ const StaffManager = () => {
     dailyReports.forEach((r) => {
       if (r.dateStr === today) {
         let changed = false;
-        newStaff.forEach((s) => {
+        sortedStaff.forEach((s) => {
           // Only sync if they have teacher-like job title
           const isTeacher = (s.jobTitles || []).some((title) =>
             TEACHER_JOB_TITLES.includes(title),
@@ -1433,7 +1444,7 @@ const StaffManager = () => {
     const teacherFollowUps = [...(data.teacherFollowUps || [])];
     let updatedFollowUps = false;
 
-    newStaff.forEach((s) => {
+    sortedStaff.forEach((s) => {
       const isTeacher = (s.jobTitles || []).some((title) =>
         TEACHER_JOB_TITLES.includes(title),
       );
@@ -1488,7 +1499,7 @@ const StaffManager = () => {
       }
     });
 
-    const updates: any = { secretariatStaff: newStaff };
+    const updates: any = { secretariatStaff: sortedStaff };
     if (updatedReports) updates.dailyReports = dailyReports;
     if (updatedFollowUps) updates.teacherFollowUps = teacherFollowUps;
 

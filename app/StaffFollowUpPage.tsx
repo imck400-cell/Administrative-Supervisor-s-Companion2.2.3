@@ -367,6 +367,8 @@ const StaffFollowUpPage: React.FC = () => {
     }
   }, [followUpType, data.adminBranchActivities, data.adminActivitiesList, activeBranchKey]);
 
+  const [showStaffSelector, setShowStaffSelector] = useState(false);
+
   // Auto-save logic for current individual form draft
   useEffect(() => {
     if (viewMode === "individual") {
@@ -635,28 +637,38 @@ const StaffFollowUpPage: React.FC = () => {
       toast.error("نرجو إنشاء جدول جديد أولاً");
       return;
     }
-    const name = prompt("أدخل اسم الموظف:");
-    if (!name) return;
+    setShowStaffSelector(true);
+  };
 
-    const newEmp: AdminFollowUp = {
-      id: `emp_${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      employeeName: name,
-      gender: "ذكر",
-      branch: "المركز الرئيسي",
-      role: followUpType.includes("متابعة")
-        ? followUpType.split("متابعة ")[1] || followUpType
-        : followUpType,
-      violations_score: 0,
-      violations_notes: [],
-      unaccreditedMetrics: [],
-    };
+  const addSelectedEmployees = (selectedNames: string[]) => {
+    if (!currentReportId || selectedNames.length === 0) {
+      setShowStaffSelector(false);
+      return;
+    }
+
+    const newEmployees = selectedNames.map(name => {
+      const staffBase = (data.secretariatStaff || []).find((s: any) => s.name === name);
+      return {
+        id: `emp_${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        employeeName: name,
+        gender: staffBase?.gender || "ذكر",
+        branch: staffBase?.branch || "المركز الرئيسي",
+        role: followUpType.includes("متابعة")
+          ? followUpType.split("متابعة ")[1] || followUpType
+          : followUpType,
+        violations_score: 0,
+        violations_notes: [],
+        unaccreditedMetrics: [],
+      } as AdminFollowUp;
+    });
 
     const updatedReports = (data.adminReports || []).map((r) => {
       if (r.id === currentReportId)
-        return { ...r, employeesData: [...r.employeesData, newEmp] };
+        return { ...r, employeesData: [...r.employeesData, ...newEmployees] };
       return r;
     });
     updateData({ adminReports: updatedReports });
+    setShowStaffSelector(false);
   };
 
   const updateEmployee = (empId: string, updates: Partial<AdminFollowUp>) => {
@@ -1525,17 +1537,34 @@ const StaffFollowUpPage: React.FC = () => {
               <label className="text-sm font-black text-slate-600 mr-2">
                 اسم الموظف
               </label>
-              <input
-                type="text"
-                className="bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none"
+              <select
+                className="bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none cursor-pointer"
                 value={individualForm.employeeName || ""}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const emp = (data.secretariatStaff || []).find(
+                    (s: any) => s.name === e.target.value
+                  );
                   setIndividualForm({
                     ...individualForm,
                     employeeName: e.target.value,
+                    gender: emp?.gender || individualForm.gender || "ذكر"
+                  });
+                }}
+              >
+                <option value="" disabled>اختر الموظف...</option>
+                {(data.secretariatStaff || [])
+                  .filter((s: any) => {
+                    if (activeSchool && s.school !== activeSchool) return false;
+                    if (activeBranch && s.branch && s.branch !== activeBranch)
+                      return false;
+                    return true;
                   })
-                }
-              />
+                  .map((s: any) => (
+                    <option key={s.id} value={s.name}>
+                      {s.name}
+                    </option>
+                  ))}
+              </select>
             </div>
             <div className="flex flex-col gap-2">
               <label className="text-sm font-black text-slate-600 mr-2">
@@ -3513,6 +3542,65 @@ const StaffFollowUpPage: React.FC = () => {
                 إغلاق وحفظ
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Staff Selector Modal for Group view */}
+      {showStaffSelector && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-blue-950/30 backdrop-blur-md p-4 animate-in fade-in">
+          <div className="bg-white rounded-[3.5rem] w-full max-w-lg shadow-2xl border-[8px] border-white p-10 flex flex-col gap-8 animate-in zoom-in-95 max-h-[85vh]">
+            <div className="flex justify-between items-center bg-slate-50 p-4 rounded-3xl border border-slate-100">
+              <h3 className="text-xl font-black text-slate-800 flex items-center gap-3">
+                <Users className="text-blue-500" />
+                اختر الموظفين
+              </h3>
+              <button
+                onClick={() => setShowStaffSelector(false)}
+                className="p-3 hover:bg-white rounded-2xl transition-colors shadow-sm"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50 border-2 border-slate-100 rounded-[2rem] p-4">
+              <div className="flex flex-col gap-2">
+                {(() => {
+                  const staffList = (data.secretariatStaff || []).filter((s: any) => {
+                    if (activeSchool && s.school !== activeSchool) return false;
+                    if (activeBranch && s.branch && s.branch !== activeBranch) return false;
+                    return true;
+                  });
+                  
+                  if (staffList.length === 0) {
+                    return <p className="text-slate-400 text-center py-10 font-bold">لا يوجد موظفين مسجلين حالياً في هذا الفرع والمدرسة.</p>;
+                  }
+
+                  return staffList.map((s: any) => (
+                    <label key={s.id} className="flex items-center gap-3 p-4 bg-white rounded-2xl border-2 border-transparent hover:border-blue-100 cursor-pointer shadow-sm transition-all group">
+                      <input 
+                        type="checkbox" 
+                        className="w-5 h-5 text-blue-600 rounded-md border-slate-300 focus:ring-blue-500 transition-all staff-checkbox"
+                        value={s.name || ""}
+                      />
+                      <span className="font-bold text-slate-700 group-hover:text-blue-600 transition-colors">{s.name || "بدون اسم"}</span>
+                      <span className="text-xs text-slate-400 mr-auto bg-slate-100 px-2 py-1 rounded-full">{s.jobTitles?.join(" / ") || ""}</span>
+                    </label>
+                  ));
+                })()}
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                const checkboxes = document.querySelectorAll(".staff-checkbox:checked") as NodeListOf<HTMLInputElement>;
+                const selectedNames = Array.from(checkboxes).map(cb => cb.value).filter(Boolean);
+                addSelectedEmployees(selectedNames);
+              }}
+              className="w-full py-5 bg-blue-600 text-white rounded-[2rem] font-black text-xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 active:scale-95"
+            >
+              إضافة المحددين
+            </button>
           </div>
         </div>
       )}

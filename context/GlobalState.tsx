@@ -555,7 +555,7 @@ const defaultData: AppData = {
       id: "u1",
       name: "المشرف العام",
       code: "admin123",
-      schools: ["مدرسة الرواد", "مدرسة النخبة"],
+      schools: ["all"],
       academicYears: ["2024-2025"],
       expiryDate: "2027-01-01",
       role: "admin",

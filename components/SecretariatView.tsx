@@ -369,120 +369,155 @@ const StudentsManager = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: "binary" });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const rows = XLSX.utils.sheet_to_json(ws);
+    
+    const parseExcel = () => {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const bstr = evt.target?.result;
+          const wb = XLSX.read(bstr, { type: "binary" });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          const rows = XLSX.utils.sheet_to_json(ws);
 
-        let importedSchool = "";
-        let importedBranch = "";
-        for (const row of rows as any[]) {
-          if (row["المدرسة"] || row["اسم المدرسة"])
-            importedSchool = row["المدرسة"] || row["اسم المدرسة"];
-          if (row["الفرع"] || row["اسم الفرع"])
-            importedBranch = row["الفرع"] || row["اسم الفرع"];
-        }
+          let importedSchool = "";
+          let importedBranch = "";
+          for (const row of rows as any[]) {
+            if (row["المدرسة"] || row["اسم المدرسة"])
+              importedSchool = row["المدرسة"] || row["اسم المدرسة"];
+            if (row["الفرع"] || row["اسم الفرع"])
+              importedBranch = row["الفرع"] || row["اسم الفرع"];
+          }
 
-        const userSch = currentUser?.selectedSchool?.split(",")[0];
-        const defaultAvail = data.availableSchools && data.availableSchools.length > 0 ? data.availableSchools[0] : "";
-        
-        const fallbackSchool =
-          importedSchool ||
-          (userSch && userSch !== "all" ? userSch : (data.profile?.schoolName || defaultAvail));
-        const fallbackBranch =
-          importedBranch || currentUser?.selectedBranch || "";
+          const userSch = currentUser?.selectedSchool?.split(",")[0];
+          const defaultAvail = data.availableSchools && data.availableSchools.length > 0 ? data.availableSchools[0] : "";
+          
+          const fallbackSchool =
+            importedSchool ||
+            (userSch && userSch !== "all" ? userSch : (data.profile?.schoolName || defaultAvail));
+          const fallbackBranch =
+            importedBranch || currentUser?.selectedBranch || "";
 
-        let newStudents: StudentData[] = [...students];
-        let maxSerial = newStudents.reduce(
-          (max, s) => Math.max(max, s.serialNumber),
-          0,
-        );
+          let newStudents: StudentData[] = [...students];
+          let maxSerial = newStudents.reduce(
+            (max, s) => Math.max(max, s.serialNumber),
+            0,
+          );
 
-        rows.forEach((row: any) => {
-          maxSerial++;
-          newStudents.push({
-            id:
-              Date.now().toString() +
-              Math.random().toString(36).substring(2, 9),
-            serialNumber: maxSerial,
-            school: row["اسم المدرسة"] || row["المدرسة"] || fallbackSchool,
-            branch: row["اسم الفرع"] || row["الفرع"] || fallbackBranch,
-            name: row["اسم الطالب"] || row["الاسم"] || "",
-            grade: row["الصف"] || "",
-            section: row["الشعبة"] || "",
-            gender: row["النوع"] || "",
-            residenceWork: row["السكن/العمل"] || row["السكن / العمل"] || "",
-            healthStatus: row["الحالة الصحية"] || "",
-            guardianInfo:
-              row["اسم ولي الأمر / الهاتف"] || row["ولي الأمر"] || "",
+          rows.forEach((row: any) => {
+            maxSerial++;
+            newStudents.push({
+              id:
+                Date.now().toString() +
+                Math.random().toString(36).substring(2, 9),
+              serialNumber: maxSerial,
+              school: row["اسم المدرسة"] || row["المدرسة"] || fallbackSchool,
+              branch: row["اسم الفرع"] || row["الفرع"] || fallbackBranch,
+              name: row["اسم الطالب"] || row["الاسم"] || "",
+              grade: row["الصف"] || "",
+              section: row["الشعبة"] || "",
+              gender: row["النوع"] || "",
+              residenceWork: row["السكن/العمل"] || row["السكن / العمل"] || "",
+              healthStatus: row["الحالة الصحية"] || "",
+              guardianInfo:
+                row["اسم ولي الأمر / الهاتف"] || row["ولي الأمر"] || "",
+            });
           });
-        });
-        const cleanStudents = JSON.parse(JSON.stringify(newStudents));
-        saveStudents(cleanStudents);
-      } catch (err) {
-        alert("حدث خطأ أثناء قراءة الملف");
-      }
+          const cleanStudents = JSON.parse(JSON.stringify(newStudents));
+          saveStudents(cleanStudents);
+        } catch (err) {
+          alert("حدث خطأ أثناء قراءة الملف");
+        }
+      };
+      reader.readAsBinaryString(file);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     };
-    reader.readAsBinaryString(file);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    if (isGeneralSupervisor) {
+      setConfirmDialog({
+        isOpen: true,
+        title: "تحذير: استيراد بيانات",
+        message: "أنت تقوم باستيراد بيانات طلاب بصلاحيات المشرف العام مباشرة. هل أنت متأكد من الاستمرار؟",
+        type: "danger",
+        onConfirm: () => {
+          parseExcel();
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        },
+      });
+    } else {
+      parseExcel();
+    }
   };
 
   const addEmptyRow = () => {
-    const maxSerial = students.reduce(
-      (max, s) => Math.max(max, s.serialNumber || 0),
-      0,
-    );
-    
-    const rawSchool = currentUser?.selectedSchool?.split(",")[0];
-    const defaultAvailable = data.availableSchools && data.availableSchools.length > 0 ? data.availableSchools[0] : "";
-    
-    let fallbackSchoolDefault = rawSchool && rawSchool !== "all" 
-      ? rawSchool 
-      : (data.profile?.schoolName || defaultAvailable);
+    const executeAdd = () => {
+      const maxSerial = students.reduce(
+        (max, s) => Math.max(max, s.serialNumber || 0),
+        0,
+      );
+      
+      const rawSchool = currentUser?.selectedSchool?.split(",")[0];
+      const defaultAvailable = data.availableSchools && data.availableSchools.length > 0 ? data.availableSchools[0] : "";
+      
+      let fallbackSchoolDefault = rawSchool && rawSchool !== "all" 
+        ? rawSchool 
+        : (data.profile?.schoolName || defaultAvailable);
 
-    let fallbackSchool = "";
-    if (studentFilterGrade && filteredStudents.length > 0) {
-      fallbackSchool = filteredStudents[0].school;
-    } else {
-      fallbackSchool = fallbackSchoolDefault;
-    }
-
-    let fallbackBranch = "";
-    if (fallbackSchool) {
-      const branches = getAvailableBranches(fallbackSchool);
-      const currentSelectedBranches = (currentUser?.selectedBranch || "").split(',').map(b => b.trim());
-      if (currentSelectedBranches.length > 0 && !currentSelectedBranches.includes('all')) {
-        fallbackBranch = branches.find(b => currentSelectedBranches.includes(b)) || branches[0] || "";
+      let fallbackSchool = "";
+      if (studentFilterGrade && filteredStudents.length > 0) {
+        fallbackSchool = filteredStudents[0].school;
       } else {
-        fallbackBranch = branches[0] || "";
+        fallbackSchool = fallbackSchoolDefault;
       }
-    }
 
-    const newStudent: StudentData = {
-      id: "std-" + Date.now().toString() + Math.random().toString(36).substring(2, 7),
-      serialNumber: maxSerial + 1,
-      school: fallbackSchool,
-      branch: fallbackBranch,
-      name: "",
-      grade: studentFilterGrade || "",
-      section: studentFilterSection || "",
-      gender: "",
-      residenceWork: "",
-      healthStatus: "",
-      guardianInfo: "",
+      let fallbackBranch = "";
+      if (fallbackSchool) {
+        const branches = getAvailableBranches(fallbackSchool);
+        const currentSelectedBranches = (currentUser?.selectedBranch || "").split(',').map(b => b.trim());
+        if (currentSelectedBranches.length > 0 && !currentSelectedBranches.includes('all')) {
+          fallbackBranch = branches.find(b => currentSelectedBranches.includes(b)) || branches[0] || "";
+        } else {
+          fallbackBranch = branches[0] || "";
+        }
+      }
+
+      const newStudent: StudentData = {
+        id: "std-" + Date.now().toString() + Math.random().toString(36).substring(2, 7),
+        serialNumber: maxSerial + 1,
+        school: fallbackSchool,
+        branch: fallbackBranch,
+        name: "",
+        grade: studentFilterGrade || "",
+        section: studentFilterSection || "",
+        gender: "",
+        residenceWork: "",
+        healthStatus: "",
+        guardianInfo: "",
+      };
+
+      saveStudents([...students, newStudent]);
+      
+      setSearchQuery("");
+      
+      const newTotal = filteredStudents.length + 1;
+      const newPage = Math.ceil(newTotal / studentPageSize);
+      setStudentPage(newPage > 0 ? newPage : 1);
     };
 
-    saveStudents([...students, newStudent]);
-    
-    setSearchQuery("");
-    
-    const newTotal = filteredStudents.length + 1;
-    const newPage = Math.ceil(newTotal / studentPageSize);
-    setStudentPage(newPage > 0 ? newPage : 1);
+    if (isGeneralSupervisor) {
+      setConfirmDialog({
+        isOpen: true,
+        title: "تحذير: إضافة طالب جديد",
+        message: "أنت تقوم بإضافة طالب بصلاحيات المشرف العام مباشرة في السكرتارية. هل أنت متأكد من الاستمرار؟",
+        type: "danger",
+        onConfirm: () => {
+          executeAdd();
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        },
+      });
+    } else {
+      executeAdd();
+    }
   };
 
   const updateRow = (id: string, field: string, value: any) => {
@@ -500,8 +535,25 @@ const StudentsManager = () => {
   };
 
   const deleteRow = (id: string) => {
-    saveStudents(students.filter((s) => s.id !== id));
-    setSelectedIds(selectedIds.filter((sel) => sel !== id));
+    const executeDelete = () => {
+      saveStudents(students.filter((s) => s.id !== id));
+      setSelectedIds(selectedIds.filter((sel) => sel !== id));
+    };
+
+    if (isGeneralSupervisor) {
+      setConfirmDialog({
+        isOpen: true,
+        title: "تحذير: حذف طالب",
+        message: "أنت تقوم بحذف طالب بصلاحيات المشرف العام من السكرتارية. هذا سيؤثر على المدرسة التابع لها الطالب. هل أنت متأكد من الاستمرار؟",
+        type: "danger",
+        onConfirm: () => {
+          executeDelete();
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        },
+      });
+    } else {
+      executeDelete();
+    }
   };
 
   const handleBulkDelete = () => {
@@ -595,10 +647,10 @@ const StudentsManager = () => {
       const userGrades = currentUser?.grades || [];
       const userSections = currentUser?.sections || [];
       if (userGrades.length > 0 && !userGrades.includes("all")) {
-        result = result.filter(s => userGrades.includes(s.grade));
+        result = result.filter(s => !s.grade || userGrades.includes(s.grade));
       }
       if (userSections.length > 0 && !userSections.includes("all")) {
-        result = result.filter(s => userSections.includes(s.section));
+        result = result.filter(s => !s.section || userSections.includes(s.section));
       }
     }
 
@@ -1509,111 +1561,146 @@ const StaffManager = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: "binary" });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const rows = XLSX.utils.sheet_to_json(ws);
+    
+    const parseExcel = () => {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const bstr = evt.target?.result;
+          const wb = XLSX.read(bstr, { type: "binary" });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          const rows = XLSX.utils.sheet_to_json(ws);
 
-        let importedSchool = "";
-        let importedBranch = "";
-        for (const row of rows as any[]) {
-          if (row["المدرسة"] || row["اسم المدرسة"])
-            importedSchool = row["المدرسة"] || row["اسم المدرسة"];
-          if (row["الفرع"] || row["اسم الفرع"])
-            importedBranch = row["الفرع"] || row["اسم الفرع"];
-        }
+          let importedSchool = "";
+          let importedBranch = "";
+          for (const row of rows as any[]) {
+            if (row["المدرسة"] || row["اسم المدرسة"])
+              importedSchool = row["المدرسة"] || row["اسم المدرسة"];
+            if (row["الفرع"] || row["اسم الفرع"])
+              importedBranch = row["الفرع"] || row["اسم الفرع"];
+          }
 
-        const userSch = currentUser?.selectedSchool?.split(",")[0];
-        const defaultAvail = data.availableSchools && data.availableSchools.length > 0 ? data.availableSchools[0] : "";
-        
-        const fallbackSchool =
-          importedSchool ||
-          (userSch && userSch !== "all" ? userSch : (data.profile?.schoolName || defaultAvail));
-        const fallbackBranch =
-          importedBranch || currentUser?.selectedBranch || "";
+          const userSch = currentUser?.selectedSchool?.split(",")[0];
+          const defaultAvail = data.availableSchools && data.availableSchools.length > 0 ? data.availableSchools[0] : "";
+          
+          const fallbackSchool =
+            importedSchool ||
+            (userSch && userSch !== "all" ? userSch : (data.profile?.schoolName || defaultAvail));
+          const fallbackBranch =
+            importedBranch || currentUser?.selectedBranch || "";
 
-        let newStaff: StaffData[] = [...staff];
-        let maxSerial = newStaff.reduce(
-          (max, s) => Math.max(max, s.serialNumber),
-          0,
-        );
+          let newStaff: StaffData[] = [...staff];
+          let maxSerial = newStaff.reduce(
+            (max, s) => Math.max(max, s.serialNumber),
+            0,
+          );
 
-        rows.forEach((row: any) => {
-          maxSerial++;
-          const nameField = row["اسم الموظف"] || row["اسم المعلم"] || row["الاسم"] || "";
-          newStaff.push({
-            id:
-              Date.now().toString() +
-              Math.random().toString(36).substring(2, 9),
-            serialNumber: maxSerial,
-            school: row["اسم المدرسة"] || row["المدرسة"] || fallbackSchool,
-            branch: row["اسم الفرع"] || row["الفرع"] || fallbackBranch,
-            name: nameField,
-            gender: row["النوع"] || "",
-            jobTitles:
-              row["الصفة"]?.toString().split(",") ||
-              row["المواد"]?.toString().split(",") ||
-              row["المادة"]?.toString().split(",") ||
-              [],
-            phone: row["رقم الهاتف"] || row["الهاتف"] || "",
-            grades:
-              row["الصفوف"]?.toString().split(",") ||
-              row["الصف"]?.toString().split(",") ||
-              [],
+          rows.forEach((row: any) => {
+            maxSerial++;
+            const nameField = row["اسم الموظف"] || row["اسم المعلم"] || row["الاسم"] || "";
+            newStaff.push({
+              id:
+                Date.now().toString() +
+                Math.random().toString(36).substring(2, 9),
+              serialNumber: maxSerial,
+              school: row["اسم المدرسة"] || row["المدرسة"] || fallbackSchool,
+              branch: row["اسم الفرع"] || row["الفرع"] || fallbackBranch,
+              name: nameField,
+              gender: row["النوع"] || "",
+              jobTitles:
+                row["الصفة"]?.toString().split(",") ||
+                row["المواد"]?.toString().split(",") ||
+                row["المادة"]?.toString().split(",") ||
+                [],
+              phone: row["رقم الهاتف"] || row["الهاتف"] || "",
+              grades:
+                row["الصفوف"]?.toString().split(",") ||
+                row["الصف"]?.toString().split(",") ||
+                [],
+            });
           });
-        });
-        const cleanStaff = JSON.parse(JSON.stringify(newStaff));
-        saveStaff(cleanStaff);
-      } catch (err) {
-        alert("حدث خطأ أثناء قراءة الملف");
-      }
+          const cleanStaff = JSON.parse(JSON.stringify(newStaff));
+          saveStaff(cleanStaff);
+        } catch (err) {
+          alert("حدث خطأ أثناء قراءة الملف");
+        }
+      };
+      reader.readAsBinaryString(file);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     };
-    reader.readAsBinaryString(file);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    if (isGeneralSupervisor) {
+      setConfirmDialog({
+        isOpen: true,
+        title: "تحذير: استيراد موظفين",
+        message: "أنت تقوم باستيراد بيانات موظفين بصلاحيات المشرف العام مباشرة. هل أنت متأكد من الاستمرار؟",
+        type: "danger",
+        onConfirm: () => {
+          parseExcel();
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        },
+      });
+    } else {
+      parseExcel();
+    }
   };
 
   const addEmptyRow = () => {
-    const maxSerial = staff.reduce(
-      (max, s) => Math.max(max, s.serialNumber || 0),
-      0,
-    );
+    const executeAdd = () => {
+      const maxSerial = staff.reduce(
+        (max, s) => Math.max(max, s.serialNumber || 0),
+        0,
+      );
 
-    const rawSchool = currentUser?.selectedSchool?.split(",")[0];
-    const defaultAvailable = data.availableSchools && data.availableSchools.length > 0 ? data.availableSchools[0] : "";
-    
-    let fallbackSchool = rawSchool && rawSchool !== "all" 
-      ? rawSchool 
-      : (data.profile?.schoolName || defaultAvailable);
+      const rawSchool = currentUser?.selectedSchool?.split(",")[0];
+      const defaultAvailable = data.availableSchools && data.availableSchools.length > 0 ? data.availableSchools[0] : "";
+      
+      let fallbackSchool = rawSchool && rawSchool !== "all" 
+        ? rawSchool 
+        : (data.profile?.schoolName || defaultAvailable);
 
-    let fallbackBranch = "";
-    if (fallbackSchool) {
-      const branches = getAvailableBranches(fallbackSchool);
-      const currentSelectedBranches = (currentUser?.selectedBranch || "").split(',').map(b => b.trim());
-      if (currentSelectedBranches.length > 0 && !currentSelectedBranches.includes('all')) {
-        fallbackBranch = branches.find(b => currentSelectedBranches.includes(b)) || branches[0] || "";
-      } else {
-        fallbackBranch = branches[0] || "";
+      let fallbackBranch = "";
+      if (fallbackSchool) {
+        const branches = getAvailableBranches(fallbackSchool);
+        const currentSelectedBranches = (currentUser?.selectedBranch || "").split(',').map(b => b.trim());
+        if (currentSelectedBranches.length > 0 && !currentSelectedBranches.includes('all')) {
+          fallbackBranch = branches.find(b => currentSelectedBranches.includes(b)) || branches[0] || "";
+        } else {
+          fallbackBranch = branches[0] || "";
+        }
       }
-    }
 
-    const newEmployee: StaffData = {
-      id: "staff-" + Date.now().toString() + Math.random().toString(36).substring(2, 7),
-      serialNumber: maxSerial + 1,
-      school: fallbackSchool,
-      branch: fallbackBranch,
-      name: "",
-      gender: "",
-      jobTitles: [],
-      phone: "",
-      grades: [],
+      const newEmployee: StaffData = {
+        id: "staff-" + Date.now().toString() + Math.random().toString(36).substring(2, 7),
+        serialNumber: maxSerial + 1,
+        school: fallbackSchool,
+        branch: fallbackBranch,
+        name: "",
+        gender: "",
+        jobTitles: [],
+        phone: "",
+        grades: [],
+      };
+
+      saveStaff([...staff, newEmployee]);
+      setSearchQuery(""); // Make sure we can see the empty row
     };
 
-    saveStaff([...staff, newEmployee]);
-    setSearchQuery(""); // Make sure we can see the empty row
+    if (isGeneralSupervisor) {
+      setConfirmDialog({
+        isOpen: true,
+        title: "تحذير: إضافة موظف جديد",
+        message: "أنت تقوم بإضافة موظف بصلاحيات المشرف العام مباشرة في السكرتارية. هل أنت متأكد من الاستمرار؟",
+        type: "danger",
+        onConfirm: () => {
+          executeAdd();
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        },
+      });
+    } else {
+      executeAdd();
+    }
   };
 
   const updateRow = (id: string, field: string, value: any) => {
@@ -1630,8 +1717,25 @@ const StaffManager = () => {
   };
 
   const deleteRow = (id: string) => {
-    saveStaff(staff.filter((s) => s.id !== id));
-    setSelectedIds(selectedIds.filter((sel) => sel !== id));
+    const executeDelete = () => {
+      saveStaff(staff.filter((s) => s.id !== id));
+      setSelectedIds(selectedIds.filter((sel) => sel !== id));
+    };
+
+    if (isGeneralSupervisor) {
+      setConfirmDialog({
+        isOpen: true,
+        title: "تحذير: حذف موظف",
+        message: "أنت تقوم بحذف موظف بصلاحيات المشرف العام من السكرتارية. هذا سيؤثر على المدرسة التابع لها الموظف. هل أنت متأكد من الاستمرار؟",
+        type: "danger",
+        onConfirm: () => {
+          executeDelete();
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        },
+      });
+    } else {
+      executeDelete();
+    }
   };
 
   const handleBulkDelete = () => {

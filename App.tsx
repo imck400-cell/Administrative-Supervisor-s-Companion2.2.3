@@ -109,7 +109,11 @@ const AdvancedLoginPage: React.FC = () => {
 
   const selectAllSchools = () => {
     if (selectedUser) {
-      setSelectedSchools(selectedUser.schools);
+      if (selectedUser.schools.includes("all")) {
+        setSelectedSchools(data.availableSchools || []);
+      } else {
+        setSelectedSchools(selectedUser.schools);
+      }
     }
   };
 
@@ -199,7 +203,7 @@ const AdvancedLoginPage: React.FC = () => {
                         </button>
                       </div>
                       <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto custom-scrollbar">
-                        {selectedUser.schools.map(school => (
+                        {(selectedUser.schools.includes("all") ? (data.availableSchools || []) : selectedUser.schools).map(school => (
                           <label key={school} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors">
                             <input 
                               type="checkbox"

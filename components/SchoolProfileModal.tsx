@@ -162,9 +162,12 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
 
   // Users belonging to selected school and branch
   const availableUsers = (data.users || []).filter((u) => {
+    // Exclude General Supervisor completely
+    if (u.name === "المشرف العام" || u.permissions?.all === true) return false;
+
     if (!selectedSchool) return false;
     // Admins or users that have this school
-    if (u.role === "admin" || u.permissions?.all === true) return true;
+    if (u.role === "admin") return true;
     if (!u.schools?.includes(selectedSchool)) return false;
     // Check branch permissions
     if (selectedBranch && u.permissions?.schoolsAndBranches?.[selectedSchool]) {
@@ -387,8 +390,6 @@ export const SchoolProfileModal: React.FC<SchoolProfileModalProps> = ({
                       <span className="font-bold">{u.name}</span>
                       <span className="text-blue-400">|</span>
                       <span>{selectedBranch || "الفرع الرئيسي"}</span>
-                      <span className="text-blue-400">|</span>
-                      <span className="font-mono text-xs bg-blue-100 px-1 rounded">{u.code}</span>
                     </div>
                   ))}
                 </div>

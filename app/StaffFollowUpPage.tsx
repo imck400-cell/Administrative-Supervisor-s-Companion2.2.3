@@ -104,6 +104,7 @@ const StaffFollowUpPage: React.FC = () => {
     writer: "",
     reportNumber: "",
     employeeName: "",
+    gender: "ذكر",
     role: "",
     reportField: "متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس",
   });
@@ -339,11 +340,30 @@ const StaffFollowUpPage: React.FC = () => {
   const branchKey =
     activeSchool && activeBranch ? `${activeSchool}_${activeBranch}` : null;
   const displayedMetrics = useMemo(() => {
-    if (branchKey && data.adminBranchMetrics?.[branchKey]?.[followUpType]) {
-      return data.adminBranchMetrics[branchKey][followUpType];
+    const isIndicators = followUpType === "متابعة مؤشرات سير العملية الإدارية والتربوية بالمدارس";
+    if (isIndicators) {
+      const metrics: MetricDefinition[] = [];
+      INDICATORS_DATA.forEach(domain => {
+        domain.items.forEach((item, idx) => {
+          metrics.push({
+            key: `${domain.label}_${idx}`,
+            label: item,
+            max: 4,
+            color: "#f1f5f9"
+          });
+        });
+      });
+      return metrics;
+    } else {
+      const activities = getActivitiesForField(followUpType) || [];
+      return activities.map((act, idx) => ({
+        key: `${followUpType}_${idx}`,
+        label: act.text,
+        max: 4,
+        color: "#f1f5f9"
+      }));
     }
-    return data.adminMetricsList?.[followUpType] || [];
-  }, [data.adminMetricsList, data.adminBranchMetrics, followUpType, branchKey]);
+  }, [followUpType, data.adminBranchActivities, data.adminActivitiesList, activeBranchKey]);
 
   // Auto-save logic for current individual form draft
   useEffect(() => {
@@ -478,19 +498,46 @@ const StaffFollowUpPage: React.FC = () => {
 
   const createNewReport = () => {
     if (isReadOnly) return;
-    const lastReportOfType = (data.adminReports || []).find(
-      (r) => r.followUpType === followUpType,
+    
+    // Find matching individual reports for this followUpType
+    const matchedReports = (data.adminIndividualReports || []).filter(
+      (r) => r.form && r.form.reportField === followUpType
     );
-    const inheritedEmployees = lastReportOfType
-      ? lastReportOfType.employeesData.map((e) => ({
-          ...e,
-          id: `emp_${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-          violations_score: 0,
-          violations_notes: [],
-          // Reset scores for all metrics to 0
-          ...displayedMetrics.reduce((acc, m) => ({ ...acc, [m.key]: 0 }), {}),
-        }))
-      : [];
+    
+    // Group by employee name to get the latest report per employee
+    const latestPerEmp = new Map();
+    matchedReports.forEach((r) => {
+      const emp = r.form.employeeName;
+      if (!emp) return;
+      if (!latestPerEmp.has(emp) || new Date(r.createdAt) > new Date(latestPerEmp.get(emp).createdAt)) {
+        latestPerEmp.set(emp, r);
+      }
+    });
+
+    const inheritedEmployees = Array.from(latestPerEmp.values()).map((r) => {
+      // Map unaccredited logic
+      const unaccreditedItemsObj = r.unaccredited || {};
+      const unaccreditedKeys = Object.keys(unaccreditedItemsObj).filter((k) => unaccreditedItemsObj[k]);
+      
+      const empData: AdminFollowUp = {
+        id: `emp_${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        employeeName: r.form.employeeName || "",
+        gender: r.form.gender || "ذكر",
+        role: r.form.role || "",
+        branch: r.form.branch || "المركز الرئيسي",
+        violations_score: 0,
+        violations_notes: [],
+        unaccreditedMetrics: unaccreditedKeys,
+      };
+
+      // Add scores from individual report
+      const scores = r.scores || {};
+      displayedMetrics.forEach((m) => {
+        empData[m.key] = scores[m.key] !== undefined && scores[m.key] !== -1 ? Number(scores[m.key]) : 0;
+      });
+
+      return empData;
+    });
 
     const newId = `admin_report_${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     const newReport: AdminReportContainer = {
@@ -503,6 +550,7 @@ const StaffFollowUpPage: React.FC = () => {
     };
     updateData({ adminReports: [newReport, ...(data.adminReports || [])] });
     setCurrentReportId(newId);
+    toast.success("تم تجميع التقرير الجماعي بنجاح بناءً على التقارير الفردية");
   };
 
   const aggregateReports = (period: string) => {
@@ -1509,6 +1557,21 @@ const StaffFollowUpPage: React.FC = () => {
                   })
                 }
               />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-black text-slate-600 mr-2">
+                النوع
+              </label>
+              <select
+                className="bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none cursor-pointer"
+                value={individualForm.gender || "ذكر"}
+                onChange={(e) =>
+                  setIndividualForm({ ...individualForm, gender: e.target.value })
+                }
+              >
+                <option value="ذكر">ذكر</option>
+                <option value="أنثى">أنثى</option>
+              </select>
             </div>
             <div className="flex flex-col gap-2">
               <label className="text-sm font-black text-slate-600 mr-2">
@@ -2543,12 +2606,6 @@ const StaffFollowUpPage: React.FC = () => {
                     className="flex items-center gap-2 h-11 px-5 bg-purple-600 text-white rounded-xl text-xs font-black shadow-lg shadow-purple-100 hover:bg-purple-700 transition-all"
                   >
                     <UserCircle size={18} /> تقرير فردي
-                  </button>
-                  <button
-                    onClick={() => setShowCustomizer(true)}
-                    className="flex items-center gap-2 h-11 px-5 bg-amber-500 text-white rounded-xl text-xs font-black shadow-lg shadow-amber-100 hover:bg-amber-600 transition-all"
-                  >
-                    <Palette size={18} /> تخصيص المجالات
                   </button>
                   <div className="h-8 w-[2px] bg-slate-200 mx-2" />
                   <button

@@ -538,164 +538,122 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
 
                 <div className="space-y-2">
                   <label className="text-sm font-black text-slate-500 mr-2">
-                    الوظيفة
+                    الوظيفة (يمكن اختيار أكثر من صفة)
                   </label>
-                  <select
-                    className="w-full px-6 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl outline-none font-black text-lg transition-all appearance-none cursor-pointer"
-                    value={formData.jobTitle || ""}
-                    onChange={(e) => {
-                      const jobTitle = e.target.value;
-                      let newPerms: UserPermissions = {
-                        ...formData.permissions,
-                      };
-                      let newGrades = formData.grades;
-                      let newSections = formData.sections;
+                  <div className="relative group">
+                    <div className="min-h-[58px] px-6 py-4 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl outline-none font-black text-lg transition-all cursor-pointer flex flex-wrap gap-2 items-center">
+                      {formData.jobTitle ? formData.jobTitle.split(",").map(j => j.trim()).filter(Boolean).join("، ") : "اختر..."}
+                    </div>
+                    <div className="absolute top-full right-0 mt-1 w-full max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-xl hidden group-hover:block z-50 p-2 custom-scrollbar">
+                      <div className="grid grid-cols-2 gap-1 mt-1">
+                        {[
+                          "مدير عام", "مدير فرع", "الإدارة المالية", "المحاسب", "أمين صندوق", "وكيل إداري", 
+                          "وكيل أكاديمي", "مدير الموارد البشرية", "إدارة الجودة", "مدير العلاقات", "المشرف التربوي",
+                          "المشرف الأكاديمي", "المشرف الإداري", "السكرتارية", "المختص الاجتماعي", "مسؤول معمل العلوم",
+                          "مسؤول الوسائل", "مسؤول المكتبة", "مسؤول الأنشطة", "معلم فنية", "معلم الرياضة", "معلم مادة",
+                          "مربية", "مسؤول الحركة", "الحراسة", "مهندس البيئة", "مسؤول المقصف"
+                        ].map((job) => {
+                          const currentJobs = formData.jobTitle ? formData.jobTitle.split(",").map(j => j.trim()).filter(Boolean) : [];
+                          const isSelected = currentJobs.includes(job);
+                          return (
+                            <label
+                              key={job}
+                              className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer text-sm font-bold rounded-xl transition-colors"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  let newJobs = [...currentJobs];
+                                  if (e.target.checked) {
+                                    newJobs.push(job);
+                                  } else {
+                                    newJobs = newJobs.filter(j => j !== job);
+                                  }
+                                  const jobTitleStr = newJobs.join(", ");
+                                  
+                                  let newPerms: UserPermissions = { ...formData.permissions };
+                                  let newGrades = formData.grades;
+                                  let newSections = formData.sections;
 
-                      // Clear defaults when selecting a preset
-                      if (jobTitle) {
-                        newPerms = {};
-                        newPerms.managedUserIds =
-                          formData.permissions?.managedUserIds;
-                        newPerms.schoolsAndBranches =
-                          formData.permissions?.schoolsAndBranches;
+                                  if (newJobs.length > 0) {
+                                    newPerms = {};
+                                    newPerms.managedUserIds = formData.permissions?.managedUserIds;
+                                    newPerms.schoolsAndBranches = formData.permissions?.schoolsAndBranches;
 
-                        if (jobTitle === "مدير عام المدارس" || jobTitle === "مدير الفرع") {
-                          newPerms.dashboard = ["view", "allowEdits"];
-                          newPerms.dailyFollowUp = ["view", "allowEdits"];
-                          newPerms.adminFollowUp = ["view", "allowEdits"];
-                          newPerms.studentAffairs = ["view", "allowEdits"];
-                          newPerms.substitutions = ["view", "allowEdits"];
-                          newPerms.schoolProfile = ["view", "allowEdits"];
-                          newPerms.secretariat = ["view", "allowEdits"];
-                          newPerms.userManagement = ["view"];
-                          newPerms.readOnly = false;
-                          newPerms.issuesModal = [
-                            "view",
-                            "allowEdits",
-                            "useIssuesButton",
-                            "viewAllIssues",
-                          ];
-                          newPerms.trainingCourses = [
-                            "view",
-                            "allowEdits",
-                            "editSchema",
-                            "viewIndicators",
-                          ];
-                          newPerms.caseStudyModal = ["view", "allowEdits"];
-                          newPerms.comprehensiveIndicators = [
-                            "view",
-                            "allowEdits",
-                            "showButton",
-                            "managePermissions",
-                          ];
-                          newPerms.specialReports = [
-                            "view",
-                            "allowEdits",
-                            "absenceLog",
-                            "latenessLog",
-                            "violationLog",
-                            "exitLog",
-                            "damageLog",
-                            "parentVisitLog",
-                            "examLog",
-                            "taskReports"
-                          ];
+                                    newJobs.forEach(j => {
+                                      if (j === "مدير عام" || j === "مدير فرع" || j === "مدير عام المدارس") {
+                                        newPerms.dashboard = ["view", "allowEdits"];
+                                        newPerms.dailyFollowUp = ["view", "allowEdits"];
+                                        newPerms.adminFollowUp = ["view", "allowEdits"];
+                                        newPerms.studentAffairs = ["view", "allowEdits"];
+                                        newPerms.substitutions = ["view", "allowEdits"];
+                                        newPerms.schoolProfile = ["view", "allowEdits"];
+                                        newPerms.secretariat = ["view", "allowEdits"];
+                                        newPerms.userManagement = ["view"];
+                                        newPerms.readOnly = false;
+                                        newPerms.issuesModal = ["view", "allowEdits", "useIssuesButton", "viewAllIssues"];
+                                        newPerms.trainingCourses = ["view", "allowEdits", "editSchema", "viewIndicators"];
+                                        newPerms.caseStudyModal = ["view", "allowEdits"];
+                                        newPerms.comprehensiveIndicators = ["view", "allowEdits", "showButton", "managePermissions"];
+                                        newPerms.specialReports = ["view", "allowEdits", "absenceLog", "latenessLog", "violationLog", "exitLog", "damageLog", "parentVisitLog", "examLog", "taskReports"];
+                                        newGrades = [...gradesOptions];
+                                        newSections = [...sectionsOptions];
+                                      } else if (j === "السكرتارية") {
+                                        if (!newPerms.dashboard) newPerms.dashboard = ["view"];
+                                        if (!newPerms.dailyFollowUp) newPerms.dailyFollowUp = ["view"];
+                                        if (!newPerms.adminFollowUp) newPerms.adminFollowUp = ["view"];
+                                        if (!newPerms.studentAffairs) newPerms.studentAffairs = ["view"];
+                                        if (!newPerms.substitutions) newPerms.substitutions = ["view"];
+                                        if (!newPerms.schoolProfile) newPerms.schoolProfile = ["view"];
+                                        if (!newPerms.secretariat) newPerms.secretariat = ["view", "allowEdits"];
+                                        if (!newPerms.userManagement) newPerms.userManagement = ["view"];
+                                        newPerms.readOnly = false;
+                                        if (!newPerms.issuesModal) newPerms.issuesModal = ["view", "useIssuesButton", "viewAllIssues"];
+                                        if (!newPerms.trainingCourses) newPerms.trainingCourses = ["view", "editSchema", "viewIndicators"];
+                                        if (!newPerms.caseStudyModal) newPerms.caseStudyModal = ["view"];
+                                        if (!newPerms.comprehensiveIndicators) newPerms.comprehensiveIndicators = ["view", "showButton", "managePermissions"];
+                                        if (!newPerms.specialReports) newPerms.specialReports = ["view"];
+                                        if (!newGrades) newGrades = [...gradesOptions];
+                                        if (!newSections) newSections = [...sectionsOptions];
+                                      } else if (j === "مشرف الدور" || j === "المشرف الأكاديمي" || j === "وكيل أكاديمي" || j === "المشرف الإداري" || j === "المشرف التربوي") {
+                                        if (!newPerms.dashboard) newPerms.dashboard = ["view"];
+                                        if (!newPerms.dailyFollowUp) newPerms.dailyFollowUp = ["view"];
+                                        if (!newPerms.studentAffairs) newPerms.studentAffairs = ["view"];
+                                        if (!newPerms.substitutions) newPerms.substitutions = ["view"];
+                                        if (!newPerms.schoolProfile) newPerms.schoolProfile = ["view"];
+                                        if (!newPerms.issuesModal) newPerms.issuesModal = ["view", "useIssuesButton", "viewAllIssues"];
+                                        if (!newPerms.trainingCourses) newPerms.trainingCourses = ["view"];
+                                        if (!newPerms.specialReports) newPerms.specialReports = ["view", "absenceLog", "latenessLog", "violationLog", "exitLog", "damageLog", "parentVisitLog", "examLog", "taskReports"];
+                                      } else if (j === "المختص الاجتماعي") {
+                                        if (!newPerms.issuesModal) newPerms.issuesModal = ["view", "useIssuesButton", "viewAllIssues"];
+                                        if (!newPerms.trainingCourses) newPerms.trainingCourses = ["view", "editSchema", "viewIndicators"];
+                                        if (!newPerms.caseStudyModal) newPerms.caseStudyModal = ["view"];
+                                      } else if (j === "معلم مادة" || j === "معلم" || j === "معلم فنية" || j === "معلم الرياضة" || j === "مربية") {
+                                        if (!newPerms.teacherPortal) newPerms.teacherPortal = ["view"];
+                                        if (!newPerms.trainingCourses) newPerms.trainingCourses = ["view"];
+                                      }
+                                    });
+                                    newPerms.all = false;
+                                  }
 
-                          newGrades = [...gradesOptions];
-                          newSections = [...sectionsOptions];
-                        } else if (jobTitle === "السكرتارية") {
-                          newPerms.dashboard = ["view"];
-                          newPerms.dailyFollowUp = ["view"];
-                          newPerms.adminFollowUp = ["view"];
-                          newPerms.studentAffairs = ["view"];
-                          newPerms.substitutions = ["view"];
-                          newPerms.schoolProfile = ["view"];
-                          newPerms.secretariat = ["view", "allowEdits"]; // Key fix here
-                          newPerms.userManagement = ["view"];
-                          newPerms.readOnly = false; // Must be false to allow edits
-                          newPerms.issuesModal = [
-                            "view",
-                            "useIssuesButton",
-                            "viewAllIssues",
-                          ];
-                          newPerms.trainingCourses = [
-                            "view",
-                            "editSchema",
-                            "viewIndicators",
-                          ];
-                          newPerms.caseStudyModal = ["view"];
-                          newPerms.comprehensiveIndicators = [
-                            "view",
-                            "showButton",
-                            "managePermissions",
-                          ];
-                          newPerms.specialReports = ["view"];
-
-                          newGrades = [...gradesOptions];
-                          newSections = [...sectionsOptions];
-                        } else if (jobTitle === "مشرف الدور") {
-                          newPerms.dashboard = ["view"];
-                          newPerms.dailyFollowUp = ["view"];
-                          newPerms.studentAffairs = ["view"];
-                          newPerms.substitutions = ["view"];
-                          newPerms.schoolProfile = ["view"];
-                          newPerms.issuesModal = [
-                            "view",
-                            "useIssuesButton",
-                            "viewAllIssues",
-                          ];
-                          newPerms.trainingCourses = ["view"];
-                          newPerms.specialReports = [
-                            "view",
-                            "absenceLog",
-                            "latenessLog",
-                            "violationLog",
-                            "exitLog",
-                            "damageLog",
-                            "parentVisitLog",
-                            "examLog",
-                            "taskReports",
-                          ];
-                        } else if (jobTitle === "المختص الاجتماعي") {
-                          newPerms.issuesModal = [
-                            "view",
-                            "useIssuesButton",
-                            "viewAllIssues",
-                          ];
-                          newPerms.trainingCourses = [
-                            "view",
-                            "editSchema",
-                            "viewIndicators",
-                          ];
-                          newPerms.caseStudyModal = ["view"];
-                        } else if (jobTitle === "معلم") {
-                          newPerms.teacherPortal = ["view"];
-                          newPerms.trainingCourses = ["view"];
-                        }
-
-                        // Update selectAll
-                        newPerms.all = false;
-                      }
-
-                      setFormData({
-                        ...formData,
-                        jobTitle,
-                        permissions: newPerms,
-                        grades: newGrades,
-                        sections: newSections,
-                      });
-                    }}
-                  >
-                    <option value="" disabled>
-                      اختر الوظيفة...
-                    </option>
-                    <option value="مدير عام المدارس">مدير عام المدارس</option>
-                    <option value="مدير الفرع">مدير الفرع</option>
-                    <option value="السكرتارية">السكرتارية</option>
-                    <option value="مشرف الدور">مشرف الدور</option>
-                    <option value="المختص الاجتماعي">المختص الاجتماعي</option>
-                    <option value="معلم">معلم</option>
-                  </select>
+                                  setFormData({
+                                    ...formData,
+                                    jobTitle: jobTitleStr,
+                                    permissions: newPerms,
+                                    grades: newGrades,
+                                    sections: newSections,
+                                  });
+                                }}
+                                className="rounded border-slate-300 text-blue-500 w-4 h-4 cursor-pointer"
+                              />
+                              {job}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">

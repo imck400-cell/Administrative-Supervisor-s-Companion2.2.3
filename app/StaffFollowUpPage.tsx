@@ -348,6 +348,7 @@ const StaffFollowUpPage: React.FC = () => {
           metrics.push({
             key: `${domain.label}_${idx}`,
             label: item,
+            emoji: "",
             max: 4,
             color: "#f1f5f9"
           });
@@ -359,6 +360,7 @@ const StaffFollowUpPage: React.FC = () => {
       return activities.map((act, idx) => ({
         key: `${followUpType}_${idx}`,
         label: act.text,
+        emoji: "",
         max: 4,
         color: "#f1f5f9"
       }));
@@ -457,44 +459,21 @@ const StaffFollowUpPage: React.FC = () => {
   };
 
   // Actions
-  const handleTypeChange = (newType: string) => {
-    if (isReadOnly) {
-      setFollowUpType(newType === "متابعة أخرى" ? followUpType : newType);
-      return;
-    }
-    let targetType = newType;
-    if (newType === "متابعة أخرى") {
-      const customName = prompt("أدخل مسمى نوع المتابعة الجديد:");
-      if (customName) {
-        if (!data.adminFollowUpTypes?.includes(customName)) {
-          updateData({
-            adminFollowUpTypes: [
-              ...(data.adminFollowUpTypes || []),
-              customName,
-            ],
-            adminMetricsList: {
-              ...(data.adminMetricsList || {}),
-              [customName]: data.adminMetricsList?.["متابعة أخرى"] || [],
-            },
-          });
-        }
-        targetType = customName;
-      } else return;
-    }
-
-    setFollowUpType(targetType);
+  useEffect(() => {
     // Automatically switch to the latest report of this type if it exists
     const reportsOfType = (data.adminReports || []).filter(
-      (r) => r.followUpType === targetType,
+      (r) => r.followUpType === followUpType,
     );
     if (reportsOfType.length > 0) {
-      setCurrentReportId(reportsOfType[0].id);
-      setWriter(reportsOfType[0].writer || "");
+      if (!currentReportId || !reportsOfType.some(r => r.id === currentReportId)) {
+        setCurrentReportId(reportsOfType[0].id);
+        setWriter(reportsOfType[0].writer || "");
+      }
     } else {
       setCurrentReportId(null);
       setWriter("");
     }
-  };
+  }, [followUpType, data.adminReports]);
 
   const createNewReport = () => {
     if (isReadOnly) return;
@@ -2453,13 +2432,24 @@ const StaffFollowUpPage: React.FC = () => {
               <select
                 className="w-full bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] p-3.5 font-black text-sm outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all appearance-none"
                 value={followUpType}
-                onChange={(e) => handleTypeChange(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value === "ADD_NEW") {
+                    const customName = prompt("أدخل مسمى نوع المتابعة الجديد:");
+                    if (customName) {
+                      setReportFields([...reportFields, customName]);
+                      setFollowUpType(customName);
+                    }
+                  } else {
+                    setFollowUpType(e.target.value);
+                  }
+                }}
               >
-                {(data.adminFollowUpTypes || []).map((t) => (
+                {reportFields.map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>
                 ))}
+                <option value="ADD_NEW">+ إضافة نوع متابعة جديد</option>
               </select>
             </div>
 

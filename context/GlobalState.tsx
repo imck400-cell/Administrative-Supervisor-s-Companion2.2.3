@@ -1767,6 +1767,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
           timetable: ["secretariat"],
           dailyReports: ["dailyFollowUp"],
           adminReports: ["adminFollowUp"],
+          adminIndividualReports: ["adminFollowUp"],
           studentReports: ["studentAffairs", "secretariat"], // Secretariat might update this implicitly
           violations: ["studentAffairs"],
           parentVisits: ["studentAffairs"],
@@ -1969,6 +1970,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
               key === "adminActivitiesList" ||
               key === "adminBranchActivities" ||
               key === "adminIndividualReportFields" ||
+              key === "adminIndividualReports" ||
               key === "adminFollowUpTypes") &&
             (isSecretariatEnabled || canEditAdminFollowUp)
           )

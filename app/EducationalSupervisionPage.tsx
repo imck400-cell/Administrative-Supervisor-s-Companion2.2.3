@@ -3,8 +3,9 @@ import { useGlobal } from '../context/GlobalState';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, PenTool, BarChart3, ClipboardList, 
-  ChevronDown, ArrowRight, FileText, BookOpen, UserCircle
+  ChevronDown, ArrowRight, FileText, BookOpen, UserCircle, ListChecks
 } from 'lucide-react';
+import { ShortEvaluationForm } from './ShortEvaluationForm';
 
 export default function EducationalSupervisionPage() {
   const { data, currentUser } = useGlobal();
@@ -13,12 +14,20 @@ export default function EducationalSupervisionPage() {
   const [activeDropdown, setActiveDropdown] = useState<string>('');
 
   // Form State for Teachers Management
-  const availableSchools = data.availableSchools || [];
+  const isSuperAdmin = currentUser?.role === 'admin' || currentUser?.permissions?.all === true;
+  const availableSchools = isSuperAdmin 
+    ? data.availableSchools || [] 
+    : (currentUser?.schools || []);
+
   const [selectedSchool, setSelectedSchool] = useState<string>(
     currentUser?.selectedSchool?.split(',').map(s => s.trim()).filter(s => s !== "all")[0] || availableSchools[0] || ''
   );
   
-  const schoolBranches = (data.schoolBranches?.[selectedSchool] || []) as string[];
+  const allBranchesForSchool = (data.schoolBranches?.[selectedSchool] || []) as string[];
+  const schoolBranches = isSuperAdmin 
+    ? allBranchesForSchool
+    : (currentUser?.permissions?.schoolsAndBranches?.[selectedSchool] || []);
+
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   
   const [semester, setSemester] = useState<string>('الفصل الأول');
@@ -109,14 +118,34 @@ export default function EducationalSupervisionPage() {
 
             <div className="flex gap-4">
               <button 
-                onClick={() => setActiveTeacherView('new_visit')}
+                onClick={() => setActiveTeacherView('new_visit_short')}
                 className={`flex-1 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
-                  activeTeacherView === 'new_visit' 
+                  activeTeacherView === 'new_visit_short' 
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
                     : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                <PenTool size={20} /> تقرير زيارة جديدة
+                <PenTool size={20} /> تقييم مختصر
+              </button>
+              <button 
+                onClick={() => setActiveTeacherView('new_visit_ext')}
+                className={`flex-1 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
+                  activeTeacherView === 'new_visit_ext' 
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' 
+                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <FileText size={20} /> تقييم موسع
+              </button>
+              <button 
+                onClick={() => setActiveTeacherView('new_visit_sub')}
+                className={`flex-1 py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
+                  activeTeacherView === 'new_visit_sub' 
+                    ? 'bg-teal-600 text-white shadow-lg shadow-teal-200' 
+                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <BookOpen size={20} /> تقييم مادة
               </button>
               <button 
                 onClick={() => setActiveTeacherView('archive')}
@@ -126,12 +155,23 @@ export default function EducationalSupervisionPage() {
                     : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                <FileText size={20} /> أرشيف الزيارات
+                <ListChecks size={20} /> أرشيف
               </button>
             </div>
 
-            <div className="mt-8 p-6 bg-slate-50 rounded-xl border border-dashed border-slate-300 min-h-[300px] flex items-center justify-center text-slate-400 font-bold">
-              {activeTeacherView === 'new_visit' ? 'نموذج تقرير الزيارة الجديدة (قيد التطوير)' : 'أرشيف زيارات المعلم (قيد التطوير)'}
+            <div className="mt-8 bg-slate-50 rounded-xl">
+              {activeTeacherView === 'new_visit_short' && (
+                <ShortEvaluationForm 
+                  teacher={selectedTeacher} 
+                  school={selectedSchool} 
+                  branch={selectedBranch} 
+                  semester={semester} 
+                  academicYear={currentUser?.selectedYear || data.availableYears?.[0] || '2024-2025'} 
+                />
+              )}
+              {activeTeacherView === 'archive' && <div className="p-10 text-center font-bold text-slate-400">أرشيف زيارات المعلم (قيد التطوير)</div>}
+              {activeTeacherView === 'new_visit_ext' && <div className="p-10 text-center font-bold text-slate-400">نماذج التقييم الموسع (قيد التطوير)</div>}
+              {activeTeacherView === 'new_visit_sub' && <div className="p-10 text-center font-bold text-slate-400">نماذج تقييم المادة (قيد التطوير)</div>}
             </div>
           </div>
         </div>

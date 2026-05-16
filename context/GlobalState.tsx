@@ -15,6 +15,7 @@ import {
   onSnapshot,
   getDoc,
   getDocFromServer,
+  runTransaction
 } from "firebase/firestore";
 import { toast } from "sonner";
 
@@ -2009,28 +2010,54 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
 
             const promises = schoolsToUpdateForThisKey.map(async (school) => {
               const fullPath = `schools/${school}/shared/${key}`;
-
               let payloadToSave = newData[key];
 
-              // Prevent Multi-Tenant Data Leak: Filter arrays before writing to a specific school's Firebase doc
-              if (Array.isArray(payloadToSave)) {
-                if (key === "users") {
-                  payloadToSave = (payloadToSave as any[]).filter(
-                    (u) =>
-                      (u.schools && u.schools.some(s => s && (s.trim() === school.trim() || s.trim() === "all"))) ||
-                      u.role === "admin" ||
-                      u.permissions?.all === true,
-                  ) as any;
-                } else if (
-                  key === "secretariatStudents" ||
-                  key === "secretariatStaff"
-                ) {
-                  payloadToSave = (payloadToSave as any[]).filter(
-                    (s) =>
-                      (s.school && s.school.trim() === school.trim()) ||
-                      (s.schoolBranch && s.schoolBranch.startsWith(school)),
-                  ) as any;
-                }
+              // Determine intended actions to prevent Array Overwrites
+              // Only do this if it's an array and items have an ID
+              let isArrayWithIds = false;
+              let intendedUpdates = new Map();
+              let intendedDeletes = new Set();
+              
+              if (Array.isArray(payloadToSave) && Array.isArray(rawData[key as keyof AppData])) {
+                 const oldClientArray = rawData[key as keyof AppData] as any[];
+                 const hasIds = payloadToSave.length > 0 ? !!(payloadToSave[0].id || payloadToSave[0].uuid) : (oldClientArray.length > 0 ? !!(oldClientArray[0].id || oldClientArray[0].uuid) : false);
+                 
+                 if (hasIds) {
+                    isArrayWithIds = true;
+                    const oldMap = new Map(oldClientArray.map(i => [i.id || i.uuid, i]));
+                    const newMap = new Map(payloadToSave.map(i => [i.id || i.uuid, i]));
+                    
+                    for (const [id, newItem] of newMap.entries()) {
+                       if (!id) continue;
+                       const oldItem = oldMap.get(id);
+                       if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
+                          intendedUpdates.set(id, newItem);
+                       }
+                    }
+                    for (const id of oldMap.keys()) {
+                       if (!id) continue;
+                       if (!newMap.has(id)) {
+                          intendedDeletes.add(id);
+                       }
+                    }
+                 }
+              }
+
+              // Apply pre-filtering rules for multi-tenant isolation
+              const filterPayloadItem = (item: any) => {
+                 if (key === "users") {
+                    return (item.schools && item.schools.some((s: string) => s && (s.trim() === school.trim() || s.trim() === "all"))) ||
+                           item.role === "admin" ||
+                           item.permissions?.all === true;
+                 } else if (key === "secretariatStudents" || key === "secretariatStaff") {
+                    return (item.school && item.school.trim() === school.trim()) ||
+                           (item.schoolBranch && item.schoolBranch.startsWith(school));
+                 }
+                 return true;
+              };
+
+              if (Array.isArray(payloadToSave) && !isArrayWithIds) {
+                 payloadToSave = payloadToSave.filter(filterPayloadItem) as any;
               }
 
               if (key === "profile") {
@@ -2039,16 +2066,47 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                 );
               } else {
                 console.log(
-                  `📤 Pushing ${key} update to Firebase via: ${fullPath} (Items: ${Array.isArray(payloadToSave) ? payloadToSave.length : "N/A"})`,
+                  `📤 Pushing ${key} update to Firebase via: ${fullPath}`,
                 );
               }
 
               // Always await the promise to ensure data is synced before proceeding
               try {
-                await setDoc(
-                  doc(db, "schools", school, "shared", key),
-                  { data: payloadToSave },
-                );
+                const docRef = doc(db, "schools", school, "shared", key);
+                
+                if (isArrayWithIds) {
+                   await runTransaction(db, async (transaction) => {
+                      const docSnap = await transaction.get(docRef);
+                      let serverArray = docSnap.exists() ? (docSnap.data().data || []) : [];
+                      
+                      // 1. Remove deleted items
+                      if (intendedDeletes.size > 0) {
+                         serverArray = serverArray.filter((x: any) => !intendedDeletes.has(x.id || x.uuid));
+                      }
+                      
+                      // 2. Add or update changed items
+                      for (const [id, updatedItem] of intendedUpdates.entries()) {
+                         const shouldBeInThisSchool = filterPayloadItem(updatedItem);
+                         const idx = serverArray.findIndex((x: any) => (x.id || x.uuid) === id);
+                         
+                         if (shouldBeInThisSchool) {
+                            if (idx > -1) {
+                               serverArray[idx] = updatedItem;
+                            } else {
+                               serverArray.push(updatedItem);
+                            }
+                         } else {
+                            if (idx > -1) {
+                               serverArray.splice(idx, 1);
+                            }
+                         }
+                      }
+                      
+                      transaction.set(docRef, { data: serverArray });
+                   });
+                } else {
+                   await setDoc(docRef, { data: payloadToSave });
+                }
                 
                 if (key === "profile") {
                   console.log(

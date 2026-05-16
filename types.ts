@@ -342,6 +342,7 @@ export interface UserPermissions {
   schoolProfile?: boolean | string[];
   secretariat?: boolean | string[];
   teacherPortal?: boolean | string[];
+  educationalSupervision?: boolean | string[];
   specialCodes?: boolean | string[];
   userManagement?: boolean | string[];
   managedUserIds?: string[];

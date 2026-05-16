@@ -79,6 +79,7 @@ const Layout: React.FC<LayoutProps> = ({
 
   const canUseDashboard = checkPerm(currentUser?.permissions?.dashboard);
   const canUseDaily = checkPerm(currentUser?.permissions?.dailyFollowUp);
+  const canUseEducationalSupervision = checkPerm(currentUser?.permissions?.educationalSupervision);
   const canUseAdmin = checkPerm(currentUser?.permissions?.adminFollowUp);
   const canUseSpecial = checkPerm(currentUser?.permissions?.specialReports);
   const canUseSubstitutes = checkPerm(currentUser?.permissions?.substitutions);
@@ -102,6 +103,15 @@ const Layout: React.FC<LayoutProps> = ({
             icon: <BookOpen size={20} />,
             label: "متابعة المعلمين",
             path: "daily",
+          },
+        ]
+      : []),
+    ...(canUseEducationalSupervision
+      ? [
+          {
+            icon: <BookOpen size={20} />,
+            label: "الإشراف التربوي",
+            path: "educationalSupervision",
           },
         ]
       : []),

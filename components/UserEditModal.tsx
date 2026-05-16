@@ -97,6 +97,15 @@ const permissionsList = [
     ],
   },
   {
+    id: "educationalSupervision",
+    label: "الإشراف التربوي",
+    subPermissions: [
+      { id: "view", label: "ظهور الزر" },
+      { id: "disable", label: "عدم تفعيل الزر" },
+      { id: "allowEdits", label: "السماح بتغيير البيانات" },
+    ],
+  },
+  {
     id: "specialCodes",
     label: "التحكم بالصلاحيات",
     subPermissions: [
@@ -619,6 +628,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
                                       } else if (j === "مشرف الدور" || j === "المشرف الأكاديمي" || j === "وكيل أكاديمي" || j === "المشرف الإداري" || j === "المشرف التربوي") {
                                         if (!newPerms.dashboard) newPerms.dashboard = ["view"];
                                         if (!newPerms.dailyFollowUp) newPerms.dailyFollowUp = ["view"];
+                                        if (!newPerms.educationalSupervision) newPerms.educationalSupervision = ["view"];
                                         if (!newPerms.studentAffairs) newPerms.studentAffairs = ["view"];
                                         if (!newPerms.substitutions) newPerms.substitutions = ["view"];
                                         if (!newPerms.schoolProfile) newPerms.schoolProfile = ["view"];

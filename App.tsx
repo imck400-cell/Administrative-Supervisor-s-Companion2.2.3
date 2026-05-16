@@ -17,6 +17,7 @@ const StaffFollowUpPage = React.lazy(() => import('./app/StaffFollowUpPage'));
 const SpecialReportsPage = React.lazy(() => import('./app/SpecialReportsPage'));
 const ProfilePage = React.lazy(() => import('./app/ProfilePage'));
 const DailyReportsPage = React.lazy(() => import('./app/ReportsPage').then(module => ({ default: module.DailyReportsPage })));
+const EducationalSupervisionPage = React.lazy(() => import('./app/EducationalSupervisionPage'));
 const ViolationsPage = React.lazy(() => import('./app/ReportsPage').then(module => ({ default: module.ViolationsPage })));
 const StudentsReportsPage = React.lazy(() => import('./app/ReportsPage').then(module => ({ default: module.StudentsReportsPage })));
 const TeacherPortalPage = React.lazy(() => import('./app/TeacherPortalPage').then(module => ({ default: module.TeacherPortalPage })));
@@ -583,6 +584,7 @@ const MainApp: React.FC = () => {
         case 'dashboard': Content = <Dashboard setView={handleNavigation} />; break;
         case 'substitute': Content = <SubstitutionPage />; break;
         case 'daily': Content = <DailyReportsPage />; break;
+        case 'educationalSupervision': Content = <EducationalSupervisionPage />; break;
         case 'adminReports': Content = <StaffFollowUpPage />; break;
         case 'violations': Content = <ViolationsPage />; break;
         case 'studentReports': Content = <StudentsReportsPage />; break;

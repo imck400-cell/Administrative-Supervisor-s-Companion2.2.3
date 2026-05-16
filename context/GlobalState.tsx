@@ -2024,8 +2024,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
                  
                  if (hasIds) {
                     isArrayWithIds = true;
-                    const oldMap = new Map(oldClientArray.map(i => [i.id || i.uuid, i]));
-                    const newMap = new Map(payloadToSave.map(i => [i.id || i.uuid, i]));
+                    const oldMap = new Map<string, any>(oldClientArray.map(i => [i.id || i.uuid, i] as [string, any]));
+                    const newMap = new Map<string, any>(payloadToSave.map((i: any) => [i.id || i.uuid, i] as [string, any]));
                     
                     for (const [id, newItem] of newMap.entries()) {
                        if (!id) continue;

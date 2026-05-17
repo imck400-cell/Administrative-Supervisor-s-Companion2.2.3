@@ -232,9 +232,9 @@ export function ExtEvaluationForm({ teacher, school, branch, semester, academicY
     if (perc <= 30) return { label: 'القصور كبير', color: 'bg-red-800 text-white' };
     if (perc <= 40) return { label: 'يتطلب تحسين أكبر', color: 'bg-red-400 text-white' };
     if (perc <= 60) return { label: 'تحسن جميل', color: 'bg-yellow-200 text-yellow-900' };
-    if (perc <= 74) return { label: 'تحسن كبير', color: 'bg-yellow-400 text-black' };
-    if (perc <= 80) return { label: 'تحسن كبير ملحوظ', color: 'bg-blue-300 text-blue-900' };
-    if (perc <= 89) return { label: 'عملك متميز وبقي القليل لتصل إلى التميز الأكبر', color: 'bg-blue-700 text-white' };
+    if (perc <= 74) return { label: 'تحسن كبير', color: 'bg-yellow-500 text-white' };
+    if (perc <= 80) return { label: 'تحسن كبير ملحوظ', color: 'bg-blue-400 text-white' };
+    if (perc <= 89) return { label: 'عملك متميز وبقي القليل لتصل إلى التميز الأكبر', color: 'bg-blue-800 text-white' };
     return { label: 'عمل ممتاز جداً، بوركت جهودكم المباركة', color: 'bg-green-400 text-green-900' };
   };
 
@@ -500,20 +500,20 @@ export function ExtEvaluationForm({ teacher, school, branch, semester, academicY
         </div>
 
         {criteriaBlocks.map((block, i) => (
-          <div key={i} className="rounded-xl border border-[#44b0a0] overflow-hidden shadow-sm">
+          <div key={i} className="rounded-xl border border-[#44b0a0] overflow-hidden shadow-sm mb-6">
             <div className="bg-[#44b0a0] py-3 px-4 flex items-center justify-between">
-              <PlusCircle size={20} className="text-white bg-transparent" />
               <h4 className="text-lg font-bold text-white leading-tight">{block.title}</h4>
+              <PlusCircle size={20} className="text-white bg-transparent opacity-80" />
             </div>
             <div className="bg-white flex flex-col">
               {block.items.map((item, j) => (
                 <div key={j} className={`flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 ${j !== block.items.length - 1 ? 'border-b border-slate-100' : ''} hover:bg-slate-50 transition-colors`}>
-                  <div className="flex items-center justify-between w-full md:w-auto md:flex-1 md:justify-end gap-3 order-1 md:order-2">
-                    <span className="font-semibold text-slate-600 text-base text-right flex-1">{item}</span>
-                    <MinusCircle size={20} className="text-red-500 flex-shrink-0 stroke-[1.5]" />
+                  <div className="flex items-center justify-start gap-3 w-full md:w-auto md:flex-1">
+                    <MinusCircle size={20} className="text-red-500 flex-shrink-0 stroke-[2] opacity-80" />
+                    <span className="font-semibold text-slate-600 text-base text-right">{item}</span>
                   </div>
-                  <div className="flex items-center gap-3 order-2 md:order-1 self-start md:self-auto" dir="ltr">
-                    {[4, 3, 2, 1, 0].map(num => (
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {[0, 1, 2, 3, 4].map(num => (
                       <button
                         key={num}
                         onClick={() => handleScore(item, num)}

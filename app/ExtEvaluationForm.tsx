@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Save, Printer, Download, Share2, Plus, Users, BookOpen, Clock, Calendar, Bookmark, BarChart3, ListChecks, FileText } from 'lucide-react';
+import { Save, Printer, Download, Share2, Plus, Users, BookOpen, Clock, Calendar, Bookmark, BarChart3, ListChecks, FileText, MinusCircle, PlusCircle } from 'lucide-react';
 import { useGlobal } from '../context/GlobalState';
 import { User } from '../types';
 
@@ -220,12 +220,12 @@ export function ExtEvaluationForm({ teacher, school, branch, semester, academicY
   };
 
   const getScoreColor = (sc: number) => {
-    if (sc === 0) return 'bg-red-800 text-white'; // Dark Red
-    if (sc === 1) return 'bg-red-400 text-white'; // Light Red
-    if (sc === 2) return 'bg-yellow-400 text-black'; // Yellow
-    if (sc === 3) return 'bg-blue-500 text-white'; // Blue
-    if (sc === 4) return 'bg-green-500 text-white'; // Green
-    return 'bg-slate-100 text-slate-500 hover:bg-slate-200';
+    if (sc === 0) return 'bg-red-800 text-white border-red-800'; // Dark Red
+    if (sc === 1) return 'bg-red-400 text-white border-red-400'; // Light Red
+    if (sc === 2) return 'bg-yellow-400 text-black border-yellow-400'; // Yellow
+    if (sc === 3) return 'bg-blue-500 text-white border-blue-500'; // Blue
+    if (sc === 4) return 'bg-green-500 text-white border-green-500'; // Green
+    return 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200';
   };
 
   const getFinalScoreFeedbackInfo = (perc: number) => {
@@ -500,18 +500,24 @@ export function ExtEvaluationForm({ teacher, school, branch, semester, academicY
         </div>
 
         {criteriaBlocks.map((block, i) => (
-          <div key={i} className="space-y-4">
-            <h4 className="text-xl font-bold text-slate-700 bg-sky-100 py-3 px-4 rounded-xl border border-sky-200">{block.title}</h4>
-            <div className="space-y-3 pl-2 pr-2">
+          <div key={i} className="rounded-xl border border-[#44b0a0] overflow-hidden shadow-sm">
+            <div className="bg-[#44b0a0] py-3 px-4 flex items-center justify-between">
+              <PlusCircle size={20} className="text-white bg-transparent" />
+              <h4 className="text-lg font-bold text-white leading-tight">{block.title}</h4>
+            </div>
+            <div className="bg-white flex flex-col">
               {block.items.map((item, j) => (
-                <div key={j} className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-3 bg-white border border-slate-100 rounded-xl hover:shadow-md transition-shadow">
-                  <span className="font-semibold text-slate-700 text-sm md:text-base flex-1">{item}</span>
-                  <div className="flex items-center gap-2">
-                    {[0, 1, 2, 3, 4].map(num => (
+                <div key={j} className={`flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 ${j !== block.items.length - 1 ? 'border-b border-slate-100' : ''} hover:bg-slate-50 transition-colors`}>
+                  <div className="flex items-center justify-between w-full md:w-auto md:flex-1 md:justify-end gap-3 order-1 md:order-2">
+                    <span className="font-semibold text-slate-600 text-base text-right flex-1">{item}</span>
+                    <MinusCircle size={20} className="text-red-500 flex-shrink-0 stroke-[1.5]" />
+                  </div>
+                  <div className="flex items-center gap-3 order-2 md:order-1 self-start md:self-auto" dir="ltr">
+                    {[4, 3, 2, 1, 0].map(num => (
                       <button
                         key={num}
                         onClick={() => handleScore(item, num)}
-                        className={`w-10 h-10 rounded-lg font-black text-lg transition-all transform hover:scale-110 active:scale-95 ${scores[item] === num ? getScoreColor(num) : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+                        className={`w-10 h-10 rounded-full font-bold text-lg flex items-center justify-center transition-all ${scores[item] === num ? getScoreColor(num) : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'} ${scores[item] !== num ? 'shadow-sm' : ''}`}
                       >
                         {num}
                       </button>

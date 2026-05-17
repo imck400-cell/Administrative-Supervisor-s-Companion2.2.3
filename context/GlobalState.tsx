@@ -621,6 +621,12 @@ const defaultData: AppData = {
     achievement: [],
   },
   taskTemplates: defaultTaskTemplates,
+  customEvaluationOptions: {
+    strategies: [],
+    tools: [],
+    sources: [],
+    programs: []
+  },
   taskReports: [],
   metricLabels: defaultMetricLabels,
   metricsList: initialMetricsList,
@@ -1323,6 +1329,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         "customViolationElements",
         "absenceManualAdditions",
         "absenceExclusions",
+        "customEvaluationOptions",
       ];
 
       // Initialize all necessary buffers
@@ -1844,6 +1851,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
         "customViolationElements",
         "absenceManualAdditions",
         "absenceExclusions",
+        "customEvaluationOptions",
       ];
 
       // Helper to check if an item matches the current active filters (user + date).

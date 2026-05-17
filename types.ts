@@ -628,6 +628,12 @@ export interface AppData {
   };
   absenceManualAdditions?: Record<string, string[]>;
   absenceExclusions?: Record<string, string[]>;
+  customEvaluationOptions?: {
+    strategies?: string[];
+    tools?: string[];
+    sources?: string[];
+    programs?: string[];
+  };
   taskTemplates?: TaskItem[];
   taskReports?: TaskReport[];
   metricLabels?: Record<string, string>;

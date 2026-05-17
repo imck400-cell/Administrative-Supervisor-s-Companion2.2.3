@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Save, Printer, Download, Share2, Plus, X, Users, BookOpen, Clock, Calendar, Bookmark, BarChart3, ListChecks, ClipboardList } from 'lucide-react';
+import { Save, Printer, Download, Share2, Plus, Users, BookOpen, Clock, Calendar, Bookmark, BarChart3, ListChecks, FileText } from 'lucide-react';
 import { useGlobal } from '../context/GlobalState';
 import { User } from '../types';
 
@@ -11,36 +10,60 @@ interface ScoreBlock {
 
 const criteriaBlocks: ScoreBlock[] = [
   {
-    title: 'الكفايات الشخصية وسمات المعلم',
-    items: ['يهتم بمظهره الشخصي.', 'يظهر ثقة بنفسه.', 'يتحدث بصوت ولغة سليمة.']
+    title: 'متميز في الصفات الشخصية',
+    items: ['يظهر بمظهر حسن', 'يحترم مشاعر الآخرين', 'يثق بنفسه']
   },
   {
-    title: 'الخطة الدرسية',
-    items: ['يسير في المنهج وفق الخطة.', 'يقدم خطة درسية مكتملة العناصر (كمي)', 'يربط الخطة الدراسية بموضوع الدرس (نوعي)']
+    title: 'اكتمال الخطة والتحضير (كمي)',
+    items: ['توفر البيانات العامة (صف، حصة، عنوان، تاريخ)', 'توفر الأهداف والمحتوى والأساليب الوسائل والتقويم', 'توفر التمهيد والغلق والواجب بشكل مناسب.', 'يحدد أدواراً نشطة للمعلم والمتعلم تتفق مع المحتوى']
   },
   {
-    title: 'إدارة الصف',
-    items: ['يحافظ على قواعد الانضباط الصفي.', 'يدير التفاعل الصفي بنجاح', 'يساهم في إيجاد مناخ صفي ملائم.', 'يوزع زمن الحصة على خطوات الدرس (تنفيذ)']
+    title: 'اتفاق عناصر التحضير مع الدرس (نوعي)',
+    items: ['تتفق عناصر التحضير مع المحتوى ومهاراته .', 'الأهداف مصاغة من المستويات العليا والدنيا', 'الأهداف سليمة الصياغة وخالية من الأخطاء الإملائية', 'التقويم مصاغ بطريقة تقيس تحقق الأهداف.']
   },
   {
-    title: 'الأداء والعرض المباشر للدرس',
-    items: ['يهيئ ويمهد للدرس بصورة ملائمة.', 'يظهر إلماما بالمادة العلمية.', 'يراعي الفروق الفردية بين المتعلمين.', 'يربط الدرس بالتطبيقات والبيئة المحيطة.', 'ينمي القيم والأخلاق الحميدة.', 'يفعل دور المتعلمين ويحفزهم.', 'يطرح أسئلة صفية متنوعة', 'يتابع أعمال المتعلمين أثناء الدرس.', 'يغلق الدرس بصورة مناسبة.']
+    title: 'التهيئة والتمهيد مناسبان للدرس',
+    items: ['تهيئة بيئية و نفسية(نظافة، نظام، قيام، مجموعات)', 'تهيئة توجيهية وانتقالية من نشاط إلى آخر.', 'تمهيد مشوق ومناسب للدرس ويثير دافعية المتعلم.', 'تمهيد انتقالي من مهارة علمية إلى أخرى.']
   },
   {
-    title: 'السبورة والوسائل والأنشطة التعليمية',
-    items: ['يمارس التقييم المعزز للتعلم.', 'يستخدم السبورة بفاعلية.', 'يوظف الوسائط التعليمية بصورة مناسبة.', 'يدير النشاط الصفي بفاعلية.']
+    title: 'استخدام السبورة بفاعلية',
+    items: ['يكتب البيانات والدرس وينظم السبورة مع التلوين.', 'يكتب عناصر ومهارات الدرس مع الأمثلة والتلوين.', 'يكتب القواعد والأساسيات التي يشرحها.', 'خلو الكتابة من الأخطاء العلمية واللغوية والإملائية']
   },
   {
-    title: 'تحصيل المتعلمين',
-    items: ['يفعل سجل الدرجات في الحصة.', 'يقيس استيعاب المتعلمين.', 'يتابع دفاتر المتعلمين بفاعلية.', 'يفعل الواجب المنزلي والتعيينات.', 'يربط تحصيل المتعلمين بمصادر التعلم.']
+    title: 'وضوح الشرح بتمكن علمي وتسلسل منطقي للدرس',
+    items: ['الشرح خالٍ من الأخطاء العلمية الملقاة في الدرس.', 'الشرح خالٍ من الأخطاء اللغوية الملقاة في الدرس.', 'يوضح المفاهيم والمصطلحات الواردة في الدرس.', 'يتدرج من السهل والمعلوم إلى الصعب والمجهول.', 'التسلسل كامل و مناسب لمحتوى الدرس والمتعلم.', 'يكثر من الأمثلة التطبيقية لكل مهارة ونشاط .', 'يصحح أخطاء الطلاب ويوجههم للصواب.', 'يعتمد على المقارنات لتوضيح الفروق العلمية.', 'يضع أسئلة متنوعة لإثارة نشاط الطلاب.']
   },
   {
-    title: 'مهارات المادة',
-    items: ['ينفذ المهارات الأساسية للمادة.']
+    title: 'الاستراتيجات ودور المتعلم',
+    items: ['تنويع الأساليب بحيث لكل هدف أسلوب نشط.', 'يستخدم طرقاً نشطة مثيرة لانتباه الطلاب.', 'يشرك المتعلم في نشاط الدرس ( فردي، جماعي)', 'يحدد أدواراً للمعلم والمتعلم نشطة تتفق مع المحتوى']
   },
   {
-    title: 'البيئة الصفية',
-    items: ['مشاركة الطلاب وتفاعلهم.', 'التفاعل الإيجابي بين المعلم والطلاب.']
+    title: 'مهارات التواصل',
+    items: ['يحسن إيصال المعلومة بلغة جسد وتحرك متميز.', 'وضوح الصوت وتنوع نبراته وفق محتوى الدرس.', 'يحسن الاستماع والحوار مع جميع المتعلمين.']
+  },
+  {
+    title: 'ربط الدرس بالقيم وخبرات الطلاب',
+    items: ['ربط الدرس بقيمة حياتية من واقع الطلبة', 'ينوع في الأنشطة وفق قدرات الطلبة العقلية.', 'يقدم التغذية الراجعة أثناء تنفيذ الطلاب للمهارات.']
+  },
+  {
+    title: 'الوسائل والمصادر',
+    items: ['توفر وسائل مناسبة ومتنوعة وملتزمة بالوقت', 'يتم توظيف الكتاب ومصادر أخرى حسب النشاط.']
+  },
+  {
+    title: 'تفاعل المتعلمين مع الدرس',
+    items: ['شارك جميع الطلبة في الدرس.', 'تفاعل جميع المتعلمين مع بعضهم.', 'تفاعل المتعلمين مع المعلم والوسيلة والنشاط .']
+  },
+  {
+    title: 'الإدارة الصفية وقواعد السلوك',
+    items: ['إدارة فاعلة منضبطة نشطة وغير خاملة دائماً.', 'يفعل الطالب الخامل من خلال السؤال والمشاركة.', 'تعزيز السلوكيات المرغوبة وتقويم غير المرغوبة.', 'أنهى الحصة وغطى الوقت حسب المخطط له.', 'يستخدم سجل نقاط ودرجات المشاركات الطلابية.', 'يستخدم الفاظاً وأحكاماً تربوية مناسبة لمعالجة سلوك']
+  },
+  {
+    title: 'التقويم والغلق مناسبان ومثيران',
+    items: ['تقويم تشخيصي وبنائي وختامي مكتمل .', 'يطرح أسئلة تثير التفكير( عصف، تصنيف، سابرة)', 'يتابع استجابات المتعلمين', 'إغلاق الدرس بملخص أو مراجعة أو أسلوب مختلف']
+  },
+  {
+    title: 'يهتم بالواجبات والتصحيح',
+    items: ['تقديم واجبات وتعيينات مناسبة ومتنوعه.', 'يتابع تنفيذ الواجبات من قبل الطلاب.', 'يصحح الدفاتر أولا بأول.', 'يضع إشارات وتغذية راجعة ويصوب الخطأ.']
   }
 ];
 
@@ -63,15 +86,14 @@ interface Props {
   branch: string;
   semester: string;
   academicYear: string;
-  isSubjectEvaluation?: boolean;
 }
 
-export function ShortEvaluationForm({ teacher, school, branch, semester, academicYear, isSubjectEvaluation }: Props) {
+export function ExtEvaluationForm({ teacher, school, branch, semester, academicYear }: Props) {
   const { currentUser, data, updateData } = useGlobal();
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [subject, setSubject] = useState('');
   const [subSubject, setSubSubject] = useState('');
-  const [visitType, setVisitType] = useState('إستطلاعية');
+  const [visitType, setVisitType] = useState('استطلاعية');
   const [grade, setGrade] = useState('');
   const [section, setSection] = useState('');
   const [lessonName, setLessonName] = useState('');
@@ -197,12 +219,35 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
     setter(arr.join('\n'));
   };
 
+  const getScoreColor = (sc: number) => {
+    if (sc === 0) return 'bg-red-800 text-white'; // Dark Red
+    if (sc === 1) return 'bg-red-400 text-white'; // Light Red
+    if (sc === 2) return 'bg-yellow-400 text-black'; // Yellow
+    if (sc === 3) return 'bg-blue-500 text-white'; // Blue
+    if (sc === 4) return 'bg-green-500 text-white'; // Green
+    return 'bg-slate-100 text-slate-500 hover:bg-slate-200';
+  };
+
+  const getFinalScoreFeedbackInfo = (perc: number) => {
+    if (perc <= 30) return { label: 'القصور كبير', color: 'bg-red-800 text-white' };
+    if (perc <= 40) return { label: 'يتطلب تحسين أكبر', color: 'bg-red-400 text-white' };
+    if (perc <= 60) return { label: 'تحسن جميل', color: 'bg-yellow-200 text-yellow-900' };
+    if (perc <= 74) return { label: 'تحسن كبير', color: 'bg-yellow-400 text-black' };
+    if (perc <= 80) return { label: 'تحسن كبير ملحوظ', color: 'bg-blue-300 text-blue-900' };
+    if (perc <= 89) return { label: 'عملك متميز وبقي القليل لتصل إلى التميز الأكبر', color: 'bg-blue-700 text-white' };
+    return { label: 'عمل ممتاز جداً، بوركت جهودكم المباركة', color: 'bg-green-400 text-green-900' };
+  };
+
+  const finalScoreInfo = getFinalScoreFeedbackInfo(percentage);
+  const currentProfile = data.profiles?.[school] || data.profile;
+
   const [addingCustomBlock, setAddingCustomBlock] = useState<string | null>(null);
   const [customInput, setCustomInput] = useState('');
 
   const handleAddCustomOption = (key: 'strategies' | 'tools' | 'sources' | 'programs') => {
     if (!customInput.trim()) return;
     
+    // Default structure might not exist yet
     const currOptions = data.customEvaluationOptions || { strategies: [], tools: [], sources: [], programs: [] };
     const currArray = currOptions[key] || [];
 
@@ -215,6 +260,7 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
         }
       });
       
+      // Auto toggle the newly added item for the current form
       if (key === 'strategies') toggleString(strategies, customInput.trim(), setStrategies);
       if (key === 'tools') toggleString(tools, customInput.trim(), setTools);
       if (key === 'sources') toggleString(sources, customInput.trim(), setSources);
@@ -225,23 +271,11 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
     setAddingCustomBlock(null);
   };
 
-  const getScoreColor = (sc: number) => {
-    if (sc === 0) return 'bg-red-800 text-white';
-    if (sc === 1) return 'bg-red-400 text-white';
-    if (sc === 2) return 'bg-yellow-400 text-black';
-    if (sc === 3) return 'bg-blue-500 text-white';
-    if (sc === 4) return 'bg-green-500 text-white';
-    return 'bg-slate-100 text-slate-500 hover:bg-slate-200';
-  };
-
-  const currentProfile = data.profiles?.[school] || data.profile;
-
   const handleExportExcel = async () => {
     try {
       const ExcelJS = await import('exceljs');
       const workbook = new ExcelJS.Workbook();
-      const sheetName = isSubjectEvaluation ? 'التقييم حسب المادة' : 'التقييم المختصر';
-      const sheet = workbook.addWorksheet(sheetName);
+      const sheet = workbook.addWorksheet('التقييم الموسع');
 
       sheet.views = [{ rightToLeft: true }];
 
@@ -330,8 +364,7 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const fileNameStr = isSubjectEvaluation ? 'تقييم_مادة' : 'تقييم_مختصر';
-      link.download = `${fileNameStr}_${teacher?.name || 'مجهول'}_${date}.xlsx`;
+      link.download = `تقييم_موسع_${teacher?.name || 'مجهول'}_${date}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -342,7 +375,7 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
   };
 
   const handleWhatsapp = () => {
-    let msg = isSubjectEvaluation ? `*التقييم حسب المادة*\n` : `*التقييم المختصر*\n`;
+    let msg = `*التقييم الموسع*\n`;
     msg += `🏫 المدرسة: ${school} ${branch ? '- ' + branch : ''}\n`;
     msg += `👤 المعلم: ${teacher?.name}\n`;
     msg += `📋 المادة: ${subject} | 📅 التاريخ: ${date}\n`;
@@ -354,17 +387,18 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
       block.items.forEach(item => {
         const score = scores[item];
         let indicator = '⚪';
-        if (score === 0) indicator = '🔴';
-        else if (score === 1) indicator = '🟠';
-        else if (score === 2) indicator = '🟡';
-        else if (score === 3) indicator = '🔵';
-        else if (score === 4) indicator = '🟢';
+        if (score === 0) indicator = '🔴'; // Dark red
+        else if (score === 1) indicator = '🟠'; // Light red/orange
+        else if (score === 2) indicator = '🟡'; // Yellow
+        else if (score === 3) indicator = '🔵'; // Blue
+        else if (score === 4) indicator = '🟢'; // Green
         
         msg += `${indicator} ${item} (${score ?? '-'})\n`;
       });
     });
 
-    msg += `\n*🎯 النسبة النهائية: ${percentage}%*\n\n`;
+    msg += `\n*🎯 النسبة النهائية: ${percentage}%*\n`;
+    msg += `*نتيجة:* ${finalScoreInfo.label}\n\n`;
 
     msg += `*💡 الإيجابيات:*\n${strengths}\n\n`;
     msg += `*⚠️ للتحسين:*\n${improvements}\n\n`;
@@ -377,9 +411,9 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
   return (
     <div className="space-y-8 animate-in fade-in pb-10 max-w-5xl mx-auto">
       <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-        <div className="bg-blue-600 p-6 flex items-center justify-between">
+        <div className="bg-indigo-600 p-6 flex items-center justify-between">
           <h2 className="text-2xl font-black text-white flex items-center gap-3">
-            <ClipboardList size={28} /> {isSubjectEvaluation ? 'التقييم حسب المادة' : 'التقييم المختصر'}
+            <FileText size={28} /> التقييم الموسع
           </h2>
         </div>
         <div className="p-6 md:p-8 space-y-6">
@@ -416,7 +450,7 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
             </div>
             <div className="space-y-2">
               <label className="text-sm font-bold text-slate-700">المادة</label>
-              <select value={subject} onChange={e => { setSubject(e.target.value); setSubSubject(''); }} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none font-semibold text-slate-700 focus:border-blue-500">
+              <select value={subject} onChange={e => { setSubject(e.target.value); setSubSubject(''); }} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none font-semibold text-slate-700 focus:border-indigo-500">
                 <option value="">اختر المادة</option>
                 {['القرآن كريم', 'التربية الإسلامية', 'اللغة العربية', 'اللغة الإنجليزية', 'الرياضيات', 'العلوم', 'الكيمياء', 'الفيزياء', 'الأحياء', 'الاجتماعيات', 'الحاسوب'].map(s => (
                   <option key={s} value={s}>{s}</option>
@@ -426,7 +460,7 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
             {subject && subjectBranches[subject] && (
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700">فرع المادة</label>
-                <select value={subSubject} onChange={e => setSubSubject(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none font-semibold text-slate-700 focus:border-blue-500">
+                <select value={subSubject} onChange={e => setSubSubject(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none font-semibold text-slate-700 focus:border-indigo-500">
                   <option value="">اختر الفرع</option>
                   {subjectBranches[subject].map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -434,27 +468,27 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
             )}
             <div className="space-y-2">
               <label className="text-sm font-bold text-slate-700">نوع الزيارة</label>
-              <select value={visitType} onChange={e => setVisitType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none font-semibold text-slate-700 focus:border-blue-500">
+              <select value={visitType} onChange={e => setVisitType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none font-semibold text-slate-700 focus:border-indigo-500">
                 {['استطلاعية', 'تشخيصية', 'توجيهية', 'تقييمية'].map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-bold text-slate-700">الصف</label>
-              <select value={grade} onChange={e => setGrade(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none font-semibold text-slate-700 focus:border-blue-500">
+              <select value={grade} onChange={e => setGrade(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none font-semibold text-slate-700 focus:border-indigo-500">
                 <option value="">اختر الصف</option>
                 {['تمهيدي', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-bold text-slate-700">الشعبة</label>
-              <select value={section} onChange={e => setSection(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none font-semibold text-slate-700 focus:border-blue-500">
+              <select value={section} onChange={e => setSection(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none font-semibold text-slate-700 focus:border-indigo-500">
                 <option value="">اختر الشعبة</option>
                 {['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط'].map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div className="space-y-2 md:col-span-2 lg:col-span-3">
               <label className="text-sm font-bold text-slate-700">اسم الدرس</label>
-              <input type="text" value={lessonName} onChange={e => setLessonName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none font-semibold text-slate-700 focus:border-blue-500" placeholder="اكتب اسم الدرس هنا..." />
+              <input type="text" value={lessonName} onChange={e => setLessonName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none font-semibold text-slate-700 focus:border-indigo-500" placeholder="اكتب اسم الدرس هنا..." />
             </div>
           </div>
         </div>
@@ -462,12 +496,12 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
 
       <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden p-6 md:p-8 space-y-8">
         <div className="flex items-center justify-between mb-6">
-           <h3 className="text-2xl font-black text-slate-800 border-r-4 border-blue-600 pr-4">عناصر التقييم</h3>
+           <h3 className="text-2xl font-black text-slate-800 border-r-4 border-indigo-600 pr-4">عناصر التقييم</h3>
         </div>
 
         {criteriaBlocks.map((block, i) => (
           <div key={i} className="space-y-4">
-            <h4 className="text-xl font-bold text-slate-700 bg-slate-50 py-3 px-4 rounded-xl border border-slate-200">{block.title}</h4>
+            <h4 className="text-xl font-bold text-slate-700 bg-sky-100 py-3 px-4 rounded-xl border border-sky-200">{block.title}</h4>
             <div className="space-y-3 pl-2 pr-2">
               {block.items.map((item, j) => (
                 <div key={j} className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-3 bg-white border border-slate-100 rounded-xl hover:shadow-md transition-shadow">
@@ -489,10 +523,11 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
           </div>
         ))}
 
-        <div className="mt-8 bg-blue-50 p-6 rounded-2xl border border-blue-100 text-center">
-          <h4 className="text-xl font-bold text-blue-800 mb-2">النسبة المئوية النهائية</h4>
-          <div className="text-5xl font-black text-blue-600">
-            {percentage}%
+        <div className={`mt-8 p-6 rounded-2xl border text-center ${finalScoreInfo.color} border-slate-200`}>
+          <h4 className="text-xl font-bold mb-2 opacity-90">النسبة المئوية النهائية</h4>
+          <div className="text-5xl font-black flex items-center justify-center gap-4">
+            <span>{percentage}%</span>
+            <span className="text-2xl font-bold">({finalScoreInfo.label})</span>
           </div>
         </div>
       </div>
@@ -513,20 +548,20 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
                  <h4 className="text-lg font-bold text-slate-800">{block.title}</h4>
                  <button 
                    onClick={() => setAddingCustomBlock(addingCustomBlock === block.key ? null : block.key)}
-                   className="flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1 rounded-lg transition-colors"
+                   className="flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1 rounded-lg transition-colors"
                  >
                    <Plus size={16} /> إضافة
                  </button>
                </div>
 
                {addingCustomBlock === block.key && (
-                 <div className="flex items-center gap-2 bg-blue-50 p-2 rounded-xl">
+                 <div className="flex items-center gap-2 bg-indigo-50 p-2 rounded-xl">
                    <input 
                      autoFocus
                      type="text" 
                      value={customInput} 
                      onChange={(e) => setCustomInput(e.target.value)}
-                     className="flex-1 bg-white border border-blue-200 rounded-lg px-3 py-2 outline-none focus:border-blue-500 font-semibold text-sm"
+                     className="flex-1 bg-white border border-indigo-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-500 font-semibold text-sm"
                      placeholder="اكتب عنصراً جديداً..."
                      onKeyDown={(e) => {
                        if (e.key === 'Enter') {
@@ -537,7 +572,7 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
                    />
                    <button 
                      onClick={() => handleAddCustomOption(block.key as 'strategies'|'tools'|'sources'|'programs')}
-                     className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition"
+                     className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700 transition"
                    >
                      حفظ
                    </button>
@@ -552,7 +587,7 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
                        <button
                          key={opt}
                          onClick={() => toggleString(block.val, opt, block.set)}
-                         className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${isActive ? 'bg-blue-100 text-blue-700 border-blue-300' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'} border`}
+                         className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${isActive ? 'bg-indigo-100 text-indigo-700 border-indigo-300' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'} border`}
                        >
                          {opt}
                        </button>
@@ -563,7 +598,7 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
                <textarea
                  value={block.val}
                  onChange={e => block.set(e.target.value)}
-                 className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 font-semibold text-slate-700 focus:border-blue-500 outline-none min-h-[100px]"
+                 className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 font-semibold text-slate-700 focus:border-indigo-500 outline-none min-h-[100px]"
                  placeholder="اكتب هنا..."
                />
              </div>
@@ -581,15 +616,15 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
         
         <div className="space-y-4">
           <label className="text-lg font-bold text-slate-800 block">أهم الإيجابيات</label>
-          <textarea value={strengths} onChange={e => setStrengths(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 font-semibold text-slate-700 focus:border-blue-500 outline-none min-h-[120px]" />
+          <textarea value={strengths} onChange={e => setStrengths(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 font-semibold text-slate-700 focus:border-indigo-500 outline-none min-h-[120px]" />
         </div>
         <div className="space-y-4">
           <label className="text-lg font-bold text-slate-800 block">أهم الملاحظات (للتحسين)</label>
-          <textarea value={improvements} onChange={e => setImprovements(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 font-semibold text-slate-700 focus:border-blue-500 outline-none min-h-[120px]" />
+          <textarea value={improvements} onChange={e => setImprovements(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 font-semibold text-slate-700 focus:border-indigo-500 outline-none min-h-[120px]" />
         </div>
         <div className="space-y-4">
           <label className="text-lg font-bold text-slate-800 block">أهم التوصيات</label>
-          <textarea value={recommendations} onChange={e => setRecommendations(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 font-semibold text-slate-700 focus:border-blue-500 outline-none min-h-[120px]" />
+          <textarea value={recommendations} onChange={e => setRecommendations(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 font-semibold text-slate-700 focus:border-indigo-500 outline-none min-h-[120px]" />
         </div>
       </div>
 
@@ -611,7 +646,7 @@ export function ShortEvaluationForm({ teacher, school, branch, semester, academi
       </div>
 
       <div className="flex flex-wrap items-center justify-center gap-4 pt-6">
-        <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-black text-lg transition-all shadow-xl shadow-blue-200">
+        <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-xl font-black text-lg transition-all shadow-xl shadow-indigo-200">
           <Save size={24} /> حفظ التقرير
         </button>
         <button className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-4 rounded-xl font-bold transition-all shadow-lg">

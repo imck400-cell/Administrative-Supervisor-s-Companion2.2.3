@@ -6,6 +6,7 @@ import {
   ChevronDown, ArrowRight, FileText, BookOpen, UserCircle, ListChecks
 } from 'lucide-react';
 import { ShortEvaluationForm } from './ShortEvaluationForm';
+import { ExtEvaluationForm } from './ExtEvaluationForm';
 
 export default function EducationalSupervisionPage() {
   const { data, currentUser } = useGlobal();
@@ -170,8 +171,25 @@ export default function EducationalSupervisionPage() {
                 />
               )}
               {activeTeacherView === 'archive' && <div className="p-10 text-center font-bold text-slate-400">أرشيف زيارات المعلم (قيد التطوير)</div>}
-              {activeTeacherView === 'new_visit_ext' && <div className="p-10 text-center font-bold text-slate-400">نماذج التقييم الموسع (قيد التطوير)</div>}
-              {activeTeacherView === 'new_visit_sub' && <div className="p-10 text-center font-bold text-slate-400">نماذج تقييم المادة (قيد التطوير)</div>}
+              {activeTeacherView === 'new_visit_ext' && (
+                <ExtEvaluationForm 
+                  teacher={selectedTeacher} 
+                  school={selectedSchool} 
+                  branch={selectedBranch} 
+                  semester={semester} 
+                  academicYear={currentUser?.selectedYear || data.availableYears?.[0] || '2024-2025'} 
+                />
+              )}
+              {activeTeacherView === 'new_visit_sub' && (
+                <ShortEvaluationForm 
+                  teacher={selectedTeacher} 
+                  school={selectedSchool} 
+                  branch={selectedBranch} 
+                  semester={semester} 
+                  academicYear={currentUser?.selectedYear || data.availableYears?.[0] || '2024-2025'} 
+                  isSubjectEvaluation={true}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -243,6 +261,16 @@ export default function EducationalSupervisionPage() {
                 <option value="الفصل الثاني">الفصل الثاني</option>
               </select>
             </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">العام الدراسي</label>
+              <input 
+                type="text"
+                readOnly
+                value={currentUser?.selectedYear || data.availableYears?.[0] || '2024-2025'}
+                className="w-full bg-slate-100 border border-slate-200 text-slate-500 rounded-xl px-4 py-3 outline-none font-semibold cursor-not-allowed"
+              />
+            </div>
           </div>
 
           <div className="pt-6 border-t border-slate-100">
@@ -270,7 +298,7 @@ export default function EducationalSupervisionPage() {
                             key={teacher.id}
                             onClick={() => {
                               setSelectedTeacherId(teacher.id);
-                              setActiveTeacherView('new_visit');
+                              setActiveTeacherView('new_visit_short');
                               setShowTeachersList(false);
                             }}
                             className="w-full text-right px-4 py-3 hover:bg-slate-50 rounded-lg transition-colors font-semibold text-slate-700 flex items-center justify-between group"
